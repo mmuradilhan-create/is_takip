@@ -388,7 +388,7 @@ export function createGoalPanel({
     );
     const linkForm = panel.querySelector("#goal-link-child-form");
     const linkChoice =
-      linkForm?.dataset.id === record?.id
+      record && linkForm?.dataset.id === record.id
         ? linkForm.elements.childId.value
         : "";
     const linkFocused = active?.matches?.(
@@ -627,7 +627,7 @@ export function createGoalPanel({
       close();
       onNewStep(id);
     } else if (action === "goal-edit-record" && goal()) {
-      close();
+      captureProgressDraft();
       onEdit(id);
     }
   }

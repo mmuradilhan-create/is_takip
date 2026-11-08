@@ -1868,7 +1868,7 @@ export async function startMainApp() {
     datePicker?.close();
     choiceFields?.close();
     inlineFields?.close();
-    goalPanel?.close();
+    if (!creationOptions.keepGoalPanel) goalPanel?.close();
     const record = state.records.find((r) => r.id === id);
     const parentGoal = state.records.find((r) => r.id === parentId);
     const source = state.records.find(
@@ -2332,7 +2332,30 @@ export async function startMainApp() {
       );
     },
     onNewStep: (id) => openEditor(null, id),
-    onEdit: (id) => openEditor(id),
+    onEdit: (id) => {
+      const details = document.querySelector("#goal-detail-panel");
+      const keepGoalPanel = details?.open && details.dataset.goalId === id;
+      const scrollTop =
+        details?.querySelector(".goal-panel-body")?.scrollTop || 0;
+      openEditor(id, "", "", "daily", { keepGoalPanel });
+      const editor = document.querySelector("#editor");
+      if (keepGoalPanel && editor.open)
+        editor.addEventListener(
+          "close",
+          () => {
+            if (editor.open || !details.isConnected || !details.open) return;
+            goalPanel?.refresh();
+            const body = details.querySelector(".goal-panel-body");
+            if (body) body.scrollTop = scrollTop;
+            const trigger =
+              (details.dataset.goalId === id &&
+                details.querySelector('[data-action="goal-edit-record"]')) ||
+              details.querySelector('[data-action="goal-panel-close"]');
+            trigger?.focus({ preventScroll: true });
+          },
+          { once: true },
+        );
+    },
     onSaveProgress: (id, value, expectedCurrent, expectedSnapshot) => {
       const existing = state.records.find((record) => record.id === id);
       if (!existing)

@@ -133,10 +133,9 @@ function fixture() {
   ];
 }
 
-async function seed(page) {
+async function seed(page, records = fixture()) {
   await page.clock.install({ time: NOW });
   await page.clock.pauseAt(NOW);
-  const records = fixture();
   await page.addInitScript(
     ({ key, records }) => {
       if (sessionStorage.getItem("goal-progress-controls-020-seeded")) return;
@@ -167,9 +166,7 @@ async function openGoal(page, type, id, scope = "open") {
   await page
     .locator(`[data-action="list-scope"][data-scope="${scope}"]`)
     .click();
-  await row(page, id)
-    .locator('.row-end-actions [data-action="goal-details"]')
-    .click();
+  await row(page, id).locator('.task-name[data-action="goal-details"]').click();
   await expect(panel(page)).toBeVisible();
 }
 
@@ -362,41 +359,103 @@ test("derived goals use child actions and never create their own numeric measure
   expect(await saved(page)).toBe(before);
 });
 
-test("an unsaved next-action draft survives metric saves and undo without leaking into either transaction", async ({
+test("editing a goal keeps its detail panel, draft and scroll through cancel, save and deletion without cascading dismissal", async ({
   page,
-}) => {
-  const original = await seed(page);
+}, testInfo) => {
+  const original = await seed(page, [
+    ...fixture(),
+    ...Array.from({ length: 16 }, (_, index) =>
+      record({
+        id: `editor-scroll-child-${index}`,
+        title: `Bağlı günlük kayıt ${index + 1}`,
+        parentId: "week-metric",
+      }),
+    ),
+  ]);
   const before = await saved(page);
-  await openGoal(page, "weekly", "week-metric");
-  const nextAction = panel(page).locator(
-    '#goal-next-step-form [name="nextAction"]',
-  );
-  await nextAction.fill("Kaydedilmemiş gerçek sonraki adım taslağı.");
-  await progressAction(page, "increment").click();
-  await expect(nextAction).toHaveValue(
-    "Kaydedilmemiş gerçek sonraki adım taslağı.",
-  );
-  expect(
-    (await store(page)).records.find((record) => record.id === "week-metric")
-      .nextAction,
-  ).toBe(original.find((record) => record.id === "week-metric").nextAction);
-  await undo(page);
-  await expect(nextAction).toHaveValue(
-    "Kaydedilmemiş gerçek sonraki adım taslağı.",
-  );
-  await expect(progressBar(page)).toHaveAttribute("aria-valuenow", "25");
-  expect(await saved(page)).toBe(before);
-  await panel(page)
-    .locator("#goal-next-step-form")
-    .getByRole("button", { name: "Adımı kaydet", exact: true })
+  const originalGoal = original.find((item) => item.id === "week-metric");
+  await openGoal(page, "weekly", originalGoal.id);
+  const body = panel(page).locator(".goal-panel-body");
+  const edit = () => panel(page).locator('[data-action="goal-edit-record"]');
+  const editor = page.locator("#editor");
+  const title = () => editor.locator('#record-form [name="title"]');
+  await progressInput(page).fill("2,5");
+  const scrollTop = await body.evaluate((element) => {
+    element.scrollTop = 180;
+    return element.scrollTop;
+  });
+  expect(scrollTop).toBeGreaterThan(0);
+  const retained = async () => {
+    await expect(editor).not.toBeVisible();
+    await expect(panel(page)).toBeVisible();
+    await expect(panel(page)).toHaveAttribute("data-goal-id", originalGoal.id);
+    await expect(progressInput(page)).toHaveValue("2,5");
+    expect(await body.evaluate((element) => element.scrollTop)).toBe(scrollTop);
+    await expect(edit()).toBeFocused();
+  };
+  for (const dismissal of ["cancel", "Escape", "outside"]) {
+    await edit().click();
+    await expect(editor).toBeVisible();
+    expect(await panel(page).evaluate((element) => element.open)).toBe(true);
+    await expect(editor.locator('#record-form [name="id"]')).toHaveValue(
+      originalGoal.id,
+    );
+    await title().fill(`Kaydedilmemiş ${dismissal} başlığı`);
+    if (dismissal === "cancel") {
+      await page.screenshot({
+        path: testInfo.outputPath("goal-editor-over-panel.png"),
+        fullPage: false,
+      });
+      await editor.locator('[data-action="close"]').last().click();
+    } else if (dismissal === "Escape") await page.keyboard.press("Escape");
+    else await page.mouse.click(8, 8);
+    await retained();
+    expect(await saved(page)).toBe(before);
+  }
+  await edit().click();
+  const changedTitle = `${originalGoal.title} düzenlendi`;
+  await title().fill(changedTitle);
+  await editor
+    .getByRole("button", { name: "Değişiklikleri kaydet", exact: true })
     .click();
-  const changed = (await store(page)).records.find(
-    (record) => record.id === "week-metric",
+  await retained();
+  await expect(panel(page).locator(".goal-panel-title")).toHaveText(
+    changedTitle,
   );
-  expect(changed.currentValue).toBe(1);
-  expect(changed.nextAction).toBe("Kaydedilmemiş gerçek sonraki adım taslağı.");
-  await undo(page);
+  await page.screenshot({
+    path: testInfo.outputPath("goal-panel-restored-after-save.png"),
+    fullPage: false,
+  });
+  expect((await store(page)).records).toEqual(
+    original.map((item) =>
+      item.id === originalGoal.id
+        ? { ...item, title: changedTitle, updatedAt: NOW.toISOString() }
+        : item,
+    ),
+  );
+  // A page click dismisses the panel first; its regular Undo shortcut keeps
+  // this check inside the open panel instead.
+  await page.keyboard.press("Control+z");
   expect(await saved(page)).toBe(before);
+  await expect(progressInput(page)).toHaveValue("2,5");
+  await edit().click();
+  page.once("dialog", (dialog) => dialog.accept());
+  await editor.getByRole("button", { name: "Kaydı sil", exact: true }).click();
+  await expect(editor).not.toBeVisible();
+  await expect(panel(page)).toBeVisible();
+  await expect(panel(page).locator(".goal-panel-empty")).toContainText(
+    "Bu hedef artık bulunamıyor",
+  );
+  await expect(
+    panel(page).locator('[data-action="goal-panel-close"]').first(),
+  ).toBeFocused();
+  expect(
+    (await store(page)).records.some((item) => item.id === originalGoal.id),
+  ).toBe(false);
+  await page.keyboard.press("Control+z");
+  expect(await saved(page)).toBe(before);
+  await expect(panel(page)).toHaveAttribute("data-goal-id", originalGoal.id);
+  await expect(progressInput(page)).toHaveValue("2,5");
 });
 
 test("invalid numeric input never saves, decrement stops at zero and every closed goal remains read-only", async ({

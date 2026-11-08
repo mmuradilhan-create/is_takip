@@ -27,6 +27,10 @@
   margin-top: 5px;
 }
 
+.meeting-table .task-name-line > .task-name {
+  flex: 0 1 auto;
+}
+
 .meeting-linked-content {
   display: flex;
   flex-direction: column;

@@ -108,7 +108,8 @@ toplantı tarihi gösterilir. Bölüm adı veya boş alt satır eklenmez.
 Görüntüleme kayıtları değiştirmez.
 
 Bütün hedefler aynı sağ paneli ve İlerleme > Bağlı işler/alt hedefler
-sırasını kullanır; hedef satırı büyümez. Dönemler hafta
+sırasını kullanır; hedef satırı büyümez. Hedefi düzenle formu paneli kapatmadan
+açılır; form kapanınca aynı hedef, kaydırma ve ilerleme taslağı korunur. Dönemler hafta
 tarihleri, ay adı veya yıl olarak okunur.
 Alt hedefe veya üst hedef bağlantısına tıklayarak panelde ilerleyebilirsin.
 Haftalık hedefin günlük işleri düzenlenebilir, tamamlanabilir ve

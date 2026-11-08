@@ -197,10 +197,16 @@ test("missing update focuses its basic field, cancelled drafts never write, and 
   await form(page)
     .locator('[name="latestUpdate"]')
     .fill("Kaydedilmeyen özet taslağı.");
-  await page
+  const confirmation = page.waitForEvent("dialog");
+  const closing = page
     .locator("#editor")
     .getByRole("button", { name: "Vazgeç", exact: true })
     .click();
+  const discard = await confirmation;
+  expect(discard.type()).toBe("confirm");
+  expect(discard.message()).toContain("Kaydedilmemiş değişiklikler");
+  await discard.accept();
+  await closing;
   expect(await saved(page)).toBe(before);
   await openPrompt(page);
   await page.keyboard.press("Escape");

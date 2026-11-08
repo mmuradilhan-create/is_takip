@@ -23,6 +23,7 @@ async function discardChanges(page, dismiss) {
   const dismissal = dismiss();
   const dialog = await confirmation;
   expect(dialog.type()).toBe("confirm");
+  expect(dialog.message()).toContain("Kaydedilmemiş değişiklikler");
   await dialog.accept();
   await dismissal;
 }
@@ -702,10 +703,12 @@ test("expanded future-week creation returns to the same calendar and today navig
   await page
     .locator('#record-form [name="title"]')
     .fill("Kaydedilmeyen Aralık işi");
-  await page
-    .locator("#record-form")
-    .getByRole("button", { name: "Vazgeç", exact: true })
-    .click();
+  await discardChanges(page, () =>
+    page
+      .locator("#record-form")
+      .getByRole("button", { name: "Vazgeç", exact: true })
+      .click(),
+  );
   await expect(page.locator("#editor")).not.toBeVisible();
   await expect(expanded(page)).toBeVisible();
   await expect(

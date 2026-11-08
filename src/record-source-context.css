@@ -1,4 +1,4 @@
-/* Daily connections stay beside the title as compact, named controls. */
+/* Record connections stay beside the title as compact, named controls. */
 :is(.record-source-link, .record-parent-link) {
   display: inline-flex;
   flex: 0 0 22px;
@@ -85,7 +85,8 @@
 
 .focus-title-line
   > .record-title-content
-  > :is(.record-source-link, .record-parent-link, .record-note-trigger) {
+  > :is(.record-source-link, .record-parent-link, .record-note-trigger),
+.dashboard-goal-title-line > .record-parent-link {
   flex: 0 0 18px;
   width: 18px;
   min-width: 18px;

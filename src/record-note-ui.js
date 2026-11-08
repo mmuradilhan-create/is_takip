@@ -1,3 +1,5 @@
+import { createRecordNoteEditor } from "./record-note-editor.js";
+
 const escapeHtml = (value) =>
   String(value ?? "").replace(
     /[&<>"']/g,
@@ -61,11 +63,25 @@ function historyMarkup(record) {
 export function createRecordNoteUI({
   root = document.querySelector("#app"),
   getRecord,
+  onSaveNote,
+  onError = () => {},
 } = {}) {
   if (!root || typeof getRecord !== "function")
     throw new TypeError("Kayıt notu için kayıt seçimi gereklidir.");
   const owner = root.ownerDocument;
   const win = owner.defaultView;
+  const editor = createRecordNoteEditor({
+    root,
+    getRecord,
+    onSave: onSaveNote,
+    onError,
+    onRestoreFocus(control) {
+      dismissedControl = control;
+      restoringFocus = true;
+      control.focus({ preventScroll: true });
+      restoringFocus = false;
+    },
+  });
   const popup = owner.createElement("div");
   popup.id = "record-note-popover";
   popup.className = "record-note-popover";
@@ -101,7 +117,7 @@ export function createRecordNoteUI({
 
   function button(record) {
     if (!eligible(record)) return "";
-    return `<button type="button" class="record-note-trigger" data-action="record-note" data-id="${escapeHtml(record.id)}" aria-label="${escapeHtml(record.title)}: notu göster" aria-haspopup="dialog" aria-controls="record-note-popover" aria-expanded="false">${noteIcon}</button>`;
+    return `<button type="button" class="record-note-trigger" data-action="record-note" data-id="${escapeHtml(record.id)}" aria-label="${escapeHtml(record.title)}: notu düzenle" aria-haspopup="dialog" aria-controls="record-note-popover record-note-editor" aria-expanded="false">${noteIcon}</button>`;
   }
 
   function historyButton(record) {
@@ -255,6 +271,11 @@ export function createRecordNoteUI({
     show(id, control, true);
   }
 
+  function edit(id, control) {
+    close();
+    editor.open(id, control);
+  }
+
   function scheduleOpen(control) {
     win.clearTimeout(hideTimer);
     hideTimer = null;
@@ -277,6 +298,7 @@ export function createRecordNoteUI({
   }
 
   function refresh() {
+    editor.refresh();
     if (destroyed || !isOpen()) return;
     const record = find(recordId);
     if (!eligible(record, kind) || !trigger?.isConnected) {
@@ -391,6 +413,7 @@ export function createRecordNoteUI({
   function destroy() {
     if (destroyed) return;
     close();
+    editor.destroy();
     destroyed = true;
     root.removeEventListener("pointerover", onPointerOver);
     root.removeEventListener("pointerout", onPointerOut);
@@ -417,5 +440,5 @@ export function createRecordNoteUI({
   win.addEventListener("resize", position);
   win.addEventListener("scroll", position, true);
   win.visualViewport?.addEventListener("resize", position);
-  return { button, historyButton, open, close, refresh, destroy };
+  return { button, historyButton, open, edit, close, refresh, destroy };
 }

@@ -289,7 +289,7 @@ test("Dashboard metadata explains follow-up age, offers reversible type-specific
   expect(status.x).toBeLessThan(priority.x);
   expect(priority.x).toBeLessThan(date.x);
   const goalParent = goal(page).locator(
-    '.dashboard-goal-context .record-context-link[data-action="goal-details"][data-id="metadata-month"]',
+    '.dashboard-goal-title-line .record-parent-link[data-action="goal-details"][data-id="metadata-month"]',
   );
   const dailyParent = focus.locator(
     '.focus-title-line .record-parent-link[data-id="metadata-goal"]',
@@ -299,13 +299,14 @@ test("Dashboard metadata explains follow-up age, offers reversible type-specific
   await expect(goalParent.locator("svg")).toHaveCount(1);
   await expect(dailyParent.locator("svg")).toHaveCount(1);
   const focusSource = focus.locator(
-    '.focus-title-line .record-source-link[data-context-kind="source"][data-action="edit"][data-id="metadata-source"]',
+    '.focus-title-line .record-source-link[data-context-kind="source"][data-action="meeting-record-details"][data-id="metadata-source"]',
   );
   await expect(focusSource).toBeVisible();
   await expect(focusSource).toHaveAttribute(
-    "title",
+    "data-record-link-tooltip",
     "Toplantı: Kaynak toplantı kararı",
   );
+  await expect(focusSource).not.toHaveAttribute("title");
   const focusNote = focus.locator('[data-action="record-note"]');
   const notePreview = page.locator("#record-note-popover");
   await expect(focusNote).toBeVisible();
@@ -317,11 +318,7 @@ test("Dashboard metadata explains follow-up age, offers reversible type-specific
   const expectedNote = items.find(
     (item) => item.id === "metadata-child",
   ).description;
-  for (const reveal of [
-    () => focusNote.hover(),
-    () => focusNote.focus(),
-    () => focusNote.click(),
-  ]) {
+  for (const reveal of [() => focusNote.hover(), () => focusNote.focus()]) {
     await reveal();
     await expect(notePreview).toBeVisible();
     await expect(notePreview.locator(".record-note-body")).toHaveText(
@@ -334,19 +331,44 @@ test("Dashboard metadata explains follow-up age, offers reversible type-specific
     await expect(notePreview).not.toBeVisible();
   }
   await expect(focusNote).toBeFocused();
+  await focusNote.click();
+  const noteEditor = page.locator("#record-note-editor");
+  await expect(noteEditor).toBeVisible();
+  await expect(noteEditor.locator('textarea[name="description"]')).toHaveValue(
+    expectedNote,
+  );
+  await expect(notePreview).not.toBeVisible();
+  await expect(page.locator("#editor")).not.toBeVisible();
+  expect(await saved(page)).toBe(before);
+  await page.keyboard.press("Escape");
+  await expect(noteEditor).not.toBeVisible();
+  await expect(notePreview).not.toBeVisible();
+  await expect(focusNote).toBeFocused();
   await focusSource.focus();
   await page.keyboard.press("Enter");
-  await expect(page.locator('#record-form [name="id"]')).toHaveValue(
-    "metadata-source",
-  );
-  await page.locator('#editor [data-action="close"]').last().click();
+  await expect(page.locator("#meeting-record-panel")).toBeVisible();
+  await expect(
+    page.locator("#meeting-record-panel .meeting-record-title"),
+  ).toHaveText("Kaynak toplantı kararı");
   await expect(page.locator("#editor")).not.toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.locator("#meeting-record-panel")).not.toBeVisible();
   await expect(page.locator("#page-title")).toHaveText("Genel bakış");
   expect(await saved(page)).toBe(before);
-  const goalParentText = await goalParent.innerText();
+  const goalParentText = "Aylık hedef: Aylık teknik hedef";
+  await expect(goalParent).toHaveText("");
+  await expect(goalParent).toHaveAttribute(
+    "data-record-link-tooltip",
+    goalParentText,
+  );
+  await expect(goalParent).not.toHaveAttribute("title");
   const dailyParentText = "Haftalık hedef: Haftalık ölçümlü hedef";
   await expect(dailyParent).toHaveText("");
-  await expect(dailyParent).toHaveAttribute("title", dailyParentText);
+  await expect(dailyParent).toHaveAttribute(
+    "data-record-link-tooltip",
+    dailyParentText,
+  );
+  await expect(dailyParent).not.toHaveAttribute("title");
   await expect(dailyParent).toHaveAttribute(
     "aria-label",
     `${dailyParentText}: üst hedefi aç`,
@@ -354,17 +376,22 @@ test("Dashboard metadata explains follow-up age, offers reversible type-specific
   const goalTitleBox = await goal(page)
     .locator(".dashboard-goal-title")
     .boundingBox();
-  const goalContextBox = await goal(page)
-    .locator(".dashboard-goal-context")
+  const goalTitleLineBox = await goal(page)
+    .locator(".dashboard-goal-title-line")
     .boundingBox();
+  const goalParentBox = await goalParent.boundingBox();
   const goalMetadataBox = await goal(page)
     .locator(".dashboard-goal-meta-controls")
     .boundingBox();
-  expect(goalContextBox.y).toBeGreaterThanOrEqual(
-    goalTitleBox.y + goalTitleBox.height - 1,
+  await expect(goal(page).locator(".dashboard-goal-context")).toHaveCount(0);
+  expect(goalParentBox.x).toBeGreaterThanOrEqual(
+    goalTitleBox.x + goalTitleBox.width + 4,
   );
+  expect(Math.abs(goalParentBox.y - goalTitleBox.y)).toBeLessThanOrEqual(1);
+  expect(goalParentBox.width).toBe(18);
+  expect(goalParentBox.height).toBe(18);
   expect(goalMetadataBox.y).toBeGreaterThanOrEqual(
-    goalContextBox.y + goalContextBox.height - 1,
+    goalTitleLineBox.y + goalTitleLineBox.height - 1,
   );
   await expect(focus.locator(".focus-goal-context")).toHaveCount(0);
   const focusTitleBox = await focus.locator(".focus-title").boundingBox();
@@ -479,7 +506,11 @@ test("Dashboard metadata explains follow-up age, offers reversible type-specific
   );
   await expect(tableParent).toBeVisible();
   await expect(tableParent).toHaveText("");
-  await expect(tableParent).toHaveAttribute("title", dailyParentText);
+  await expect(tableParent).toHaveAttribute(
+    "data-record-link-tooltip",
+    dailyParentText,
+  );
+  await expect(tableParent).not.toHaveAttribute("title");
   await expect(tableParent).toHaveAttribute(
     "aria-label",
     `${dailyParentText}: üst hedefi aç`,
@@ -490,13 +521,14 @@ test("Dashboard metadata explains follow-up age, offers reversible type-specific
   await expect(panel(page)).toHaveAttribute("data-goal-id", "metadata-goal");
   await closePanel(page);
   const source = row(page, "metadata-child").locator(
-    '.task-name-line .record-source-link[data-context-kind="source"][data-id="metadata-source"][data-action="edit"]',
+    '.task-name-line .record-source-link[data-context-kind="source"][data-id="metadata-source"][data-action="meeting-record-details"]',
   );
   await expect(source).toBeVisible();
   await expect(source).toHaveAttribute(
-    "title",
+    "data-record-link-tooltip",
     "Toplantı: Kaynak toplantı kararı",
   );
+  await expect(source).not.toHaveAttribute("title");
   await expect(source).toHaveAttribute(
     "aria-label",
     "Toplantı: Kaynak toplantı kararı: kaynak kaydı aç",
@@ -504,10 +536,13 @@ test("Dashboard metadata explains follow-up age, offers reversible type-specific
   await expect(context).toHaveCount(0);
   await source.focus();
   await page.keyboard.press("Enter");
-  await expect(page.locator('#record-form [name="id"]')).toHaveValue(
-    "metadata-source",
-  );
-  await page.locator('#editor [data-action="close"]').last().click();
+  await expect(page.locator("#meeting-record-panel")).toBeVisible();
+  await expect(
+    page.locator("#meeting-record-panel .meeting-record-title"),
+  ).toHaveText("Kaynak toplantı kararı");
+  await expect(page.locator("#editor")).not.toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.locator("#meeting-record-panel")).not.toBeVisible();
   await expect(page.locator("#page-title")).toHaveText("Günlük işler");
   expect(await saved(page)).toBe(before);
   await expect(context.locator(".record-context-separator")).toHaveCount(0);
@@ -536,7 +571,7 @@ test("Dashboard metadata explains follow-up age, offers reversible type-specific
         row(page, "metadata-goal").locator(
           '.record-context-link[data-id="metadata-month"]',
         ),
-      ).toHaveText(goalParentText);
+      ).toHaveAttribute("data-record-link-tooltip", goalParentText);
   }
   expect(await saved(page)).toBe(before);
 });
@@ -677,12 +712,15 @@ test("dense goal cards use three shared slots when wide and keep every status, d
 }, testInfo) => {
   await seed(page, { dense: true });
   const before = await saved(page);
-  await expect(waiting(page).locator(".waiting-age")).toHaveText(
-    "Bugün beklemeye alındı",
+  await expect(waiting(page).locator(".waiting-age")).toHaveText("0 gün");
+  await expect(waiting(page).locator(".waiting-age")).toHaveAttribute(
+    "aria-label",
+    "0 gündür bekliyor",
   );
-  await expect(waiting(page).locator(".followup-last")).toHaveText(
-    "Henüz takip edilmedi",
-  );
+  await expect(waiting(page).locator(".followup-last")).toHaveText("—");
+  await expect(
+    waiting(page).locator(".followup-last .waiting-last-date"),
+  ).toHaveAttribute("title", "Henüz takip edilmedi");
   // Fixed title boxes must remain safe when a browser ignores line clamping.
   await page.addStyleTag({
     content:
@@ -858,7 +896,7 @@ test("dense goal cards use three shared slots when wide and keep every status, d
           await expect(control).toBeInViewport({ ratio: 1 });
       }
       for (const parent of await item
-        .locator(".dashboard-goal-context")
+        .locator(".dashboard-goal-title-line .record-parent-link")
         .all()) {
         const box = await parent.boundingBox();
         await expect(parent).toBeVisible();

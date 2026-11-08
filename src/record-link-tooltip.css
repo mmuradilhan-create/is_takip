@@ -1,0 +1,26 @@
+.record-link-tooltip {
+  position: fixed;
+  z-index: 40;
+  inset: auto;
+  box-sizing: border-box;
+  width: max-content;
+  max-width: min(360px, calc(100vw - 16px));
+  margin: 0;
+  padding: 8px 11px;
+  overflow: hidden;
+  border: 1px solid var(--theme-border, #d8e3d2);
+  border-radius: 7px;
+  background: var(--theme-surface, #fff);
+  color: var(--theme-ink, #405b49);
+  box-shadow: 0 4px 18px #173e2d29;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  pointer-events: none;
+}
+
+.record-link-tooltip[hidden] {
+  display: none;
+}

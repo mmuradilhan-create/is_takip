@@ -144,7 +144,15 @@ test("cancel and delete remain available at the end of a long record form", asyn
   await expandNotes(page);
   await scrollFields(page, true);
   await actionBounds(page);
-  await page.getByRole("button", { name: "Vazgeç", exact: true }).click();
+  const confirmation = page.waitForEvent("dialog");
+  const closing = page
+    .getByRole("button", { name: "Vazgeç", exact: true })
+    .click();
+  const discard = await confirmation;
+  expect(discard.type()).toBe("confirm");
+  expect(discard.message()).toContain("Kaydedilmemiş değişiklikler");
+  await discard.accept();
+  await closing;
   await expect(page.locator("#editor")).not.toBeVisible();
   expect(
     await page.evaluate(

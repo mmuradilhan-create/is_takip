@@ -34,6 +34,18 @@ geçişinde ve pencereye dönünce güncellenir. Kayıtları veya açık formlar
 
 LISTE DUZENI
 
+Güncel işlerde Çalışmaya başla düğmesinin solundaki iş günlüğü simgesi
+o işin oturumlarını açar; kayıtlı günlük lila, boş günlük nötrdür.
+
+Toplantı ve bekleyen konu satırı/başlığı ayrıntıyı sağda açar; sağ uçtaki
+kalem ilk kayıt formunu açar. Takip ettim ve günlük iş oluştur ayrı kalır.
+Panelden düzenleme veya takip açılınca panel altta kalır; dönüşte aynı konu
+ve kaydırma korunur. Panel açıkken başka kayıt/menü/düğme ilk tıklamada
+çalışır; boş alan kapatır. Fareyle açıp kapatılan satır yeşil kalmaz.
+Bağlantı simgeleri hızlı, beyaz zeminli ve yeşil kenarlıklı balon kullanır.
+Not simgesine tıklamak doğrudan Notu düzenle penceresini açar; yalnız not
+kaydedilir, tek Geri al ile geri döner. Değişmiş taslağı kapatmak onay ister.
+
 Genel bakıştaki kartların gövdesi ayrıntıyı açar. Takip ayrıntısı kimden
 beklendiğini, son gelişmeyi, tarihleri ve geçmişi salt okunur gösterir.
 Kaydı düzenle mevcut formu açar. Hedef gövdesi paneli üstten açar;
@@ -55,8 +67,9 @@ tıklanarak değiştirilebilir; tek Geri al ile geri döner. Takip kartları
 listedeki renkleri kullanır ve bekleme/son takip bilgisini açık yazar.
 
 Kayıt formunun metin alanında Enter kaydeder; Shift+Enter alt satıra geçer.
-Notu olan kaydın başlığındaki not defteri simgesine gelmek, odaklanmak veya
-dokunmak Notlar metnini gösterir. Boş not için simge gösterilmez.
+Notu olan kaydın başlığındaki not defteri simgesine gelmek veya odaklanmak
+Notlar metnini gösterir; tıklamak Notu düzenle penceresini açar. Boş not
+için simge gösterilmez.
 
 Altı kayıt türünün formunda temel alanlar dengeli sütunlarda yer alır;
 dar ekranda tek sütuna iner. İsteğe bağlı alanlar Ek bilgiler altındadır;
@@ -99,12 +112,13 @@ Pencere veya yan panel dışındaki boş alana tıklamak onu kapatır;
 içte açılan pencere önce kapanır. Kayıt formunda kaydedilmemiş değişiklik
 varsa dışarı tıklama, Escape veya kapatma düğmeleri önce onay ister.
 
-Günlük işlerde ve Güncel işlerde bağlı hedef, başlık yanındaki küçük hedef
+Günlük işlerde, haftalık/aylık hedeflerde ve Genel bakışta bağlı üst hedef,
+başlık yanındaki küçük hedef
 simgesinden açılır; üzerine gelince tam adı okunur. Bağlantı altta tekrarlanmaz.
 Kaynak ve not simgeleri de aynı gruptadır; kaynak simgesi asıl kaydı açar,
 not simgesi gerçek notu önizler.
 Anlık iş, proje kodu ve iş türü etiketleri gösterilmez. Hedefin
-üst hedef bağlantısı küçük hedef simgesi ve adıyla açılır. Tüm haftalar/aylar/yıllar
+üst hedef bağlantısı başlık yanındaki hedef simgesiyle açılır. Tüm haftalar/aylar/yıllar
 görünümünde dönem 16-22 Kasım 2026 / Kasım 2026 / 2026 gibi okunur; seçili
 dönem üstte yazıyorsa satırda tekrarlanmaz. Toplantıda karar ve varsa
 toplantı tarihi gösterilir. Bölüm adı veya boş alt satır eklenmez.
@@ -462,7 +476,7 @@ CALISMAYA BASLA
 
 Sayaç yalnızca günlük işlerde kullanılır. Sağdaki oynat düğmesi çalışma
 oturumunu başlatır. Kontroller sol menünün altındaki İş günlüğü alanındadır:
-saat:dakika sayacı, Duraklat / Devam et ve Bitir. İş adına tıklamak kaydı açar.
+saat:dakika:saniye sayacı, Duraklat / Devam et ve Bitir. İş adına tıklamak kaydı açar.
 Notlar ve sonraki adım düğmesi mevcut bilgileri ayrı bir pencerede gösterir.
 
 Oturum yokken kart tek satır Bugün/süre/oturum özeti ve geçmiş bağlantısıdır.
@@ -489,6 +503,8 @@ gelir; istersen Ne yaptın? sonucunu yazıp mevcut Sonraki adım alanını
 güncelleyebilirsin. Kaydet ve bitir, iş günlüğünü ve sonraki adımı birlikte
 kaydeder. Bu işlem Geri al ile birlikte geri alınır. Vazgeç veya Escape
 kayıt oluşturmaz; sayaç duraklatılmış kalır. Not yazma süresi eklenmez.
+Kaydı sil, onaydan sonra yalnız kaydedilmemiş oturumu temizler; günlük iş
+ve önceki iş günlüğü kayıtları korunur.
 Oturumu bitirmek kayıt durumunu tamamlandı yapmaz.
 
 Günlük iş satırının sağındaki iş günlüğü simgesi, tarih/süre/sonuç/sonraki adım
@@ -522,7 +538,7 @@ konu açılabilir. Ben yapacağım benim çalışmamı; Başkasından bekliyorum
 yanıtı takip eder. Formdan vazgeçmek kayıt oluşturmaz. İlgili türde kayıt
 varsa düğme İşi aç / Takibi aç olur ve o kaydı açar; ikinci kopya oluşturmaz.
 
-Listede Aksiyon / Karar, Bağlı iş ve Takip sütunları vardır; üstte
+Listede Aksiyon / Karar, Bağlı iş, Takip ve İşlem sütunları vardır; üstte
 Güncel / Arşiv / Tümü seçilir. Toplantıda tamamlama kutusu yoktur.
 Bağlantısız kararın durum/arşiv kontrolü başlık hizasındadır; kararın
 altında ayrı durum satırı yoktur. Bağlı iş/takip kendi durumunu gösterir.

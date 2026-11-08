@@ -750,7 +750,12 @@
   outline-offset: 1px;
 }
 
-.calendar-agenda-entries:focus-visible,
+.calendar-agenda-entries:focus {
+  outline: none;
+  outline-offset: 0;
+  box-shadow: none;
+}
+
 .calendar-grid-scroll:focus-visible {
   outline: 2px solid var(--theme-accent, #80b8a6);
   outline-offset: -2px;

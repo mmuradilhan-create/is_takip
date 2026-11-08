@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 import { createRecord } from "../../src/model.js";
+import { cleanupMeetingContacts } from "../../src/meeting-contact-cleanup.js";
 import { openCreationExtras } from "./creation-support.js";
 
 const KEY = "is-takip-v1";
@@ -9,21 +10,23 @@ const STAMP = "2026-11-01T09:00:00.000Z";
 const make = (input) =>
   createRecord({ createdAt: STAMP, updatedAt: STAMP, ...input });
 const source = (id, status = "waiting") =>
-  make({
-    id,
-    type: "meeting",
-    title: `Toplantı kararı ${id}`,
-    status,
-    sourceDate: "2026-10-28",
-    dueDate: "2026-11-03",
-    priority: "urgent",
-    owner: "Toplantı bağlamının sorumlusu",
-    nextAction: "Korunacak eski toplantı adımı.",
-    decision: "Özgün mühendislik kararı.",
-    participants: "Tasarım ve üretim ekibi",
-    description: "Toplantının özgün notu.",
-    sourceFields: { original: { value: "Kaynak ve geçmiş korunmalı" } },
-  });
+  cleanupMeetingContacts([
+    make({
+      id,
+      type: "meeting",
+      title: `Toplantı kararı ${id}`,
+      status,
+      sourceDate: "2026-10-28",
+      dueDate: "2026-11-03",
+      priority: "urgent",
+      owner: "Toplantı bağlamının sorumlusu",
+      nextAction: "Korunacak eski toplantı adımı.",
+      decision: "Özgün mühendislik kararı.",
+      participants: "Tasarım ve üretim ekibi",
+      description: "Toplantının özgün notu.",
+      sourceFields: { original: { value: "Kaynak ve geçmiş korunmalı" } },
+    }),
+  ])[0];
 const stored = (page) =>
   page.evaluate((key) => JSON.parse(localStorage.getItem(key)), KEY);
 const saved = (page) => page.evaluate((key) => localStorage.getItem(key), KEY);
@@ -159,7 +162,7 @@ test("legacy unlinked open meetings display Planlanacak without rewriting their 
   await closeEditor(page);
   expect(await saved(page)).toBe(original);
 
-  await row(page, "legacy-waiting").locator(".task-name").click();
+  await row(page, "legacy-waiting").locator(".record-edit-trigger").click();
   await expectAssignmentChoices(page);
   await expect(form(page).locator('[name="status"]')).toHaveValue("planned");
   await form(page)
@@ -233,7 +236,7 @@ test("an unlinked meeting archives from its form and reopens from its compact ti
   const reopened = { ...item, status: "planned", updatedAt: NOW.toISOString() };
   expect(await records(page)).toEqual([reopened]);
   expect((await stored(page)).odak.history).toHaveLength(2);
-  await row(page, item.id).locator(".task-name").click();
+  await row(page, item.id).locator(".record-edit-trigger").click();
   await expectAssignmentChoices(page);
   await form(page).locator('[name="status"]').selectOption("completed");
   await saveEditor(page);
@@ -347,7 +350,7 @@ test("linked meetings keep real target status menus and derive their summary whi
   expect(await records(page)).toEqual(followed);
   const followedBytes = await saved(page);
 
-  await row(page, context.id).locator(".task-name").click();
+  await row(page, context.id).locator(".record-edit-trigger").click();
   await expect(form(page).locator('[name="status"]')).toBeDisabled();
   await expect(form(page).locator('[name="status"]')).toHaveValue(
     "in_progress",

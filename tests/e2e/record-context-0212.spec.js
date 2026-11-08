@@ -152,24 +152,31 @@ test("daily context keeps parent and source in compact named title icons with ke
     await expect(parent).toHaveText("");
     await expect(parent.locator("svg")).toHaveCount(1);
     await expect(parent).toHaveAttribute(
-      "title",
+      "data-record-link-tooltip",
       "Haftalık hedef: Haftalık teknik teslim",
     );
+    await expect(parent).not.toHaveAttribute("title");
     await expect(parent).toHaveAttribute(
       "aria-label",
       "Haftalık hedef: Haftalık teknik teslim: üst hedefi aç",
     );
     await expect(parent).toHaveAttribute("aria-controls", "goal-detail-panel");
-    const source = link(page, id, "edit", sourceId);
     const sourceRecord = items.find((item) => item.id === sourceId);
+    const source = link(
+      page,
+      id,
+      `${sourceRecord.type}-record-details`,
+      sourceId,
+    );
     await expect(source).toBeVisible();
     await expect(source).toHaveClass(/record-source-link/);
     await expect(source).toHaveText("");
     await expect(source.locator("svg")).toHaveCount(1);
     await expect(source).toHaveAttribute(
-      "title",
+      "data-record-link-tooltip",
       `${sourceRecord.type === "meeting" ? "Toplantı" : "Bekleyen konu"}: ${sourceRecord.title}`,
     );
+    await expect(source).not.toHaveAttribute("title");
     await expect(
       context(page, id).locator('[data-context-kind="source"]'),
     ).toHaveCount(0);
@@ -189,34 +196,35 @@ test("daily context keeps parent and source in compact named title icons with ke
     await expect(page.locator("#page-title")).toHaveText("Günlük işler");
     await page.keyboard.press("Escape");
     await expect(panel).not.toBeVisible();
-    await link(page, id, "edit", sourceId).focus();
+    await source.focus();
     await page.keyboard.press("Enter");
-    await expect(page.locator("#editor")).toBeVisible();
-    await expect(page.locator('#record-form [name="id"]')).toHaveValue(
-      sourceId,
-    );
-    await expect(page.locator('#record-form [name="title"]')).toHaveValue(
-      items.find((item) => item.id === sourceId).title,
-    );
+    const sourcePanel = page.locator(`#${sourceRecord.type}-record-panel`);
+    await expect(sourcePanel).toBeVisible();
+    await expect(
+      sourcePanel.locator(`.${sourceRecord.type}-record-title`),
+    ).toHaveText(sourceRecord.title);
+    await expect(page.locator("#editor")).not.toBeVisible();
     await expect(page.locator("#page-title")).toHaveText("Günlük işler");
-    await closeEditor(page);
+    await page.keyboard.press("Escape");
+    await expect(sourcePanel).not.toBeVisible();
     expect(await saved(page)).toBe(before);
   }
   await page.reload();
   expect(await saved(page)).toBe(before);
 });
 
-test("weekly and monthly context names the actual upper goal and shows a human period only outside a selected period", async ({
+test("weekly and monthly connections use named title icons while human periods appear only outside a selected period", async ({
   page,
 }) => {
   await seed(page);
   const before = await saved(page);
-  for (const [type, id, parentId, parentTitle, period] of [
+  for (const [type, id, parentId, parentTitle, parentRole, period] of [
     [
       "weekly",
       "context-week",
       "context-month",
       "Aylık kalite hedefi",
+      "Aylık hedef",
       "2 – 8 Kasım 2026",
     ],
     [
@@ -224,6 +232,7 @@ test("weekly and monthly context names the actual upper goal and shows a human p
       "context-month",
       "context-year",
       "Senelik kalite hedefi",
+      "Senelik hedef",
       "Kasım 2026",
     ],
   ]) {
@@ -231,10 +240,30 @@ test("weekly and monthly context names the actual upper goal and shows a human p
     await page.locator('[data-action="period-all"]').click();
     await expect(context(page, id)).toContainText(period);
     await expect(context(page, id)).not.toContainText("2026-W45");
-    await expect(link(page, id, "goal-details", parentId)).toContainText(
-      parentTitle,
+    const parent = link(page, id, "goal-details", parentId);
+    await expect(parent).toHaveClass(/record-parent-link/);
+    await expect(parent.locator("xpath=..")).toHaveClass(
+      "record-title-content",
     );
-    await link(page, id, "goal-details", parentId).click();
+    await expect(parent).toHaveText("");
+    await expect(parent.locator("svg")).toHaveCount(1);
+    await expect(parent).not.toHaveAttribute("title");
+    await expect(parent).toHaveAttribute(
+      "data-record-link-tooltip",
+      `${parentRole}: ${parentTitle}`,
+    );
+    await expect(parent).toHaveAttribute(
+      "aria-label",
+      `${parentRole}: ${parentTitle}: üst hedefi aç`,
+    );
+    await expect(
+      context(page, id).locator('[data-context-kind="parent"]'),
+    ).toHaveCount(0);
+    await parent.focus();
+    await expect(page.locator("#record-link-tooltip")).toHaveText(
+      `${parentRole}: ${parentTitle}`,
+    );
+    await page.keyboard.press("Enter");
     await expect(
       page.locator("#goal-detail-panel .goal-panel-title"),
     ).toHaveText(parentTitle);
@@ -245,10 +274,13 @@ test("weekly and monthly context names the actual upper goal and shows a human p
     await page.keyboard.press("Escape");
     await page.locator('[data-action="period-current"]').click();
     await expect(page.locator("#planning-period-label")).toHaveText(period);
-    await expect(context(page, id)).not.toContainText(period);
-    await expect(link(page, id, "goal-details", parentId)).toContainText(
-      parentTitle,
+    await expect(context(page, id)).toHaveCount(0);
+    await expect(parent).toHaveAttribute(
+      "data-record-link-tooltip",
+      `${parentRole}: ${parentTitle}`,
     );
+    await expect(parent).toHaveText("");
+    await expect(row(page, id).locator(".task-meta-line")).toHaveCount(0);
     await page.locator('[data-action="period-all"]').click();
     await expect(context(page, id)).toContainText(period);
     expect(await saved(page)).toBe(before);
@@ -288,7 +320,9 @@ test("selected yearly goals and plain daily records have no filler while meeting
   await expect(row(page, "context-owned-meeting")).not.toContainText(
     "Tasarım ve üretim ekibi",
   );
-  await row(page, "context-owned-meeting").locator(".task-name").click();
+  await row(page, "context-owned-meeting")
+    .locator('.record-edit-trigger[data-action="edit"]')
+    .click();
   await openCreationExtras(page);
   for (const name of ["owner", "participants"]) {
     await expect(page.locator(`#record-form [name="${name}"]`)).toBeHidden();
@@ -362,15 +396,23 @@ test("connection icons escape full long captions and omit legacy project and wor
   await seed(page, items);
   const before = await saved(page);
   await view(page, "daily");
-  const source = link(page, "long-child", "edit", "long-source");
+  const source = link(
+    page,
+    "long-child",
+    "meeting-record-details",
+    "long-source",
+  );
   const parent = link(page, "long-child", "goal-details", "long-goal");
-  await expect(source).toHaveAttribute("title", `Toplantı: ${items[0].title}`);
+  await expect(source).toHaveAttribute(
+    "data-record-link-tooltip",
+    `Toplantı: ${items[0].title}`,
+  );
   await expect(source).toHaveAttribute(
     "aria-label",
     `Toplantı: ${items[0].title}: kaynak kaydı aç`,
   );
   await expect(parent).toHaveAttribute(
-    "title",
+    "data-record-link-tooltip",
     `Haftalık hedef: ${items[1].title}`,
   );
   await expect(parent).toHaveAttribute(
@@ -378,6 +420,7 @@ test("connection icons escape full long captions and omit legacy project and wor
     `Haftalık hedef: ${items[1].title}: üst hedefi aç`,
   );
   for (const control of [source, parent]) {
+    await expect(control).not.toHaveAttribute("title");
     await expect(control).toBeVisible();
     await expect(control).toHaveText("");
     await expect(control.locator("svg")).toHaveCount(1);
@@ -415,10 +458,12 @@ test("connection icons escape full long captions and omit legacy project and wor
   );
   await page.keyboard.press("Escape");
   expect(await saved(page)).toBe(before);
-  await link(page, "long-child", "edit", "long-source").click();
-  await expect(page.locator('#record-form [name="title"]')).toHaveValue(
-    longTitle.trim(),
-  );
-  await closeEditor(page);
+  await source.click();
+  await expect(
+    page.locator("#meeting-record-panel .meeting-record-title"),
+  ).toHaveText(longTitle.trim());
+  await expect(page.locator("#editor")).not.toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.locator("#meeting-record-panel")).not.toBeVisible();
   expect(await saved(page)).toBe(before);
 });

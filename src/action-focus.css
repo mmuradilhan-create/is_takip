@@ -1,4 +1,8 @@
 /* Action focus uses text and icon cues; form fields keep their focus styling. */
+#app .full-table [data-record-row]:is(:hover, :focus-visible) {
+  background-color: transparent;
+}
+
 :is(#app, .calendar-dialog)
   :is(
     button,

@@ -189,7 +189,9 @@ test("follow-up card bodies, titles and card keyboard actions open read-only det
   await expect(title).toHaveCSS("text-decoration-line", /underline/);
   await expectNoFocusRectangle(title);
   for (const control of [
+    waiting(page).locator('[data-action="status-menu"]'),
     waiting(page).locator('[data-action="edit-next-followup"]'),
+    waiting(page).locator(".followup-detail-trigger"),
     waiting(page).locator('[data-action="waiting-followup"]'),
   ]) {
     await page.keyboard.press("Tab");
@@ -202,13 +204,20 @@ test("follow-up card bodies, titles and card keyboard actions open read-only det
   }
   await page.keyboard.press("Shift+Tab");
   await page.keyboard.press("Shift+Tab");
+  await page.keyboard.press("Shift+Tab");
+  await page.keyboard.press("Shift+Tab");
   await expect(title).toBeFocused();
   await page.keyboard.press("Enter");
   await expectReadonlyWaiting(page, original);
   await waitingPanel(page)
     .getByRole("button", { name: "Kaydı düzenle", exact: true })
     .click();
-  await expect(waitingPanel(page)).not.toBeVisible();
+  await expect(waitingPanel(page)).toBeVisible();
+  await expect(waitingPanel(page)).toHaveAttribute(
+    "data-record-id",
+    original.id,
+  );
+  await expect(page.locator("#editor")).toBeVisible();
   await expect(page.locator('#record-form [name="id"]')).toHaveValue(
     original.id,
   );
@@ -219,6 +228,11 @@ test("follow-up card bodies, titles and card keyboard actions open read-only det
     .locator("#editor")
     .getByRole("button", { name: "Vazgeç", exact: true })
     .click();
+  await expectReadonlyWaiting(page, original);
+  await expect(
+    waitingPanel(page).locator('[data-action="waiting-record-edit"]'),
+  ).toBeFocused();
+  await closeWaiting(page);
   await waiting(page).focus();
   await page.keyboard.press("Tab");
   await page.keyboard.press("Shift+Tab");
@@ -247,9 +261,9 @@ test("goal body opens the panel at its top while nested goal, follow-up and date
   await expect(goal(page)).toHaveAttribute("role", "group");
   await expect(goal(page)).toHaveAttribute("tabindex", "0");
   await goal(page).locator(".goal-progress-label").click();
-  await expect(goalPanel(page).locator("#goal-next-step-form")).toHaveAttribute(
-    "data-id",
-    "details-week",
+  await expect(goalPanel(page)).toHaveAttribute("data-goal-id", "details-week");
+  await expect(goalPanel(page).locator(".goal-panel-title")).toHaveText(
+    "Karttan açılacak haftalık hedef",
   );
   expect(
     await goalPanel(page)
@@ -300,15 +314,16 @@ test("goal body opens the panel at its top while nested goal, follow-up and date
   await expect(dateMenu(page)).toBeVisible();
   await expect(goalPanel(page)).not.toBeVisible();
   await expect(waitingPanel(page)).not.toBeVisible();
-  await dateMenu(page)
-    .getByRole("button", { name: "Vazgeç", exact: true })
-    .click();
+  await dateMenu(page).locator('[data-action="cancel-inline"]').click();
   await goal(page)
     .locator('.record-context-link[data-id="details-month"]')
     .click();
-  await expect(goalPanel(page).locator("#goal-next-step-form")).toHaveAttribute(
-    "data-id",
+  await expect(goalPanel(page)).toHaveAttribute(
+    "data-goal-id",
     "details-month",
+  );
+  await expect(goalPanel(page).locator(".goal-panel-title")).toHaveText(
+    "Bağlı aylık hedef",
   );
   await closeGoal(page);
   await waiting(page).locator('[data-action="edit-next-followup"]').click();
@@ -317,9 +332,7 @@ test("goal body opens the panel at its top while nested goal, follow-up and date
   );
   await expect(waitingPanel(page)).not.toBeVisible();
   await expect(goalPanel(page)).not.toBeVisible();
-  await dateMenu(page)
-    .getByRole("button", { name: "Vazgeç", exact: true })
-    .click();
+  await dateMenu(page).locator('[data-action="cancel-inline"]').click();
   await waiting(page).locator('[data-action="waiting-followup"]').click();
   await expect(followup(page)).toBeVisible();
   await expect(waitingPanel(page)).not.toBeVisible();
@@ -366,7 +379,7 @@ test("selecting card text does not activate details and external updates or dele
   const otherRow = other.locator(
     '.waiting-table tr[data-id="details-waiting"]',
   );
-  await otherRow.locator(".task-name").click();
+  await otherRow.locator(".record-edit-trigger").click();
   await other.locator('#record-form [name="status"]').selectOption("follow_up");
   await other
     .locator('#record-form [name="latestUpdate"]')
@@ -401,7 +414,7 @@ test("selecting card text does not activate details and external updates or dele
   await expect(
     waitingPanel(page).locator('[data-waiting-fact="latestUpdate"]'),
   ).toContainText("Diğer pencereden kaydedilen gerçek gelişme.");
-  await otherRow.locator(".task-name").click();
+  await otherRow.locator(".record-edit-trigger").click();
   other.once("dialog", (confirmation) => confirmation.accept());
   await other.locator('#editor [data-action="delete"]').click();
   await expect(other.locator("#editor")).not.toBeVisible();
@@ -431,7 +444,10 @@ test("touch cards open read-only details while nested date and follow-up control
     const page = await context.newPage();
     await seed(page);
     const before = await saved(page);
-    await waiting(page).locator(".waiting-age").tap();
+    const age = waiting(page).locator(".waiting-age");
+    await age.scrollIntoViewIfNeeded();
+    await expect(age).toBeInViewport();
+    await age.tap();
     await expect(waitingPanel(page)).toBeVisible();
     const bounds = await waitingPanel(page).boundingBox();
     expect(bounds.x).toBeGreaterThanOrEqual(0);
@@ -439,11 +455,22 @@ test("touch cards open read-only details while nested date and follow-up control
     await waitingPanel(page)
       .getByRole("button", { name: "Takip ettim", exact: true })
       .tap();
-    await expect(waitingPanel(page)).not.toBeVisible();
+    await expect(waitingPanel(page)).toBeVisible();
+    await expect(waitingPanel(page)).toHaveAttribute(
+      "data-record-id",
+      "details-waiting",
+    );
     await expect(followup(page)).toBeVisible();
     await followup(page)
       .getByRole("button", { name: "Vazgeç", exact: true })
       .tap();
+    await expect(followup(page)).not.toBeVisible();
+    await expect(waitingPanel(page)).toBeVisible();
+    await expect(
+      waitingPanel(page).locator('[data-action="waiting-record-followup"]'),
+    ).toBeFocused();
+    // The narrow panel covers the background card until explicitly closed.
+    await closeWaiting(page);
     await goal(page).locator(".dashboard-goal-progress").tap();
     await expect(goalPanel(page)).toBeVisible();
     expect(
@@ -455,15 +482,11 @@ test("touch cards open read-only details while nested date and follow-up control
     await waiting(page).locator('[data-action="edit-next-followup"]').tap();
     await expect(dateMenu(page)).toBeVisible();
     await expect(waitingPanel(page)).not.toBeVisible();
-    await dateMenu(page)
-      .getByRole("button", { name: "Vazgeç", exact: true })
-      .tap();
+    await dateMenu(page).locator('[data-action="cancel-inline"]').tap();
     await goal(page).locator('[data-action="edit-date"]').tap();
     await expect(dateMenu(page)).toBeVisible();
     await expect(goalPanel(page)).not.toBeVisible();
-    await dateMenu(page)
-      .getByRole("button", { name: "Vazgeç", exact: true })
-      .tap();
+    await dateMenu(page).locator('[data-action="cancel-inline"]').tap();
     expect(await saved(page)).toBe(before);
   } finally {
     await context.close();

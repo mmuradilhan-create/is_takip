@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { createRecord } from "../../src/model.js";
+import { cleanupMeetingContacts } from "../../src/meeting-contact-cleanup.js";
 import { openCreationExtras } from "./creation-support.js";
 
 const KEY = "is-takip-v1";
@@ -13,7 +14,7 @@ const form = (page) => page.locator("#record-form");
 const editor = (page) => page.locator("#editor");
 
 function fixture() {
-  return [
+  return cleanupMeetingContacts([
     make({
       id: "conflict-source",
       type: "meeting",
@@ -42,7 +43,7 @@ function fixture() {
       title: "Bağımsız günlük kayıt",
       nextAction: "Özgün bağımsız adım.",
     }),
-  ];
+  ]);
 }
 
 async function seed(page) {

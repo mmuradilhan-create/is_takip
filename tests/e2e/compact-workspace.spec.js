@@ -381,7 +381,7 @@ test("sidebar journal keeps idle history available and saves only finished work 
     .click();
   await page.clock.fastForward(35_000);
   await expect(panel).toHaveAttribute("data-phase", "running");
-  await expect(panel.locator("#work-session-time")).toHaveText("00:00");
+  await expect(panel.locator("#work-session-time")).toHaveText("00:00:35");
   await expect(today).toHaveText("5 dk");
   await expect(control.locator(".sidebar-journal-phase")).toHaveText(
     "Çalışıyor",
@@ -426,7 +426,7 @@ test("sidebar journal keeps idle history available and saves only finished work 
   await page.locator('#editor [data-action="close"]').last().click();
   await panel.getByRole("button", { name: "Duraklat", exact: true }).click();
   await page.clock.fastForward(120_000);
-  await expect(panel.locator("#work-session-time")).toHaveText("00:00");
+  await expect(panel.locator("#work-session-time")).toHaveText("00:00:35");
   const paused = await page.evaluate(
     (key) => JSON.parse(localStorage.getItem(key)),
     `${KEY}-work-session`,

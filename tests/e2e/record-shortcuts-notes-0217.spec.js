@@ -13,6 +13,7 @@ const row = (page, id) =>
   page.locator(`.full-table tr[data-record-row][data-id="${id}"]`);
 const note = (page, id) => row(page, id).locator('[data-action="record-note"]');
 const popup = (page) => page.locator("#record-note-popover");
+const noteEditor = (page) => page.locator("#record-note-editor");
 const saved = (page) => page.evaluate((key) => localStorage.getItem(key), KEY);
 const stored = async (page) => JSON.parse(await saved(page));
 const undo = (page) =>
@@ -22,6 +23,14 @@ const closeEditor = (page) =>
     .locator("#editor")
     .getByRole("button", { name: "Vazgeç", exact: true })
     .click();
+const fullEditorTrigger = (page, record) =>
+  row(page, record.id).locator(
+    ["weekly", "monthly", "yearly"].includes(record.type)
+      ? ".goal-edit-trigger"
+      : ["meeting", "waiting"].includes(record.type)
+        ? ".record-edit-trigger"
+        : ".task-name",
+  );
 
 function fixture() {
   return TYPES.map((type) =>
@@ -144,13 +153,7 @@ test("all six new and existing record forms keep Shift Enter as a newline and sa
     await undo(page);
     expect(await saved(page)).toBe(before);
     const original = items.find((item) => item.type === type);
-    await row(page, original.id)
-      .locator(
-        ["weekly", "monthly", "yearly"].includes(type)
-          ? ".goal-edit-trigger"
-          : ".task-name",
-      )
-      .click();
+    await fullEditorTrigger(page, original).click();
     await openCreationExtras(page);
     if (type === "daily")
       for (const name of ["projectCode", "workType"]) {
@@ -246,11 +249,12 @@ test("composition, held Enter and prevented events never submit while native inp
     "Korunacak yerel not taslağı.",
   );
   expect(await saved(page)).toBe(external);
+  page.once("dialog", (dialog) => dialog.accept());
   await closeEditor(page);
   await other.close();
 });
 
-test("each list exposes only genuine nonblank notes and previews escaped multiline text through hover, focus and click without opening editing or writing data", async ({
+test("each list previews genuine escaped notes on hover and focus while click or Enter opens only its dedicated note editor without writing data", async ({
   page,
 }) => {
   const items = fixture();
@@ -317,13 +321,23 @@ test("each list exposes only genuine nonblank notes and previews escaped multili
     await expect(popup(page)).not.toBeVisible();
     await expect(trigger).toBeFocused();
     await trigger.click();
-    await expect(popup(page)).toBeVisible();
-    await page.keyboard.press("Tab");
-    await expect(
-      popup(page).locator('[data-action="record-note-close"]'),
-    ).toBeFocused();
+    await expect(noteEditor(page)).toBeVisible();
+    await expect(popup(page)).not.toBeVisible();
+    await expect(page.locator("#editor")).not.toBeVisible();
+    await expect(noteEditor(page).locator('[name="description"]')).toHaveValue(
+      original.description,
+    );
+    await expect(noteEditor(page).locator("img")).toHaveCount(0);
     await page.keyboard.press("Escape");
+    await expect(noteEditor(page)).not.toBeVisible();
+    await expect(popup(page)).not.toBeVisible();
     await expect(trigger).toBeFocused();
+    await trigger.press("Enter");
+    await expect(noteEditor(page)).toBeVisible();
+    await noteEditor(page)
+      .getByRole("button", { name: "Kaydet", exact: true })
+      .click();
+    await expect(noteEditor(page)).not.toBeVisible();
     expect(await saved(page)).toBe(before);
   }
   await view(page, "daily");
@@ -333,7 +347,7 @@ test("each list exposes only genuine nonblank notes and previews escaped multili
   expect(await saved(page)).toBe(before);
 });
 
-test("touch and keyboard users can scroll a long note inside a narrow preview and clearing it follows reload and exact Undo", async ({
+test("touch and keyboard users can edit a long note in a narrow dedicated editor and clearing it follows reload and exact Undo", async ({
   browser,
   baseURL,
 }) => {
@@ -353,11 +367,11 @@ test("touch and keyboard users can scroll a long note inside a narrow preview an
     const before = await saved(page);
     await view(page, "daily");
     await note(page, original.id).tap();
-    await expect(popup(page)).toBeVisible();
-    const text = popup(page).locator(".record-note-body");
-    const heading = popup(page).locator(".record-note-heading");
+    await expect(noteEditor(page)).toBeVisible();
+    const text = noteEditor(page).locator('[name="description"]');
+    const heading = noteEditor(page).locator(".modal-header");
     const initialHeading = await heading.boundingBox();
-    const bounds = await popup(page).boundingBox();
+    const bounds = await noteEditor(page).boundingBox();
     expect(bounds.x).toBeGreaterThanOrEqual(0);
     expect(bounds.y).toBeGreaterThanOrEqual(0);
     expect(bounds.x + bounds.width).toBeLessThanOrEqual(390);
@@ -373,15 +387,15 @@ test("touch and keyboard users can scroll a long note inside a narrow preview an
       .poll(() => text.evaluate((element) => element.scrollTop))
       .toBeGreaterThan(0);
     expect(await heading.boundingBox()).toEqual(initialHeading);
-    expect(await popup(page).evaluate((element) => element.scrollTop)).toBe(0);
+    expect(
+      await noteEditor(page).evaluate((element) => element.scrollTop),
+    ).toBe(0);
     expect(await saved(page)).toBe(before);
-    await page.keyboard.press("Escape");
-    await expect(popup(page)).not.toBeVisible();
-    await row(page, original.id).locator(".task-name").tap();
-    await openCreationExtras(page);
-    await field(page, "description").fill("   ");
-    await field(page, "description").press("Enter");
-    await expect(page.locator("#editor")).not.toBeVisible();
+    await text.fill("   ");
+    await noteEditor(page)
+      .getByRole("button", { name: "Kaydet", exact: true })
+      .tap();
+    await expect(noteEditor(page)).not.toBeVisible();
     await expect(note(page, original.id)).toHaveCount(0);
     expect((await stored(page)).records[0]).toEqual({
       ...original,
@@ -395,10 +409,10 @@ test("touch and keyboard users can scroll a long note inside a narrow preview an
     expect(await saved(page)).toBe(before);
     await expect(note(page, original.id)).toHaveCount(1);
     await note(page, original.id).tap();
-    await expect(popup(page).locator(".record-note-body")).toHaveText(
+    await expect(noteEditor(page).locator('[name="description"]')).toHaveValue(
       original.description,
     );
-    await expect(popup(page).locator("img")).toHaveCount(0);
+    await expect(noteEditor(page).locator("img")).toHaveCount(0);
     expect(
       await page.evaluate(() => window.notePreviewInjected),
     ).toBeUndefined();
@@ -407,7 +421,7 @@ test("touch and keyboard users can scroll a long note inside a narrow preview an
   }
 });
 
-test("waiting history icons preview only actual saved contacts and open their existing editor while note previews remain separate and read-only", async ({
+test("waiting history icons keep actual saved contacts separate from note preview and direct note editing", async ({
   page,
 }, testInfo) => {
   const items = fixture();
@@ -439,7 +453,7 @@ test("waiting history icons preview only actual saved contacts and open their ex
   const before = await saved(page);
   await view(page, "waiting");
   const title = row(page, topic.id).locator("a.task-name");
-  await expect(title).toHaveAttribute("href", "#editor");
+  await expect(title).toHaveAttribute("href", "#waiting-record-panel");
   await expect(title).toHaveAttribute("role", "button");
   const geometry = await row(page, topic.id).evaluate((record) => {
     const title = record.querySelector("a.task-name");
@@ -498,11 +512,14 @@ test("waiting history icons preview only actual saved contacts and open their ex
   for (const key of ["Enter", "Space"]) {
     await title.focus();
     await title.press(key);
-    await expect(page.locator("#editor")).toBeVisible();
-    await expect(field(page, "id")).toHaveValue(topic.id);
-    await expect(field(page, "title")).toHaveValue(topic.title);
+    await expect(page.locator("#waiting-record-panel")).toBeVisible();
+    await expect(
+      page.locator("#waiting-record-panel .waiting-record-title"),
+    ).toHaveText(topic.title);
+    await expect(page.locator("#editor")).not.toBeVisible();
     await expect(page).toHaveURL(originalUrl);
-    await closeEditor(page);
+    await page.keyboard.press("Escape");
+    await expect(page.locator("#waiting-record-panel")).not.toBeVisible();
     await expect(page).toHaveURL(originalUrl);
     expect(await saved(page)).toBe(before);
   }
@@ -580,11 +597,12 @@ test("waiting history icons preview only actual saved contacts and open their ex
     .click();
   expect(await saved(page)).toBe(before);
   await note(page, topic.id).click();
-  await expect(popup(page)).toHaveAttribute("data-preview-kind", "note");
-  await expect(popup(page).locator(".record-note-body")).toHaveText(
+  await expect(noteEditor(page)).toBeVisible();
+  await expect(popup(page)).not.toBeVisible();
+  await expect(noteEditor(page).locator('[name="description"]')).toHaveValue(
     topic.description,
   );
-  await expect(popup(page).locator(".record-history-list")).toHaveCount(0);
+  await expect(noteEditor(page).locator(".record-history-list")).toHaveCount(0);
   await page.keyboard.press("Escape");
   expect(await saved(page)).toBe(before);
 });

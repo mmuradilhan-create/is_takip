@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 import { createRecord } from "../../src/model.js";
+import { cleanupMeetingContacts } from "../../src/meeting-contact-cleanup.js";
 
 const KEY = "is-takip-v1";
 const NOW = new Date("2026-11-07T12:00:00.000Z");
@@ -23,7 +24,7 @@ const make = (input) =>
   createRecord({ createdAt: STAMP, updatedAt: STAMP, ...input });
 
 function fixture() {
-  return [
+  return cleanupMeetingContacts([
     ...["yearly", "monthly", "weekly"].map((type) =>
       make({
         id: `layout-${type}`,
@@ -108,7 +109,7 @@ function fixture() {
       ],
       sourceFields: { original: { value: "Ham bekleme verisi korunmalı" } },
     }),
-  ];
+  ]);
 }
 
 async function seed(page, items = fixture()) {
@@ -142,7 +143,9 @@ async function open(page, type, id = `layout-${type}`) {
     .locator(
       ["weekly", "monthly", "yearly"].includes(type)
         ? ".goal-edit-trigger"
-        : ".task-name",
+        : ["meeting", "waiting"].includes(type)
+          ? ".record-edit-trigger"
+          : ".task-name",
     )
     .click();
   await expect(form(page)).toBeVisible();
@@ -290,8 +293,11 @@ test("daily essentials remain visible while hidden legacy project, work type and
         await expect(field(page, name)).not.toBeVisible();
         await expect(field(page, name)).toBeDisabled();
       }
-      await expect(field(page, "owner")).toBeVisible();
-      await expect(field(page, "owner")).toBeEnabled();
+      for (const name of ["owner", "participants"]) {
+        await expect(field(page, name)).toBeHidden();
+        await expect(field(page, name)).toBeDisabled();
+        await expect(field(page, name)).toHaveValue("");
+      }
     } else {
       await expect(field(page, "nextAction")).not.toBeVisible();
       await expect(field(page, "nextAction")).toBeDisabled();

@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { createRecord } from "../../src/model.js";
+import { cleanupMeetingContacts } from "../../src/meeting-contact-cleanup.js";
 import { openCreationExtras } from "./creation-support.js";
 
 const KEY = "is-takip-v1";
@@ -11,20 +12,22 @@ const TITLE =
 const record = (input) =>
   createRecord({ createdAt: STAMP, updatedAt: STAMP, ...input });
 const source = () =>
-  record({
-    id: SOURCE_ID,
-    type: "meeting",
-    title: TITLE,
-    status: "in_progress",
-    priority: "high",
-    dueDate: "2026-11-10",
-    owner: "Bağlam sorumlusu",
-    nextAction: "İlk takip adımı.",
-    decision: "Özgün toplantı kararı korunmalı.",
-    participants: "Tasarım ve üretim ekibi",
-    description: "Kaynak toplantı açıklaması.",
-    sourceFields: { original: { value: "Korunur" } },
-  });
+  cleanupMeetingContacts([
+    record({
+      id: SOURCE_ID,
+      type: "meeting",
+      title: TITLE,
+      status: "in_progress",
+      priority: "high",
+      dueDate: "2026-11-10",
+      owner: "Bağlam sorumlusu",
+      nextAction: "İlk takip adımı.",
+      decision: "Özgün toplantı kararı korunmalı.",
+      participants: "Tasarım ve üretim ekibi",
+      description: "Kaynak toplantı açıklaması.",
+      sourceFields: { original: { value: "Korunur" } },
+    }),
+  ])[0];
 const saved = (page) => page.evaluate((key) => localStorage.getItem(key), KEY);
 const records = async (page) => JSON.parse(await saved(page)).records;
 const targets = (items) =>
@@ -68,7 +71,7 @@ async function seed(page, items) {
 
 async function openBoth(page) {
   await page.locator('#nav [data-view="meeting"]').click();
-  await row(page).locator(".task-name").click();
+  await row(page).locator(".record-edit-trigger").click();
   await form(page).locator('[data-action="meeting-route-both"]').click();
   await expect(dialog(page)).toBeVisible();
 }

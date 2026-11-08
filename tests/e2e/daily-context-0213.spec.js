@@ -240,7 +240,13 @@ test("explicit context changes and type switching keep daily draft fields but ca
   await form(page).locator('select[name="type"]').selectOption("daily");
   await expect(field(page, "workContext")).toHaveValue("ad_hoc");
   await expect(field(page, "parentId")).toHaveValue("");
-  await close(page);
+  const confirmation = page.waitForEvent("dialog");
+  const closing = close(page);
+  const discard = await confirmation;
+  expect(discard.type()).toBe("confirm");
+  expect(discard.message()).toContain("Kaydedilmemiş değişiklikler");
+  await discard.accept();
+  await closing;
   expect(await saved(page)).toBe(before);
   await newDaily(page);
   await expect(field(page, "title")).toHaveValue("");

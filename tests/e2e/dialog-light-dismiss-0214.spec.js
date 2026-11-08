@@ -130,7 +130,7 @@ test("native editor padding, input and an inside-to-backdrop drag keep drafts op
   expect(await saved(page)).toBe(before);
 });
 
-test("a nonmodal goal dismisses outside without activating navigation and retains its unsaved measurement while a status popover dismisses first", async ({
+test("a nonmodal goal activates navigation on the first outside click and retains its unsaved measurement while a status popover dismisses first", async ({
   page,
 }) => {
   const before = await seed(page);
@@ -141,10 +141,11 @@ test("a nonmodal goal dismisses outside without activating navigation and retain
   await expect(panel(page)).toHaveAttribute("data-goal-id", "dismiss-week");
   const current = panel(page).locator("#goal-progress-current");
   await current.fill("7");
-  await page.locator('#nav [data-view="daily"]').click();
+  await page.locator('#nav [data-view="yearly"]').click();
   await expect(panel(page)).not.toBeVisible();
-  await expect(page.locator("#page-title")).toHaveText("Haftalık plan");
+  await expect(page.locator("#page-title")).toHaveText("Senelik hedefler");
   expect(await saved(page)).toBe(before);
+  await page.locator('#nav [data-view="weekly"]').click();
   await row(page, "dismiss-week")
     .locator('.task-name[data-action="goal-details"]')
     .click();
@@ -230,7 +231,9 @@ test("an open goal preview switches directly to another page goal, preserves dra
   await clickStaticHeading(page);
   await expect(panel(page)).not.toBeVisible();
   await expect(page.locator("#page-title")).toHaveText("Haftalık plan");
-  expect(await page.evaluate(() => window.goalPreviewCloseCount)).toBe(1);
+  await expect
+    .poll(() => page.evaluate(() => window.goalPreviewCloseCount))
+    .toBe(1);
   await firstTitle.click();
   await expect(current).toHaveValue("7");
   expect(await saved(page)).toBe(before);

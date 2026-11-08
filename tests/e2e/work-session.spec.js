@@ -136,7 +136,7 @@ async function chooseStatus(page, id, status) {
   await expect(page.locator("#status-menu")).not.toBeVisible();
 }
 
-test("right work controls run, pause and resume with a minute-only view while raw timing and exact journal Undo remain intact", async ({
+test("live work seconds tick, pause and resume while minute summaries, raw timing and exact journal Undo remain intact", async ({
   page,
 }) => {
   const records = await seed(page);
@@ -157,10 +157,18 @@ test("right work controls run, pause and resume with a minute-only view while ra
     "aria-pressed",
     "true",
   );
-  await expect(elapsed(page)).toHaveText("00:00");
+  await expect(elapsed(page)).toHaveText("00:00:00");
+  await expect(elapsed(page)).toHaveAttribute(
+    "aria-label",
+    "Bu oturumda geçen süre, saat, dakika ve saniye",
+  );
   await expect(page.locator(".sidebar-journal-phase")).toHaveText("Çalışıyor");
-  await page.clock.fastForward(65_000);
-  await expect(elapsed(page)).toHaveText("00:01");
+  await page.clock.fastForward(1_000);
+  await expect(elapsed(page)).toHaveText("00:00:01");
+  await expect(page.locator("#sidebar-saved-time")).toHaveText("0 dk");
+  expect(await primaryState(page)).toEqual(saved);
+  await page.clock.fastForward(64_000);
+  await expect(elapsed(page)).toHaveText("00:01:05");
   const toggle = panel(page).locator(".work-session-toggle");
   await toggle.focus();
   await page.keyboard.press("Enter");
@@ -187,7 +195,7 @@ test("right work controls run, pause and resume with a minute-only view while ra
     ),
   ).toHaveCount(1);
   await page.clock.fastForward(120_000);
-  await expect(elapsed(page)).toHaveText("00:01");
+  await expect(elapsed(page)).toHaveText("00:01:05");
   await expect(toggle).toBeFocused();
   await page.keyboard.press("Space");
   await expect(toggle).toHaveAttribute("data-action", "work-pause");
@@ -197,7 +205,7 @@ test("right work controls run, pause and resume with a minute-only view while ra
     workButton(page, "work-first").locator('[data-work-symbol="pause"]'),
   ).toHaveCount(1);
   await page.clock.fastForward(5_000);
-  await expect(elapsed(page)).toHaveText("00:01");
+  await expect(elapsed(page)).toHaveText("00:01:10");
   expect(await primaryState(page)).toEqual(saved);
   await expect(
     page.getByRole("button", { name: "Geri al", exact: true }),
@@ -209,7 +217,7 @@ test("right work controls run, pause and resume with a minute-only view while ra
   await expect(finish).toBeVisible();
   await expect(panel(page)).toHaveAttribute("data-phase", "paused");
   await page.clock.fastForward(60_000);
-  await expect(elapsed(page)).toHaveText("00:01");
+  await expect(elapsed(page)).toHaveText("00:01:10");
   await expect(finish.locator("#work-finish-duration")).toHaveText("00:01:10");
   await finish.getByRole("button", { name: "Vazgeç", exact: true }).click();
   await expect(finish).not.toBeVisible();
@@ -234,7 +242,7 @@ test("right work controls run, pause and resume with a minute-only view while ra
   expect(await primaryState(page)).toEqual(saved);
   await start(page, "work-second");
   await page.clock.fastForward(35_789);
-  await expect(elapsed(page)).toHaveText("00:00");
+  await expect(elapsed(page)).toHaveText("00:00:35");
   await panel(page)
     .getByRole("button", { name: "Oturumu bitir", exact: true })
     .click();
@@ -430,7 +438,7 @@ test("the sidebar session keeps notes in a separate bounded modal without moving
   const records = await seed(page);
   const saved = await primaryState(page);
   await start(page);
-  await expect(page.locator("#work-session-time")).toHaveText("00:00");
+  await expect(page.locator("#work-session-time")).toHaveText("00:00:00");
   await expect(page.locator(".sidebar-journal-phase")).toHaveText("Çalışıyor");
   await panel(page)
     .getByRole("button", { name: "Notlar ve sonraki adım", exact: true })
@@ -564,4 +572,129 @@ test("corrupt work-session storage does not overwrite session data or prevent th
     await page.evaluate((key) => localStorage.getItem(key), SESSION_KEY),
   ).toBe("broken-work-session-json");
   expect(await primaryState(page)).toEqual(saved);
+});
+
+test("finish dialog discards only its unsaved session after confirmation and preserves saved history through refusal, storage failure and reload", async ({
+  page,
+}) => {
+  const records = fixture();
+  records[1].workLog = [
+    {
+      id: "preserved-saved-session",
+      date: "2026-11-07",
+      endedAt: START.toISOString(),
+      durationMs: 120_789,
+      note: "Önceden kaydedilmiş sonuç",
+      nextAction: "Önceki kayıt korunur",
+    },
+  ];
+  const otherContext = {
+    recordId: "work-second",
+    sessionId: "preserved-paused-context",
+    status: "paused",
+    elapsedMs: 2_345,
+    startedAt: null,
+    ownerId: null,
+    updatedAt: START.getTime(),
+  };
+  await seed(
+    page,
+    records,
+    JSON.stringify({ version: 1, currentId: null, entries: [otherContext] }),
+  );
+  const saved = await primaryState(page);
+  await expect(page.locator("#sidebar-saved-time")).toHaveText("2 dk");
+  await expect(page.locator("#sidebar-saved-count")).toHaveText("1 oturum");
+  await start(page);
+  await page.clock.fastForward(35_789);
+  await panel(page)
+    .getByRole("button", { name: "Oturumu bitir", exact: true })
+    .click();
+  const finish = page.locator("#work-finish-dialog");
+  const discard = finish.getByRole("button", {
+    name: "Kaydı sil",
+    exact: true,
+  });
+  const result = finish.locator('[name="resultNote"]');
+  await result.fill("Henüz kaydedilmeyen taslak sonuç");
+  const pending = await currentState(page);
+  const pendingRaw = await page.evaluate(
+    (key) => localStorage.getItem(key),
+    SESSION_KEY,
+  );
+  const deleteBounds = await discard.boundingBox();
+  const cancelBounds = await finish
+    .getByRole("button", { name: "Vazgeç", exact: true })
+    .boundingBox();
+  expect(deleteBounds.x).toBeLessThan(cancelBounds.x);
+  page.once("dialog", async (dialog) => {
+    expect(dialog.type()).toBe("confirm");
+    expect(dialog.message()).toBe(
+      "Bu çalışma oturumu kaydedilmeden silinsin mi?",
+    );
+    await dialog.dismiss();
+  });
+  await discard.click();
+  await expect(finish).toBeVisible();
+  await expect(result).toHaveValue("Henüz kaydedilmeyen taslak sonuç");
+  expect(await currentState(page)).toEqual(pending);
+  expect(await primaryState(page)).toEqual(saved);
+
+  await page.evaluate((key) => {
+    const original = Storage.prototype.setItem;
+    window.failSessionDiscard = true;
+    Storage.prototype.setItem = function (name, value) {
+      if (name === key && window.failSessionDiscard)
+        throw new DOMException(
+          "Sentetik depolama hatası",
+          "QuotaExceededError",
+        );
+      return original.call(this, name, value);
+    };
+  }, SESSION_KEY);
+  page.once("dialog", (dialog) => dialog.accept());
+  await discard.click();
+  await expect(finish.locator("#work-finish-error")).toContainText(
+    "silinemedi",
+  );
+  await expect(finish).toBeVisible();
+  await expect(result).toHaveValue("Henüz kaydedilmeyen taslak sonuç");
+  expect(
+    await page.evaluate((key) => localStorage.getItem(key), SESSION_KEY),
+  ).toBe(pendingRaw);
+  expect(await primaryState(page)).toEqual(saved);
+
+  await page.evaluate(() => {
+    window.failSessionDiscard = false;
+  });
+  await page.setViewportSize({ width: 390, height: 700 });
+  expect(
+    await finish.evaluate(
+      (element) => element.scrollWidth <= element.clientWidth,
+    ),
+  ).toBe(true);
+  for (const name of ["Kaydı sil", "Vazgeç", "Kaydet ve bitir"])
+    await expect(
+      finish.getByRole("button", { name, exact: true }),
+    ).toBeInViewport({ ratio: 1 });
+  page.once("dialog", (dialog) => dialog.accept());
+  await discard.click();
+  await expect(finish).not.toBeVisible();
+  await expect(panel(page)).not.toBeVisible();
+  expect(await currentState(page)).toEqual({
+    version: 1,
+    currentId: null,
+    entries: [otherContext],
+  });
+  expect(await primaryState(page)).toEqual(saved);
+  await expect(page.locator("#sidebar-saved-time")).toHaveText("2 dk");
+  await expect(page.locator("#sidebar-saved-count")).toHaveText("1 oturum");
+  await page.reload();
+  await expect(panel(page)).not.toBeVisible();
+  expect(await primaryState(page)).toEqual(saved);
+  expect(await currentState(page)).toEqual({
+    version: 1,
+    currentId: null,
+    entries: [otherContext],
+  });
 });

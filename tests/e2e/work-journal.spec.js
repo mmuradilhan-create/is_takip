@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 import { createRecord, validateStore } from "../../src/model.js";
+import { cleanupMeetingContacts } from "../../src/meeting-contact-cleanup.js";
 import { openCreationExtras } from "./creation-support.js";
 
 const KEY = "is-takip-v1";
@@ -490,20 +491,22 @@ for (const type of ["meeting", "waiting"]) {
   test(`${type} follow-ups create a linked daily task only on save and reopen that task without duplicates`, async ({
     page,
   }) => {
-    const source = createRecord({
-      id: `source-${type}`,
-      type,
-      title: `Takip edilecek ${type}`,
-      status: type === "waiting" ? "waiting_response" : "in_progress",
-      priority: "high",
-      dueDate: "2026-11-10",
-      nextAction: "Yanıtı incele",
-      description: "Kaynak açıklaması",
-      owner: "Kişisel kullanıcı",
-      sourceFields: { "Özgün kaynak": "Korunmalı" },
-      createdAt: STAMP,
-      updatedAt: STAMP,
-    });
+    const source = cleanupMeetingContacts([
+      createRecord({
+        id: `source-${type}`,
+        type,
+        title: `Takip edilecek ${type}`,
+        status: type === "waiting" ? "waiting_response" : "in_progress",
+        priority: "high",
+        dueDate: "2026-11-10",
+        nextAction: "Yanıtı incele",
+        description: "Kaynak açıklaması",
+        owner: "Kişisel kullanıcı",
+        sourceFields: { "Özgün kaynak": "Korunmalı" },
+        createdAt: STAMP,
+        updatedAt: STAMP,
+      }),
+    ])[0];
     const records = [recordsFixture()[0], source];
     await seed(page, records);
     await page.locator(`#nav [data-view="${type}"]`).click();
@@ -633,4 +636,112 @@ test("two already-open source forms do not create duplicate daily tasks across w
   expect(
     (await readRecords(other)).find((record) => record.id === source.id),
   ).toEqual(source);
+});
+
+test("current work keeps saved and empty journal controls beside Play across desktop and narrow themes without starting a session or changing records", async ({
+  page,
+}) => {
+  const fixture = recordsFixture();
+  fixture[1] = createRecord({
+    ...fixture[1],
+    title: "Kayıtlı çalışma",
+    workLog: [log("overview-saved-log", "2026-11-07", 60_000, NOTE)],
+  });
+  fixture.push(
+    createRecord({
+      id: "overview-empty-journal",
+      title: "Boş günlük işi",
+      status: "planned",
+      dueDate: "2026-11-07",
+      createdAt: STAMP,
+      updatedAt: STAMP,
+    }),
+  );
+  await seed(page, fixture);
+  await page.locator('#nav [data-view="dashboard"]').click();
+  const before = await readSaved(page);
+  const sessionBefore = await page.evaluate(
+    (key) => localStorage.getItem(key),
+    SESSION_KEY,
+  );
+  const journal = page.locator("#work-journal-dialog");
+
+  for (const width of [1280, 390]) {
+    await page.setViewportSize({ width, height: 800 });
+    for (const theme of ["light", "dark"]) {
+      // Palette preview changes only the DOM, keeping the exact saved bytes.
+      await page.evaluate((value) => {
+        document.documentElement.dataset.theme = value;
+      }, theme);
+      for (const [id, title, count] of [
+        ["journal-daily", "Kayıtlı çalışma", 1],
+        ["overview-empty-journal", "Boş günlük işi", 0],
+      ]) {
+        const current = page.locator(`.focus-row[data-id="${id}"]`);
+        const actions = current.locator(".focus-work-actions");
+        const trigger = actions.locator('[data-action="work-journal"]');
+        const play = actions.locator(".work-start");
+        await expect(trigger).toBeVisible();
+        await expect(play).toBeVisible();
+        await expect(trigger).toHaveAttribute(
+          "data-session-count",
+          String(count),
+        );
+        await expect(trigger).toHaveAttribute(
+          "aria-label",
+          `${title}: iş günlüğünü gör · ${count} kayıtlı oturum`,
+        );
+        if (count) await expect(trigger).toHaveClass(/has-entries/);
+        else await expect(trigger).not.toHaveClass(/has-entries/);
+        const geometry = await current.evaluate((element) => {
+          const box = (target) => {
+            const { x, y, width, height, right } =
+              target.getBoundingClientRect();
+            return { x, y, width, height, right };
+          };
+          return {
+            row: box(element),
+            journal: box(element.querySelector('[data-action="work-journal"]')),
+            play: box(element.querySelector(".work-start")),
+            title: box(element.querySelector(".focus-task")),
+            viewport: innerWidth,
+          };
+        });
+        for (const control of [geometry.journal, geometry.play]) {
+          expect(control.width).toBe(22);
+          expect(control.height).toBe(22);
+          expect(control.x).toBeGreaterThanOrEqual(geometry.row.x);
+          expect(control.right).toBeLessThanOrEqual(geometry.row.right);
+          expect(control.right).toBeLessThanOrEqual(geometry.viewport);
+        }
+        expect(geometry.play.x - geometry.journal.right).toBeCloseTo(6, 1);
+        expect(geometry.journal.y).toBeCloseTo(geometry.play.y, 1);
+        expect(geometry.title.right).toBeLessThanOrEqual(geometry.journal.x);
+
+        await trigger.click();
+        await expect(journal).toBeVisible();
+        await expect(journal.locator(".work-journal-subtitle")).toHaveText(
+          title,
+        );
+        await expect(journal.locator(".work-journal-entry")).toHaveCount(count);
+        if (count) await expect(journal).toContainText(NOTE);
+        else await expect(journal.locator(".work-journal-empty")).toBeVisible();
+        await expect(page.locator("#page-title")).toHaveText("Genel bakış");
+        await expect(page.locator("#editor")).not.toBeVisible();
+        await expect(panel(page)).not.toBeVisible();
+        expect(await readSaved(page)).toBe(before);
+        expect(
+          await page.evaluate((key) => localStorage.getItem(key), SESSION_KEY),
+        ).toBe(sessionBefore);
+        await journal
+          .getByRole("button", { name: "Tamam", exact: true })
+          .click();
+        await expect(journal).not.toBeVisible();
+        await expect(trigger).toBeFocused();
+        expect((await current.boundingBox()).height).toBe(geometry.row.height);
+      }
+    }
+  }
+  expect(await readRecords(page)).toEqual(fixture);
+  expect(await readSaved(page)).toBe(before);
 });

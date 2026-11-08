@@ -319,7 +319,7 @@ test("sidebar journal keeps idle compact and active controls bounded without cov
     const active = await journal.boundingBox();
     expect(active.height).toBeGreaterThan(idle.height + 30);
     expect(active.y + active.height).toBeCloseTo(idle.y + idle.height, 1);
-    await expect(journal.locator("#work-session-time")).toHaveText("00:00");
+    await expect(journal.locator("#work-session-time")).toHaveText("00:00:00");
     const nav = await page.locator("#nav").boundingBox();
     expect(nav.y + nav.height).toBeLessThanOrEqual(active.y + 1);
     expect(active.y + active.height).toBeLessThanOrEqual(viewport.height);

@@ -297,6 +297,32 @@ export function createWorkSessionStore({
       return true;
     });
   }
+  function discard(expectedId, expectedSessionId, expectedPaused) {
+    if (
+      !validId(expectedId) ||
+      !validId(expectedSessionId) ||
+      !validTime(expectedPaused?.elapsedMs) ||
+      !validTime(expectedPaused?.updatedAt)
+    )
+      return false;
+    let discarded = false;
+    const saved = commit((next) => {
+      const entry = next.entries.find((item) => item.recordId === expectedId);
+      if (
+        next.currentId !== expectedId ||
+        entry?.sessionId !== expectedSessionId ||
+        entry.status !== "paused" ||
+        entry.elapsedMs !== expectedPaused.elapsedMs ||
+        entry.updatedAt !== expectedPaused.updatedAt
+      )
+        return false;
+      next.entries = next.entries.filter((item) => item !== entry);
+      next.currentId = null;
+      discarded = true;
+      return true;
+    });
+    return saved && discarded;
+  }
   function synchronize(raw) {
     try {
       return adopt(raw === undefined ? readRaw() : raw, true);
@@ -359,6 +385,7 @@ export function createWorkSessionStore({
     start,
     pause,
     finish,
+    discard,
     synchronize,
     reconcile,
     stopOwner,

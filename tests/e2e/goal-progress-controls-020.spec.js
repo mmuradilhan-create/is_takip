@@ -406,9 +406,19 @@ test("editing a goal keeps its detail panel, draft and scroll through cancel, sa
         path: testInfo.outputPath("goal-editor-over-panel.png"),
         fullPage: false,
       });
-      await editor.locator('[data-action="close"]').last().click();
-    } else if (dismissal === "Escape") await page.keyboard.press("Escape");
-    else await page.mouse.click(8, 8);
+    }
+    const confirmation = page.waitForEvent("dialog");
+    const closing =
+      dismissal === "cancel"
+        ? editor.locator('[data-action="close"]').last().click()
+        : dismissal === "Escape"
+          ? page.keyboard.press("Escape")
+          : page.mouse.click(8, 8);
+    const discard = await confirmation;
+    expect(discard.type()).toBe("confirm");
+    expect(discard.message()).toContain("Kaydedilmemiş değişiklikler");
+    await discard.accept();
+    await closing;
     await retained();
     expect(await saved(page)).toBe(before);
   }

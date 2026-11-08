@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { createRecord } from "../../src/model.js";
+import { cleanupMeetingContacts } from "../../src/meeting-contact-cleanup.js";
 import { openCreationExtras } from "./creation-support.js";
 
 const KEY = "is-takip-v1";
@@ -11,20 +12,22 @@ const DECISION =
 const record = (input) =>
   createRecord({ createdAt: STAMP, updatedAt: STAMP, ...input });
 const source = (id, extra = {}) =>
-  record({
-    id,
-    type: "meeting",
-    title: `Kaynak toplantı ${id}`,
-    status: "in_progress",
-    dueDate: "2026-11-10",
-    nextAction: "İlk takip adımını uygula.",
-    description: "Kaynak açıklaması korunmalı.",
-    decision: DECISION,
-    participants: "Tasarım ve üretim ekibi",
-    owner: "Bağlam sorumlusu",
-    sourceFields: { "Özgün toplantı": { bilgi: "Ham kaynak korunmalı" } },
-    ...extra,
-  });
+  cleanupMeetingContacts([
+    record({
+      id,
+      type: "meeting",
+      title: `Kaynak toplantı ${id}`,
+      status: "in_progress",
+      dueDate: "2026-11-10",
+      nextAction: "İlk takip adımını uygula.",
+      description: "Kaynak açıklaması korunmalı.",
+      decision: DECISION,
+      participants: "Tasarım ve üretim ekibi",
+      owner: "Bağlam sorumlusu",
+      sourceFields: { "Özgün toplantı": { bilgi: "Ham kaynak korunmalı" } },
+      ...extra,
+    }),
+  ])[0];
 const saved = (page) => page.evaluate((key) => localStorage.getItem(key), KEY);
 const records = (page) =>
   page.evaluate((key) => JSON.parse(localStorage.getItem(key)).records, KEY);
@@ -72,7 +75,7 @@ async function seed(page, items) {
 
 async function openSource(page, id) {
   await list(page, "meeting");
-  await row(page, id).locator(".task-name").click();
+  await row(page, id).locator(".record-edit-trigger").click();
   await expect(page.locator("#editor")).toBeVisible();
   await openCreationExtras(page);
 }
@@ -162,8 +165,12 @@ test("one meeting can create a daily action and an external follow-up only on sa
       await expect(form(page).locator(`[name="${name}"]`)).toBeDisabled();
     for (const name of ["priority", "dueDate", "nextAction"])
       await expect(form(page).locator(`[name="${name}"]`)).toBeHidden();
-    for (const name of ["title", "decision", "participants", "owner"])
+    for (const name of ["title", "decision"])
       await expect(form(page).locator(`[name="${name}"]`)).toBeEnabled();
+    for (const name of ["participants", "owner"]) {
+      await expect(form(page).locator(`[name="${name}"]`)).toBeHidden();
+      await expect(form(page).locator(`[name="${name}"]`)).toHaveValue("");
+    }
     await form(page)
       .locator(`[data-action="open-linked-action"][data-route="${type}"]`)
       .click();

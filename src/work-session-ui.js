@@ -31,11 +31,6 @@ function duration(milliseconds) {
   return `${String(Math.floor(seconds / 3600)).padStart(2, "0")}:${String(Math.floor(seconds / 60) % 60).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
 }
 
-function miniDuration(milliseconds) {
-  const minutes = Math.max(0, Math.floor(milliseconds / 60000));
-  return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
-}
-
 function savedDuration(milliseconds) {
   const value = Math.max(0, Number(milliseconds) || 0);
   const totalMinutes = Math.round(value / 60000);
@@ -336,7 +331,7 @@ export function createWorkSessionUI({
         : null;
       panel.hidden = false;
       panel.dataset.phase = current.status;
-      panel.innerHTML = `<div class="work-session-summary"><button type="button" class="work-session-task-link" id="work-session-title" data-action="edit" data-id="${escapeHtml(record.id)}" title="${escapeHtml(record.title)}">${escapeHtml(record.title)}</button><div class="work-session-duration"><span id="work-session-time" role="timer" aria-label="Bu oturumda geçen süre, saat ve dakika" aria-live="off">${miniDuration(store.elapsed(current.recordId))}</span><button type="button" class="work-session-details" data-action="work-details" aria-label="Notlar ve sonraki adım" aria-controls="work-session-context" aria-expanded="${expanded}" title="Notlar ve sonraki adım">${notesIcon}</button></div><div class="work-session-controls"><button type="button" class="work-session-toggle" data-action="${current.status === "running" ? "work-pause" : "work-resume"}" data-id="${escapeHtml(record.id)}">${current.status === "running" ? pauseIcon : playIcon}<span>${current.status === "running" ? "Duraklat" : "Devam et"}</span></button><button type="button" class="work-session-finish" data-action="work-finish" data-id="${escapeHtml(record.id)}" aria-label="Oturumu bitir">${stopIcon}<span>Bitir</span></button></div></div>`;
+      panel.innerHTML = `<div class="work-session-summary"><button type="button" class="work-session-task-link" id="work-session-title" data-action="edit" data-id="${escapeHtml(record.id)}" title="${escapeHtml(record.title)}">${escapeHtml(record.title)}</button><div class="work-session-duration"><span id="work-session-time" role="timer" aria-label="Bu oturumda geçen süre, saat, dakika ve saniye" aria-live="off">${duration(store.elapsed(current.recordId))}</span><button type="button" class="work-session-details" data-action="work-details" aria-label="Notlar ve sonraki adım" aria-controls="work-session-context" aria-expanded="${expanded}" title="Notlar ve sonraki adım">${notesIcon}</button></div><div class="work-session-controls"><button type="button" class="work-session-toggle" data-action="${current.status === "running" ? "work-pause" : "work-resume"}" data-id="${escapeHtml(record.id)}">${current.status === "running" ? pauseIcon : playIcon}<span>${current.status === "running" ? "Duraklat" : "Devam et"}</span></button><button type="button" class="work-session-finish" data-action="work-finish" data-id="${escapeHtml(record.id)}" aria-label="Oturumu bitir">${stopIcon}<span>Bitir</span></button></div></div>`;
       renderKey = nextKey;
       if (focusedAction) {
         const control =
@@ -352,7 +347,7 @@ export function createWorkSessionUI({
     }
     const counter = panel.querySelector("#work-session-time");
     if (counter)
-      counter.textContent = miniDuration(store.elapsed(current.recordId));
+      counter.textContent = duration(store.elapsed(current.recordId));
     renderContext(record);
     updateButtons();
   }
@@ -434,9 +429,56 @@ export function createWorkSessionUI({
       endedAt: ended.toISOString(),
       date,
       durationMs: paused.elapsedMs,
+      contextUpdatedAt: paused.updatedAt,
     };
-    finishDialog.innerHTML = `<form id="work-finish-form"><div class="modal-header"><h2>Çalışma oturumunu bitir</h2><button type="button" class="close-modal" data-action="work-finish-cancel" aria-label="Pencereyi kapat">${closeIcon}</button></div><div class="modal-body work-finish-body"><p class="work-finish-title">${escapeHtml(record.title)}</p><div class="work-finish-summary"><div><span>Tarih</span><time id="work-finish-date" datetime="${date}">${escapeHtml(ended.toLocaleDateString("tr-TR", { day: "numeric", month: "long", year: "numeric" }))}</time></div><div><span>Çalışma süresi</span><output id="work-finish-duration">${duration(paused.elapsedMs)}</output></div></div><label class="field">Ne yaptın? <span class="field-help">İsteğe bağlı · Kısa bir sonuç yazabilirsin.</span><textarea name="resultNote" rows="3" maxlength="10000" placeholder="Örn. Üç madde incelendi, ikisi tasarım yanıtını bekliyor."></textarea></label><label class="field">Sonraki adım<textarea name="nextAction" rows="3" maxlength="10000" placeholder="Bu işte sırada ne var?">${escapeHtml(record.nextAction || "")}</textarea></label><p id="work-finish-error" class="error-message" role="alert" hidden></p></div><div class="modal-footer"><button type="button" class="btn" data-action="work-finish-cancel">Vazgeç</button><button type="submit" class="btn primary">Kaydet ve bitir</button></div></form>`;
+    finishDialog.innerHTML = `<form id="work-finish-form"><div class="modal-header"><h2>Çalışma oturumunu bitir</h2><button type="button" class="close-modal" data-action="work-finish-cancel" aria-label="Pencereyi kapat">${closeIcon}</button></div><div class="modal-body work-finish-body"><p class="work-finish-title">${escapeHtml(record.title)}</p><div class="work-finish-summary"><div><span>Tarih</span><time id="work-finish-date" datetime="${date}">${escapeHtml(ended.toLocaleDateString("tr-TR", { day: "numeric", month: "long", year: "numeric" }))}</time></div><div><span>Çalışma süresi</span><output id="work-finish-duration">${duration(paused.elapsedMs)}</output></div></div><label class="field">Ne yaptın? <span class="field-help">İsteğe bağlı · Kısa bir sonuç yazabilirsin.</span><textarea name="resultNote" rows="3" maxlength="10000" placeholder="Örn. Üç madde incelendi, ikisi tasarım yanıtını bekliyor."></textarea></label><label class="field">Sonraki adım<textarea name="nextAction" rows="3" maxlength="10000" placeholder="Bu işte sırada ne var?">${escapeHtml(record.nextAction || "")}</textarea></label><p id="work-finish-error" class="error-message" role="alert" hidden></p></div><div class="modal-footer"><button type="button" class="btn danger delete-record" data-action="work-finish-discard" title="Bu çalışma oturumunu kaydetmeden sil">Kaydı sil</button><button type="button" class="btn" data-action="work-finish-cancel">Vazgeç</button><button type="submit" class="btn primary">Kaydet ve bitir</button></div></form>`;
     finishDialog.showModal();
+  }
+
+  function discardFinish() {
+    if (finishing || !finishDraft) return;
+    const pending = { ...finishDraft };
+    if (!owner.confirm("Bu çalışma oturumu kaydedilmeden silinsin mi?")) return;
+    store.synchronize();
+    if (store.readOnly) {
+      finishError(
+        "Çalışma oturumu okunamıyor. Tarayıcı depolamasını kontrol edip yeniden dene.",
+      );
+      return;
+    }
+    const record = find(pending.recordId);
+    if (record?.workLog?.some((entry) => entry.id === pending.sessionId)) {
+      finishError(
+        "Bu oturum iş günlüğüne kaydedilmiş. Güncel kayıtları kontrol et.",
+      );
+      return;
+    }
+    setFinishing(true);
+    try {
+      if (
+        !store.discard(pending.recordId, pending.sessionId, {
+          elapsedMs: pending.durationMs,
+          updatedAt: pending.contextUpdatedAt,
+        })
+      ) {
+        finishError(
+          store.readOnly
+            ? "Çalışma oturumu silinemedi. Yazdığın bilgiler korunuyor; yeniden deneyebilirsin."
+            : "Bu oturum başka bir pencerede değişti. Vazgeçip güncel oturumu yeniden aç.",
+        );
+        return;
+      }
+      finishDraft = null;
+      finishDialog.close();
+      render();
+      try {
+        onMessage("Çalışma oturumu kaydedilmeden silindi.");
+      } catch {
+        /* Feedback must not turn a successful discard into an error. */
+      }
+    } finally {
+      setFinishing(false);
+    }
   }
 
   async function completeFinish(event) {
@@ -537,6 +579,7 @@ export function createWorkSessionUI({
         "work-finish",
         "work-details",
         "work-finish-cancel",
+        "work-finish-discard",
         "work-context-close",
         "work-session-history",
       ].includes(action)
@@ -545,6 +588,10 @@ export function createWorkSessionUI({
     event.preventDefault();
     if (action === "work-finish-cancel") {
       cancelFinish();
+      return;
+    }
+    if (action === "work-finish-discard") {
+      discardFinish();
       return;
     }
     if (action === "work-context-close") {

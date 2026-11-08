@@ -50,12 +50,16 @@ import "./record-alignment-0218.css";
 import "./record-editor-period.css";
 import "./record-parent-context.css";
 import "./record-source-context.css";
+import "./record-link-tooltip.css";
 import "./waiting-record-panel.css";
+import "./meeting-record-panel.css";
 import "./dashboard-card-details.css";
 import "./action-focus.css";
 import "./goal-transfer-ui.css";
 import { createGoalTransferUI } from "./goal-transfer-ui.js";
 import { createWaitingRecordPanel } from "./waiting-record-panel.js";
+import { createMeetingRecordPanel } from "./meeting-record-panel.js";
+import { createRecordLinkTooltip } from "./record-link-tooltip.js";
 import {
   renderEditorPeriodMarkup,
   syncEditorPeriod,
@@ -321,6 +325,7 @@ export async function startMainApp() {
   let choiceListSettings = null;
   let waitingFollowUps = null;
   let waitingRecordPanel = null;
+  let meetingRecordPanel = null;
   let waitingDetails = null;
   let waitingInfo = null;
   let recordNotes = null;
@@ -352,7 +357,7 @@ export async function startMainApp() {
       });
       if (result.status === "cleaned")
         toast(
-          `${result.recordsChanged} toplantının sorumlu ve katılımcı bilgileri silindi. İşlem geri alınabilir.`,
+          `${result.recordsChanged} toplantının sorumlu ve katılımcı bilgileri silindi. İşlem geri alınabilir; sonraki kayıt veya yedek yüklemede yeniden temizlenir.`,
         );
     } catch {
       toast(
@@ -467,7 +472,7 @@ export async function startMainApp() {
       input.checked = input.value === (preferences.theme || "light");
   }
   function openSettings() {
-    waitingRecordPanel?.close({ restoreFocus: false });
+    closeRecordPreviews();
     recordNotes?.close();
     choiceFields?.close();
     const cleanupInfo = importedNoteCleanupInfo(state.records);
@@ -590,20 +595,29 @@ export async function startMainApp() {
   const app = document.querySelector("#app");
   installDialogLightDismiss(document, {
     allowOutsideActivation(event, dialog) {
-      if (dialog.id !== "goal-detail-panel") return false;
-      const control = event.target.closest?.("[data-action]");
-      if (control?.id === "undo-button" && control.dataset.action === "undo")
-        return !control.disabled && goalPanel?.canActivate();
-      return (
-        [
-          "goal-details",
-          "goal-card-details",
-          "goal-progress-open",
-          "goal-children-open",
-        ].includes(control?.dataset.action) &&
-        goalPanel?.canOpen(control.dataset.id)
+      const preview =
+        dialog.id === "goal-detail-panel"
+          ? goalPanel
+          : dialog.id === "waiting-record-panel"
+            ? waitingRecordPanel
+            : dialog.id === "meeting-record-panel"
+              ? meetingRecordPanel
+              : null;
+      if (!preview?.canActivate()) return false;
+      const control = event.target.closest?.(
+        '[data-action], button, a[href], input, select, textarea, label, summary, [role="button"], [role="link"]',
+      );
+      return Boolean(
+        control &&
+          app.contains(control) &&
+          !control.disabled &&
+          control.getAttribute("aria-disabled") !== "true",
       );
     },
+  });
+  const recordLinkTooltip = createRecordLinkTooltip({ root: app });
+  window.addEventListener("pagehide", recordLinkTooltip.destroy, {
+    once: true,
   });
   const today = () => localDate();
   const dateFmt = new Intl.DateTimeFormat("tr-TR", {
@@ -826,6 +840,15 @@ export async function startMainApp() {
     const tooltip = text.charAt(0).toLocaleUpperCase("tr-TR") + text.slice(1);
     return `<button type="button" class="row-icon-action ${className}" data-action="${action}" data-id="${esc(record.id)}" aria-label="${esc(record.title)}: ${esc(text)}" title="${esc(tooltip)}">${icon(symbol)}</button>`;
   }
+  function recordEditControl(record) {
+    return rowIconAction(
+      record,
+      "edit",
+      "edit",
+      "kaydı düzenle",
+      "record-edit-trigger",
+    );
+  }
   function goalEditControl(record) {
     if (!["weekly", "monthly", "yearly"].includes(record.type)) return "";
     return rowIconAction(
@@ -864,7 +887,14 @@ export async function startMainApp() {
     return `${journalControl(record)}${workControl(record)}`;
   }
   function recordRow(r, goalDetails = false) {
-    return `data-record-row data-action="${goalDetails ? "goal-details" : "edit"}" data-id="${esc(r.id)}" tabindex="0" aria-label="${esc(r.title)} ${goalDetails ? "hedef ayrıntılarını aç" : "kaydını düzenle"}"`;
+    const action = goalDetails
+      ? "goal-details"
+      : r.type === "meeting"
+        ? "meeting-record-details"
+        : r.type === "waiting"
+          ? "waiting-record-details"
+          : "edit";
+    return `data-record-row data-action="${action}" data-id="${esc(r.id)}" tabindex="0" aria-label="${esc(r.title)} ${action === "edit" ? "kaydını düzenle" : "ayrıntılarını aç"}"`;
   }
   function priorityBadge(r) {
     return `<span class="priority priority-${esc(r.priority)}"><svg class="priority-flag" viewBox="0 0 24 24" aria-hidden="true"><path d="${paths.flag}"/></svg>${esc(label(PRIORITIES, r.priority))}</span>`;
@@ -992,9 +1022,7 @@ export async function startMainApp() {
           showPeriod: !state.planningPeriods[record.type],
         });
         const context = contextParts.filter(
-          (part) =>
-            part.kind !== "source" &&
-            !(record.type === "daily" && part.kind === "parent"),
+          (part) => part.kind !== "source" && part.kind !== "parent",
         );
         const subtitle = context.map((part) => part.text).join(" · ");
         const contextMarkup = context.length
@@ -1055,10 +1083,10 @@ export async function startMainApp() {
     return `<button type="button" class="meeting-archive-control${linked ? " meeting-archive-info" : ""}" data-action="${action}" data-id="${esc(record.id)}" aria-label="${esc(record.title)}: ${esc(caption)}, ${hint.toLocaleLowerCase("tr-TR")}" title="${esc(caption)} · ${hint}" aria-haspopup="${linked ? "dialog" : "menu"}" aria-controls="${linked ? "editor" : "status-menu"}"${linked ? "" : ' aria-expanded="false"'}>${icon(record.status === "cancelled" ? "close" : "archive")}</button>`;
   }
   function meetingTable(records) {
-    return `<div class="table-wrap"><table class="full-table meeting-table"><thead><tr><th>Aksiyon / Karar</th><th class="meeting-linked-heading">Bağlı iş</th><th class="meeting-linked-heading">Takip</th></tr></thead><tbody>${records.map((record) => `<tr class="record-list-row" ${recordRow(record)}><td><div class="task-title-cell"><div class="task-copy"><div class="task-name-line"><button class="task-name ${record.status === "completed" ? "completed" : ""}" data-action="edit" data-id="${esc(record.id)}">${esc(record.title)}</button>${recordNotes?.button(record) || ""}${meetingTitleState(record)}</div>${record.decision ? `<div class="meeting-decision" title="${esc(record.decision)}">${esc(record.decision)}</div>` : ""}${record.sourceDate ? `<div class="task-sub meeting-date">Toplantı: ${esc(formatDate(record.sourceDate))}</div>` : ""}</div></div></td>${meetingLinkedCell(record, "daily")}${meetingLinkedCell(record, "waiting")}</tr>`).join("")}</tbody></table></div>`;
+    return `<div class="table-wrap"><table class="full-table meeting-table"><thead><tr><th>Aksiyon / Karar</th><th class="meeting-linked-heading">Bağlı iş</th><th class="meeting-linked-heading">Takip</th><th class="row-action-col">İşlem</th></tr></thead><tbody>${records.map((record) => `<tr class="record-list-row" ${recordRow(record)}><td><div class="task-title-cell"><div class="task-copy"><div class="task-name-line"><button class="task-name ${record.status === "completed" ? "completed" : ""}" data-action="meeting-record-details" aria-haspopup="dialog" aria-controls="meeting-record-panel" data-id="${esc(record.id)}">${esc(record.title)}</button>${recordNotes?.button(record) || ""}${meetingTitleState(record)}</div>${record.decision ? `<div class="meeting-decision" title="${esc(record.decision)}">${esc(record.decision)}</div>` : ""}${record.sourceDate ? `<div class="task-sub meeting-date">Toplantı: ${esc(formatDate(record.sourceDate))}</div>` : ""}</div></div></td>${meetingLinkedCell(record, "daily")}${meetingLinkedCell(record, "waiting")}<td class="row-action-col"><div class="row-end-actions">${recordEditControl(record)}</div></td></tr>`).join("")}</tbody></table></div>`;
   }
   function waitingTable(records) {
-    return `<div class="table-wrap"><table class="full-table waiting-table"><thead><tr><th>Konu / Beklenen</th><th>Durum</th><th class="waiting-age-col">Bekleme</th><th class="waiting-last-col">Son takip</th><th class="waiting-next-col">Sonraki takip</th><th class="row-action-col">İşlem</th></tr></thead><tbody>${records.map((record) => `<tr class="record-list-row" ${recordRow(record)}><td><div class="task-title-cell">${completionControl(record)}<div class="task-copy"><div class="task-name-line">${dayFocusButton(record)}${waitingInfo?.button(record) || ""}${recordTitleContent(record, `<a class="task-name ${record.status === "completed" ? "completed" : ""}" href="#editor" role="button" data-action="edit" data-id="${esc(record.id)}" aria-haspopup="dialog" aria-controls="editor">${esc(record.title)}</a>`, `${recordNotes?.button(record) || ""}${recordNotes?.historyButton(record) || ""}`)}</div>${record.expectedFrom ? `<div class="task-sub" title="${esc(record.expectedFrom)}">${esc(record.expectedFrom)}</div>` : ""}${record.latestUpdate ? `<div class="waiting-latest" title="${esc(record.latestUpdate)}">${esc(record.latestUpdate)}</div>` : ""}</div></div></td><td>${statusBadge(record)}</td><td class="waiting-age-col">${waitingAgeMarkup(record)}</td><td class="waiting-last-col">${lastFollowUpMarkup(record)}</td><td class="waiting-next-col">${inlineFields?.followUpDateControl(record) || ""}</td><td class="row-action-col"><div class="row-end-actions">${rowIconAction(record, "waiting-followup", "check", active(record) ? "takip ettim" : "takip geçmişi", "waiting-followup-trigger")}${workControl(record)}</div></td></tr>`).join("")}</tbody></table></div>`;
+    return `<div class="table-wrap"><table class="full-table waiting-table"><thead><tr><th>Konu / Beklenen</th><th>Durum</th><th class="waiting-age-col">Bekleme</th><th class="waiting-last-col">Son takip</th><th class="waiting-next-col">Sonraki takip</th><th class="row-action-col">İşlem</th></tr></thead><tbody>${records.map((record) => `<tr class="record-list-row" ${recordRow(record)}><td><div class="task-title-cell">${completionControl(record)}<div class="task-copy"><div class="task-name-line">${dayFocusButton(record)}${waitingInfo?.button(record) || ""}${recordTitleContent(record, `<a class="task-name ${record.status === "completed" ? "completed" : ""}" href="#waiting-record-panel" role="button" data-action="waiting-record-details" data-id="${esc(record.id)}" aria-haspopup="dialog" aria-controls="waiting-record-panel">${esc(record.title)}</a>`, `${recordNotes?.button(record) || ""}${recordNotes?.historyButton(record) || ""}`)}</div>${record.expectedFrom ? `<div class="task-sub" title="${esc(record.expectedFrom)}">${esc(record.expectedFrom)}</div>` : ""}${record.latestUpdate ? `<div class="waiting-latest" title="${esc(record.latestUpdate)}">${esc(record.latestUpdate)}</div>` : ""}</div></div></td><td>${statusBadge(record)}</td><td class="waiting-age-col">${waitingAgeMarkup(record)}</td><td class="waiting-last-col">${lastFollowUpMarkup(record)}</td><td class="waiting-next-col">${inlineFields?.followUpDateControl(record) || ""}</td><td class="row-action-col"><div class="row-end-actions">${rowIconAction(record, "waiting-followup", "check", active(record) ? "takip ettim" : "takip geçmişi", "waiting-followup-trigger")}${workControl(record)}${recordEditControl(record)}</div></td></tr>`).join("")}</tbody></table></div>`;
   }
   function progressDescription(r, p) {
     if (p.basis === "linked")
@@ -1167,7 +1195,7 @@ export async function startMainApp() {
       )
       .join("")}</div>`;
     return `<section class="panel focus-panel"><div class="panel-header"><div class="focus-heading"><h2>Güncel işler</h2>${filters}${goalLinkReviewTrigger()}</div><button class="text-btn open-list" data-action="open-list" data-view="daily">Günlük işler ${icon("arrow")}</button></div>
-    ${records.length ? `<ul class="focus-list" tabindex="0" aria-label="Güncel işler">${records.map((r) => `<li class="focus-row${r.focusDate === today() ? " is-day-focus" : ""}" ${recordRow(r)}>${completionControl(r)}<div class="focus-task"><div class="focus-title-line">${dayFocusButton(r)}${waitingInfo?.button(r) || ""}${focusTitleContent(r)}</div></div>${statusBadge(r)}<span class="focus-priority">${inlineFields ? inlineFields.priorityControl(r) : priorityBadge(r)}</span><span class="focus-date ${deadlineTone(r, today())}">${inlineFields ? inlineFields.dateControl(r) : renderDeadlineChip(r, { label: formatDate(r.dueDate), today: today() })}</span>${workControl(r)}</li>`).join("")}</ul>` : `<div class="focus-empty${state.focusFilter === "focus" ? " day-focus-empty" : ""}"><h3>${emptyTitle}</h3><p>${state.search ? "Başka bir kelimeyle arayabilirsin." : state.focusFilter === "focus" ? "Açık işler listesindeki yıldızlarla bugün çalışacağın en fazla 3 işi seç. Teslim tarihleri değişmez." : state.focusFilter === "open" ? "Yeni kayıt düğmesiyle günlük iş ekleyebilirsin." : "Diğer açık işlerini Açık işler bölümünde görebilirsin."}</p></div>`}
+    ${records.length ? `<ul class="focus-list" tabindex="0" aria-label="Güncel işler">${records.map((r) => `<li class="focus-row${r.focusDate === today() ? " is-day-focus" : ""}" ${recordRow(r)}>${completionControl(r)}<div class="focus-task"><div class="focus-title-line">${dayFocusButton(r)}${waitingInfo?.button(r) || ""}${focusTitleContent(r)}</div></div>${statusBadge(r)}<span class="focus-priority">${inlineFields ? inlineFields.priorityControl(r) : priorityBadge(r)}</span><span class="focus-date ${deadlineTone(r, today())}">${inlineFields ? inlineFields.dateControl(r) : renderDeadlineChip(r, { label: formatDate(r.dueDate), today: today() })}</span><div class="focus-work-actions">${journalControl(r)}${workControl(r)}</div></li>`).join("")}</ul>` : `<div class="focus-empty${state.focusFilter === "focus" ? " day-focus-empty" : ""}"><h3>${emptyTitle}</h3><p>${state.search ? "Başka bir kelimeyle arayabilirsin." : state.focusFilter === "focus" ? "Açık işler listesindeki yıldızlarla bugün çalışacağın en fazla 3 işi seç. Teslim tarihleri değişmez." : state.focusFilter === "open" ? "Yeni kayıt düğmesiyle günlük iş ekleyebilirsin." : "Diğer açık işlerini Açık işler bölümünde görebilirsin."}</p></div>`}
     </section>`;
   }
   function dayFocusButton(record) {
@@ -1268,18 +1296,17 @@ export async function startMainApp() {
       reference && state.records.find((item) => item.id === reference.targetId);
     if (!source) return "";
     const caption = `${source.type === "meeting" ? "Toplantı" : "Bekleyen konu"}: ${source.title}`;
-    return `<button type="button" class="record-context-link record-source-link" data-context-kind="source" data-source-type="${esc(source.type)}" data-action="edit" data-id="${esc(source.id)}" title="${esc(caption)}" aria-label="${esc(caption)}: kaynak kaydı aç" aria-haspopup="dialog" aria-controls="editor">${icon(source.type === "meeting" ? "people" : "clock")}</button>`;
+    return `<button type="button" class="record-context-link record-source-link" data-context-kind="source" data-source-type="${esc(source.type)}" data-action="${source.type === "meeting" ? "meeting-record-details" : "waiting-record-details"}" data-id="${esc(source.id)}" data-record-link-tooltip="${esc(caption)}" aria-label="${esc(caption)}: kaynak kaydı aç" aria-haspopup="dialog" aria-controls="${source.type === "meeting" ? "meeting-record-panel" : "waiting-record-panel"}">${icon(source.type === "meeting" ? "people" : "clock")}</button>`;
   }
   function parentTitleControl(
     record,
     parts = recordContextParts(record, state.records),
   ) {
-    if (record.type !== "daily") return "";
     const parent = parts.find(
       (part) => part.kind === "parent" && part.targetId,
     );
     return parent
-      ? `<button type="button" class="record-context-link record-parent-link" data-context-kind="parent" data-action="goal-details" data-id="${esc(parent.targetId)}" title="${esc(parent.text)}" aria-label="${esc(parent.text)}: üst hedefi aç" aria-haspopup="dialog" aria-controls="goal-detail-panel">${icon("target")}</button>`
+      ? `<button type="button" class="record-context-link record-parent-link" data-context-kind="parent" data-action="goal-details" data-id="${esc(parent.targetId)}" data-record-link-tooltip="${esc(parent.text)}" aria-label="${esc(parent.text)}: üst hedefi aç" aria-haspopup="dialog" aria-controls="goal-detail-panel">${icon("target")}</button>`
       : "";
   }
   function focusTitleContent(record) {
@@ -1294,14 +1321,6 @@ export async function startMainApp() {
   }
   function parentContextLabel(text) {
     return `${icon("target")}<span class="record-context-text">${esc(text)}</span>`;
-  }
-  function parentContextControl(record, className = "record-context-link") {
-    const parent = recordContextParts(record, state.records, {
-      showPeriod: false,
-    }).find((part) => part.kind === "parent" && part.targetId);
-    return parent
-      ? `<button type="button" class="${className}" data-context-kind="parent" data-action="goal-details" data-id="${esc(parent.targetId)}" title="${esc(parent.text)}" aria-label="${esc(parent.text)}: üst hedefi aç">${parentContextLabel(parent.text)}</button>`
-      : "";
   }
   function weeklyDashboardPanel() {
     const { records, total, period, isUpcoming } = selectDashboardWeek(
@@ -1334,7 +1353,7 @@ export async function startMainApp() {
                   (item) =>
                     item.type === "daily" && item.parentId === record.id,
                 );
-                return `<li class="dashboard-goal-row dashboard-detail-card" role="group" tabindex="0" data-action="goal-card-details" data-id="${esc(record.id)}" data-goal-id="${esc(record.id)}" aria-label="${esc(record.title)}: ayrıntıları aç" aria-keyshortcuts="Enter Space"><strong class="dashboard-goal-title" title="${esc(record.title)}">${esc(record.title)}</strong><div class="dashboard-goal-context">${parentContextControl(record)}</div><div class="dashboard-goal-meta-controls">${statusBadge(record)}${lifecycleDateControl(record)}</div><div class="dashboard-goal-progress"><div class="progress-track" role="progressbar" aria-label="${esc(record.title)} ilerlemesi" aria-valuenow="${progress.percent}" aria-valuemin="0" aria-valuemax="100" aria-valuetext="%${progress.percent} · ${esc(progressDescription(record, progress))}"><span style="width:${progress.percent}%"></span></div><span class="goal-progress-label" title="${esc(progressDescription(record, progress))}">%${progress.percent}${esc(progressCount)}</span></div><div class="dashboard-goal-actions"><button type="button" class="btn small dashboard-goal-progress-action" data-action="goal-progress-open" data-id="${esc(record.id)}" aria-label="${esc(record.title)}: ilerleme">İlerleme</button><button type="button" class="btn small dashboard-goal-children-action" data-action="goal-children-open" data-id="${esc(record.id)}" aria-label="${esc(record.title)}: bağlı işler, ${children.length} adım">Bağlı işler <span class="dashboard-goal-count">${children.length}</span></button></div></li>`;
+                return `<li class="dashboard-goal-row dashboard-detail-card" role="group" tabindex="0" data-action="goal-card-details" data-id="${esc(record.id)}" data-goal-id="${esc(record.id)}" aria-label="${esc(record.title)}: ayrıntıları aç" aria-keyshortcuts="Enter Space"><div class="dashboard-goal-title-line"><strong class="dashboard-goal-title" title="${esc(record.title)}">${esc(record.title)}</strong>${parentTitleControl(record)}</div><div class="dashboard-goal-meta-controls">${statusBadge(record)}${lifecycleDateControl(record)}</div><div class="dashboard-goal-progress"><div class="progress-track" role="progressbar" aria-label="${esc(record.title)} ilerlemesi" aria-valuenow="${progress.percent}" aria-valuemin="0" aria-valuemax="100" aria-valuetext="%${progress.percent} · ${esc(progressDescription(record, progress))}"><span style="width:${progress.percent}%"></span></div><span class="goal-progress-label" title="${esc(progressDescription(record, progress))}">%${progress.percent}${esc(progressCount)}</span></div><div class="dashboard-goal-actions"><button type="button" class="btn small dashboard-goal-progress-action" data-action="goal-progress-open" data-id="${esc(record.id)}" aria-label="${esc(record.title)}: ilerleme">İlerleme</button><button type="button" class="btn small dashboard-goal-children-action" data-action="goal-children-open" data-id="${esc(record.id)}" aria-label="${esc(record.title)}: bağlı işler, ${children.length} adım">Bağlı işler <span class="dashboard-goal-count">${children.length}</span></button></div></li>`;
               })
               .join("")}</ul>`
           : `<div class="weekly-dashboard-empty"><p>${state.search ? "Eşleşen haftalık hedef yok." : "Bu hafta için açık hedef yok."}</p><button type="button" class="btn" data-action="dashboard-weekly">Hedef seç</button></div>`
@@ -1374,7 +1393,7 @@ export async function startMainApp() {
       const lastFollowUp = record.lastFollowUpDate
         ? lastFollowUpMarkup(record)
         : `<span class="waiting-last-date" title="${record.followUpLog?.length ? "Son takip tarihi yok" : "Henüz takip edilmedi"}">—</span>`;
-      return `<li class="followup-row dashboard-detail-card" role="group" tabindex="0" data-action="waiting-record-details" data-record-row data-id="${esc(record.id)}" aria-label="${esc(record.title)}: ayrıntıları aç" aria-keyshortcuts="Enter Space"><div class="followup-title-line"><button type="button" class="followup-title" data-action="waiting-record-details" data-id="${esc(record.id)}">${esc(record.title)}</button></div><div class="followup-meta">${statusBadge(record)}<span class="attention-date${near ? " attention-date-near" : ""}" data-attention-date="${esc(date)}">${dateControl}</span></div><div class="followup-tracking"><div class="followup-wait-info"><div class="followup-fact" data-followup-fact="age"><span class="followup-fact-label">Bekleme</span>${waitingAgeMarkup(record)}</div><div class="followup-fact" data-followup-fact="last"><span class="followup-fact-label">Son takip</span><div class="followup-last">${lastFollowUp}</div></div></div>${waitingFollowUps?.button(record, { compact: true }) || ""}</div></li>`;
+      return `<li class="followup-row dashboard-detail-card" role="group" tabindex="0" data-action="waiting-record-details" data-record-row data-id="${esc(record.id)}" aria-label="${esc(record.title)}: ayrıntıları aç" aria-keyshortcuts="Enter Space"><div class="followup-title-line"><button type="button" class="followup-title" data-action="waiting-record-details" data-id="${esc(record.id)}">${esc(record.title)}</button></div><div class="followup-meta">${statusBadge(record)}<span class="attention-date${near ? " attention-date-near" : ""}" data-attention-date="${esc(date)}">${dateControl}</span></div><div class="followup-tracking"><button type="button" class="followup-wait-info followup-detail-trigger" data-action="waiting-record-details" data-id="${esc(record.id)}" aria-label="${esc(record.title)}: bekleme ve son takip ayrıntılarını aç"><span class="followup-fact" data-followup-fact="age"><span class="followup-fact-label">Bekleme</span>${waitingAgeMarkup(record)}</span><span class="followup-fact" data-followup-fact="last"><span class="followup-fact-label">Son takip</span><span class="followup-last">${lastFollowUp}</span></span></button>${waitingFollowUps?.button(record, { compact: true }) || ""}</div></li>`;
     });
     return `<section class="panel attention-panel"><div class="followup-header dashboard-panel-header"><div class="dashboard-panel-heading"><h2>Takip gerekenler<span class="dashboard-panel-count">${total}</span></h2><small class="dashboard-panel-subtitle" title="Gecikenler, bugün ve önümüzdeki 3 gün">Gecikenler, bugün ve önümüzdeki 3 gün</small></div>${pageCount > 1 ? `<nav class="attention-pagination" aria-label="Takip kartı sayfaları"><button type="button" class="attention-prev" data-action="attention-page" data-page="${state.attentionPage - 1}" aria-label="Önceki takipler" title="Önceki takipler" ${state.attentionPage === 1 ? "disabled" : ""}>${icon("arrow")}</button><span class="attention-page-label" aria-live="polite">Sayfa ${state.attentionPage} / ${pageCount}</span><button type="button" data-action="attention-page" data-page="${state.attentionPage + 1}" aria-label="Sonraki takipler" title="Sonraki takipler" ${state.attentionPage === pageCount ? "disabled" : ""}>${icon("arrow")}</button></nav>` : ""}<button type="button" class="text-btn open-list dashboard-panel-link" data-action="open-list" data-view="waiting">Bekleyen konular ${icon("arrow")}</button></div>${records.length ? `<ul class="attention-list followup-list" tabindex="0" aria-label="Takip gereken kartlar">${cards.join("")}</ul>` : '<div class="followup-empty">Yaklaşan takip yok.</div>'}</section>`;
   }
@@ -1674,6 +1693,7 @@ export async function startMainApp() {
     goalTransfers?.refresh();
     waitingFollowUps?.refresh();
     waitingRecordPanel?.refresh();
+    meetingRecordPanel?.refresh();
     waitingDetails?.refresh();
     waitingInfo?.refresh();
     recordNotes?.refresh();
@@ -1724,8 +1744,7 @@ export async function startMainApp() {
     render();
   }
   function navigate(view) {
-    waitingRecordPanel?.close({ restoreFocus: false });
-    goalPanel?.close();
+    closeRecordPreviews();
     state.view = view;
     state.attentionPage = 1;
     if (view === "dashboard") state.focusFilter = "open";
@@ -1921,7 +1940,10 @@ export async function startMainApp() {
     creationOptions = {},
   ) {
     meetingLinkedReturn = creationOptions.meetingReturn || null;
-    waitingRecordPanel?.close({ restoreFocus: false });
+    if (!creationOptions.keepRecordPanel) {
+      waitingRecordPanel?.close({ restoreFocus: false });
+      meetingRecordPanel?.close({ restoreFocus: false });
+    }
     waitingInfo?.close();
     recordNotes?.close();
     closeStatusMenu();
@@ -2080,7 +2102,11 @@ export async function startMainApp() {
       recordFormValues(document.querySelector("#record-form"));
     if (!editor.open) editor.showModal();
   }
-  function openLinkedAction(id, routeType = null) {
+  function openLinkedAction(
+    id,
+    routeType = null,
+    { keepRecordPanel = false } = {},
+  ) {
     try {
       const source = state.records.find(
         (record) =>
@@ -2108,15 +2134,49 @@ export async function startMainApp() {
                     ?.scrollLeft || 0,
               }
             : null;
-        if (source.type !== "meeting") navigate(linked.type);
-        openEditor(linked.id, "", "", "daily", { meetingReturn });
-      } else openEditor(null, "", id, routeType || "daily");
+        if (source.type !== "meeting" && !keepRecordPanel)
+          navigate(linked.type);
+        openEditor(linked.id, "", "", "daily", {
+          meetingReturn,
+          keepRecordPanel,
+        });
+      } else
+        openEditor(null, "", id, routeType || "daily", { keepRecordPanel });
     } catch (error) {
       toast(error.message, true);
     }
   }
   function openDailyFromSource(id) {
     openLinkedAction(id, "daily");
+  }
+  function closeRecordPreviews(except = null) {
+    if (except !== "waiting")
+      waitingRecordPanel?.close({ restoreFocus: false });
+    if (except !== "meeting")
+      meetingRecordPanel?.close({ restoreFocus: false });
+    if (except !== "goal") goalPanel?.close();
+  }
+  function openRecordPreview(type, id, trigger = null) {
+    const preview =
+      type === "meeting" ? meetingRecordPanel : waitingRecordPanel;
+    if (!preview?.canOpen(id)) return;
+    closeStatusMenu();
+    datePicker?.close();
+    choiceFields?.close();
+    inlineFields?.close();
+    waitingInfo?.close();
+    recordNotes?.close();
+    closeRecordPreviews(type);
+    trigger?.focus({ preventScroll: true });
+    preview.open(id, { trigger });
+  }
+  function openPanelRoute(id, type) {
+    const target = linkedAction(id, state.records, type);
+    if (target?.type === "waiting") {
+      openRecordPreview("waiting", target.id);
+      return;
+    }
+    openLinkedAction(id, type, { keepRecordPanel: true });
   }
   function restoreMeetingRoute() {
     if (document.querySelector("#editor").open) return;
@@ -2531,6 +2591,26 @@ export async function startMainApp() {
   recordNotes = createRecordNoteUI({
     root: app,
     getRecord: (id) => state.records.find((record) => record.id === id),
+    onSaveNote: (id, description, expectedDescription) => {
+      const record = state.records.find((item) => item.id === id);
+      if (!record) throw new Error("Bu kayıt artık bulunamıyor.");
+      if (String(record.description || "") !== expectedDescription)
+        throw new Error(
+          "Not başka bir yerde değişti. Taslağın korunuyor; güncel notu kontrol et.",
+        );
+      if (String(record.description || "") === description) return true;
+      const updated = createRecord({
+        ...record,
+        description,
+        updatedAt: new Date().toISOString(),
+      });
+      return saveRecords(
+        state.records.map((item) => (item.id === id ? updated : item)),
+        "Kayıt notu",
+        { syncLinks: false },
+      );
+    },
+    onError: (message) => toast(message, true),
   });
   window.addEventListener("pagehide", recordNotes.destroy, { once: true });
   waitingInfo = createWaitingInfoUI({
@@ -2684,11 +2764,24 @@ export async function startMainApp() {
     getRecords: () => state.records,
     formatDate,
     renderStatus: statusSummary,
-    onEdit: (id) => openEditor(id),
+    onEdit: (id) => openEditor(id, "", "", "daily", { keepRecordPanel: true }),
     onFollowUp: (id) => waitingFollowUps?.open(id),
+    onRoute: openPanelRoute,
     onError: (message) => toast(message, true),
   });
   window.addEventListener("pagehide", waitingRecordPanel.destroy, {
+    once: true,
+  });
+  meetingRecordPanel = createMeetingRecordPanel({
+    root: app,
+    getRecords: () => state.records,
+    formatDate,
+    renderStatus: statusSummary,
+    onEdit: (id) => openEditor(id, "", "", "daily", { keepRecordPanel: true }),
+    onRoute: openPanelRoute,
+    onError: (message) => toast(message, true),
+  });
+  window.addEventListener("pagehide", meetingRecordPanel.destroy, {
     once: true,
   });
   const removeRecordFormShortcuts = installRecordFormShortcuts(app);
@@ -2737,7 +2830,7 @@ export async function startMainApp() {
         summaryWidget?.open();
         break;
       case "open-calendar":
-        waitingRecordPanel?.close({ restoreFocus: false });
+        closeRecordPreviews();
         closeStatusMenu();
         datePicker?.close();
         choiceFields?.close();
@@ -2752,7 +2845,7 @@ export async function startMainApp() {
         choiceFields?.close();
         inlineFields?.close();
         waitingInfo?.close();
-        recordNotes?.open(id, button);
+        recordNotes?.edit(id, button);
         break;
       case "waiting-history":
         closeStatusMenu();
@@ -2882,21 +2975,18 @@ export async function startMainApp() {
         openEditor(null, id);
         break;
       case "waiting-record-details":
-        closeStatusMenu();
-        datePicker?.close();
-        choiceFields?.close();
-        inlineFields?.close();
-        waitingInfo?.close();
-        recordNotes?.close();
-        goalPanel?.close();
-        button.focus({ preventScroll: true });
-        waitingRecordPanel?.open(id, { trigger: button });
+        event.preventDefault();
+        openRecordPreview("waiting", id, button);
+        break;
+      case "meeting-record-details":
+        event.preventDefault();
+        openRecordPreview("meeting", id, button);
         break;
       case "goal-card-details":
       case "goal-details":
       case "goal-progress-open":
       case "goal-children-open":
-        waitingRecordPanel?.close({ restoreFocus: false });
+        closeRecordPreviews("goal");
         button.focus({ preventScroll: true });
         closeStatusMenu();
         datePicker?.close();
@@ -2984,7 +3074,16 @@ export async function startMainApp() {
         break;
       case "edit":
         event.preventDefault();
-        openEditor(id);
+        openEditor(id, "", "", "daily", {
+          keepRecordPanel: Boolean(
+            document.querySelector(
+              "#waiting-record-panel[open], #meeting-record-panel[open]",
+            ),
+          ),
+          keepGoalPanel: Boolean(
+            document.querySelector("#goal-detail-panel[open]"),
+          ),
+        });
         break;
       case "status-menu":
         openStatusMenu(id, button);
@@ -3087,7 +3186,9 @@ export async function startMainApp() {
   });
   app.addEventListener("keydown", (event) => {
     if (
-      event.target.matches('a.task-name[role="button"][data-action="edit"]') &&
+      event.target.matches(
+        'a.task-name[role="button"]:is([data-action="edit"], [data-action="waiting-record-details"])',
+      ) &&
       event.key === " " &&
       !event.defaultPrevented &&
       !event.isComposing &&
@@ -3122,8 +3223,7 @@ export async function startMainApp() {
       ["Enter", " "].includes(event.key)
     ) {
       event.preventDefault();
-      if (event.target.dataset.action === "goal-details") event.target.click();
-      else openEditor(event.target.dataset.id);
+      event.target.click();
       return;
     }
     const item = event.target.closest(

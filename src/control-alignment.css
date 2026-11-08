@@ -49,6 +49,23 @@
   width: 160px;
 }
 
+.full-table.meeting-table > thead > tr > th.row-action-col {
+  width: 52px;
+}
+
+.full-table > thead > tr > th.row-action-col,
+.full-table > tbody > tr > td.row-action-col,
+.full-table.waiting-table > thead > tr > th.row-action-col,
+.full-table.waiting-table > tbody > tr > td.row-action-col {
+  padding-inline: 8px;
+  text-align: left;
+}
+
+.full-table .row-end-actions {
+  justify-content: flex-start;
+  gap: 6px;
+}
+
 .meeting-table > tbody > tr > td:nth-child(2) > .status-trigger,
 .meeting-table .meeting-linked-cell .meeting-route {
   display: inline-flex;

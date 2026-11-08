@@ -178,7 +178,24 @@ for (const viewport of [
       total: list.scrollWidth,
     }));
     expect(listSize.total).toBeLessThanOrEqual(listSize.client + 1);
-    await expect(page.locator(".attention-list > [data-id]")).toHaveCount(2);
+    const columns = Number(
+      await page
+        .locator(".dashboard-workspace")
+        .getAttribute("data-card-columns"),
+    );
+    expect(columns).toBeGreaterThanOrEqual(1);
+    expect(columns).toBeLessThanOrEqual(3);
+    expect(
+      await page
+        .locator(".attention-list")
+        .evaluate(
+          (list) =>
+            getComputedStyle(list).gridTemplateColumns.split(" ").length,
+        ),
+    ).toBe(columns);
+    await expect(page.locator(".attention-list > [data-id]")).toHaveCount(
+      Math.min(columns, 8),
+    );
     expect((await readAttentionCards(page)).map((card) => card.id)).toEqual(
       Array.from({ length: 8 }, (_, index) => `viewport-attention-${index}`),
     );
@@ -219,7 +236,7 @@ test("the header calendar works from dashboards and lists without navigation, re
     .getByRole("combobox", { name: "Eklenecek kayıt türü" })
     .selectOption("waiting");
   await calendar(page).locator('[data-calendar-action="new-record"]').click();
-  await expect(calendar(page)).not.toBeVisible();
+  await expect(calendar(page)).toBeVisible();
   await expect(
     page.locator('#record-form [name="nextFollowUpDate"]'),
   ).toHaveValue("10.11.2026");
@@ -227,6 +244,11 @@ test("the header calendar works from dashboards and lists without navigation, re
     "07.11.2026",
   );
   await page.getByRole("button", { name: "Vazgeç", exact: true }).click();
+  await expect(calendar(page)).toBeVisible();
+  await expect(
+    calendar(page).locator(".calendar-selected-label time"),
+  ).toHaveAttribute("datetime", "2026-11-10");
+  await page.keyboard.press("Escape");
   await expect(page.locator("#page-title")).toHaveText("Genel bakış");
   await page.locator('#nav [data-view="daily"]').click();
   await page.getByRole("searchbox").fill("Günlük iş");
@@ -254,6 +276,11 @@ test("the header calendar works from dashboards and lists without navigation, re
     "11.11.2026",
   );
   await page.getByRole("button", { name: "Vazgeç", exact: true }).click();
+  await expect(calendar(page)).toBeVisible();
+  await expect(
+    calendar(page).locator(".calendar-selected-label time"),
+  ).toHaveAttribute("datetime", "2026-11-11");
+  await page.keyboard.press("Escape");
   expect(await saved(page)).toBe(original);
   await page.getByRole("searchbox").fill("");
   for (const type of [

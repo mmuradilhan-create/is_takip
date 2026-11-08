@@ -106,7 +106,7 @@ test("daily quick completion takes one click, hides from open work and undo rest
   await expect(daily.locator(".quick-complete")).toBeVisible();
 });
 
-test("meeting and waiting quick completion use their own terminal captions and each undo restores source details", async ({
+test("meeting archival and waiting quick closure use their own terminal captions and each undo restores source details", async ({
   page,
 }) => {
   const originals = [
@@ -116,17 +116,48 @@ test("meeting and waiting quick completion use their own terminal captions and e
   await seed(page, originals);
   for (const original of originals) {
     await openList(page, original.type);
-    await row(page, original.id)
-      .getByRole("button", {
-        name: `${original.title}: ${original.type === "waiting" ? "konuyu kapat" : "hızlı tamamla"}`,
-        exact: true,
-      })
-      .click();
+    if (original.type === "meeting") {
+      await expect(
+        row(page, original.id).locator(".quick-complete"),
+      ).toHaveCount(0);
+      await row(page, original.id).locator(".task-name").click();
+      const preview = page.locator("#meeting-record-panel");
+      await expect(preview).toBeVisible();
+      await preview
+        .getByRole("button", { name: "Kaydı düzenle", exact: true })
+        .click();
+      const form = page.locator("#editor #record-form");
+      await expect(form.locator('[name="id"]')).toHaveValue(original.id);
+      await form.locator('[name="status"]').selectOption("completed");
+      await form
+        .getByRole("button", {
+          name: "Değişiklikleri kaydet",
+          exact: true,
+        })
+        .click();
+      await expect(page.locator("#editor")).not.toBeVisible();
+    } else {
+      await row(page, original.id)
+        .getByRole("button", {
+          name: `${original.title}: konuyu kapat`,
+          exact: true,
+        })
+        .click();
+    }
     await expect(row(page, original.id)).toHaveCount(0);
     await selectListStatus(page, "completed");
-    await expect(row(page, original.id).locator(".status-trigger")).toHaveText(
-      original.type === "waiting" ? "Kapandı" : "Tamamlandı",
-    );
+    if (original.type === "meeting") {
+      await expect(
+        row(page, original.id).locator(".meeting-archive-control"),
+      ).toHaveAttribute("aria-label", /Arşivlendi/);
+      await expect(
+        row(page, original.id).locator(".status-trigger"),
+      ).toHaveCount(0);
+    } else {
+      await expect(
+        row(page, original.id).locator(".status-trigger"),
+      ).toHaveText("Kapandı");
+    }
     await expect(row(page, original.id).locator(".quick-complete")).toHaveCount(
       0,
     );
@@ -137,6 +168,18 @@ test("meeting and waiting quick completion use their own terminal captions and e
       ...original,
       status: "completed",
       updatedAt: START.toISOString(),
+      ...(original.type === "waiting"
+        ? {
+            sourceFields: {
+              ...original.sourceFields,
+              __waitingClosure: {
+                version: 1,
+                closedDate: "2026-11-07",
+                closedAt: START.toISOString(),
+              },
+            },
+          }
+        : {}),
     });
     await undo(page);
     expect(await readRecords(page)).toEqual(originals);
@@ -198,14 +241,24 @@ test("closed records have no quick completion control across every list", async 
       if (type === "weekly" && original.status === "transferred") {
         await expect(row(page, original.id)).toBeVisible();
         await selectListStatus(page, "transferred");
+        await expect(page.locator("#status-filter")).toHaveValue("transferred");
       }
       await expect(row(page, original.id)).toBeVisible();
       await expect(
         row(page, original.id).locator(".quick-complete"),
       ).toHaveCount(0);
-      await expect(
-        row(page, original.id).locator(".status-trigger"),
-      ).toBeVisible();
+      if (type === "meeting") {
+        await expect(
+          row(page, original.id).locator(".meeting-archive-control"),
+        ).toBeVisible();
+        await expect(
+          row(page, original.id).locator(".status-trigger"),
+        ).toHaveCount(0);
+      } else {
+        await expect(
+          row(page, original.id).locator(".status-trigger"),
+        ).toBeVisible();
+      }
     }
   }
   expect(await readRecords(page)).toEqual(originals);

@@ -698,7 +698,8 @@ body[data-work-session] #goal-detail-panel.goal-detail-panel {
   }
 
   #goal-detail-panel.goal-detail-panel {
-    inset: var(--goal-panel-top) 10px var(--goal-panel-bottom) auto;
-    max-width: calc(100vw - 20px);
+    inset: var(--goal-panel-top) 10px var(--goal-panel-bottom);
+    width: auto;
+    max-width: none;
   }
 }

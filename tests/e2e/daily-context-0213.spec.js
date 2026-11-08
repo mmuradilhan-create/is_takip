@@ -114,11 +114,11 @@ test("an unlinked daily draft defaults to ad hoc with a usable main parent choic
     await form(page)
       .locator("details.creation-advanced")
       .evaluate((element) => element.open),
-  ).toBe(false);
+  ).toBe(true);
   await expect(
     form(page).locator('.creation-main-fields [name="workContext"]'),
   ).toHaveCount(0);
-  await expect(field(page, "workContext")).not.toBeVisible();
+  await expect(field(page, "workContext")).toBeVisible();
   await expect(field(page, "workContext")).toHaveValue("ad_hoc");
   await expect(field(page, "parentId")).toBeVisible();
   await expect(field(page, "parentId")).toBeEnabled();
@@ -271,7 +271,7 @@ test("opening and editing existing planned records preserves absent context fiel
     await expect(
       form(page).locator('[data-record-editor-basic] [name="workContext"]'),
     ).toHaveCount(0);
-    await expect(field(page, "workContext")).not.toBeVisible();
+    await expect(field(page, "workContext")).toBeVisible();
     await expect(field(page, "workContext")).toHaveValue("");
     await expect(field(page, "parentId")).toBeVisible();
     await expect(field(page, "parentId")).toBeEnabled();
@@ -339,9 +339,12 @@ test("binding an existing ad hoc task from its weekly goal plans that same task 
   await seed(page, items);
   const before = await saved(page);
   await page.locator('#nav [data-view="weekly"]').click();
-  await row(page, goal.id).locator(".goal-details-trigger").click();
+  await row(page, goal.id)
+    .locator('.task-name[data-action="goal-details"]')
+    .click();
   const panel = page.locator("#goal-detail-panel");
   await expect(panel).toBeVisible();
+  await expect(panel).toHaveAttribute("data-goal-id", goal.id);
   await expect(
     panel.locator('.goal-panel-progress [role="progressbar"]'),
   ).toHaveAttribute("aria-valuenow", "100");

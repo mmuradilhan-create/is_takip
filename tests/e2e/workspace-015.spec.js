@@ -511,6 +511,18 @@ test("goal links are explicit and undoable, roll up their immediate children, an
   }
   await view(page, "weekly");
   await row(page, "hierarchy-closed-link").locator(".task-name").click();
+  await expect(panel(page)).toBeVisible();
+  await expect(panel(page)).toHaveAttribute(
+    "data-goal-id",
+    "hierarchy-closed-link",
+  );
+  await panel(page)
+    .getByRole("button", { name: "Hedefi düzenle", exact: true })
+    .click();
+  await expect(form(page).locator('[name="id"]')).toHaveValue(
+    "hierarchy-closed-link",
+  );
+  await expect(form(page).locator('[name="type"]')).toHaveValue("weekly");
   await expect(form(page).locator("#higher-goal-select")).toHaveValue(
     "hierarchy-closed-month",
   );

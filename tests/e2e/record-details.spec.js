@@ -116,16 +116,21 @@ async function newDaily(page, title) {
   return form(page);
 }
 
-async function choose(page, name, value) {
-  await openCreationExtras(page);
-  const field = form(page).locator(`[name="${name}"]`);
-  await field.fill("");
-  await field.press("ArrowDown");
-  const menu = page.locator("#record-choice-menu");
-  await expect(menu).toBeVisible();
-  await menu.getByText(value, { exact: true }).click();
-  await expect(field).toHaveValue(value);
-  await expect(menu).not.toBeVisible();
+async function openCatalog(page, kind) {
+  const settings = page.locator("#settings-dialog");
+  if (!(await settings.isVisible()))
+    await page.getByRole("button", { name: "Ayarlar", exact: true }).click();
+  const catalog = settings.locator(`[data-choice-catalog="${kind}"]`);
+  if (!(await catalog.evaluate((element) => element.open)))
+    await catalog.locator(":scope > summary").click();
+  return catalog;
+}
+
+async function closeSettings(page) {
+  await page
+    .locator("#settings-dialog")
+    .getByRole("button", { name: "Tamam", exact: true })
+    .click();
 }
 
 test("only proven imported metadata is removed from notes, and a single undo remains respected after reload", async ({
@@ -178,53 +183,74 @@ test("only proven imported metadata is removed from notes, and a single undo rem
   expect(await readRecords(page)).toEqual(cleaned);
 });
 
-test("editable project and work-type choices include saved completed records and learn only saved custom values", async ({
+test("catalogs learn completed legacy values while new daily work leaves retired fields empty and cancelled drafts never write", async ({
   page,
 }) => {
   const original = await seed(page);
-  const draft = await newDaily(page, "Yeni özel proje işi");
-  await choose(page, "projectCode", "TST-42");
-  await choose(page, "workType", "Test");
-  await draft.locator('[name="projectCode"]').fill(CUSTOM_PROJECT);
-  await draft.locator('[name="workType"]').fill("Özel ölçüm");
+  const before = await readSaved(page);
+  let catalog = await openCatalog(page, "projectCode");
+  await expect(
+    catalog
+      .locator(".choice-catalog-list")
+      .getByText("TST-42", { exact: true }),
+  ).toBeVisible();
+  catalog = await openCatalog(page, "workType");
+  await expect(
+    catalog
+      .locator(".choice-catalog-list")
+      .getByText("Prototip", { exact: true }),
+  ).toBeVisible();
+  await closeSettings(page);
+  expect(await readSaved(page)).toBe(before);
+
+  const draft = await newDaily(page, "Yeni gerçek sonuç işi");
+  for (const kind of ["projectCode", "workType"]) {
+    await expect(draft.locator(`[name="${kind}"]`)).toBeHidden();
+    await expect(draft.locator(`[name="${kind}"]`)).toHaveValue("");
+  }
+  await expect(page.locator("#record-choice-menu")).not.toBeVisible();
   await draft.locator('[name="description"]').fill("Yeni gerçek sonuç notu.");
   await expect(draft.locator('[name="nextAction"]')).not.toBeVisible();
-  await page.getByRole("button", { name: "Kaydı ekle", exact: true }).click();
+  await draft.getByRole("button", { name: "Kaydı ekle", exact: true }).click();
   await expect(page.locator("#editor")).not.toBeVisible();
   const saved = await readRecords(page);
   const created = saved.find(
-    (record) => record.title === "Yeni özel proje işi",
+    (record) => record.title === "Yeni gerçek sonuç işi",
   );
   expect(created).toMatchObject({
     type: "daily",
-    projectCode: CUSTOM_PROJECT,
-    workType: "Özel ölçüm",
+    projectCode: "",
+    workType: "",
     description: "Yeni gerçek sonuç notu.",
     nextAction: "",
     sourceDate: "2026-11-07",
   });
   expect(saved.filter((record) => record.id !== created.id)).toEqual(original);
-  expect(await page.evaluate(() => window.detailsInjected)).toBeUndefined();
   await page.reload();
   const beforeDraft = await readSaved(page);
   await newDaily(page, "Vazgeçilecek iş");
-  await choose(page, "projectCode", CUSTOM_PROJECT);
-  await choose(page, "workType", "Özel ölçüm");
-  await form(page).locator('[name="projectCode"]').fill("Vazgeçilen proje");
-  await page.keyboard.press("Escape");
+  await form(page).locator('[name="description"]').fill(CUSTOM_PROJECT);
+  page.once("dialog", (dialog) => dialog.accept());
   await closeEditor(page);
+  await expect(page.locator("#editor")).not.toBeVisible();
   expect(await readSaved(page)).toBe(beforeDraft);
-  await newDaily(page, "Diğer taslak");
-  await form(page).locator('[name="projectCode"]').press("ArrowDown");
-  const menu = page.locator("#record-choice-menu");
-  await expect(menu).toBeVisible();
-  await expect(menu).not.toContainText("Vazgeçilen proje");
-  await expect(menu.getByText(CUSTOM_PROJECT, { exact: true })).toBeVisible();
-  await expect(menu.locator("img")).toHaveCount(0);
-  await page.keyboard.press("Escape");
-  await closeEditor(page);
+  catalog = await openCatalog(page, "projectCode");
+  await expect(
+    catalog
+      .locator(".choice-catalog-list")
+      .getByText(CUSTOM_PROJECT, { exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    catalog
+      .locator(".choice-catalog-list")
+      .getByText("TST-42", { exact: true }),
+  ).toBeVisible();
+  await expect(catalog.locator("img, script")).toHaveCount(0);
+  expect(await page.evaluate(() => window.detailsInjected)).toBeUndefined();
+  await closeSettings(page);
   expect(await readSaved(page)).toBe(beforeDraft);
   await undo(page);
+  expect(await readSaved(page)).toBe(before);
   expect(await readRecords(page)).toEqual(original);
 });
 
@@ -245,7 +271,17 @@ test("daily waiting is controlled by status while reason, work details and backu
   await openCreationExtras(page);
   await expect(form(page).locator('[name="nextAction"]')).toBeHidden();
   await expect(form(page).locator('[name="nextAction"]')).toBeDisabled();
-  await form(page).locator('[name="projectCode"]').fill("ENG-11");
+  await expect(form(page).locator('[name="id"]')).toHaveValue(
+    "details-primary",
+  );
+  for (const kind of ["projectCode", "workType"]) {
+    const field = form(page).locator(`[name="${kind}"]`);
+    await expect(field).toBeHidden();
+    await expect(field).toBeDisabled();
+    await expect(field).toHaveValue(
+      original.find((record) => record.id === "details-primary")[kind] || "",
+    );
+  }
   await page
     .getByRole("button", { name: "Değişiklikleri kaydet", exact: true })
     .click();
@@ -256,12 +292,18 @@ test("daily waiting is controlled by status while reason, work details and backu
     status: "waiting",
     blocked: false,
     waitingReason: "Tasarım yanıtı bekleniyor.",
-    projectCode: "ENG-11",
     category: oldPrimary.category,
     workType: oldPrimary.workType,
     description: oldPrimary.description,
     nextAction: oldPrimary.nextAction,
     sourceFields: oldPrimary.sourceFields,
+  });
+  expect(primary).toEqual({
+    ...oldPrimary,
+    status: "waiting",
+    blocked: false,
+    waitingReason: "Tasarım yanıtı bekleniyor.",
+    updatedAt: NOW.toISOString(),
   });
   await expect(
     page.locator(".blocked-badge, #blocker-details-popover"),
@@ -288,8 +330,12 @@ test("daily waiting is controlled by status while reason, work details and backu
   await expect(page.locator(".blocked-badge")).toHaveCount(0);
   await list(page, "weekly");
   await page
-    .locator('.weekly-goal-row[data-id="details-weekly"] .goal-details-trigger')
+    .locator('.weekly-goal-row[data-id="details-weekly"] .task-name')
     .click();
+  await expect(page.locator("#goal-detail-panel")).toHaveAttribute(
+    "data-goal-id",
+    "details-weekly",
+  );
   await expect(
     page.locator(
       '#goal-detail-panel .goal-child-row[data-id="details-primary"] .status-trigger',
@@ -308,7 +354,6 @@ test("daily waiting is controlled by status while reason, work details and backu
   expect(
     parsed.records.find((record) => record.id === primary.id),
   ).toMatchObject({
-    projectCode: "ENG-11",
     waitingReason: primary.waitingReason,
     status: "waiting",
     blocked: false,

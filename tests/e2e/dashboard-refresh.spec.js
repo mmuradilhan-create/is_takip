@@ -223,17 +223,39 @@ test("optional planning prompts replace repeated cards while weekly, attention a
     ),
   ).toHaveCount(0);
   await dashboard(page);
-  await expect(page.locator(".attention-list > li")).toHaveCount(2);
+  const columns = Number(
+    await page
+      .locator(".dashboard-workspace")
+      .getAttribute("data-card-columns"),
+  );
+  expect(columns).toBeGreaterThanOrEqual(1);
+  expect(columns).toBeLessThanOrEqual(3);
+  expect(
+    await page
+      .locator(".attention-list")
+      .evaluate(
+        (list) => getComputedStyle(list).gridTemplateColumns.split(" ").length,
+      ),
+  ).toBe(columns);
+  await expect(page.locator(".attention-list > li")).toHaveCount(
+    Math.min(columns, 3),
+  );
   expect(
     (await readAttentionCards(page)).map((card) => card.id).sort(),
   ).toEqual(["waiting-future", "waiting-overdue", "waiting-today"]);
   await page
     .locator('.attention-list [data-id="waiting-overdue"] .followup-title')
     .click();
+  const preview = page.locator("#waiting-record-panel");
+  await expect(preview).toHaveAttribute("data-record-id", "waiting-overdue");
+  await preview
+    .getByRole("button", { name: "Kaydı düzenle", exact: true })
+    .click();
   await expect(page.locator('#record-form [name="title"]')).toHaveValue(
     "Takibi geciken konu",
   );
   await page.locator('#editor [data-action="close"]').last().click();
+  await page.keyboard.press("Escape");
   await page.locator('#nav [data-view="waiting"]').click();
   await page.locator("#period-filter").selectOption("followup");
   expect(

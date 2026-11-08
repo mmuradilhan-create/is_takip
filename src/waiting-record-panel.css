@@ -149,9 +149,38 @@ body[data-work-session] #waiting-record-panel {
   gap: 8px;
 }
 
-.waiting-record-section-heading > span {
+.waiting-record-section-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.waiting-record-history-count {
   color: var(--theme-muted, #74836a);
   font-size: 11px;
+}
+
+.waiting-record-section-heading > .waiting-record-followup {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 5px;
+  min-height: 28px;
+  padding: 5px 8px;
+  font-size: 11px;
+}
+
+.waiting-record-followup > svg,
+.waiting-record-create-icon {
+  flex: 0 0 12px;
+  width: 12px;
+  height: 12px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .waiting-record-body h3 {
@@ -270,9 +299,10 @@ body[data-work-session] #waiting-record-panel {
   #waiting-record-panel.waiting-record-panel {
     --waiting-panel-top: 12px;
     --waiting-panel-bottom: 12px;
+    left: 12px;
     right: 12px;
-    width: calc(100vw - 24px);
-    max-width: calc(100vw - 24px);
+    width: auto;
+    max-width: none;
   }
 }
 

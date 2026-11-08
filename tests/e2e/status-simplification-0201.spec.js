@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 import { createRecord, validateStore } from "../../src/model.js";
+import { cleanupMeetingContacts } from "../../src/meeting-contact-cleanup.js";
 import { openCreationExtras } from "./creation-support.js";
 
 const KEY = "is-takip-v1";
@@ -23,86 +24,89 @@ const closeEditor = (page) =>
     .click();
 
 function fixture() {
-  return TYPES.flatMap((type) => [
-    createRecord({
-      id: `legacy-${type}`,
-      type,
-      title: `Özgün ${type} kaydı`,
-      status: "partially_completed",
-      priority: "high",
-      createdAt: STAMP,
-      updatedAt: STAMP,
-      sourceDate: "2026-11-01",
-      dueDate: "2026-11-10",
-      description: `Gerçek ${type} notu`,
-      nextAction: `Özgün ${type} sonraki adımı`,
-      owner: "Özgün sorumlu",
-      periodKey:
-        { weekly: "2026-W45", monthly: "2026-11", yearly: "2026" }[type] || "",
-      ...(type === "daily"
-        ? {
-            parentId: "legacy-weekly",
-            projectCode: "ÖZGÜN-42",
-            workType: "Teknik inceleme",
-            category: "Korunacak kategori",
-            waitingReason: "Önceden kaydedilmiş neden",
-            workLog: [
-              {
-                id: "legacy-session",
-                date: "2026-11-06",
-                endedAt: "2026-11-06T09:00:00.000Z",
-                durationMs: 90_000,
-                note: "Gerçek çalışma sonucu",
-                nextAction: "Geçmiş sonraki adım",
-              },
-            ],
-          }
-        : {}),
-      ...(["weekly", "monthly", "yearly"].includes(type)
-        ? { metric: "Rapor", targetValue: 10, currentValue: 4 }
-        : {}),
-      ...(type === "weekly" ? { goalParentId: "legacy-monthly" } : {}),
-      ...(type === "monthly" ? { goalParentId: "legacy-yearly" } : {}),
-      ...(type === "meeting"
-        ? {
-            decision: "Gerçek toplantı kararı",
-            participants: "Tasarım ve üretim",
-          }
-        : {}),
-      ...(type === "waiting"
-        ? {
-            expectedFrom: "Dış ekip",
-            nextFollowUpDate: "2026-11-10",
-            lastFollowUpDate: "2026-11-05",
-            latestUpdate: "Gerçek takip özeti",
-            followUpLog: [
-              {
-                id: "legacy-followup",
-                date: "2026-11-05",
-                note: "Gerçekleşmiş takip",
-                nextFollowUpDate: "2026-11-10",
-              },
-            ],
-          }
-        : {}),
-      sourceFields: { "Özgün kaynak": { value: `${type} ham bilgisi` } },
-    }),
-    createRecord({
-      id: `canonical-${type}`,
-      type,
-      title: `Devam eden ${type} kaydı`,
-      status: "in_progress",
-      createdAt: STAMP,
-      updatedAt: STAMP,
-    }),
-    createRecord({
-      id: `planned-${type}`,
-      type,
-      title: `Planlanan ${type} kaydı`,
-      createdAt: STAMP,
-      updatedAt: STAMP,
-    }),
-  ]);
+  return cleanupMeetingContacts(
+    TYPES.flatMap((type) => [
+      createRecord({
+        id: `legacy-${type}`,
+        type,
+        title: `Özgün ${type} kaydı`,
+        status: "partially_completed",
+        priority: "high",
+        createdAt: STAMP,
+        updatedAt: STAMP,
+        sourceDate: "2026-11-01",
+        dueDate: "2026-11-10",
+        description: `Gerçek ${type} notu`,
+        nextAction: `Özgün ${type} sonraki adımı`,
+        owner: "Özgün sorumlu",
+        periodKey:
+          { weekly: "2026-W45", monthly: "2026-11", yearly: "2026" }[type] ||
+          "",
+        ...(type === "daily"
+          ? {
+              parentId: "legacy-weekly",
+              projectCode: "ÖZGÜN-42",
+              workType: "Teknik inceleme",
+              category: "Korunacak kategori",
+              waitingReason: "Önceden kaydedilmiş neden",
+              workLog: [
+                {
+                  id: "legacy-session",
+                  date: "2026-11-06",
+                  endedAt: "2026-11-06T09:00:00.000Z",
+                  durationMs: 90_000,
+                  note: "Gerçek çalışma sonucu",
+                  nextAction: "Geçmiş sonraki adım",
+                },
+              ],
+            }
+          : {}),
+        ...(["weekly", "monthly", "yearly"].includes(type)
+          ? { metric: "Rapor", targetValue: 10, currentValue: 4 }
+          : {}),
+        ...(type === "weekly" ? { goalParentId: "legacy-monthly" } : {}),
+        ...(type === "monthly" ? { goalParentId: "legacy-yearly" } : {}),
+        ...(type === "meeting"
+          ? {
+              decision: "Gerçek toplantı kararı",
+              participants: "Tasarım ve üretim",
+            }
+          : {}),
+        ...(type === "waiting"
+          ? {
+              expectedFrom: "Dış ekip",
+              nextFollowUpDate: "2026-11-10",
+              lastFollowUpDate: "2026-11-05",
+              latestUpdate: "Gerçek takip özeti",
+              followUpLog: [
+                {
+                  id: "legacy-followup",
+                  date: "2026-11-05",
+                  note: "Gerçekleşmiş takip",
+                  nextFollowUpDate: "2026-11-10",
+                },
+              ],
+            }
+          : {}),
+        sourceFields: { "Özgün kaynak": { value: `${type} ham bilgisi` } },
+      }),
+      createRecord({
+        id: `canonical-${type}`,
+        type,
+        title: `Devam eden ${type} kaydı`,
+        status: "in_progress",
+        createdAt: STAMP,
+        updatedAt: STAMP,
+      }),
+      createRecord({
+        id: `planned-${type}`,
+        type,
+        title: `Planlanan ${type} kaydı`,
+        createdAt: STAMP,
+        updatedAt: STAMP,
+      }),
+    ]),
+  );
 }
 
 async function seed(page) {
@@ -133,15 +137,39 @@ async function seed(page) {
   return records;
 }
 
-async function openLegacy(page, type) {
-  await list(page, type);
-  await row(page, `legacy-${type}`).locator(".task-name").click();
+async function editLegacyFromRow(page, type) {
+  const id = `legacy-${type}`;
+  await row(page, id).locator(".task-name").click();
+  if (type !== "daily") {
+    const isGoal = ["weekly", "monthly", "yearly"].includes(type);
+    const panel = page.locator(
+      isGoal ? "#goal-detail-panel" : `#${type}-record-panel`,
+    );
+    await expect(panel).toBeVisible();
+    await expect(panel).toHaveAttribute(
+      isGoal ? "data-goal-id" : "data-record-id",
+      id,
+    );
+    await panel
+      .getByRole("button", {
+        name: isGoal ? "Hedefi düzenle" : "Kaydı düzenle",
+        exact: true,
+      })
+      .click();
+  }
+  await expect(form(page).locator('[name="id"]')).toHaveValue(id);
+  await expect(form(page).locator('select[name="type"]')).toHaveValue(type);
   await expect(form(page).locator('select[name="status"]')).toHaveValue(
-    "in_progress",
+    type === "meeting" ? "planned" : "in_progress",
   );
 }
 
-test("every list displays legacy partial work as ongoing and removes the retired choice from filters, menus and both forms without writes", async ({
+async function openLegacy(page, type) {
+  await list(page, type);
+  await editLegacyFromRow(page, type);
+}
+
+test("legacy partial work uses current display states while filters, menus and both forms omit the retired choice without writes", async ({
   page,
 }) => {
   await seed(page);
@@ -151,18 +179,25 @@ test("every list displays legacy partial work as ongoing and removes the retired
     await expect(
       page.locator('#status-filter option[value="partially_completed"]'),
     ).toHaveCount(0);
-    await page.locator("#status-filter").selectOption("in_progress");
+    const displayStatus = type === "meeting" ? "planned" : "in_progress";
+    await page.locator("#status-filter").selectOption(displayStatus);
     expect(
       (
         await page
           .locator(".full-table tbody > tr[data-record-row]")
           .evaluateAll((rows) => rows.map((row) => row.dataset.id))
       ).sort(),
-    ).toEqual([`canonical-${type}`, `legacy-${type}`]);
+    ).toEqual(
+      type === "meeting"
+        ? [`canonical-${type}`, `legacy-${type}`, `planned-${type}`]
+        : [`canonical-${type}`, `legacy-${type}`],
+    );
     const legacy = row(page, `legacy-${type}`);
     const badge = legacy.locator(".status-trigger");
-    await expect(badge).toHaveText("Devam ediyor");
-    await expect(badge).toHaveClass(/status-in_progress/);
+    await expect(badge).toHaveText(
+      type === "meeting" ? "Planlanacak" : "Devam ediyor",
+    );
+    await expect(badge).toHaveClass(new RegExp(`status-${displayStatus}`));
     await expect(badge).not.toHaveClass(/status-partially_completed/);
     const legacyColor = await badge.evaluate(
       (button) => getComputedStyle(button).backgroundColor,
@@ -176,16 +211,20 @@ test("every list displays legacy partial work as ongoing and removes the retired
       page.locator('#status-menu [data-status="partially_completed"]'),
     ).toHaveCount(0);
     await expect(
-      page.locator('#status-menu [data-status="in_progress"]'),
+      page.locator(`#status-menu [data-status="${displayStatus}"]`),
     ).toHaveAttribute("aria-checked", "true");
+    if (type === "meeting")
+      await expect(
+        page.locator('#status-menu [data-status="in_progress"]'),
+      ).toHaveCount(0);
     await expect(page.locator("#status-menu")).not.toContainText("Kısmi");
     await page.keyboard.press("Escape");
-    await legacy.locator(".task-name").click();
+    await editLegacyFromRow(page, type);
     await expect(
       form(page).locator('[name="status"] option[value="partially_completed"]'),
     ).toHaveCount(0);
     await expect(form(page).locator('[name="status"]')).toHaveValue(
-      "in_progress",
+      displayStatus,
     );
     await closeEditor(page);
     await page.locator(".topbar .new-record").click();
@@ -257,12 +296,12 @@ test("unrelated edits preserve raw legacy status and all original measurements, 
   expect(await saved(page)).toBe(before);
 });
 
-test("explicit ongoing selections store the canonical status while unrelated data and exact undo remain intact", async ({
+test("explicit ongoing selections canonicalize supported records while meeting archive controls preserve their legacy source and exact undo", async ({
   page,
 }) => {
   const original = await seed(page);
   const before = await saved(page);
-  for (const type of TYPES) {
+  for (const type of TYPES.filter((type) => type !== "meeting")) {
     await list(page, type);
     await row(page, `legacy-${type}`).locator(".status-trigger").click();
     await page
@@ -286,6 +325,17 @@ test("explicit ongoing selections store the canonical status while unrelated dat
     await undo(page);
     expect(await saved(page)).toBe(before);
   }
+  await list(page, "meeting");
+  await row(page, "legacy-meeting").locator(".status-trigger").click();
+  await expect(
+    page.locator('#status-menu [data-status="in_progress"]'),
+  ).toHaveCount(0);
+  await expect(
+    page.locator('#status-menu [data-status="planned"]'),
+  ).toHaveAttribute("aria-checked", "true");
+  await page.locator('#status-menu [data-status="planned"]').click();
+  expect(await saved(page)).toBe(before);
+  expect((await store(page)).records).toEqual(original);
   await openLegacy(page, "daily");
   await form(page).locator('[name="status"]').selectOption("planned");
   await form(page).locator('[name="status"]').selectOption("in_progress");

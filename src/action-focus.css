@@ -1,9 +1,9 @@
-/* Action focus uses text and icon cues; form fields keep their focus styling. */
+/* Focus stays inside controls instead of adding a second external frame. */
 #app .full-table [data-record-row]:is(:hover, :focus-visible) {
   background-color: transparent;
 }
 
-:is(#app, .calendar-dialog)
+:is(#app, .calendar-dialog, .odak-date-picker)
   :is(
     button,
     a,
@@ -12,13 +12,14 @@
     [data-goal-section-heading],
     .waiting-record-body,
     .record-note-body
-  ):focus:not(:disabled) {
+  ):focus:not(:disabled),
+#app .modal :is(button, a, summary):focus:not(:disabled) {
   outline: none;
   outline-offset: 0;
   box-shadow: none;
 }
 
-:is(#app, .calendar-dialog)
+:is(#app, .calendar-dialog, .odak-date-picker)
   :is(button, a, summary, [data-goal-section-heading]):focus-visible:not(
     :disabled
   ) {
@@ -27,7 +28,7 @@
   text-decoration-thickness: 1px;
 }
 
-:is(#app, .calendar-dialog)
+:is(#app, .calendar-dialog, .odak-date-picker)
   :is(button, a, summary):focus-visible:not(:disabled)
   svg {
   stroke-width: 2.4;
@@ -49,4 +50,56 @@
 
 #app :is(.waiting-record-body, .record-note-body):focus-visible {
   background: var(--theme-hover, #f6f8f3);
+}
+
+:is(#app, .calendar-dialog, .odak-date-picker)
+  :is(input, select, textarea):focus:not(:disabled) {
+  outline: none;
+  outline-offset: 0;
+  box-shadow: none;
+}
+
+:is(#app, .calendar-dialog, .odak-date-picker)
+  :is(input, select, textarea):focus:not(:disabled):not(:invalid):not(
+    [aria-invalid="true"],
+    .invalid,
+    .is-invalid,
+    .has-error
+  ):not(:where([aria-invalid="true"], .invalid, .is-invalid, .has-error) *) {
+  border-color: var(--theme-accent, #6ea28e);
+}
+
+#app :is(.filter-control, .settings-theme-choice):focus-within {
+  outline: none;
+  outline-offset: 0;
+  box-shadow: none;
+}
+
+#app
+  :is(.filter-control, .settings-theme-choice):focus-within:not(
+    [aria-invalid="true"],
+    .invalid,
+    .is-invalid,
+    .has-error
+  ) {
+  border-color: var(--theme-accent, #6ea28e);
+}
+
+:is(#app, .calendar-dialog, .odak-date-picker)
+  input:is([type="checkbox"], [type="radio"]):focus-visible {
+  outline: 1px solid currentColor;
+  outline-offset: -2px;
+}
+
+/* Returning pointer focus must not leave a record looking like a link selection. */
+:root[data-input-modality="pointer"]
+  #app
+  :is(.full-table, .focus-list)
+  :is(.task-name, .focus-title):focus,
+:root[data-input-modality="pointer"]
+  #app
+  :is(.full-table, .focus-list)
+  [data-record-row]:focus
+  :is(.task-name, .focus-title) {
+  text-decoration-line: none;
 }

@@ -783,7 +783,7 @@
   }
 }
 
-@media (min-width: 1100px) and (max-height: 680px) {
+@media (min-width: 1100px) and (max-height: 740px) {
   .dashboard-calendar {
     grid-template-rows: auto auto auto minmax(80px, 1fr);
   }

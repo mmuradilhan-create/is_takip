@@ -574,7 +574,11 @@ test("routed meetings stay read-only while waiting follow-up history survives a 
   await openExtras(page);
   for (const name of ["status", "dueDate", "nextAction"])
     await expect(field(page, name)).toBeDisabled();
-  await expect(field(page, "owner")).toBeEnabled();
+  for (const name of ["owner", "participants"]) {
+    await expect(field(page, name)).toBeHidden();
+    await expect(field(page, name)).toBeDisabled();
+    await expect(field(page, name)).toHaveValue("");
+  }
   await close(page);
   await open(page, "waiting");
   await expect(form(page).locator('select[name="type"]')).toBeDisabled();

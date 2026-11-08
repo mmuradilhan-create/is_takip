@@ -330,7 +330,7 @@
   }
 }
 
-@media (min-width: 1100px) and (min-height: 640px) and (max-height: 680px) {
+@media (min-width: 1100px) and (min-height: 640px) and (max-height: 740px) {
   .main.is-dashboard .dashboard-rows .dashboard-calendar {
     grid-template-rows: auto auto auto minmax(0, 1fr);
   }

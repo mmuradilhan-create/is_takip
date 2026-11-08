@@ -106,7 +106,17 @@ async function view(page, type) {
 async function open(page, type, id) {
   await view(page, type);
   await row(page, id).locator(".task-name").click();
+  if (["weekly", "monthly", "yearly"].includes(type)) {
+    const panel = page.locator("#goal-detail-panel");
+    await expect(panel).toBeVisible();
+    await expect(panel).toHaveAttribute("data-goal-id", id);
+    await panel
+      .getByRole("button", { name: "Hedefi düzenle", exact: true })
+      .click();
+  }
   await expect(form(page)).toBeVisible();
+  await expect(field(page, "id")).toHaveValue(id);
+  await expect(field(page, "type")).toHaveValue(type);
 }
 
 async function save(page) {

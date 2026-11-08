@@ -201,7 +201,10 @@ test("weekly, monthly and yearly panels render human periods and readable child 
     await expect(controls(page)).toBeVisible();
     await expect(progressInput(page)).toHaveValue("1");
     await expect(progressBar(page)).toHaveAttribute("aria-valuenow", "25");
-    await expect(panel(page).locator("#goal-next-step-form")).toBeVisible();
+    await expect(panel(page)).toHaveAttribute("data-goal-id", id);
+    await expect(
+      panel(page).locator("#goal-next-step-form, [name=nextAction]"),
+    ).toHaveCount(0);
     expect(await saved(page)).toBe(before);
   }
   await openGoal(page, "weekly", "week-derived");

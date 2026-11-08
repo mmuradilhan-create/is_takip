@@ -17,16 +17,26 @@ export function createRecordLinkTooltip({
   root.append(bubble);
   let trigger = null;
   let hovered = null;
-  let suppressed = null;
+  const suppressed = new WeakSet();
   let timer = null;
   let addedDescription = false;
   let destroyed = false;
+  let pointerPosition = null;
+  let keyboardNavigation = false;
 
   const controlFor = (target) => {
     const control = target?.closest?.(CONTROL);
     return control && root.contains(control) ? control : null;
   };
   const focused = (control) => control?.contains(document.activeElement);
+  const pointerMoved = (event) =>
+    !pointerPosition ||
+    event.clientX !== pointerPosition.x ||
+    event.clientY !== pointerPosition.y;
+
+  function rememberPointer(event) {
+    pointerPosition = { x: event.clientX, y: event.clientY };
+  }
 
   function clearTimer() {
     owner.clearTimeout(timer);
@@ -91,7 +101,7 @@ export function createRecordLinkTooltip({
       destroyed ||
       !control?.isConnected ||
       !root.contains(control) ||
-      suppressed === control
+      suppressed.has(control)
     )
       return;
     const caption = control.dataset.recordLinkTooltip?.trim();
@@ -118,7 +128,7 @@ export function createRecordLinkTooltip({
 
   function schedule(control) {
     clearTimer();
-    if (control === suppressed || trigger === control) return;
+    if (suppressed.has(control) || trigger === control) return;
     timer = owner.setTimeout(() => {
       timer = null;
       if (hovered === control || focused(control)) show(control);
@@ -128,7 +138,11 @@ export function createRecordLinkTooltip({
   function onPointerOver(event) {
     const control = controlFor(event.target);
     if (!control || control.contains(event.relatedTarget)) return;
-    if (suppressed !== control) suppressed = null;
+    // Closing a panel can reveal the icon under a stationary pointer. Only a
+    // new pointer entry should undo the dismissal from activating that icon.
+    const moved = pointerMoved(event);
+    rememberPointer(event);
+    if (moved) suppressed.delete(control);
     hovered = control;
     schedule(control);
   }
@@ -137,42 +151,64 @@ export function createRecordLinkTooltip({
     const control = controlFor(event.target);
     if (!control || control.contains(event.relatedTarget)) return;
     if (hovered === control) hovered = null;
-    if (suppressed === control) suppressed = null;
     clearTimer();
     if (trigger === control && !focused(control)) close();
   }
 
   function onFocusIn(event) {
+    const navigation = keyboardNavigation;
+    keyboardNavigation = false;
     const control = controlFor(event.target);
     if (!control) return;
-    if (suppressed !== control) suppressed = null;
+    // Panel close restores focus without a new keyboard navigation request.
+    if (navigation) suppressed.delete(control);
     show(control);
   }
 
   function onFocusOut(event) {
     const control = controlFor(event.target);
     if (!control || control.contains(event.relatedTarget)) return;
-    if (suppressed === control) suppressed = null;
     if (trigger === control && hovered !== control) close();
   }
 
   function onActivate(event) {
+    keyboardNavigation = false;
+    if (event.type === "pointerdown") rememberPointer(event);
     const control = controlFor(event.target);
     if (trigger || timer) close();
-    if (control) suppressed = control;
+    if (control) suppressed.add(control);
   }
 
   function onKeyDown(event) {
+    keyboardNavigation =
+      [
+        "Tab",
+        "ArrowLeft",
+        "ArrowRight",
+        "ArrowUp",
+        "ArrowDown",
+        "Home",
+        "End",
+      ].includes(event.key) &&
+      !event.isComposing &&
+      !event.ctrlKey &&
+      !event.altKey &&
+      !event.metaKey;
     if (event.key !== "Escape" || !trigger) return;
-    suppressed = trigger;
+    suppressed.add(trigger);
     close();
     event.preventDefault();
     event.stopPropagation();
   }
 
+  function onKeyUp() {
+    keyboardNavigation = false;
+  }
+
   function onViewportChange() {
     if (trigger || timer) {
-      suppressed = trigger || hovered;
+      const control = trigger || hovered;
+      if (control) suppressed.add(control);
       close();
     }
   }
@@ -192,8 +228,10 @@ export function createRecordLinkTooltip({
     root.removeEventListener("focusin", onFocusIn);
     root.removeEventListener("focusout", onFocusOut);
     document.removeEventListener("pointerdown", onActivate, true);
+    document.removeEventListener("pointermove", rememberPointer, true);
     document.removeEventListener("click", onActivate, true);
     document.removeEventListener("keydown", onKeyDown, true);
+    document.removeEventListener("keyup", onKeyUp, true);
     owner.removeEventListener("scroll", onViewportChange, true);
     owner.removeEventListener("resize", onViewportChange);
     owner.visualViewport?.removeEventListener("resize", onViewportChange);
@@ -205,8 +243,10 @@ export function createRecordLinkTooltip({
   root.addEventListener("focusin", onFocusIn);
   root.addEventListener("focusout", onFocusOut);
   document.addEventListener("pointerdown", onActivate, true);
+  document.addEventListener("pointermove", rememberPointer, true);
   document.addEventListener("click", onActivate, true);
   document.addEventListener("keydown", onKeyDown, true);
+  document.addEventListener("keyup", onKeyUp, true);
   owner.addEventListener("scroll", onViewportChange, true);
   owner.addEventListener("resize", onViewportChange);
   owner.visualViewport?.addEventListener("resize", onViewportChange);

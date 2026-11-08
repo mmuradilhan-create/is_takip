@@ -86,15 +86,16 @@ test("annual goals have no deadline controls while creation and editing preserve
   await expect(row(page).locator(".date-cell")).toHaveCount(0);
   await expect(page.locator("#period-filter")).toHaveCount(0);
   await expect(page.locator('#list-sort option[value^="due-"]')).toHaveCount(0);
-  await row(page).locator(".goal-details-trigger").click();
+  await row(page).locator('.task-name[data-action="goal-details"]').click();
   const panel = page.locator("#goal-detail-panel");
+  await expect(panel).toHaveAttribute("data-goal-id", "annual-legacy");
   await expect(
     panel.locator('.goal-panel-progress [role="progressbar"]'),
   ).toHaveAttribute("aria-valuenow", "40");
   await expect(panel.locator(".modal-header .deadline-tag")).toHaveCount(0);
   await expect(
     panel.locator(
-      '.goal-child-row[data-id="annual-monthly-child"] .goal-child-date',
+      '.goal-child-row[data-id="annual-monthly-child"] .inline-date',
     ),
   ).toContainText("10 Kas");
   await page.keyboard.press("Escape");
@@ -131,6 +132,12 @@ test("annual goals have no deadline controls while creation and editing preserve
   expect(await saved(page)).toBe(originalBytes);
 
   await row(page).locator(".task-name").click();
+  await expect(panel).toHaveAttribute("data-goal-id", "annual-legacy");
+  await panel
+    .getByRole("button", { name: "Hedefi düzenle", exact: true })
+    .click();
+  await expect(form(page).locator('[name="id"]')).toHaveValue("annual-legacy");
+  await expect(form(page).locator('select[name="type"]')).toHaveValue("yearly");
   await expect(form(page).locator('[name="dueDate"]')).not.toBeVisible();
   await expect(form(page).locator('[name="dueDate"]')).toBeDisabled();
   await openCreationExtras(page);
@@ -180,10 +187,12 @@ test("the global calendar omits legacy annual dates while monthly and daily date
       '.calendar-expanded-grid [data-calendar-record-id="annual-monthly-child"]',
     )
     .click();
-  await expect(calendar).not.toBeVisible();
+  await expect(calendar).toBeVisible();
+  await expect(page.locator("#editor")).toBeVisible();
   await expect(form(page).locator('[name="id"]')).toHaveValue(
     "annual-monthly-child",
   );
+  await expect(form(page).locator('[name="type"]')).toHaveValue("monthly");
   await expect(form(page).locator('[name="dueDate"]')).toHaveValue(
     "10.11.2026",
   );
@@ -191,6 +200,7 @@ test("the global calendar omits legacy annual dates while monthly and daily date
     .locator("#editor")
     .getByRole("button", { name: "Vazgeç", exact: true })
     .click();
+  await expect(calendar).toBeVisible();
   expect(await saved(page)).toBe(originalBytes);
   expect(await records(page)).toEqual(original);
 });

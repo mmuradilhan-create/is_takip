@@ -34,6 +34,19 @@ geçişinde ve pencereye dönünce güncellenir. Kayıtları veya açık formlar
 
 LISTE DUZENI
 
+Hedefin bağlı kaydındaki Bağı kaldır, yalnız o ilişkiyi çözer; günlük iş
+anlık işe döner, alt hedef kendi türünde kalır. Durum/tarih/not/günlük ve
+kaynak bağlantısı korunur, tek Geri al ilişkiyi geri getirir.
+
+Not önizlemesi doğrudan metni gösteren kompakt beyaz/yeşil balondur;
+ayrı başlık ve iç çerçeve yoktur. Uzun not kaydırılabilir, tıklamak not
+editörünü açar. Panel kapanınca bağlantı balonu tekrar kendiliğinden açılmaz.
+Fareyle dönülen başlık altı çizili kalmaz; klavye odağı korunur. Formlarda
+kalın dış odak halkası yerine ince kenarlık kullanılır.
+İşlem sütunu düğme sayısına göre kompakt ve sola hizalıdır. Yeni günlük iş
+oluşturma simgesi + işaretidir. Bekleyen konu panelinde Takip ettim,
+Takip geçmişi başlığının yanındadır; altta Kaydı düzenle ve Kapat bulunur.
+
 Güncel işlerde Çalışmaya başla düğmesinin solundaki iş günlüğü simgesi
 o işin oturumlarını açar; kayıtlı günlük lila, boş günlük nötrdür.
 

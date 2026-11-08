@@ -172,7 +172,8 @@ test("open completion controls are visually empty and only completed records sho
   ]) {
     await navigate(page, type);
     const buttons = page.locator(".full-table .quick-complete");
-    expect(await buttons.count()).toBeGreaterThan(0);
+    if (type === "meeting") await expect(buttons).toHaveCount(0);
+    else expect(await buttons.count()).toBeGreaterThan(0);
     await expect(buttons.locator("svg")).toHaveCount(0);
     for (const value of await buttons.allTextContents())
       expect(value.trim()).toBe("");
@@ -180,8 +181,14 @@ test("open completion controls are visually empty and only completed records sho
       ".full-table .row-end-actions button, .meeting-table .meeting-linked-cell .meeting-route",
     );
     expect(await actions.count()).toBeGreaterThan(0);
-    if (type === "meeting")
-      await expect(actions).toHaveText(["İş oluştur", "Takip oluştur"]);
+    if (type === "meeting") {
+      await expect(
+        page.locator(".meeting-table .meeting-linked-cell .meeting-route"),
+      ).toHaveText(["İş oluştur", "Takip oluştur"]);
+      await expect(
+        page.locator(".meeting-table .row-end-actions button"),
+      ).toHaveText([""]);
+    }
     for (const action of await actions.all()) {
       await expect(action).toHaveAttribute("aria-label", /.+/);
       await expect(action).toHaveAttribute("title", /.+/);
@@ -209,7 +216,7 @@ test("open completion controls are visually empty and only completed records sho
   ).toHaveCount(0);
   await navigate(page, "weekly");
   await page
-    .locator('[data-action="goal-details"][data-id="compact-weekly"]')
+    .locator('.full-table tr[data-id="compact-weekly"] .task-name')
     .click();
   await expect(
     page.locator("#goal-detail-panel .quick-complete svg"),
@@ -298,19 +305,24 @@ test("compact focus rows align separate priority and delivery columns while head
             priority: rect(":scope > .focus-priority"),
             due: rect(":scope > .focus-date"),
             status: rect(":scope > .status-trigger"),
-            start: rect(":scope > .work-start"),
+            journal: rect(".focus-work-actions .work-journal-trigger"),
+            start: rect(".focus-work-actions .work-start"),
             height: row.getBoundingClientRect().height,
           };
         }),
       );
     for (const item of geometry) {
       expect(item.complete.right).toBeLessThanOrEqual(item.title.x);
-      expect(item.title.right).toBeLessThanOrEqual(item.priority.x + 1);
+      expect(item.title.right).toBeLessThanOrEqual(item.status.x + 1);
+      expect(item.status.right).toBeLessThanOrEqual(item.priority.x + 1);
       expect(item.priority.right).toBeLessThanOrEqual(item.due.x + 1);
-      expect(item.due.right).toBeLessThanOrEqual(item.status.x + 1);
-      expect(item.status.right).toBeLessThanOrEqual(item.start.x + 1);
+      expect(item.due.right).toBeLessThanOrEqual(item.journal.x + 1);
+      expect(item.journal.right).toBeLessThanOrEqual(item.start.x + 1);
+      expect(item.status.x).toBeCloseTo(geometry[0].status.x, 1);
       expect(item.priority.x).toBeCloseTo(geometry[0].priority.x, 1);
       expect(item.due.x).toBeCloseTo(geometry[0].due.x, 1);
+      expect(item.journal.x).toBeCloseTo(geometry[0].journal.x, 1);
+      expect(item.start.x).toBeCloseTo(geometry[0].start.x, 1);
       expect(item.height).toBeLessThanOrEqual(66);
     }
     const header = await page.locator(".focus-panel").boundingBox();

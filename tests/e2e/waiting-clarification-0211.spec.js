@@ -151,7 +151,7 @@ test("waiting clarification counts only matching open incomplete subjects and fi
     await form(page)
       .locator("[data-record-editor-extras]")
       .evaluate((element) => element.open),
-  ).toBe(false);
+  ).toBe(true);
   await expect(form(page).locator('[name="dueDate"]')).not.toBeVisible();
   expect(await saved(page)).toBe(before);
   await form(page).locator('[name="expectedFrom"]').fill("Kalite birimi");

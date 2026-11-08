@@ -358,7 +358,10 @@ test("waiting-job agenda uses the single saved waiting status, while review remi
   const records = [
     record("waiting", { status: "waiting" }),
     record("legacy-flag-only", { blocked: true }),
-    record("stale", { updatedAt: "2026-10-30T23:00:00.000Z" }),
+    record("stale", { updatedAt: new Date(2026, 9, 30, 23).toISOString() }),
+    record("recent-boundary", {
+      updatedAt: new Date(2026, 9, 31, 0).toISOString(),
+    }),
     record("running-stale", { updatedAt: "2026-10-20T09:00:00.000Z" }),
     record("waiting-topic", { type: "waiting", status: "waiting_response" }),
     record("waiting-weekly", {

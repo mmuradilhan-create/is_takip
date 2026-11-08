@@ -265,11 +265,17 @@ test("scope buttons replace repeated completion choices and the entire filter ca
       await page.keyboard.press("Escape");
       await expect(page.locator("#status-filter")).toBeFocused();
     }
-    await page.locator("#status-filter").selectOption("in_progress");
+    await page
+      .locator("#status-filter")
+      .selectOption(type === "meeting" ? "planned" : "in_progress");
     await expect(
       page.locator(".filter-surface:has(#status-filter) .filter-value"),
-    ).toHaveText("Devam ediyor");
-    expect(await ids(page)).toEqual([`scope-${type}-in_progress`]);
+    ).toHaveText(type === "meeting" ? "Planlanacak" : "Devam ediyor");
+    expect(await ids(page)).toEqual(
+      type === "meeting"
+        ? ["scope-meeting-in_progress", "scope-meeting-planned"]
+        : [`scope-${type}-in_progress`],
+    );
 
     await scope(page, "completed").click();
     await expect(scope(page, "completed")).toHaveAttribute(

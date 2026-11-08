@@ -19,6 +19,24 @@ const records = (page) =>
 const record = (input) =>
   createRecord({ createdAt: STAMP, updatedAt: STAMP, ...input });
 
+async function cardColumns(page) {
+  const columns = Number(
+    await page
+      .locator(".dashboard-workspace")
+      .getAttribute("data-card-columns"),
+  );
+  expect(columns).toBeGreaterThanOrEqual(1);
+  expect(columns).toBeLessThanOrEqual(3);
+  expect(
+    await page
+      .locator(".attention-list")
+      .evaluate(
+        (list) => getComputedStyle(list).gridTemplateColumns.split(" ").length,
+      ),
+  ).toBe(columns);
+  return columns;
+}
+
 function fixture() {
   return [
     ...Array.from({ length: 12 }, (_, index) =>
@@ -277,7 +295,9 @@ for (const viewport of [
         page.locator("#goal-detail-panel .goal-panel-title"),
       ).toHaveText("Haftanın 5. doğrulama hedefi");
       await page.keyboard.press("Escape");
-      await expect(attentionRows(page)).toHaveCount(2);
+      await expect(attentionRows(page)).toHaveCount(
+        Math.min(await cardColumns(page), 8),
+      );
       expect((await readAttentionCards(page)).map((card) => card.id)).toEqual(
         Array.from(
           { length: 8 },
@@ -414,28 +434,53 @@ test("attention paging is keyboard accessible, resets on search, and clamps afte
 }) => {
   const original = await seed(page);
   const caption = page.locator(".attention-page-label");
-  await expect(caption).toHaveText("1–2 / 8");
+  let columns = await cardColumns(page);
+  let pageCount = Math.ceil(8 / columns);
+  let currentPage = 1;
+  const expectedIds = Array.from(
+    { length: 8 },
+    (_, index) => `calendar-020-attention-${index}`,
+  );
+  const expectCurrentPage = async () => {
+    await expect(caption).toHaveText(`Sayfa ${currentPage} / ${pageCount}`);
+    expect(
+      await attentionRows(page).evaluateAll((cards) =>
+        cards.map((card) => card.dataset.id),
+      ),
+    ).toEqual(
+      expectedIds.slice((currentPage - 1) * columns, currentPage * columns),
+    );
+  };
+  await expectCurrentPage();
   await expect(page.locator(".attention-window")).toHaveCount(0);
   await expect(previousAttention(page)).toBeDisabled();
   await expect(nextAttention(page)).toBeEnabled();
-  for (const label of ["3–4 / 8", "5–6 / 8", "7–8 / 8"]) {
+  while (currentPage < pageCount) {
     await nextAttention(page).focus();
     await page.keyboard.press("Enter");
-    await expect(caption).toHaveText(label);
+    currentPage += 1;
+    await expectCurrentPage();
     await expect(
-      label === "7–8 / 8" ? previousAttention(page) : nextAttention(page),
+      currentPage === pageCount ? previousAttention(page) : nextAttention(page),
     ).toBeFocused();
   }
   await expect(nextAttention(page)).toBeDisabled();
-  await expect(attentionRows(page)).toHaveCount(2);
   await page.setViewportSize({ width: 1280, height: 720 });
-  await expect(caption).toHaveText("7–8 / 8");
+  columns = await cardColumns(page);
+  pageCount = Math.ceil(8 / columns);
+  currentPage = Math.min(currentPage, pageCount);
+  await expectCurrentPage();
   await previousAttention(page).click();
-  await expect(caption).toHaveText("5–6 / 8");
+  currentPage -= 1;
+  await expectCurrentPage();
   await nextAttention(page).click();
-  await expect(caption).toHaveText("7–8 / 8");
+  currentPage += 1;
+  await expectCurrentPage();
   await page.setViewportSize({ width: 1920, height: 1080 });
-  await expect(caption).toHaveText("7–8 / 8");
+  columns = await cardColumns(page);
+  pageCount = Math.ceil(8 / columns);
+  currentPage = Math.min(currentPage, pageCount);
+  await expectCurrentPage();
   await page.getByRole("searchbox").fill("Takip 01");
   await expect(attentionRows(page)).toHaveCount(1);
   await expect(attentionRows(page)).toHaveAttribute(
@@ -443,33 +488,45 @@ test("attention paging is keyboard accessible, resets on search, and clamps afte
     "calendar-020-attention-0",
   );
   await page.getByRole("searchbox").fill("");
-  await expect(caption).toHaveText("1–2 / 8");
+  currentPage = 1;
+  await expectCurrentPage();
   expect(await saved(page)).toBe(original);
-  for (let index = 0; index < 3; index += 1) await nextAttention(page).click();
-  for (const id of ["calendar-020-attention-6", "calendar-020-attention-7"]) {
+  while (currentPage < pageCount) {
+    await nextAttention(page).click();
+    currentPage += 1;
+  }
+  await expectCurrentPage();
+  const deletedIds = await attentionRows(page).evaluateAll((cards) =>
+    cards.map((card) => card.dataset.id),
+  );
+  for (const id of deletedIds) {
     await page
       .locator(`.attention-list > [data-id="${id}"] .followup-title`)
       .click();
-    await expect(page.locator("#editor")).toBeVisible();
+    const preview = page.locator("#waiting-record-panel");
+    await expect(preview).toHaveAttribute("data-record-id", id);
+    await preview
+      .getByRole("button", { name: "Kaydı düzenle", exact: true })
+      .click();
+    await expect(page.locator('#record-form [name="id"]')).toHaveValue(id);
     page.once("dialog", (dialog) => dialog.accept());
     await page.getByRole("button", { name: "Kaydı sil", exact: true }).click();
     await expect(page.locator("#editor")).not.toBeVisible();
   }
-  await expect(caption).toHaveText("5–6 / 6");
+  const remaining = 8 - deletedIds.length;
+  const finalPageCount = Math.ceil(remaining / columns);
+  await expect(caption).toHaveText(
+    `Sayfa ${finalPageCount} / ${finalPageCount}`,
+  );
   await expect(nextAttention(page)).toBeDisabled();
   expect(await records(page)).toEqual(
-    fixture().filter(
-      (item) =>
-        !["calendar-020-attention-6", "calendar-020-attention-7"].includes(
-          item.id,
-        ),
-    ),
+    fixture().filter((item) => !deletedIds.includes(item.id)),
   );
-  for (let index = 0; index < 2; index += 1)
+  for (let index = 0; index < deletedIds.length; index += 1)
     await page.getByRole("button", { name: "Geri al", exact: true }).click();
   expect(await saved(page)).toBe(original);
   expect((await readAttentionCards(page)).map((card) => card.id)).toEqual(
-    Array.from({ length: 8 }, (_, index) => `calendar-020-attention-${index}`),
+    expectedIds,
   );
 });
 

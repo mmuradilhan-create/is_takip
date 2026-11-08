@@ -129,16 +129,41 @@ test("quick status menus omit terminal completion and closed records can still b
       page.locator('#status-menu [data-status="completed"]'),
     ).toHaveCount(0);
     await expect(
-      page.locator('#status-menu [data-status="in_progress"]'),
+      page.locator(
+        `#status-menu [data-status="${type === "meeting" ? "planned" : "in_progress"}"]`,
+      ),
     ).toHaveAttribute("aria-checked", "true");
     await page.keyboard.press("Escape");
-    await item.locator(".task-title-cell > .quick-complete").click();
+    if (type === "meeting") {
+      await expect(
+        item.locator(".quick-complete, .completion-mark"),
+      ).toHaveCount(0);
+      await item.locator('.record-edit-trigger[data-action="edit"]').click();
+      const form = page.locator("#editor #record-form");
+      await expect(form.locator('[name="id"]')).toHaveValue("arrange-meeting");
+      await expect(form.locator('[name="type"]')).toHaveValue("meeting");
+      await form.locator('[name="status"]').selectOption("completed");
+      await form
+        .getByRole("button", { name: "Değişiklikleri kaydet", exact: true })
+        .click();
+    } else {
+      await item.locator(".task-title-cell > .quick-complete").click();
+    }
     await selectListStatus(page, "completed");
-    await expect(
-      item.locator(".task-title-cell > .completion-mark.is-completed"),
-    ).toBeVisible();
+    if (type === "meeting") {
+      await expect(item.locator(".completion-mark")).toHaveCount(0);
+      await expect(item.locator(".meeting-archive-control")).toBeVisible();
+    } else {
+      await expect(
+        item.locator(".task-title-cell > .completion-mark.is-completed"),
+      ).toBeVisible();
+    }
     await expect(item.locator(".quick-complete")).toHaveCount(0);
-    await item.locator(".status-trigger").click();
+    await item
+      .locator(
+        type === "meeting" ? ".meeting-archive-control" : ".status-trigger",
+      )
+      .click();
     await page.locator('#status-menu [data-status="planned"]').click();
     expect((await readRecords(page)).find((r) => r.type === type).status).toBe(
       "planned",
@@ -166,10 +191,17 @@ test("weekly add-step action opens a linked daily draft without changing the goa
   await expect(form.locator('select[name="type"]')).toHaveValue("daily");
   await expect(form.locator('[name="parentId"]')).toHaveValue("arrange-weekly");
   await form.locator('[name="title"]').fill("İlk yeni günlük adım");
+  page.once("dialog", async (dialog) => {
+    expect(dialog.type()).toBe("confirm");
+    expect(dialog.message()).toContain("Kaydedilmemiş değişiklikler");
+    await dialog.accept();
+  });
   await form.getByRole("button", { name: "Vazgeç", exact: true }).click();
+  await expect(page.locator("#editor")).not.toBeVisible();
   expect(await readSaved(page)).toBe(before);
   expect((await weekly.boundingBox()).height).toBe(beforeHeight);
-  await weekly.locator(".goal-details-trigger").click();
+  await weekly.locator('.task-name[data-action="goal-details"]').click();
+  await expect(panel(page)).toHaveAttribute("data-goal-id", "arrange-weekly");
   await expect(panel(page).locator(".goal-child-row")).toHaveCount(1);
   const child = panel(page).locator('.goal-child-row[data-id="arrange-daily"]');
   const complete = await child.locator(".quick-complete").boundingBox();
@@ -195,7 +227,7 @@ test("weekly add-step action opens a linked daily draft without changing the goa
   expect(added.find((r) => r.title === "Kaydedilen günlük adım").parentId).toBe(
     "arrange-weekly",
   );
-  await weekly.locator(".goal-details-trigger").click();
+  await weekly.locator('.task-name[data-action="goal-details"]').click();
   await expect(panel(page).locator(".goal-child-row")).toHaveCount(2);
   await page.getByRole("button", { name: "Geri al", exact: true }).click();
   await expect(panel(page)).toBeVisible();
@@ -203,7 +235,7 @@ test("weekly add-step action opens a linked daily draft without changing the goa
   expect(await readRecords(page)).toEqual(records);
 });
 
-test("monthly and yearly plans share details and child actions while preserving next-step drafts across refresh", async ({
+test("monthly and yearly plans share detail and child actions while preserving metric drafts across refresh and legacy next steps through Undo", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1920, height: 1080 });
@@ -211,15 +243,16 @@ test("monthly and yearly plans share details and child actions while preserving 
   for (const type of ["monthly", "yearly"]) {
     await openList(page, type);
     const goal = row(page, type);
+    const original = records.find((r) => r.type === type);
     const saved = await readSaved(page);
-    await expect(
-      goal.locator(".task-meta-line .goal-details-trigger"),
-    ).toHaveCount(0);
-    const details = goal.locator(".row-end-actions .goal-details-trigger");
-    await expect(details).toHaveText("");
-    await expect(details.locator("svg")).toHaveCount(1);
+    await expect(goal.locator(".goal-details-trigger")).toHaveCount(0);
+    const edit = goal.locator(
+      '.row-end-actions .goal-edit-trigger[data-action="edit"]',
+    );
+    await expect(edit).toHaveText("");
+    await expect(edit.locator("svg")).toHaveCount(1);
     await goal.locator('.goal-add-step[data-action="new-linked"]').click();
-    const form = page.locator("#record-form");
+    const form = page.locator("#editor #record-form");
     await expect(form.locator('select[name="type"]')).toHaveValue(
       type === "monthly" ? "weekly" : "monthly",
     );
@@ -228,18 +261,24 @@ test("monthly and yearly plans share details and child actions while preserving 
     );
     expect(await readSaved(page)).toBe(saved);
     await form.getByRole("button", { name: "Vazgeç", exact: true }).click();
+    await expect(page.locator("#editor")).not.toBeVisible();
     expect(await readSaved(page)).toBe(saved);
-    await details.click();
-    const field = panel(page).locator(
-      '#goal-next-step-form [name="nextAction"]',
+    await goal.locator('.task-name[data-action="goal-details"]').click();
+    await expect(panel(page)).toHaveAttribute(
+      "data-goal-id",
+      `arrange-${type}`,
     );
+    await expect(
+      panel(page).locator("#goal-next-step-form, [name=nextAction]"),
+    ).toHaveCount(0);
+    const field = panel(page).locator("#goal-progress-current");
     const save = panel(page).getByRole("button", {
-      name: "Adımı kaydet",
+      name: "Değeri kaydet",
       exact: true,
     });
     await field.click();
     await expect(field).toBeFocused();
-    await expect(field).toHaveValue(`Özgün ${type} adımı`);
+    await expect(field).toHaveValue("4");
     await expect(save).toBeDisabled();
     await expect(
       panel(page).locator(".goal-child-row, .work-start"),
@@ -252,29 +291,43 @@ test("monthly and yearly plans share details and child actions while preserving 
     await expect(panel(page).locator(".goal-panel-metric")).toContainText(
       "4 / 10 Rapor",
     );
-    await field.fill(`Yeni ${type} adımı`);
-    await goal.locator(".status-trigger").click();
-    await page.locator('#status-menu [data-status="waiting"]').click();
+    await field.fill("7");
+    await panel(page)
+      .getByRole("button", { name: "Hedefi düzenle", exact: true })
+      .click();
+    await expect(form.locator('[name="id"]')).toHaveValue(`arrange-${type}`);
+    await expect(form.locator('[name="type"]')).toHaveValue(type);
+    await form
+      .locator('[name="description"]')
+      .fill(`${original.description} Yenilenen not.`);
+    await form
+      .getByRole("button", { name: "Değişiklikleri kaydet", exact: true })
+      .click();
+    await expect(page.locator("#editor")).not.toBeVisible();
     await expect(panel(page)).toBeVisible();
-    await expect(field).toHaveValue(`Yeni ${type} adımı`);
+    await expect(field).toHaveValue("7");
     await page.keyboard.press("Escape");
     await expect(panel(page)).not.toBeVisible();
-    await details.click();
-    await expect(field).toHaveValue(`Yeni ${type} adımı`);
+    await goal.locator('.task-name[data-action="goal-details"]').click();
+    await expect(field).toHaveValue("7");
     await save.click();
     await expect(save).toBeDisabled();
     const changed = (await readRecords(page)).find((r) => r.type === type);
-    const original = records.find((r) => r.type === type);
     expect({
       ...changed,
-      status: original.status,
-      nextAction: original.nextAction,
+      description: original.description,
+      currentValue: original.currentValue,
       updatedAt: original.updatedAt,
     }).toEqual(original);
-    expect(changed.nextAction).toBe(`Yeni ${type} adımı`);
+    expect(changed.description).toBe(`${original.description} Yenilenen not.`);
+    expect(changed.currentValue).toBe(7);
+    expect(changed.nextAction).toBe(original.nextAction);
     expect((await readRecords(page)).length).toBe(records.length);
+    expect(
+      (await readRecords(page)).filter((r) => r.id !== original.id),
+    ).toEqual(records.filter((r) => r.id !== original.id));
     await page.getByRole("button", { name: "Geri al", exact: true }).click();
-    await expect(field).toHaveValue(`Özgün ${type} adımı`);
+    await expect(field).toHaveValue("4");
     await page.getByRole("button", { name: "Geri al", exact: true }).click();
     expect(await readRecords(page)).toEqual(records);
     await expect(panel(page)).toBeVisible();
@@ -433,24 +486,29 @@ test("weekly parent choices have no completed toggle and preserve selected close
   }
 });
 
-test("a status popover remains usable after a goal next-step reset rerenders its panel", async ({
+test("a status popover remains usable after a metric draft reset rerenders its goal panel without changing the legacy next step", async ({
   page,
 }) => {
   const records = await seed(page);
   await openList(page, "weekly");
-  await row(page, "weekly").locator(".goal-details-trigger").click();
+  await row(page, "weekly")
+    .locator('.task-name[data-action="goal-details"]')
+    .click();
   const child = panel(page).locator('.goal-child-row[data-id="arrange-daily"]');
   await child.locator(".status-trigger").click();
   await expect(page.locator("#status-menu")).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(page.locator("#status-menu")).not.toBeVisible();
   await expect(panel(page)).toBeVisible();
-  const field = panel(page).locator('#goal-next-step-form [name="nextAction"]');
-  await field.fill("Kaydedilmeyecek taslak");
-  await panel(page)
-    .getByRole("button", { name: "Vazgeç", exact: true })
-    .click();
-  await expect(field).toHaveValue("Özgün weekly adımı");
+  await expect(panel(page)).toHaveAttribute("data-goal-id", "arrange-weekly");
+  await expect(
+    panel(page).locator("#goal-next-step-form, [name=nextAction]"),
+  ).toHaveCount(0);
+  const field = panel(page).locator("#goal-progress-current");
+  await field.fill("7");
+  await panel(page).locator('[data-action="goal-progress-reset"]').click();
+  await expect(field).toHaveValue("4");
+  expect(await readRecords(page)).toEqual(records);
   await child.locator(".status-trigger").click();
   await expect(page.locator("#status-menu")).toBeVisible();
   await page.locator('#status-menu [data-status="waiting"]').click();
@@ -461,13 +519,15 @@ test("a status popover remains usable after a goal next-step reset rerenders its
   await details
     .locator('[name="waitingReason"]')
     .fill("Kaydedilmeyecek bekleme nedeni");
-  await details
-    .locator('[name="nextAction"]')
-    .fill("Kaydedilmeyecek sonraki adım");
+  await expect(details.locator('[name="nextAction"]')).toHaveCount(0);
   await details.getByRole("button", { name: "Vazgeç", exact: true }).click();
   await expect(details).not.toBeVisible();
   await expect(panel(page)).toBeVisible();
-  await expect(field).toHaveValue("Özgün weekly adımı");
+  await expect(field).toHaveValue("4");
+  expect(
+    (await readRecords(page)).find((item) => item.id === "arrange-weekly")
+      .nextAction,
+  ).toBe("Özgün weekly adımı");
   await expect(child.locator(".status-trigger")).toHaveText("Beklemede");
   expect(await readSaved(page)).toBe(committed);
   await page.getByRole("button", { name: "Geri al", exact: true }).click();

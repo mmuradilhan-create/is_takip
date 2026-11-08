@@ -216,16 +216,20 @@ test("waiting reminder dates open from attention cards and their own list while 
   const initialBytes = await saved(page);
   const primary = overview(page);
   await expect(overview(page, "waiting-future-excluded")).toHaveCount(0);
-  await expect(primary.locator(".waiting-age")).toHaveText(
-    "10 gündür bekliyor",
-  );
+  await expect(primary.locator(".waiting-age")).toHaveText("10 gün");
   await expect(primary.locator(".waiting-age")).toHaveAttribute(
     "aria-label",
     "10 gündür bekliyor",
   );
   await expect(
     overview(page, "waiting-unknown").locator(".waiting-age"),
-  ).toHaveText("Bekleme başlangıcı yok");
+  ).toHaveText("—");
+  await expect(
+    overview(page, "waiting-unknown").locator(".waiting-age"),
+  ).toHaveAttribute("aria-label", "Bekleme başlangıcı yok");
+  await expect(
+    overview(page, "waiting-unknown").locator(".waiting-age"),
+  ).toHaveAttribute("title", "Beklemeye başlama tarihi belirlenmedi");
   await expect(overview(page, "meeting-primary")).toHaveCount(0);
   await page.getByRole("button", { name: "Takvimi aç", exact: true }).click();
   await expect(
@@ -240,6 +244,17 @@ test("waiting reminder dates open from attention cards and their own list while 
     meetingRow.locator(".inline-priority, .inline-date"),
   ).toHaveCount(0);
   await meetingRow.locator(".task-name").click();
+  const meetingPreview = page.locator("#meeting-record-panel");
+  await expect(meetingPreview).toBeVisible();
+  await meetingPreview
+    .getByRole("button", { name: "Kaydı düzenle", exact: true })
+    .click();
+  await expect(page.locator('#record-form [name="id"]')).toHaveValue(
+    "meeting-primary",
+  );
+  await expect(page.locator('#record-form select[name="type"]')).toHaveValue(
+    "meeting",
+  );
   await expect(page.locator('#record-form [name="dueDate"]')).toBeHidden();
   await expect(page.locator('#record-form [name="dueDate"]')).toBeDisabled();
   await expect(page.locator('#record-form [name="dueDate"]')).toHaveValue(
@@ -273,10 +288,7 @@ test("waiting reminder dates open from attention cards and their own list while 
   await page
     .locator('#due-date-menu [name="nextFollowUpDate"]')
     .fill("10.11.2026");
-  await page
-    .locator("#due-date-menu")
-    .getByRole("button", { name: "Kaydet", exact: true })
-    .click();
+  await page.locator('#quick-date-form button[type="submit"]').click();
   await expect(page.locator("#editor")).not.toBeVisible();
   expect(
     (await records(page)).find((item) => item.id === "waiting-primary")
@@ -320,10 +332,7 @@ test("waiting reminder dates open from attention cards and their own list while 
   await page
     .locator('#due-date-menu [name="nextFollowUpDate"]')
     .fill("10.11.2026");
-  await page
-    .locator("#due-date-menu")
-    .getByRole("button", { name: "Kaydet", exact: true })
-    .click();
+  await page.locator('#quick-date-form button[type="submit"]').click();
   await expect(dialog(page)).not.toBeVisible();
   await expect(page.locator("#editor")).not.toBeVisible();
   const edited = await records(page);

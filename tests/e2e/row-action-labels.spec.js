@@ -83,13 +83,20 @@ test("a meeting with two routes names and opens each exact destination without c
     await expect(routes).toHaveText(["İşi aç", "Takibi aç"]);
     await expect(page.locator(".meeting-table > thead th")).toHaveText([
       "Aksiyon / Karar",
-      "Durum",
       "Bağlı iş",
       "Takip",
+      "İşlem",
     ]);
     await expect(
-      row(page, "dual").locator(".row-end-actions, .priority-col, .date-cell"),
+      row(page, "dual").locator(".priority-col, .date-cell"),
     ).toHaveCount(0);
+    await expect(row(page, "dual").locator(".row-end-actions")).toHaveCount(1);
+    await expect(
+      row(page, "dual").locator(".row-end-actions > button"),
+    ).toHaveCount(1);
+    await expect(
+      row(page, "dual").locator(".row-end-actions .record-edit-trigger"),
+    ).toBeVisible();
     for (const control of await routes.all()) {
       const cell = await control.locator("xpath=ancestor::td").boundingBox();
       const bounds = await control.boundingBox();

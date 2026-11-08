@@ -158,14 +158,16 @@ async function openNewDaily(page) {
   await openCreationExtras(page);
 }
 
-async function openChoices(page, kind) {
-  await openCreationExtras(page);
-  const field = form(page).locator(`[name="${kind}"]`);
-  await field.fill("");
-  await field.press("ArrowDown");
-  const menu = page.locator("#record-choice-menu");
-  await expect(menu).toBeVisible();
-  return menu;
+async function expectRetiredChoices(page, expected = {}) {
+  for (const kind of ["projectCode", "workType"]) {
+    const field = form(page).locator(`[name="${kind}"]`);
+    await expect(field).toBeHidden();
+    await expect(field).toHaveValue(expected[kind] || "");
+    if (expected.id) await expect(field).toBeDisabled();
+  }
+  if (expected.id)
+    await expect(form(page).locator('[name="id"]')).toHaveValue(expected.id);
+  await expect(page.locator("#record-choice-menu")).not.toBeVisible();
 }
 
 async function openBackup(page) {
@@ -193,7 +195,7 @@ async function restore(page, data, accept = true) {
   await expect.poll(() => handled).toBe(true);
 }
 
-test("catalog additions and renames reach new and existing forms after reload while every preference change has exact undo", async ({
+test("catalog additions and renames persist after reload without exposing retired fields or rewriting records and have exact undo", async ({
   page,
 }) => {
   const original = await seed(page);
@@ -204,30 +206,26 @@ test("catalog additions and renames reach new and existing forms after reload wh
   expect((await store(page)).records).toEqual(original);
   await closeSettings(page);
   await openNewDaily(page);
-  let menu = await openChoices(page, "projectCode");
-  await menu.getByText("PRJ-ALFA", { exact: true }).click();
-  await expect(form(page).locator('[name="projectCode"]')).toHaveValue(
-    "PRJ-ALFA",
-  );
+  await expectRetiredChoices(page);
   await closeEditor(page);
   await page
     .locator('.full-table tr[data-id="catalog-primary"] .task-name')
     .click();
-  menu = await openChoices(page, "projectCode");
-  await expect(menu.getByText("PRJ-ALFA", { exact: true })).toBeVisible();
-  await page.keyboard.press("Escape");
+  await expectRetiredChoices(
+    page,
+    original.find((item) => item.id === "catalog-primary"),
+  );
   await closeEditor(page);
   expect(await saved(page)).toBe(afterAdd);
   await rename(page, "projectCode", "PRJ-ALFA", "PRJ-BETA");
   expect((await store(page)).records).toEqual(original);
   await closeSettings(page);
   await page.reload();
-  await openNewDaily(page);
-  menu = await openChoices(page, "projectCode");
-  await expect(menu.getByText("PRJ-BETA", { exact: true })).toBeVisible();
-  await expect(menu.getByText("PRJ-ALFA", { exact: true })).toHaveCount(0);
-  await page.keyboard.press("Escape");
-  await closeEditor(page);
+  await openCatalog(page, "projectCode");
+  await expect(catalogRow(page, "projectCode", "PRJ-BETA")).toBeVisible();
+  await expect(catalogRow(page, "projectCode", "PRJ-ALFA")).toHaveCount(0);
+  expect((await store(page)).records).toEqual(original);
+  await closeSettings(page);
   await undo(page);
   expect(await saved(page)).toBe(afterAdd);
   await undo(page);
@@ -245,24 +243,22 @@ test("removed learned and built-in choices stay hidden without rewriting old val
   expect((await store(page)).records).toEqual(original);
   await closeSettings(page);
   await page.reload();
-  await openNewDaily(page);
-  let menu = await openChoices(page, "projectCode");
-  await expect(menu.getByText("İPEK-42", { exact: true })).toHaveCount(0);
-  await expect(menu.getByText("BİTEN-1", { exact: true })).toBeVisible();
-  await page.keyboard.press("Escape");
-  menu = await openChoices(page, "workType");
+  await openCatalog(page, "projectCode");
+  await expect(catalogRow(page, "projectCode", "İPEK-42")).toHaveCount(0);
+  await expect(catalogRow(page, "projectCode", "BİTEN-1")).toBeVisible();
+  await openCatalog(page, "workType");
   for (const value of ["Test", "Atölye", "İnceleme"])
-    await expect(menu.getByText(value, { exact: true })).toHaveCount(0);
-  await expect(menu.getByText("Değerlendirme", { exact: true })).toBeVisible();
-  await page.keyboard.press("Escape");
-  await closeEditor(page);
+    await expect(catalogRow(page, "workType", value)).toHaveCount(0);
+  await expect(catalogRow(page, "workType", "Değerlendirme")).toBeVisible();
+  await closeSettings(page);
+  await page.locator('#nav [data-view="daily"]').click();
   await page
     .locator('.full-table tr[data-id="catalog-primary"] .task-name')
     .click();
-  await expect(form(page).locator('[name="projectCode"]')).toHaveValue(
-    "İPEK-42",
+  await expectRetiredChoices(
+    page,
+    original.find((item) => item.id === "catalog-primary"),
   );
-  await expect(form(page).locator('[name="workType"]')).toHaveValue("İnceleme");
   await openCreationExtras(page);
   await form(page)
     .locator('[name="description"]')
@@ -289,16 +285,17 @@ test("removed learned and built-in choices stay hidden without rewriting old val
     .click();
   await closeSettings(page);
   await page.reload();
-  await openNewDaily(page);
-  menu = await openChoices(page, "projectCode");
-  await expect(menu.getByText("İPEK-42", { exact: true })).toHaveCount(1);
-  await page.keyboard.press("Escape");
-  menu = await openChoices(page, "workType");
-  await expect(menu.getByText("Test", { exact: true })).toBeVisible();
-  await expect(menu.getByText("Atölye", { exact: true })).toHaveCount(0);
+  await openCatalog(page, "projectCode");
+  await expect(catalogRow(page, "projectCode", "İPEK-42")).toHaveCount(1);
+  await openCatalog(page, "workType");
+  await expect(catalogRow(page, "workType", "Test")).toBeVisible();
+  await expect(catalogRow(page, "workType", "Atölye")).toHaveCount(0);
+  expect((await store(page)).records).toEqual(
+    original.map((item) => (item.id === old.id ? edited : item)),
+  );
 });
 
-test("blank, duplicate and overlong catalogs fail without writes while literal HTML remains safe in settings and dropdowns", async ({
+test("blank, duplicate and overlong catalogs fail without writes while literal HTML remains safe in settings and persisted catalogs", async ({
   page,
 }) => {
   const original = await seed(page);
@@ -359,13 +356,16 @@ test("blank, duplicate and overlong catalogs fail without writes while literal H
     ),
   ).toHaveCount(0);
   await closeSettings(page);
-  await openNewDaily(page);
-  const menu = await openChoices(page, "projectCode");
-  await expect(menu.getByText(UNSAFE, { exact: true })).toBeVisible();
-  await expect(menu.locator("img, script")).toHaveCount(0);
+  await page.reload();
+  await openCatalog(page, "projectCode");
+  await expect(catalogRow(page, "projectCode", UNSAFE)).toBeVisible();
+  await expect(
+    settings(page).locator(
+      "[data-choice-list-settings] img, [data-choice-list-settings] script",
+    ),
+  ).toHaveCount(0);
   expect(await page.evaluate(() => window.catalogInjected)).toBeUndefined();
-  await page.keyboard.press("Escape");
-  await closeEditor(page);
+  await closeSettings(page);
   expect((await store(page)).records).toEqual(original);
   await undo(page);
   expect(await saved(page)).toBe(before);
@@ -408,6 +408,7 @@ test("a stale rename keeps its draft and cannot replace another window's committ
 test("native backup transfers records and catalogs atomically while legacy record-only restore preserves the receiver's current lists", async ({
   page,
   browser,
+  baseURL,
 }) => {
   const original = await seed(page);
   await add(page, "projectCode", "TAŞINAN-42");
@@ -424,6 +425,7 @@ test("native backup transfers records and catalogs atomically while legacy recor
   expect(backup.records).toEqual(original);
   expect(backup.choiceLists).toEqual(sourceCatalog);
   const receiverContext = await browser.newContext({
+    baseURL,
     locale: "tr-TR",
     timezoneId: "Europe/Istanbul",
   });
@@ -458,15 +460,14 @@ test("native backup transfers records and catalogs atomically while legacy recor
       "data-theme",
       "dark",
     );
-    await openNewDaily(receiver);
-    let menu = await openChoices(receiver, "projectCode");
-    await expect(menu.getByText("TAŞINAN-42", { exact: true })).toBeVisible();
-    await expect(menu.getByText("ALICI-9", { exact: true })).toHaveCount(0);
-    await receiver.keyboard.press("Escape");
-    menu = await openChoices(receiver, "workType");
-    await expect(menu.getByText("Test", { exact: true })).toHaveCount(0);
-    await receiver.keyboard.press("Escape");
-    await closeEditor(receiver);
+    await openCatalog(receiver, "projectCode");
+    await expect(
+      catalogRow(receiver, "projectCode", "TAŞINAN-42"),
+    ).toBeVisible();
+    await expect(catalogRow(receiver, "projectCode", "ALICI-9")).toHaveCount(0);
+    await openCatalog(receiver, "workType");
+    await expect(catalogRow(receiver, "workType", "Test")).toHaveCount(0);
+    await closeSettings(receiver);
     await undo(receiver);
     expect(await saved(receiver)).toBe(beforeImport);
     const legacyRecords = [

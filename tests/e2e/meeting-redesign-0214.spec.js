@@ -123,8 +123,8 @@ test("meeting creation keeps decision primary and source-only saves contain no i
   await expect(field(page, "nextAction")).toHaveValue("");
   await expect(field(page, "nextAction")).not.toBeVisible();
   const extra = form(page).locator("details.creation-advanced");
-  expect(await extra.evaluate((element) => element.open)).toBe(false);
-  await expect(field(page, "sourceDate")).not.toBeVisible();
+  expect(await extra.evaluate((element) => element.open)).toBe(true);
+  await expect(field(page, "sourceDate")).toBeVisible();
   await openCreationExtras(page);
   await expect(field(page, "sourceDate")).toHaveAttribute(
     "aria-label",

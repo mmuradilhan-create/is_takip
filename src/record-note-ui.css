@@ -88,6 +88,41 @@
   flex-direction: column;
 }
 
+.record-note-popover[data-preview-kind="note"] {
+  width: max-content;
+  max-width: min(360px, calc(100vw - 16px));
+  padding: 8px 11px;
+  border-color: var(--theme-border, #d8e3d2);
+  border-radius: 7px;
+  box-shadow: 0 4px 18px #173e2d29;
+  font-weight: 500;
+  line-height: 1.55;
+}
+
+.record-note-popover[data-preview-kind="note"] .record-note-heading {
+  display: none;
+}
+
+.record-note-popover[data-preview-kind="note"] .record-note-body {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  line-height: inherit;
+}
+
+#app .record-note-popover[data-preview-kind="note"] .record-note-body:focus {
+  outline: none;
+  box-shadow: none;
+  background: transparent;
+}
+
+.record-note-popover[data-preview-kind="note"]:has(
+    .record-note-body:focus-visible
+  ) {
+  border-color: var(--theme-accent, #a5bc96);
+}
+
 .record-note-heading {
   display: flex;
   flex: 0 0 auto;

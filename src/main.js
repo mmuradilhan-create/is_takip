@@ -71,6 +71,7 @@ import {
   recordFormValues,
 } from "./record-form-discard.js";
 import { installDialogLightDismiss } from "./dialog-light-dismiss.js";
+import { installInputModality } from "./input-modality.js";
 import { createTopbarClock } from "./topbar-clock.js";
 import { createMeetingBothUI } from "./meeting-both-ui.js";
 import { createRecordCreationUI } from "./record-creation-ui.js";
@@ -88,6 +89,7 @@ import { proposeGoalLinks, applyGoalLinks } from "./goal-link-review.js";
 import { normalizePreferences, applyTheme, watchTheme } from "./preferences.js";
 import { selectPlanningPrompts } from "./planning-prompts.js";
 import { parentGoalType, goalChildren } from "./goal-hierarchy.js";
+import { unlinkGoalChild } from "./goal-child-unlink.js";
 import { createWaitingInfoUI } from "./waiting-info-ui.js";
 import { version as APP_VERSION } from "../package.json";
 import { selectDashboardWeek, selectAttention } from "./dashboard-planning.js";
@@ -593,6 +595,8 @@ export async function startMainApp() {
   }
 
   const app = document.querySelector("#app");
+  const stopInputModality = installInputModality(document);
+  window.addEventListener("pagehide", stopInputModality, { once: true });
   installDialogLightDismiss(document, {
     allowOutsideActivation(event, dialog) {
       const preview =
@@ -773,7 +777,7 @@ export async function startMainApp() {
     if (!["meeting", "waiting"].includes(record.type)) return "";
     const linked = dailyForSource(record.id);
     const actionLabel = linked ? "bağlı günlük işi aç" : "günlük iş oluştur";
-    return `<button type="button" class="daily-source-control${linked ? " is-linked" : ""}" data-action="daily-from-source" data-id="${esc(record.id)}" aria-label="${esc(record.title)}: ${actionLabel}" title="${linked ? "Bağlı günlük işi aç" : "Bu konu için günlük iş oluştur"}">${icon(linked ? "link" : "list")}</button>`;
+    return `<button type="button" class="daily-source-control${linked ? " is-linked" : ""}" data-action="daily-from-source" data-id="${esc(record.id)}" aria-label="${esc(record.title)}: ${actionLabel}" title="${linked ? "Bağlı günlük işi aç" : "Bu konu için günlük iş oluştur"}">${icon(linked ? "link" : "plus")}</button>`;
   }
   function meetingTarget(record) {
     return meetingTargets(record)[0] || null;
@@ -2475,6 +2479,23 @@ export async function startMainApp() {
         ),
         "Hedef bağlantısı",
       );
+    },
+    onUnlinkChild: (parentId, childId) => {
+      const child = state.records.find((record) => record.id === childId);
+      const next = unlinkGoalChild(state.records, parentId, childId, {
+        updatedAt: new Date().toISOString(),
+      });
+      if (next === state.records) return true;
+      const saved = saveRecords(next, "Hedef bağlantısını kaldırma", {
+        syncLinks: false,
+      });
+      if (saved)
+        toast(
+          child.type === "daily"
+            ? "Hedef bağlantısı kaldırıldı; iş anlık işe döndü. Geri alınabilir."
+            : "Hedef bağlantısı kaldırıldı. Geri alınabilir.",
+        );
+      return saved;
     },
     onNewStep: (id) => openEditor(null, id),
     onEdit: (id) => {

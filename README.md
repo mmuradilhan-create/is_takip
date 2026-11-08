@@ -1,6 +1,6 @@
 # Odak
 
-PC kullanımına odaklanan, Türkçe kişisel iş ve hedef takibi. HTML/CSS/JavaScript tabanlıdır. Güncel sürüm: **0.21.17**.
+PC kullanımına odaklanan, Türkçe kişisel iş ve hedef takibi. HTML/CSS/JavaScript tabanlıdır. Güncel sürüm: **0.21.18**.
 
 ## Kullanım
 
@@ -274,3 +274,11 @@ Genel bakıştaki takip ve hedef kartlarının gövdesi ayrıntıyı açar. Taki
 Toplantı ve bekleyen konu satırı/başlığı sağdaki ayrıntı panelini açar. Sağ uçtaki kalem ilk kayıt formunu açar; bekleyen konunun Takip ettim ve günlük iş oluştur düğmeleri ayrı kalır. Panelin Kaydı düzenle veya takip işlemi modalı üstte açılır; kapatınca aynı konu, kaydırma ve panel işlemi korunur. Listede fareyle açıp kapatılan satır yeşil dolgu bırakmaz; klavye odağı görünür kalır.
 
 Güncel işler satırında Çalışmaya başla düğmesinin solundaki iş günlüğü simgesi, o işin kaydedilmiş oturumlarını açar. Kaydı olan simge lila, boş günlük nötrdür.
+
+Not önizlemesi hedef bağlantısı balonu gibi doğrudan metni gösterir; ayrı Not başlığı, kapatma düğmesi ve iç çerçeve bulunmaz. Uzun notlar kaydırılabilir; klavyeyle metin alanına geçilebilir. Not simgesine tıklamak aynı not düzenleyicisini açar. Takip geçmişinin başlıklı önizlemesi korunur.
+
+Bağlantı simgesiyle açılan panel kapanınca küçük balon yeniden kendiliğinden açılmaz; yeni fare girişi veya klavye gezinmesiyle açılır. Fareyle dönülen kayıt başlığı altı çizili kalmaz; gerçek klavye odağı görünürdür. Form alanlarında kalın dış odak halkası yerine alanın kendi ince kenarlığı kullanılır.
+
+İşlem sütunları düğme sayısına göre kompakt kalır; başlık ve düğmeler sola, aynı iç boşluklarla hizalanır. Bekleyen konunun yeni günlük iş oluşturma simgesi + işaretidir; mevcut bağlı işi açma simgesi ayrı kalır. Sağ panelde Takip ettim, Takip geçmişi başlığının yanındadır; alt çubukta Kaydı düzenle ve Kapat bulunur.
+
+Hedef panelindeki bağlı kaydın Bağı kaldır simgesi yalnız o ilişkiyi çözer. Günlük iş anlık işe döner; alt hedef kendi türünde kalır. Durum, tarih, not, kaynak bağlantısı ve iş günlüğü korunur. İşlem tek adımda geri alınır ve panel açık kalır.

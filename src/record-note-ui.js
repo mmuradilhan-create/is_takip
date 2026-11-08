@@ -184,6 +184,7 @@ export function createRecordNoteUI({
       "aria-label",
       kind === "history" ? "Kaydedilen takipler" : "Not metni",
     );
+    body.tabIndex = kind === "history" ? 0 : -1;
     if (kind === "history") body.innerHTML = historyMarkup(record);
     else body.textContent = noteText(record);
     body.scrollTop = scroll;
@@ -211,7 +212,7 @@ export function createRecordNoteUI({
       close();
       return;
     }
-    popup.style.maxWidth = `${Math.max(1, width - 16)}px`;
+    popup.style.maxWidth = `${kind === "note" ? Math.min(360, Math.max(1, width - 16)) : Math.max(1, width - 16)}px`;
     popup.style.maxHeight = `${Math.min(420, Math.max(1, height - 16))}px`;
     const bounds = popup.getBoundingClientRect();
     const left = Math.max(
@@ -226,6 +227,8 @@ export function createRecordNoteUI({
         : Math.max(topEdge + 8, above);
     popup.style.left = `${left}px`;
     popup.style.top = `${Math.min(top, topEdge + height - bounds.height - 8)}px`;
+    if (kind === "note")
+      body.tabIndex = body.scrollHeight > body.clientHeight + 1 ? 0 : -1;
   }
 
   function show(id, control, persistent) {
@@ -281,11 +284,14 @@ export function createRecordNoteUI({
     hideTimer = null;
     if (isOpen() && trigger === control) return;
     win.clearTimeout(openTimer);
-    openTimer = win.setTimeout(() => {
-      openTimer = null;
-      if (hoverControl === control || control.contains(owner.activeElement))
-        show(control.dataset.id, control, false);
-    }, 150);
+    openTimer = win.setTimeout(
+      () => {
+        openTimer = null;
+        if (hoverControl === control || control.contains(owner.activeElement))
+          show(control.dataset.id, control, false);
+      },
+      kindFor(control) === "note" ? 80 : 150,
+    );
   }
 
   function scheduleHide() {
@@ -401,8 +407,15 @@ export function createRecordNoteUI({
       isOpen() &&
       control === trigger
     ) {
-      event.preventDefault();
-      popup.querySelector("button")?.focus({ preventScroll: true });
+      if (kind === "note") {
+        if (body.scrollHeight > body.clientHeight + 1) {
+          event.preventDefault();
+          body.focus({ preventScroll: true });
+        }
+      } else {
+        event.preventDefault();
+        popup.querySelector("button")?.focus({ preventScroll: true });
+      }
     }
   }
 

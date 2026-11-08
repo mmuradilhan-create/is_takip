@@ -168,9 +168,10 @@ body[data-work-session] #meeting-record-panel {
   #meeting-record-panel.meeting-record-panel {
     --meeting-panel-top: 12px;
     --meeting-panel-bottom: 12px;
+    left: 12px;
     right: 12px;
-    width: calc(100vw - 24px);
-    max-width: calc(100vw - 24px);
+    width: auto;
+    max-width: none;
   }
 }
 

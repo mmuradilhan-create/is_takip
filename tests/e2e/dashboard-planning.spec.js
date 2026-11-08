@@ -352,10 +352,13 @@ test("the current weekly plan shows every current goal with numeric progress and
   await expect(
     goal(page, "plan-current-primary").getByRole("progressbar"),
   ).toHaveAttribute("aria-valuenow", "20");
-  await expect(goal(page, "plan-current-primary")).toContainText(
-    "2 / 10 Ölçüm",
-  );
-  await expect(goal(page, "plan-current-primary")).toContainText(
+  await expect(
+    goal(page, "plan-current-primary").locator(".goal-progress-label"),
+  ).toHaveText("%20 · 2 / 10");
+  await expect(
+    goal(page, "plan-current-primary").getByRole("progressbar"),
+  ).toHaveAttribute("aria-valuetext", "%20 · 2 / 10 Ölçüm");
+  await expect(goal(page, "plan-current-primary")).not.toContainText(
     "Sekiz ölçümü daha gözden geçir.",
   );
   await expect(goals(page).locator("img")).toHaveCount(0);
@@ -370,14 +373,14 @@ test("the current weekly plan shows every current goal with numeric progress and
   ])
     await expect(goal(page, id)).toHaveCount(0);
   const linkedCount = goal(page, "plan-current-primary").locator(
-    "span.dashboard-goal-linked",
+    "span.dashboard-goal-count",
   );
-  await expect(linkedCount).toContainText("2 adım");
+  await expect(linkedCount).toHaveText("2");
   await expect(linkedCount.locator("button")).toHaveCount(0);
   const childrenAction = goal(page, "plan-current-primary").locator(
     '[data-action="goal-children-open"]',
   );
-  await expect(childrenAction).toHaveText("Bağlı işler");
+  await expect(childrenAction).toHaveText("Bağlı işler 2");
   await childrenAction.click();
   const panel = page.locator("#goal-detail-panel");
   await expect(panel).toBeVisible();
@@ -452,7 +455,21 @@ test("one paged attention panel reaches all dated overdue and near records, keep
   expect(JSON.parse(before).records).toEqual(fixture);
   await expect(attention(page)).toBeVisible();
   await expect(attention(page)).toContainText(/Takip gerekenler\s*8/);
-  await expect(attentionRows(page)).toHaveCount(2);
+  const columns = Number(
+    await page
+      .locator(".dashboard-workspace")
+      .getAttribute("data-card-columns"),
+  );
+  expect(columns).toBeGreaterThanOrEqual(1);
+  expect(columns).toBeLessThanOrEqual(3);
+  expect(
+    await page
+      .locator(".attention-list")
+      .evaluate(
+        (list) => getComputedStyle(list).gridTemplateColumns.split(" ").length,
+      ),
+  ).toBe(columns);
+  await expect(attentionRows(page)).toHaveCount(Math.min(columns, 8));
   expect((await readAttentionCards(page)).map((card) => card.id)).toEqual([
     "attention-linked-topic",
     "attention-followup-overdue",
@@ -474,13 +491,14 @@ test("one paged attention panel reaches all dated overdue and near records, keep
   await expect(
     page.locator(".dashboard-followups .attention-panel"),
   ).toHaveCount(0);
-  await expect(
-    attentionRows(page).locator(".quick-complete, .status-trigger"),
-  ).toHaveCount(0);
+  await expect(attentionRows(page).locator(".quick-complete")).toHaveCount(0);
+  await expect(attentionRows(page).locator(".status-trigger")).toHaveCount(
+    Math.min(columns, 8),
+  );
   const followupDates = attentionRows(page).locator(
     '[data-action="edit-next-followup"]',
   );
-  await expect(followupDates).toHaveCount(2);
+  await expect(followupDates).toHaveCount(Math.min(columns, 8));
   for (const date of await followupDates.all())
     await expect(date).toBeEnabled();
   for (const id of [
@@ -509,6 +527,11 @@ test("one paged attention panel reaches all dated overdue and near records, keep
     .locator('.followup-row[data-id="attention-followup-overdue"]')
     .getByRole("button", { name: source.title, exact: true })
     .click();
+  const preview = page.locator("#waiting-record-panel");
+  await expect(preview).toHaveAttribute("data-record-id", source.id);
+  await preview
+    .getByRole("button", { name: "Kaydı düzenle", exact: true })
+    .click();
   await expect(page.locator("#editor")).toBeVisible();
   await expect(page.locator('#record-form [name="title"]')).toHaveValue(
     source.title,
@@ -520,6 +543,7 @@ test("one paged attention panel reaches all dated overdue and near records, keep
     source.latestUpdate,
   );
   await page.locator('#editor [data-action="close"]').last().click();
+  await page.keyboard.press("Escape");
   expect(await saved(page)).toBe(before);
   const emptyFixture = fixture.filter((item) =>
     [

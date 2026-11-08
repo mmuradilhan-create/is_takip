@@ -178,8 +178,14 @@ test("a changed reminder in another tab preserves the follow-up draft and blocks
   await goToWaiting(other);
   await waitingRow(other).locator('[data-action="edit-next-followup"]').click();
   const menu = other.locator("#due-date-menu");
+  await expect(other.locator("#odak-date-picker")).toBeVisible();
+  await other.keyboard.press("Escape");
+  await expect(other.locator("#odak-date-picker")).not.toBeVisible();
+  await expect(menu).toBeVisible();
   await menu.locator('[name="nextFollowUpDate"]').fill("14.11.2026");
-  await menu.getByRole("button", { name: "Kaydet", exact: true }).click();
+  await menu
+    .locator("#quick-date-form > .quick-date-actions > [type=submit]")
+    .click();
   await expect(menu).not.toBeVisible();
   await expect(dialog.locator(".waiting-followup-availability")).toContainText(
     "Sonraki takip tarihi başka bir pencerede değişti",
@@ -216,7 +222,22 @@ test("a changed reminder in another tab preserves the follow-up draft and blocks
     .fill("Güncel plana göre yanıt tekrar istendi.");
 
   await waitingRow(other).locator(".task-name").click();
+  const waitingPanel = other.locator("#waiting-record-panel");
+  await expect(waitingPanel).toBeVisible();
+  await expect(waitingPanel).toHaveAttribute(
+    "data-record-id",
+    "regression-waiting",
+  );
+  await waitingPanel
+    .getByRole("button", { name: "Kaydı düzenle", exact: true })
+    .click();
   await expect(other.locator("#editor")).toBeVisible();
+  await expect(other.locator('#record-form [name="id"]')).toHaveValue(
+    "regression-waiting",
+  );
+  await expect(other.locator('#record-form select[name="type"]')).toHaveValue(
+    "waiting",
+  );
   await other
     .locator('#record-form [name="title"]')
     .fill("Diğer sekmede güncellenen konu");

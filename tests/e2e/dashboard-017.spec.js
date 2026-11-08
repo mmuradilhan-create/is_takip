@@ -378,7 +378,8 @@ test("goal-link review proposes replacements but only an explicit selected batch
   const boundChildren = weekly(page)
     .locator('[data-goal-id="review-other"]')
     .locator('[data-action="goal-children-open"]');
-  await expect(boundChildren).toHaveText("Bağlı işler");
+  await expect(boundChildren).toHaveText("Bağlı işler 1");
+  await expect(boundChildren.locator(".dashboard-goal-count")).toHaveText("1");
   await boundChildren.click();
   await expect(goalPanel(page).locator(".goal-panel-progress")).toHaveAttribute(
     "data-progress-basis",
@@ -444,9 +445,13 @@ test("the overview labels distinguish an idle journal, a running session and man
   await expect(page.locator('#nav [data-view="meeting"]')).toContainText(
     "Toplantı aksiyonları",
   );
-  await expect(page.locator(".sidebar-journal-idle")).toHaveText(
-    "Aktif oturum yok",
+  await expect(page.locator(".sidebar-journal-idle")).toHaveCount(0);
+  await expect(page.locator(".sidebar-journal-saved")).toHaveText(
+    "Bugün · 0 dk · 0 oturum",
   );
+  await expect(page.locator("#sidebar-saved-time")).toHaveText("0 dk");
+  await expect(page.locator("#sidebar-saved-count")).toHaveText("0 oturum");
+  await expect(page.locator("#work-session-panel")).not.toBeVisible();
   await expect(page.locator(".sidebar-journal-phase")).not.toBeVisible();
   await expect(focusFilter(page, "focus")).toContainText("Bugünün odağı");
   await focusRow(page, "focus-alpha").locator(".work-start").click();

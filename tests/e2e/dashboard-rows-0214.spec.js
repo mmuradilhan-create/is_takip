@@ -26,6 +26,24 @@ const weekly = (page) =>
 const dashboard = (page) =>
   page.locator('#nav [data-view="dashboard"]').click();
 
+async function cardColumns(page) {
+  const columns = Number(
+    await page
+      .locator(".dashboard-workspace")
+      .getAttribute("data-card-columns"),
+  );
+  expect(columns).toBeGreaterThanOrEqual(1);
+  expect(columns).toBeLessThanOrEqual(3);
+  expect(
+    await attention(page)
+      .locator(".attention-list")
+      .evaluate(
+        (list) => getComputedStyle(list).gridTemplateColumns.split(" ").length,
+      ),
+  ).toBe(columns);
+  return columns;
+}
+
 function fixture({ emptyAttention = false } = {}) {
   return [
     ...Array.from({ length: 12 }, (_, index) =>
@@ -158,25 +176,33 @@ test("desktop dashboard has equal-height top panels and two equal lower panels e
     await page.setViewportSize(viewport);
     await expect(page.locator(".planning-prompts")).toBeVisible();
     await desktopGeometry(page);
-    await expect(attentionRows(page)).toHaveCount(2);
+    const visibleCards = Math.min(await cardColumns(page), 4);
+    await expect(attentionRows(page)).toHaveCount(visibleCards);
     const cards = attentionRows(page);
-    await expect(cards.locator(".quick-complete, .status-trigger")).toHaveCount(
-      0,
-    );
+    await expect(cards.locator(".quick-complete")).toHaveCount(0);
+    await expect(cards.locator(".status-trigger")).toHaveCount(visibleCards);
     await expect(cards.locator('[data-action="waiting-followup"]')).toHaveCount(
-      2,
+      visibleCards,
     );
     const goals = weekly(page).locator(".dashboard-goal-row");
     await expect(goals).toHaveCount(2);
     for (const goal of await goals.all()) {
-      await expect(goal.locator("button")).toHaveCount(2);
+      await expect(goal.locator(".dashboard-goal-actions button")).toHaveCount(
+        2,
+      );
+      await expect(
+        goal.locator(".dashboard-goal-meta-controls .status-trigger"),
+      ).toHaveCount(1);
+      await expect(
+        goal.locator('.dashboard-goal-meta-controls [data-action="edit-date"]'),
+      ).toHaveCount(1);
       await expect(goal.locator("strong.dashboard-goal-title")).toBeVisible();
       await expect(goal.locator(".dashboard-goal-title")).not.toHaveAttribute(
         "data-action",
       );
       for (const [action, text] of [
         ["goal-progress-open", "İlerleme"],
-        ["goal-children-open", "Bağlı işler"],
+        ["goal-children-open", "Bağlı işler 0"],
       ]) {
         const button = goal.locator(`[data-action="${action}"]`);
         await expect(button).toHaveText(text);
@@ -307,19 +333,20 @@ test("empty follow-ups retain a useful list link and mobile page flow keeps the 
   expect(await saved(page)).toBe(original);
 });
 
-test("two-card follow-up pages remain keyboard accessible and one saved follow-up can be undone exactly", async ({
+test("responsive follow-up pages remain keyboard accessible and one saved follow-up can be undone exactly", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1920, height: 1080 });
   const originalRecords = await seed(page);
   const original = await saved(page);
-  await expect(attentionRows(page)).toHaveCount(2);
+  const columns = await cardColumns(page);
+  await expect(attentionRows(page)).toHaveCount(Math.min(columns, 4));
   const first = await attentionRows(page).evaluateAll((cards) =>
     cards.map((card) => card.dataset.id),
   );
   await nextAttention(page).focus();
   await page.keyboard.press("Enter");
-  await expect(attentionRows(page)).toHaveCount(2);
+  await expect(attentionRows(page)).toHaveCount(4 - columns);
   const second = await attentionRows(page).evaluateAll((cards) =>
     cards.map((card) => card.dataset.id),
   );
@@ -358,9 +385,10 @@ test("two-card follow-up pages remain keyboard accessible and one saved follow-u
   );
   await page.getByRole("button", { name: "Geri al", exact: true }).click();
   expect(await savedRecords(page)).toEqual(originalRecords);
-  await expect(attentionRows(page)).toHaveCount(2);
+  await expect(attentionRows(page)).toHaveCount(Math.min(columns, 4));
   await desktopGeometry(page);
   await page.setViewportSize({ width: 390, height: 700 });
+  expect(await cardColumns(page)).toBe(1);
   await expect(attentionRows(page)).toHaveCount(1);
   await attentionRows(page).first().scrollIntoViewIfNeeded();
   await expect(
@@ -437,13 +465,13 @@ test("one upcoming goal and one waiting card show their full content without a r
     );
     await expect(list.locator(".dashboard-goal-row")).toHaveCount(1);
     await contained(goal, list);
-    const childCount = goal.locator(".dashboard-goal-linked");
-    await expect(childCount).toHaveText("1 adım");
+    const childCount = goal.locator(".dashboard-goal-count");
+    await expect(childCount).toHaveText("1");
     await contained(childCount, goal);
     await contained(childCount, list);
     for (const [name, text] of [
       ["goal-progress-open", "İlerleme"],
-      ["goal-children-open", "Bağlı işler"],
+      ["goal-children-open", "Bağlı işler 1"],
     ]) {
       const action = goal.locator(`[data-action="${name}"]`);
       await expect(action).toHaveText(text);
@@ -488,9 +516,8 @@ test("one upcoming goal and one waiting card show their full content without a r
       expect(part.right).toBeLessThanOrEqual(parts.box.right);
       expect(part.bottom).toBeLessThanOrEqual(parts.box.bottom);
     }
-    await expect(card.locator(".quick-complete, .status-trigger")).toHaveCount(
-      0,
-    );
+    await expect(card.locator(".quick-complete")).toHaveCount(0);
+    await expect(card.locator(".status-trigger")).toHaveCount(1);
     await desktopGeometry(page);
     expect(await saved(page)).toBe(original);
   }

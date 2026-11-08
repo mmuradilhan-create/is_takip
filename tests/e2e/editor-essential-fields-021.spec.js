@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { createRecord } from "../../src/model.js";
+import { cleanupMeetingContacts } from "../../src/meeting-contact-cleanup.js";
 import { openCreationExtras } from "./creation-support.js";
 
 const KEY = "is-takip-v1";
@@ -13,7 +14,7 @@ const records = (page) =>
   page.evaluate((key) => JSON.parse(localStorage.getItem(key)).records, KEY);
 
 function fixture() {
-  return [
+  return cleanupMeetingContacts([
     record({
       id: "essential-weekly",
       type: "weekly",
@@ -66,7 +67,7 @@ function fixture() {
       owner: "Geçmiş hedef sorumlusu",
       description: "Senelik hedefin özgün notu korunur.",
     }),
-  ];
+  ]);
 }
 
 async function seed(page) {
@@ -97,11 +98,30 @@ async function seed(page) {
 async function openExisting(page, type, id) {
   await page.locator(`#nav [data-view="${type}"]`).click();
   await page.locator(`.full-table tr[data-id="${id}"] .task-name`).click();
+  if (type !== "daily") {
+    const isGoal = ["weekly", "monthly", "yearly"].includes(type);
+    const panel = page.locator(
+      isGoal ? "#goal-detail-panel" : `#${type}-record-panel`,
+    );
+    await expect(panel).toBeVisible();
+    await expect(panel).toHaveAttribute(
+      isGoal ? "data-goal-id" : "data-record-id",
+      id,
+    );
+    await panel
+      .getByRole("button", {
+        name: isGoal ? "Hedefi düzenle" : "Kaydı düzenle",
+        exact: true,
+      })
+      .click();
+  }
   await expect(page.locator("#editor")).toBeVisible();
+  await expect(form(page).locator('[name="id"]')).toHaveValue(id);
+  await expect(form(page).locator('select[name="type"]')).toHaveValue(type);
   await openCreationExtras(page);
 }
 
-test("new daily work omits the owner field while meeting and waiting forms retain their person fields and cached drafts", async ({
+test("creation hides retired contact fields while meeting decisions and waiting contacts retain their own cached drafts", async ({
   page,
 }) => {
   const initial = await seed(page);
@@ -118,26 +138,44 @@ test("new daily work omits the owner field while meeting and waiting forms retai
     .fill("Sorumlu alanı olmadan yeni günlük iş");
   await form(page).locator('[name="type"]').selectOption("meeting");
   await openCreationExtras(page);
-  await expect(form(page).locator('[name="owner"]')).toBeVisible();
+  await expect(form(page).locator('[name="owner"]')).toBeHidden();
+  await expect(form(page).locator('[name="owner"]')).toHaveValue("");
+  await expect(form(page).locator('[name="participants"]')).toBeHidden();
+  await expect(form(page).locator('[name="participants"]')).toHaveValue("");
   await form(page)
-    .locator('[name="owner"]')
-    .fill("Toplantı taslağının sorumlusu");
+    .locator('[name="title"]')
+    .fill("Toplantının bağımsız taslağı");
+  await form(page)
+    .locator('[name="decision"]')
+    .fill("Toplantı taslağının kararı.");
   await form(page).locator('[name="type"]').selectOption("daily");
   await openCreationExtras(page);
   await expect(form(page).locator('[name="owner"]')).toBeHidden();
   await expect(form(page).locator('[name="owner"]')).toHaveValue("");
   await form(page).locator('[name="type"]').selectOption("meeting");
   await openCreationExtras(page);
-  await expect(form(page).locator('[name="owner"]')).toHaveValue(
-    "Toplantı taslağının sorumlusu",
+  await expect(form(page).locator('[name="owner"]')).toBeHidden();
+  await expect(form(page).locator('[name="owner"]')).toHaveValue("");
+  await expect(form(page).locator('[name="title"]')).toHaveValue(
+    "Toplantının bağımsız taslağı",
+  );
+  await expect(form(page).locator('[name="decision"]')).toHaveValue(
+    "Toplantı taslağının kararı.",
   );
   await form(page).locator('[name="type"]').selectOption("waiting");
   await expect(form(page).locator('[name="expectedFrom"]')).toBeVisible();
+  await form(page)
+    .locator('[name="expectedFrom"]')
+    .fill("Bekleyen taslağın ekibi");
   await expect(form(page).getByLabel("Sorumlu", { exact: true })).toHaveCount(
     0,
   );
   await form(page).locator('[name="type"]').selectOption("yearly");
   await expect(form(page).locator('[name="dueDate"]')).toHaveCount(0);
+  await form(page).locator('[name="type"]').selectOption("waiting");
+  await expect(form(page).locator('[name="expectedFrom"]')).toHaveValue(
+    "Bekleyen taslağın ekibi",
+  );
   await form(page).locator('[name="type"]').selectOption("daily");
   await expect(form(page).locator('[name="title"]')).toHaveValue(
     "Sorumlu alanı olmadan yeni günlük iş",
@@ -199,12 +237,13 @@ test("editing an unrelated daily field preserves hidden legacy owners and undo r
     await expect(owner).toHaveValue(
       fixture().find((item) => item.id === id).owner,
     );
+    await expect(owner).toBeHidden();
+    await expect(owner).toBeDisabled();
     if (type === "meeting") {
-      await expect(owner).toBeVisible();
-      await expect(owner).toBeEnabled();
-    } else {
-      await expect(owner).toBeHidden();
-      await expect(owner).toBeDisabled();
+      await expect(owner).toHaveValue("");
+      await expect(form(page).locator('[name="participants"]')).toBeHidden();
+      await expect(form(page).locator('[name="participants"]')).toBeDisabled();
+      await expect(form(page).locator('[name="participants"]')).toHaveValue("");
     }
     if (type === "waiting")
       await expect(form(page).locator('[name="expectedFrom"]')).toBeVisible();
@@ -224,9 +263,13 @@ test("editing an unrelated daily field preserves hidden legacy owners and undo r
     expect(await saved(page)).toBe(initial);
   }
   await page
-    .locator('.full-table tr[data-id="essential-yearly"] .goal-details-trigger')
+    .locator('.full-table tr[data-id="essential-yearly"] .task-name')
     .click();
   await expect(page.locator("#goal-detail-panel")).toBeVisible();
+  await expect(page.locator("#goal-detail-panel")).toHaveAttribute(
+    "data-goal-id",
+    "essential-yearly",
+  );
   await expect(page.locator("#goal-detail-panel .goal-panel-note")).toHaveCount(
     0,
   );

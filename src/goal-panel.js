@@ -95,6 +95,7 @@ export function createGoalPanel({
   onEdit = () => {},
   onSaveProgress = null,
   onLinkChild = null,
+  onUnlinkChild = null,
   onError = () => {},
 } = {}) {
   if (!root || typeof getRecords !== "function")
@@ -112,6 +113,7 @@ export function createGoalPanel({
   let renderKey = "";
   let linking = false;
   let progressSaving = false;
+  let unlinking = null;
   let destroyed = false;
 
   const find = (id) => getRecords().find((record) => record.id === id);
@@ -177,7 +179,7 @@ export function createGoalPanel({
   function updateSaveState() {
     const record = goal();
     if (!record) return;
-    const busy = linking || progressSaving;
+    const busy = linking || progressSaving || unlinking;
     const linkForm = panel.querySelector("#goal-link-child-form");
     if (linkForm) {
       linkForm.setAttribute("aria-busy", String(linking));
@@ -214,7 +216,7 @@ export function createGoalPanel({
         (!entry.dirty && !messages.has(`${record.id}:#goal-progress-error`));
     }
     for (const control of panel.querySelectorAll(
-      '[data-action="goal-new-step"], [data-action="goal-edit-record"], [data-action="goal-open-child"], [data-action="goal-add-measurement"], [data-action="goal-panel-close"]',
+      '[data-action="goal-new-step"], [data-action="goal-edit-record"], [data-action="goal-open-child"], [data-action="goal-add-measurement"], [data-action="goal-unlink-child"], [data-action="goal-panel-close"]',
     ))
       control.disabled = busy;
   }
@@ -275,13 +277,22 @@ export function createGoalPanel({
     });
   }
 
+  function unlinkControl(record) {
+    if (typeof onUnlinkChild !== "function") return "";
+    const caption =
+      record.type === "daily"
+        ? "Bağı kaldır ve anlık işe dönüştür"
+        : "Üst hedef bağlantısını kaldır";
+    return `<button type="button" class="goal-child-unlink" data-action="goal-unlink-child" data-id="${esc(record.id)}" aria-label="${esc(record.title)}: ${caption.toLocaleLowerCase("tr-TR")}" data-record-link-tooltip="${esc(caption)}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 15-1 1a4 4 0 0 1-6-6l3-3a4 4 0 0 1 6 0m2 2 1-1a4 4 0 0 1 6 6l-3 3a4 4 0 0 1-6 0M3 21 21 3"/></svg></button>`;
+  }
+
   function childMarkup(record, records) {
     const due = childDateMarkup(record);
     if (GOALS.has(record.type)) {
       const progress = goalProgress(record, records);
-      return `<li class="goal-child-row goal-child-goal" data-id="${esc(record.id)}">${renderComplete(record)}<div class="goal-child-main"><button type="button" class="goal-child-title${record.status === "completed" ? " completed" : ""}" data-action="goal-open-child" data-id="${esc(record.id)}">${esc(record.title)}</button><div class="goal-child-meta">${renderStatus(record)}${due}<span>${esc(humanPeriod(record))}</span></div><div class="goal-child-progress"><div class="progress-track" role="progressbar" aria-label="${esc(record.title)} ilerlemesi" aria-valuenow="${progress.percent}" aria-valuemin="0" aria-valuemax="100"><span style="width:${progress.percent}%"></span></div><strong>%${progress.percent}</strong></div></div><button type="button" class="goal-child-open" data-action="goal-open-child" data-id="${esc(record.id)}" aria-label="${esc(record.title)}: hedef ayrıntılarını aç">→</button></li>`;
+      return `<li class="goal-child-row goal-child-goal" data-id="${esc(record.id)}">${renderComplete(record)}<div class="goal-child-main"><button type="button" class="goal-child-title${record.status === "completed" ? " completed" : ""}" data-action="goal-open-child" data-id="${esc(record.id)}">${esc(record.title)}</button><div class="goal-child-meta">${renderStatus(record)}${due}<span>${esc(humanPeriod(record))}</span></div><div class="goal-child-progress"><div class="progress-track" role="progressbar" aria-label="${esc(record.title)} ilerlemesi" aria-valuenow="${progress.percent}" aria-valuemin="0" aria-valuemax="100"><span style="width:${progress.percent}%"></span></div><strong>%${progress.percent}</strong></div></div><div class="goal-child-actions">${unlinkControl(record)}<button type="button" class="goal-child-open" data-action="goal-open-child" data-id="${esc(record.id)}" aria-label="${esc(record.title)}: hedef ayrıntılarını aç">→</button></div></li>`;
     }
-    return `<li class="goal-child-row" data-id="${esc(record.id)}">${renderComplete(record)}<div class="goal-child-main"><button type="button" class="goal-child-title${record.status === "completed" ? " completed" : ""}" data-action="edit" data-id="${esc(record.id)}">${esc(record.title)}</button><div class="goal-child-meta">${renderStatus(record)}${renderBlocked(record)}${due}${renderJournal(record)}</div></div><div class="goal-child-action">${renderWork(record)}</div></li>`;
+    return `<li class="goal-child-row" data-id="${esc(record.id)}">${renderComplete(record)}<div class="goal-child-main"><button type="button" class="goal-child-title${record.status === "completed" ? " completed" : ""}" data-action="edit" data-id="${esc(record.id)}">${esc(record.title)}</button><div class="goal-child-meta">${renderStatus(record)}${renderBlocked(record)}${due}${renderJournal(record)}</div></div><div class="goal-child-action goal-child-actions">${unlinkControl(record)}${renderWork(record)}</div></li>`;
   }
 
   function unboundChildren(record, records) {
@@ -328,7 +339,7 @@ export function createGoalPanel({
     const secondary = summary
       ? `<div class="goal-panel-summary goal-panel-secondary" aria-label="Haftalık özet"><div><span>Günlük iş ilerlemesi</span><strong>${summary.completed}/${summary.total} tamamlandı</strong></div><div><span>Kaydedilen süre</span><strong>${esc(formatWorkDuration(weeklyGoalWorkMs(record.id, records)))}</strong></div></div>`
       : "";
-    return `<section class="goal-panel-section goal-panel-children goal-hierarchy-section" data-goal-section="children"><div class="goal-panel-section-heading"><h3 tabindex="-1" data-goal-section-heading="children">Bağlı ${childName} <small>${children.length}</small></h3><button type="button" class="text-btn goal-new-step" data-action="goal-new-step" data-id="${esc(record.id)}">${plusIcon}${action}</button></div>${children.length ? `<p class="field-help goal-child-order">Açık kayıtlar önce; yakın teslim tarihine göre.${excluded ? ` ${excluded} iptal veya arşiv kaydı ilerlemeye dahil değil.` : ""}</p><ul class="goal-child-list">${children.map((child) => childMarkup(child, records)).join("")}</ul>` : '<p class="goal-panel-empty">Bu hedef için ilk bağlı adımı ekleyebilirsin.</p>'}${linkChildMarkup(record, records)}${secondary}</section>`;
+    return `<section class="goal-panel-section goal-panel-children goal-hierarchy-section" data-goal-section="children"><div class="goal-panel-section-heading"><h3 tabindex="-1" data-goal-section-heading="children">Bağlı ${childName} <small>${children.length}</small></h3><button type="button" class="text-btn goal-new-step" data-action="goal-new-step" data-id="${esc(record.id)}">${plusIcon}${action}</button></div>${children.length ? `<p class="field-help goal-child-order">Açık kayıtlar önce; yakın teslim tarihine göre.${excluded ? ` ${excluded} iptal veya arşiv kaydı ilerlemeye dahil değil.` : ""}</p><ul class="goal-child-list">${children.map((child) => childMarkup(child, records)).join("")}</ul>` : '<p class="goal-panel-empty">Bu hedef için ilk bağlı adımı ekleyebilirsin.</p>'}${typeof onUnlinkChild === "function" ? errorMarkup(record, "#goal-unlink-child-error") : ""}${linkChildMarkup(record, records)}${secondary}</section>`;
   }
 
   function transferReasonsMarkup(record) {
@@ -478,7 +489,7 @@ export function createGoalPanel({
   }
 
   function canActivate() {
-    return !destroyed && !linking && !progressSaving;
+    return !destroyed && !linking && !progressSaving && !unlinking;
   }
 
   function canOpen(id) {
@@ -502,7 +513,12 @@ export function createGoalPanel({
   }
 
   async function saveProgress(value) {
-    if (linking || progressSaving || typeof onSaveProgress !== "function")
+    if (
+      linking ||
+      progressSaving ||
+      unlinking ||
+      typeof onSaveProgress !== "function"
+    )
       return;
     const record = goal();
     if (!record || CLOSED.has(record.status) || !ownMetric(record)) return;
@@ -578,6 +594,73 @@ export function createGoalPanel({
     }
   }
 
+  async function unlinkChild(id) {
+    if (
+      linking ||
+      progressSaving ||
+      unlinking ||
+      typeof onUnlinkChild !== "function"
+    )
+      return;
+    const record = goal();
+    const children = record
+      ? goalChildren(record, getRecords()).sort(sortChildren)
+      : [];
+    const index = children.findIndex((child) => child.id === id);
+    if (!record || index === -1) {
+      report(
+        "Bu kaydın hedef bağlantısı değişti. Güncel listeyi kontrol et.",
+        "#goal-unlink-child-error",
+      );
+      render(true);
+      return;
+    }
+    const nextId = children[index + 1]?.id || children[index - 1]?.id;
+    const scrollTop = panel.querySelector(".goal-panel-body")?.scrollTop || 0;
+    captureProgressDraft();
+    unlinking = id;
+    clearError("#goal-unlink-child-error", record.id);
+    updateSaveState();
+    let saved = false;
+    try {
+      saved = (await onUnlinkChild(record.id, id)) === true;
+      if (!saved)
+        report(
+          "Bağlantı kaldırılamadı. Yeniden deneyebilirsin.",
+          "#goal-unlink-child-error",
+          record.id,
+        );
+      else clearError("#goal-unlink-child-error", record.id);
+    } catch (error) {
+      report(
+        error || "Bağlantı kaldırılamadı.",
+        "#goal-unlink-child-error",
+        record.id,
+      );
+    } finally {
+      unlinking = null;
+      if (!destroyed && panel.open) {
+        render(true);
+        updateSaveState();
+        if (selectedId === record.id) {
+          const body = panel.querySelector(".goal-panel-body");
+          if (body) body.scrollTop = scrollTop;
+          const target = saved
+            ? [...panel.querySelectorAll(".goal-child-row")]
+                .find((row) => row.dataset.id === nextId)
+                ?.querySelector(".goal-child-title")
+            : [
+                ...panel.querySelectorAll('[data-action="goal-unlink-child"]'),
+              ].find((button) => button.dataset.id === id);
+          (
+            target ||
+            panel.querySelector('[data-goal-section-heading="children"]')
+          )?.focus({ preventScroll: true });
+        }
+      }
+    }
+  }
+
   function onClick(event) {
     const control = event.target.closest?.("[data-action]");
     if (!control || !panel.contains(control)) return;
@@ -588,6 +671,7 @@ export function createGoalPanel({
         "goal-new-step",
         "goal-edit-record",
         "goal-open-child",
+        "goal-unlink-child",
         "goal-progress-decrement",
         "goal-progress-increment",
         "goal-progress-target",
@@ -597,8 +681,9 @@ export function createGoalPanel({
     )
       return;
     event.preventDefault();
-    if (linking || progressSaving) return;
+    if (linking || progressSaving || unlinking) return;
     if (action === "goal-panel-close") close();
+    else if (action === "goal-unlink-child") unlinkChild(id);
     else if (
       [
         "goal-progress-decrement",
@@ -662,7 +747,7 @@ export function createGoalPanel({
     }
     if (event.target.matches?.("#goal-link-child-form")) {
       event.preventDefault();
-      if (linking || progressSaving) return;
+      if (linking || progressSaving || unlinking) return;
       const record = goal();
       const childId = event.target.elements.childId.value;
       if (
@@ -702,7 +787,7 @@ export function createGoalPanel({
   }
 
   function onCancel(event) {
-    if (linking || progressSaving) event.preventDefault();
+    if (linking || progressSaving || unlinking) event.preventDefault();
     else captureProgressDraft();
   }
 
@@ -712,7 +797,8 @@ export function createGoalPanel({
       event.defaultPrevented ||
       !panel.open ||
       linking ||
-      progressSaving
+      progressSaving ||
+      unlinking
     )
       return;
     // A status/calendar popover or a modal editor gets the first Escape.

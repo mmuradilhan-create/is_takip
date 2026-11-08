@@ -41,8 +41,9 @@ async function closeDetail(page) {
 
 async function expand(page, id) {
   await closeDetail(page);
-  await row(page, id).locator('[data-action="goal-details"]').click();
+  await row(page, id).locator('.task-name[data-action="goal-details"]').click();
   await expect(detail(page)).toBeVisible();
+  await expect(detail(page)).toHaveAttribute("data-goal-id", id);
 }
 
 async function changeStatus(page, id, status) {
@@ -148,8 +149,8 @@ test("planning screens share compact rows and weekly details open separately wit
       type === "daily"
         ? ["Durum", "Öncelik", "Teslim tarihi"]
         : type === "yearly"
-          ? ["Durum", "İlerleme", "Öncelik"]
-          : ["Durum", "İlerleme", "Öncelik", "Teslim tarihi"],
+          ? ["Durum", "Öncelik", "İlerleme"]
+          : ["Durum", "Öncelik", "Teslim tarihi", "İlerleme"],
     );
     await expect(page.locator("#period-filter")).toHaveCount(
       type === "yearly" ? 0 : 1,
@@ -178,7 +179,7 @@ test("planning screens share compact rows and weekly details open separately wit
         page
           .locator(".full-table > tbody > tr")
           .first()
-          .locator("td.row-action-col .goal-details-trigger"),
+          .locator('td.row-action-col .goal-edit-trigger[data-action="edit"]'),
       ).toHaveCount(1);
     }
   }
@@ -196,6 +197,18 @@ test("planning screens share compact rows and weekly details open separately wit
   expect(await readSaved(page)).toBe(saved);
   await row(page, "weekly-plan").focus();
   await page.keyboard.press("Enter");
+  await expect(detail(page)).toBeVisible();
+  await expect(detail(page)).toHaveAttribute("data-goal-id", "weekly-plan");
+  await expect(page.locator("#editor")).not.toBeVisible();
+  await detail(page)
+    .getByRole("button", { name: "Hedefi düzenle", exact: true })
+    .click();
+  await expect(page.locator('#record-form [name="id"]')).toHaveValue(
+    "weekly-plan",
+  );
+  await expect(page.locator('#record-form select[name="type"]')).toHaveValue(
+    "weekly",
+  );
   await expect(page.locator('#record-form [name="title"]')).toHaveValue(
     "Haftalık teslim planı",
   );

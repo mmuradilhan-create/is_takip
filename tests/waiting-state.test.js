@@ -238,10 +238,12 @@ test("migration is one durable undo action and a failed write cannot partly migr
 });
 
 test("review selects untouched open daily records after seven calendar days without changing data or guessing timestamps", () => {
+  const boundary = new Date(2026, 9, 31, 23, 59, 59, 999).toISOString();
+  const recent = new Date(2026, 10, 1, 0, 0, 0).toISOString();
   const missing = record({ id: "missing", createdAt: "2025-01-01T00:00:00Z" });
   delete missing.updatedAt;
   const records = [
-    record({ id: "boundary-z", updatedAt: "2026-10-31T23:59:59.999Z" }),
+    record({ id: "boundary-z", updatedAt: boundary }),
     record({
       id: "old",
       updatedAt: "2026-10-01T18:00:00Z",
@@ -249,12 +251,12 @@ test("review selects untouched open daily records after seven calendar days with
     }),
     record({
       id: "boundary-a",
-      updatedAt: "2026-10-31T23:59:59.999Z",
+      updatedAt: boundary,
       dueDate: "",
     }),
     record({
       id: "recent",
-      updatedAt: "2026-11-01T00:00:00Z",
+      updatedAt: recent,
       createdAt: "2025-01-01T00:00:00Z",
     }),
     record({ id: "running", updatedAt: "2026-09-01T12:00:00Z" }),

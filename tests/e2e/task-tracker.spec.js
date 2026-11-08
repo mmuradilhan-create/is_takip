@@ -168,6 +168,9 @@ test("creates, edits, completes, persists and safely unlinks daily work from wee
     page.getByRole("heading", { name: "Genel bakış", exact: true, level: 1 }),
   ).toBeVisible();
   await addRecord(page, { title: "Haftalık sunum", type: "weekly" });
+  const weekly = (await readRecords(page)).find(
+    (record) => record.title === "Haftalık sunum",
+  );
   await addRecord(page, {
     title: "Teklif hazırla",
     parentId: "Haftalık sunum",
@@ -209,6 +212,16 @@ test("creates, edits, completes, persists and safely unlinks daily work from wee
   await page
     .getByRole("button", { name: "Haftalık sunum", exact: true })
     .click();
+  const weeklyPreview = page.locator("#goal-detail-panel");
+  await expect(weeklyPreview).toBeVisible();
+  await expect(weeklyPreview).toHaveAttribute("data-goal-id", weekly.id);
+  await weeklyPreview
+    .getByRole("button", { name: "Hedefi düzenle", exact: true })
+    .click();
+  await expect(page.locator('#record-form [name="id"]')).toHaveValue(weekly.id);
+  await expect(page.locator('#record-form select[name="type"]')).toHaveValue(
+    "weekly",
+  );
   page.once("dialog", (dialog) => dialog.accept());
   await page.getByRole("button", { name: "Kaydı sil", exact: true }).click();
   await page.locator('#nav [data-view="daily"]').click();
@@ -1153,6 +1166,23 @@ test("dashboard exposes active daily work with fixed order, filters, scrolling a
 
   const weeklyPanel = page.locator(".weekly-dashboard-panel");
   const attentionPanel = page.locator(".attention-panel");
+  const expectAttentionPageSize = async (total) => {
+    const workspace = page.locator(".dashboard-workspace");
+    await expect(workspace).toHaveAttribute("data-card-columns", /^[123]$/);
+    const columns = Number(await workspace.getAttribute("data-card-columns"));
+    expect(
+      await attentionPanel
+        .locator(".attention-list")
+        .evaluate(
+          (list) =>
+            getComputedStyle(list).gridTemplateColumns.trim().split(/\s+/)
+              .length,
+        ),
+    ).toBe(columns);
+    await expect(attentionPanel.locator(".attention-list > li")).toHaveCount(
+      Math.min(columns, total),
+    );
+  };
   await expect(weeklyPanel.locator(".dashboard-goal-row")).toHaveCount(1);
   await expect(weeklyPanel.locator(".dashboard-goal-title")).toHaveText(
     weekly.title,
@@ -1161,7 +1191,7 @@ test("dashboard exposes active daily work with fixed order, filters, scrolling a
     "aria-valuenow",
     "0",
   );
-  await expect(attentionPanel.locator(".attention-list > li")).toHaveCount(2);
+  await expectAttentionPageSize(6);
   expect((await readAttentionCards(page)).map((card) => card.id)).toEqual([
     "waiting-earliest",
     "waiting-old",
@@ -1242,10 +1272,28 @@ test("dashboard exposes active daily work with fixed order, filters, scrolling a
   await attentionPanel
     .locator('li[data-id="waiting-earliest"] .followup-title')
     .click();
+  const waitingPreview = page.locator("#waiting-record-panel");
+  await expect(waitingPreview).toBeVisible();
+  await expect(waitingPreview).toHaveAttribute(
+    "data-record-id",
+    "waiting-earliest",
+  );
+  await expect(page.locator("#editor")).not.toBeVisible();
+  await waitingPreview
+    .getByRole("button", { name: "Kaydı düzenle", exact: true })
+    .click();
+  await expect(page.locator('#record-form [name="id"]')).toHaveValue(
+    "waiting-earliest",
+  );
   await expect(page.locator('#record-form [name="title"]')).toHaveValue(
     waiting[7].title,
   );
   await page.getByRole("button", { name: "Vazgeç", exact: true }).click();
+  await expect(page.locator("#editor")).not.toBeVisible();
+  await waitingPreview
+    .getByRole("button", { name: "Kapat", exact: true })
+    .click();
+  await expect(waitingPreview).not.toBeVisible();
   await page.locator('#nav [data-view="meeting"]').click();
   await expect(page.locator("#page-title")).toHaveText("Toplantı aksiyonları");
   await expect(page.locator("tbody tr")).toHaveCount(6);
@@ -1297,7 +1345,7 @@ test("dashboard exposes active daily work with fixed order, filters, scrolling a
       "waiting-today",
       "waiting-confirm-today",
     ]);
-    await expect(attentionPanel.locator(".attention-list > li")).toHaveCount(2);
+    await expectAttentionPageSize(4);
     const mainColumnBox = await page
       .locator(".dashboard-main-column")
       .boundingBox();
@@ -1411,6 +1459,18 @@ test("multiple undo restores exact add, edit, status and weekly-unlink states an
   await page
     .getByRole("button", { name: "Haftalık rapor", exact: true })
     .click();
+  const weeklyPreview = page.locator("#goal-detail-panel");
+  await expect(weeklyPreview).toBeVisible();
+  await expect(weeklyPreview).toHaveAttribute("data-goal-id", "weekly-plan");
+  await weeklyPreview
+    .getByRole("button", { name: "Hedefi düzenle", exact: true })
+    .click();
+  await expect(page.locator('#record-form [name="id"]')).toHaveValue(
+    "weekly-plan",
+  );
+  await expect(page.locator('#record-form select[name="type"]')).toHaveValue(
+    "weekly",
+  );
   page.once("dialog", (dialog) => dialog.accept());
   await page.getByRole("button", { name: "Kaydı sil", exact: true }).click();
   const afterDelete = await readRecords(page);
@@ -1515,7 +1575,7 @@ test("native text undo stays local and stale cross-tab history cannot erase exte
   await title.press("End");
   await title.pressSequentially("!");
   await expect(title).toHaveValue("Verileri kontrol et!");
-  await title.press("Control+z");
+  await title.press("ControlOrMeta+z");
   await expect(title).toHaveValue("Verileri kontrol et");
   expect(await readRecords(page)).toEqual(afterAdd);
   await page.getByRole("button", { name: "Vazgeç", exact: true }).click();
@@ -1705,7 +1765,7 @@ const STATUS_SETS = {
   ],
   meeting: [
     ["planned", "Planlanacak"],
-    ["completed", "Tamamlandı"],
+    ["completed", "Arşivlendi"],
     ["cancelled", "İptal"],
   ],
   waiting: [
@@ -1781,6 +1841,36 @@ test("each module keeps its own status options in forms, filters and the quick s
     await page
       .getByRole("button", { name: `Durum seçimi ${type}`, exact: true })
       .click();
+    const preview = page.locator(
+      ["weekly", "monthly", "yearly"].includes(type)
+        ? "#goal-detail-panel"
+        : `#${type}-record-panel`,
+    );
+    if (type !== "daily") {
+      await expect(preview).toBeVisible();
+      await expect(preview).toHaveAttribute(
+        ["weekly", "monthly", "yearly"].includes(type)
+          ? "data-goal-id"
+          : "data-record-id",
+        `status-${type}`,
+      );
+      await expect(page.locator("#editor")).not.toBeVisible();
+      await preview
+        .getByRole("button", {
+          name: ["weekly", "monthly", "yearly"].includes(type)
+            ? "Hedefi düzenle"
+            : "Kaydı düzenle",
+          exact: true,
+        })
+        .click();
+    }
+    await expect(page.locator("#editor")).toBeVisible();
+    await expect(page.locator('#record-form [name="id"]')).toHaveValue(
+      `status-${type}`,
+    );
+    await expect(page.locator('#record-form select[name="type"]')).toHaveValue(
+      type,
+    );
     expect(
       await selectValuesAndLabels(page.locator('#record-form [name="status"]')),
     ).toEqual(expected);
@@ -1788,6 +1878,13 @@ test("each module keeps its own status options in forms, filters and the quick s
       "planned",
     );
     await page.getByRole("button", { name: "Vazgeç", exact: true }).click();
+    await expect(page.locator("#editor")).not.toBeVisible();
+    if (type !== "daily") {
+      await expect(preview).toBeVisible();
+      await preview.getByRole("button", { name: "Kapat", exact: true }).click();
+      await expect(preview).not.toBeVisible();
+    }
+    expect(await readRecords(page)).toEqual(records);
   }
 
   await page.getByRole("button", { name: "Yeni kayıt", exact: true }).click();
@@ -1819,7 +1916,18 @@ test("each module keeps its own status options in forms, filters and the quick s
   await form.locator('[name="type"]').selectOption("waiting");
   await openCreationExtras(page);
   await expect(form.locator('[name="status"]')).toHaveValue("waiting_response");
-  await page.getByRole("button", { name: "Vazgeç", exact: true }).click();
+  const discard = page.waitForEvent("dialog");
+  const cancelDraft = page
+    .getByRole("button", { name: "Vazgeç", exact: true })
+    .click();
+  const confirmation = await discard;
+  expect(confirmation.type()).toBe("confirm");
+  expect(confirmation.message()).toBe(
+    "Kaydedilmemiş değişiklikler var. Kaydetmeden kapatmak istiyor musun?",
+  );
+  await confirmation.accept();
+  await cancelDraft;
+  await expect(page.locator("#editor")).not.toBeVisible();
   expect(await readRecords(page)).toEqual(records);
 });
 

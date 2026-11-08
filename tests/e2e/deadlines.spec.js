@@ -231,9 +231,12 @@ test("dashboard and linked details share deadline tones while the mini agenda sh
     0,
   );
   await page.locator('#nav [data-view="weekly"]').click();
-  await row(page, "weekly").locator(".goal-details-trigger").click();
+  await row(page, "weekly")
+    .locator('.task-name[data-action="goal-details"]')
+    .click();
   const panel = page.locator("#goal-detail-panel");
   await expect(panel).toBeVisible();
+  await expect(panel).toHaveAttribute("data-goal-id", "deadline-weekly");
   for (const [id, tone] of [
     ["overdue", "overdue"],
     ["today", "due-soon"],
@@ -246,13 +249,13 @@ test("dashboard and linked details share deadline tones while the mini agenda sh
   ]) {
     await expectTone(
       panel.locator(
-        `.goal-child-row[data-id="deadline-${id}"] .goal-child-date`,
+        `.goal-child-row[data-id="deadline-${id}"] :is(.inline-date, .goal-child-date)`,
       ),
       tone,
     );
     await expect(
       panel.locator(
-        `.goal-child-row[data-id="deadline-${id}"] .goal-child-date`,
+        `.goal-child-row[data-id="deadline-${id}"] :is(.inline-date, .goal-child-date)`,
       ),
     ).not.toContainText("Gecikti");
   }
@@ -303,8 +306,14 @@ test("editing a daily deadline moves it into the orange window and undo restores
   await expectTone(row(page, "four").locator(".inline-date"), "neutral");
   await row(page, "four").locator(".inline-date").click();
   const menu = page.locator("#due-date-menu");
+  await expect(page.locator("#odak-date-picker")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.locator("#odak-date-picker")).not.toBeVisible();
+  await expect(menu).toBeVisible();
   await menu.locator('[name="dueDate"]').fill("10.11.2026");
-  await menu.getByRole("button", { name: "Kaydet", exact: true }).click();
+  await menu
+    .locator("#quick-date-form > .quick-date-actions > [type=submit]")
+    .click();
   await expectTone(row(page, "four").locator(".inline-date"), "due-soon");
   const changed = (await readRecords(page)).find(
     (record) => record.id === "deadline-four",

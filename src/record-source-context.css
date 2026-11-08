@@ -1,5 +1,5 @@
-/* The real source stays beside the title; parent targets remain below it. */
-.record-source-link {
+/* Daily connections stay beside the title as compact, named controls. */
+:is(.record-source-link, .record-parent-link) {
   display: inline-flex;
   flex: 0 0 22px;
   align-items: center;
@@ -18,7 +18,7 @@
   cursor: pointer;
 }
 
-.record-source-link > svg {
+:is(.record-source-link, .record-parent-link) > svg {
   flex: 0 0 12px;
   width: 12px;
   height: 12px;
@@ -29,8 +29,8 @@
   stroke-linejoin: round;
 }
 
-.record-source-link:hover,
-.record-source-link:focus-visible {
+:is(.record-source-link, .record-parent-link):hover,
+:is(.record-source-link, .record-parent-link):focus-visible {
   background: var(--theme-hover, #eaf2e3);
   color: var(--theme-accent, #4c7047);
 }
@@ -52,7 +52,12 @@
 }
 
 .record-title-content
-  > :is(.record-source-link, .record-note-trigger, .record-history-trigger) {
+  > :is(
+    .record-source-link,
+    .record-parent-link,
+    .record-note-trigger,
+    .record-history-trigger
+  ) {
   margin-inline-start: 6px;
   vertical-align: middle;
 }
@@ -80,7 +85,7 @@
 
 .focus-title-line
   > .record-title-content
-  > :is(.record-source-link, .record-note-trigger) {
+  > :is(.record-source-link, .record-parent-link, .record-note-trigger) {
   flex: 0 0 18px;
   width: 18px;
   min-width: 18px;

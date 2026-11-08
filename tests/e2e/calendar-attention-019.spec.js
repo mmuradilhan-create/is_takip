@@ -18,6 +18,15 @@ const attentionRows = (page) =>
   page.locator(".attention-panel .attention-list > [data-id]");
 const saved = (page) => page.evaluate((key) => localStorage.getItem(key), KEY);
 
+async function discardChanges(page, dismiss) {
+  const confirmation = page.waitForEvent("dialog");
+  const dismissal = dismiss();
+  const dialog = await confirmation;
+  expect(dialog.type()).toBe("confirm");
+  await dialog.accept();
+  await dismissal;
+}
+
 function fixture() {
   return [
     record({
@@ -143,13 +152,13 @@ function fixture() {
 
 async function seed(
   page,
-  { width = 1440, height = 1000, theme = "light" } = {},
+  { width = 1440, height = 1000, theme = "light", records = fixture() } = {},
 ) {
   await page.setViewportSize({ width, height });
   await page.clock.setFixedTime(NOW);
   const original = JSON.stringify({
     version: 1,
-    records: fixture(),
+    records,
     odak: {
       version: 1,
       preferences: { density: "compact", theme },
@@ -169,6 +178,37 @@ async function seed(
   await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
   expect(await saved(page)).toBe(original);
   return original;
+}
+
+async function pageContext(page) {
+  return page.evaluate(() => ({
+    title: document.querySelector("#page-title")?.textContent,
+    view: document.querySelector('#nav [aria-current="page"]')?.dataset.view,
+    search: document.querySelector("#global-search")?.value,
+    scope:
+      document.querySelector('.list-scope-tabs [aria-pressed="true"]')?.dataset
+        .scope || null,
+    focus:
+      document.querySelector('.focus-filters [aria-pressed="true"]')?.dataset
+        .filter || null,
+    filters: [
+      "status-filter",
+      "priority-filter",
+      "period-filter",
+      "work-context-filter",
+      "list-sort",
+    ].map((id) => [id, document.getElementById(id)?.value || null]),
+    scroll: [window.scrollX, window.scrollY],
+    tableScroll:
+      document.querySelector(".full-table")?.parentElement.scrollLeft || 0,
+    miniSelectedDay:
+      document.querySelector(
+        ".dashboard-calendar .calendar-selected-label time",
+      )?.dateTime || null,
+    miniMonth:
+      document.querySelector(".dashboard-calendar .calendar-month-title")
+        ?.textContent || null,
+  }));
 }
 
 for (const { width, height, theme } of [
@@ -422,10 +462,26 @@ test("expanded month and week show only real active dates, escape source titles,
 
 test("an expanded calendar survives record cancel, save and delete with its selected month and day intact", async ({
   page,
-}) => {
-  const original = await seed(page);
+}, testInfo) => {
+  const records = [
+    ...fixture(),
+    ...Array.from({ length: 20 }, (_, index) =>
+      record({
+        id: `calendar-context-daily-${index}`,
+        title: `Takvim kaynak sayfası günlük işi ${index + 1}`,
+        dueDate: "2026-11-10",
+      }),
+    ),
+  ];
+  const original = await seed(page, { width: 1280, height: 720, records });
   const originalRecords = JSON.parse(original).records;
   const currentRecords = async () => JSON.parse(await saved(page)).records;
+  await page.locator('#nav [data-view="daily"]').click();
+  await page.locator('.list-scope-tabs [data-scope="all"]').click();
+  await page.locator("#status-filter").selectOption("planned");
+  await page.locator("#priority-filter").selectOption("normal");
+  await page.locator("#list-sort").selectOption("due-desc");
+  await page.getByRole("searchbox").fill("Takvim");
   await page.getByRole("button", { name: "Takvimi aç", exact: true }).click();
   await expanded(page)
     .locator(
@@ -436,8 +492,27 @@ test("an expanded calendar survives record cancel, save and delete with its sele
   const entry = expanded(page).locator(
     '.calendar-day-agenda [data-calendar-record-id="calendar-monthly"]',
   );
-  const returned = async () => {
+  await entry.scrollIntoViewIfNeeded();
+  // Set a real source-page position after native topbar focus has settled.
+  // Opening this record must preserve it while the calendar stays on top.
+  await page.evaluate(() => window.scrollTo(0, 240));
+  await expect
+    .poll(() => page.evaluate(() => window.scrollY))
+    .toBeGreaterThan(0);
+  const sourceContext = await pageContext(page);
+  expect(sourceContext.title).toBe("Günlük işler");
+  expect(sourceContext.view).toBe("daily");
+  expect(sourceContext.scope).toBe("all");
+  expect(sourceContext.search).toBe("Takvim");
+  expect(sourceContext.scroll[1]).toBeGreaterThan(0);
+  const agendaScroll = await expanded(page)
+    .locator(".calendar-agenda-entries")
+    .evaluate((element) => element.scrollTop);
+  const sameBackground = async () =>
+    expect(await pageContext(page)).toEqual(sourceContext);
+  const returned = async (entryRemains = true) => {
     await expect(page.locator("#editor")).not.toBeVisible();
+    await sameBackground();
     await expect(expanded(page)).toBeVisible();
     expect(
       await expanded(page).evaluate((element) => element.matches(":modal")),
@@ -448,9 +523,19 @@ test("an expanded calendar survives record cancel, save and delete with its sele
     await expect(expanded(page).locator(".calendar-month-title")).toContainText(
       "Kasım 2026",
     );
+    if (entryRemains)
+      expect(
+        await expanded(page)
+          .locator(".calendar-agenda-entries")
+          .evaluate((element) => element.scrollTop),
+      ).toBe(agendaScroll);
   };
   await entry.click();
   await expect(page.locator("#editor")).toBeVisible();
+  await sameBackground();
+  await page.screenshot({
+    path: testInfo.outputPath("expanded-editor-over-current-page.png"),
+  });
   expect(
     await page
       .locator("#editor")
@@ -462,27 +547,38 @@ test("an expanded calendar survives record cancel, save and delete with its sele
   await page
     .locator('#record-form [name="title"]')
     .fill("Kaydedilmeyen takvim taslağı");
-  await page.keyboard.press("Escape");
+  await discardChanges(page, () => page.keyboard.press("Escape"));
   await returned();
   await expect(entry).toBeFocused();
   expect(await saved(page)).toBe(original);
 
   await entry.click();
+  await sameBackground();
   await page
     .locator('#record-form [name="title"]')
-    .fill("Takvimden güncellenen aylık hedef");
+    .fill("Dışarıdan iptal edilen taslak");
+  await discardChanges(page, () => page.mouse.click(2, 2));
+  await returned();
+  await expect(entry).toBeFocused();
+  expect(await saved(page)).toBe(original);
+
+  await entry.click();
+  await sameBackground();
+  await page
+    .locator('#record-form [name="title"]')
+    .fill("Takvim aylık teslimi güncellendi");
   await page
     .locator("#record-form")
     .getByRole("button", { name: "Değişiklikleri kaydet", exact: true })
     .click();
   await returned();
-  await expect(entry).toContainText("Takvimden güncellenen aylık hedef");
+  await expect(entry).toContainText("Takvim aylık teslimi güncellendi");
   await expect(entry).toBeFocused();
   const edited = originalRecords.map((item) =>
     item.id === "calendar-monthly"
       ? {
           ...item,
-          title: "Takvimden güncellenen aylık hedef",
+          title: "Takvim aylık teslimi güncellendi",
           updatedAt: NOW.toISOString(),
         }
       : item,
@@ -490,12 +586,13 @@ test("an expanded calendar survives record cancel, save and delete with its sele
   expect(await currentRecords()).toEqual(edited);
 
   await entry.click();
+  await sameBackground();
   page.once("dialog", (dialog) => dialog.accept());
   await page
     .locator("#editor")
     .getByRole("button", { name: "Kaydı sil", exact: true })
     .click();
-  await returned();
+  await returned(false);
   await expect(entry).toHaveCount(0);
   await expect(
     expanded(page).locator(
@@ -509,12 +606,15 @@ test("an expanded calendar survives record cancel, save and delete with its sele
     .getByRole("button", { name: "Takvimi kapat", exact: true })
     .click();
   await expect(expanded(page)).not.toBeVisible();
-  await page.getByRole("button", { name: "Geri al", exact: true }).click();
+  await sameBackground();
+  await page.keyboard.press("Control+z");
   expect(await currentRecords()).toEqual(edited);
-  await page.getByRole("button", { name: "Geri al", exact: true }).click();
+  await page.keyboard.press("Control+z");
   expect(await saved(page)).toBe(original);
+  await sameBackground();
 
   await page.locator('#nav [data-view="daily"]').click();
+  await page.getByRole("searchbox").fill("");
   await page
     .locator(
       '.full-table tr[data-record-row][data-id="calendar-daily"] .task-name',
@@ -628,7 +728,7 @@ test("expanded future-week creation returns to the same calendar and today navig
 
 test("calendar query and view state stay read-only while daily and waiting creation preset the selected date and cancel without writes", async ({
   page,
-}) => {
+}, testInfo) => {
   const original = await seed(page);
   await calendar(page).locator('[data-calendar-action="next"]').click();
   await expect(
@@ -659,6 +759,88 @@ test("calendar query and view state stay read-only while daily and waiting creat
       '.calendar-day-agenda [data-calendar-record-id="calendar-unsafe"]',
     ),
   ).toHaveCount(0);
+  await page
+    .locator('[data-action="focus-filter"][data-filter="today"]')
+    .click();
+  const originalRecords = JSON.parse(original).records;
+  for (const { id, date, type, title, dismiss } of [
+    {
+      id: "calendar-daily",
+      date: "2026-11-08",
+      type: "daily",
+      title: "Özel arama günlük işi",
+      dismiss: "Escape",
+    },
+    {
+      id: "attention-waiting-plus-three",
+      date: "2026-11-11",
+      type: "waiting",
+      title: "Özel arama dış yanıtı",
+      dismiss: "outside",
+    },
+  ]) {
+    await calendar(page)
+      .locator(
+        `[data-calendar-action="select-day"][data-calendar-date="${date}"]`,
+      )
+      .click();
+    const entry = calendar(page).locator(
+      `.calendar-day-agenda [data-calendar-record-id="${id}"]`,
+    );
+    await expect(entry).toBeVisible();
+    const sourceContext = await pageContext(page);
+    expect(sourceContext.title).toBe("Genel bakış");
+    expect(sourceContext.view).toBe("dashboard");
+    expect(sourceContext.search).toBe("Özel arama");
+    expect(sourceContext.focus).toBe("today");
+    const sameBackground = async () =>
+      expect(await pageContext(page)).toEqual(sourceContext);
+    await entry.click();
+    await expect(page.locator("#editor")).toBeVisible();
+    await expect(page.locator('#record-form [name="type"]')).toHaveValue(type);
+    await expect(page.locator('#record-form [name="title"]')).toHaveValue(
+      title,
+    );
+    await expect(expanded(page)).not.toBeVisible();
+    await sameBackground();
+    if (type === "waiting")
+      await page.screenshot({
+        path: testInfo.outputPath("mini-editor-over-dashboard.png"),
+      });
+    await page
+      .locator('#record-form [name="title"]')
+      .fill("Kaydedilmeyen mini takvim taslağı");
+    await discardChanges(page, () =>
+      dismiss === "outside"
+        ? page.mouse.click(2, 2)
+        : page.keyboard.press(dismiss),
+    );
+    await expect(page.locator("#editor")).not.toBeVisible();
+    await sameBackground();
+    expect(await saved(page)).toBe(original);
+
+    await entry.click();
+    await sameBackground();
+    const updatedTitle = `${title} düzenlendi`;
+    await page.locator('#record-form [name="title"]').fill(updatedTitle);
+    await page
+      .locator("#record-form")
+      .getByRole("button", { name: "Değişiklikleri kaydet", exact: true })
+      .click();
+    await expect(page.locator("#editor")).not.toBeVisible();
+    await sameBackground();
+    await expect(entry).toContainText(updatedTitle);
+    expect(JSON.parse(await saved(page)).records).toEqual(
+      originalRecords.map((item) =>
+        item.id === id
+          ? { ...item, title: updatedTitle, updatedAt: NOW.toISOString() }
+          : item,
+      ),
+    );
+    await page.getByRole("button", { name: "Geri al", exact: true }).click();
+    await sameBackground();
+    expect(await saved(page)).toBe(original);
+  }
   for (const type of ["daily", "waiting"]) {
     await calendar(page)
       .locator(

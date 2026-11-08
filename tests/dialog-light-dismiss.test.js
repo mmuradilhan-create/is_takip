@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { installDialogLightDismiss } from "../src/dialog-light-dismiss.js";
 
-function fixture() {
+function fixture(options) {
   const listeners = new Map();
   const dialogs = [];
   let popover = false;
@@ -98,7 +98,7 @@ function fixture() {
     dialogs.push(result);
     return result;
   }
-  const destroy = installDialogLightDismiss(document);
+  const destroy = installDialogLightDismiss(document, options);
   function click(target, fields = {}) {
     emit("pointerdown", { target, ...fields });
     return emit("click", { target, ...fields });
@@ -201,6 +201,50 @@ test("an outside page click closes only the latest nonmodal panel through its ca
   assert.equal(waiting.open, false);
   assert.equal(goal.open, true);
   assert.equal(capturedDraft, true);
+});
+
+test("an opted-in nonmodal item switch reaches the page without closing its preview", () => {
+  const target = {};
+  const f = fixture({
+    allowOutsideActivation: (event, dialog) =>
+      event.target === target && dialog === goal,
+  });
+  const goal = f.dialog();
+  goal.show();
+  const activation = f.click(target);
+  assert.equal(goal.open, true);
+  assert.equal(activation.defaultPrevented, false);
+  assert.equal(activation.propagationStopped, false);
+  const emptyClick = f.click({});
+  assert.equal(goal.open, false);
+  assert.equal(emptyClick.propagationStopped, true);
+});
+
+test("outside activation cannot bypass a modal backdrop or a preview saving guard", () => {
+  let permitted = true;
+  let checks = 0;
+  const f = fixture({
+    allowOutsideActivation: () => {
+      checks++;
+      return permitted;
+    },
+  });
+  const goal = f.dialog();
+  const editor = f.dialog({ modal: true });
+  goal.show();
+  editor.show();
+  const modalClick = f.click(editor);
+  assert.equal(editor.open, false);
+  assert.equal(goal.open, true);
+  assert.equal(checks, 0);
+  assert.equal(modalClick.propagationStopped, true);
+  permitted = false;
+  goal.addEventListener("cancel", (event) => event.preventDefault());
+  const busyClick = f.click({});
+  assert.equal(goal.open, true);
+  assert.equal(checks, 1);
+  assert.equal(busyClick.defaultPrevented, true);
+  assert.equal(busyClick.propagationStopped, true);
 });
 
 test("a popover dismissed between pointerdown and click protects its parent panel", () => {

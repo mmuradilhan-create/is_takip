@@ -42,8 +42,8 @@ kendi işlemlerini yapar. Enter/Space kart odağındayken ayrıntıyı açar.
 Kart açmak veya metin seçmek kaydı değiştirmez.
 
 Düzenlemede dönem yıl + hafta tarih aralığı / ay adıyla seçilir. Seçim
-yapılmadan eski veya boş dönem değeri değiştirilmez. Bağlı üst hedef
-listede ve Genel bakışta başlığın altında aynı yerde görünür.
+yapılmadan eski veya boş dönem değeri değiştirilmez. Günlük işin bağlı
+hedef simgesi listede ve Genel bakışta başlık yanındadır.
 Duraklatılmış işin sağ düğmesi amber daire içinde oynat simgesidir.
 Oturum düzenlemede yalnız saat/dakika girilir; not/tarih düzeltmeleri
 eski ham süreyi değiştirmez. Kart listesinde büyük yeşil odak çerçevesi yoktur.
@@ -96,11 +96,12 @@ satırı çevreleyen çerçeve kullanılmaz. Kaydı satıra
 veya başlığa tıklayarak aç; aynı işi tekrarlayan ayrı açma düğmesi yoktur.
 Başlığın altında işlem düğmesi ve bağlı iş sayısı tekrarlanmaz.
 Pencere veya yan panel dışındaki boş alana tıklamak onu kapatır;
-içte açılan pencere önce kapanır.
+içte açılan pencere önce kapanır. Kayıt formunda kaydedilmemiş değişiklik
+varsa dışarı tıklama, Escape veya kapatma düğmeleri önce onay ister.
 
-Bağlı hedef satır altında görünür. Kaynak bağlantısı başlık yanındaki küçük
-simgededir; üzerine gelince adı okunur, tıklayınca kaynak kayıt açılır.
-Güncel işlerde kaynak ve not simgeleri aynı küçük ölçüde başlık yanındadır;
+Günlük işlerde ve Güncel işlerde bağlı hedef, başlık yanındaki küçük hedef
+simgesinden açılır; üzerine gelince tam adı okunur. Bağlantı altta tekrarlanmaz.
+Kaynak ve not simgeleri de aynı gruptadır; kaynak simgesi asıl kaydı açar,
 not simgesi gerçek notu önizler.
 Anlık iş, proje kodu ve iş türü etiketleri gösterilmez. Hedefin
 üst hedef bağlantısı küçük hedef simgesi ve adıyla açılır. Tüm haftalar/aylar/yıllar
@@ -111,7 +112,10 @@ Görüntüleme kayıtları değiştirmez.
 
 Bütün hedefler aynı sağ paneli ve İlerleme > Bağlı işler/alt hedefler
 sırasını kullanır; hedef satırı büyümez. Hedefi düzenle formu paneli kapatmadan
-açılır; form kapanınca aynı hedef, kaydırma ve ilerleme taslağı korunur. Dönemler hafta
+açılır; form kapanınca aynı hedef, kaydırma ve ilerleme taslağı korunur.
+Panel açıkken sayfadaki başka bir hedefe tıklamak doğrudan o hedefi açar;
+boş alana tıklamak paneli kapatır. Üst çubuktaki Geri al da panel açıkken
+çalışır ve paneli günceller. Dönemler hafta
 tarihleri, ay adı veya yıl olarak okunur.
 Alt hedefe veya üst hedef bağlantısına tıklayarak panelde ilerleyebilirsin.
 Haftalık hedefin günlük işleri düzenlenebilir, tamamlanabilir ve
@@ -161,10 +165,9 @@ iş formlarında gösterilmez; eski değerler korunur.
 Hedef notları kayıt formundaki Notlar alanından düzenlenir. Hedef ayrıntı
 panelinde ayrı bir Hedef notu bölümü bulunmaz.
 
-Günlük işte Bağlı haftalık hedef ilk açılışta yalnızca açık hedefleri
-gösterir. Yanındaki Tamamlananları göster düğmesi biten hedefleri de
-seçime ekler. Mevcut veya yeni seçilen kapalı bağlantı gizleme sırasında
-korunur; yalnızca listeyi açıp kapatmak kayıtları değiştirmez.
+Günlük işte Bağlı haftalık hedef yeni seçimlerde yalnızca açık hedefleri
+gösterir; Tamamlananları göster düğmesi kaldırıldı. Mevcut seçili kapalı
+bağlantı, açıkça verilen kapalı hedef ve türe ait taslak korunur.
 
 Listeler Açık görünümüyle başlar. Açık / Tamamlanan / Tümü düğmeleri kayıt
 kapsamını seçer. Ayrıntılı Durum yalnız çalışma durumlarını daraltır;
@@ -379,7 +382,8 @@ ve ekleme kontrolü yerinde kalır; yalnız seçili günün kayıtları kendi
 alanında kaydırılır. Büyüt, başlıkları gösteren Ay / Hafta
 görünümünü açar; Escape kapatır. Büyük ay görünümünde her günün ilk iki
 kaydı ve kalanların +N sayısı gösterilir; günü seçince bütün kayıtlara
-ulaşılır. Kayda tıklamak düzenleyiciyi takvimin üzerinde açar; formdan
+ulaşılır. Mini veya geniş takvimden kayıt açmak arkadaki bölümü değiştirmez;
+arama, filtreler ve kaydırma konumu korunur. Düzenleyici takvimin üzerinde açılır; formdan
 dönünce seçili gün ve görünüm korunur, takvim açık kalır.
 Takvimden Günlük iş / Bekleyen konu eklenebilir: seçili gün günlük işin
 teslim tarihine veya bekleyen konunun sonraki takip tarihine hazırlanır.
@@ -509,8 +513,9 @@ alanı yalnızca gerçek bir hata mesajı varken görünür.
 TOPLANTI KARARINDAN ISE VEYA TAKIBE
 
 Toplantı kaydında konu ve Alınan karar öndedir. Toplantı tarihi ve notlar
-Ek bilgiler altındadır. Sorumlu/Katılımcılar girişleri gösterilmez;
-mevcut bilgiler ve form taslakları korunur. Ayrı öncelik, teslim tarihi veya
+Ek bilgiler altındadır. Sorumlu/Katılımcılar girişleri kaldırıldı;
+toplantı kayıtlarındaki değerleri ve aynı kaynak alanlarının kopyaları temizlenir.
+Diğer kayıt türleri, karar/not/tarih ve bağlantılar korunur; temizlik geri alınabilir. Ayrı öncelik, teslim tarihi veya
 sonraki adım alanı yoktur; eski değerler kayıtta ve yedekte korunur.
 Aynı aksiyondan bir günlük iş ve bir bekleyen
 konu açılabilir. Ben yapacağım benim çalışmamı; Başkasından bekliyorum dış

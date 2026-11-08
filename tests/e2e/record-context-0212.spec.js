@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { createRecord } from "../../src/model.js";
+import { cleanupMeetingContacts } from "../../src/meeting-contact-cleanup.js";
 import { openCreationExtras } from "./creation-support.js";
 
 const KEY = "is-takip-v1";
@@ -13,7 +14,7 @@ const row = (page, id) =>
 const context = (page, id) =>
   row(page, id).locator(".task-meta-line .task-sub");
 const link = (page, rowId, action, id) =>
-  (action === "edit" ? row(page, rowId) : context(page, rowId)).locator(
+  row(page, rowId).locator(
     `.record-context-link[data-action="${action}"][data-id="${id}"]`,
   );
 const view = (page, type) => page.locator(`#nav [data-view="${type}"]`).click();
@@ -106,6 +107,7 @@ function fixture() {
 }
 
 async function seed(page, items = fixture()) {
+  items = cleanupMeetingContacts(items);
   await page.clock.setFixedTime(NOW);
   await page.addInitScript(
     ({ key, items }) => {
@@ -130,7 +132,7 @@ async function seed(page, items = fixture()) {
   return items;
 }
 
-test("daily context keeps the parent visible and its real source in a compact title icon with keyboard-accessible read-only destinations", async ({
+test("daily context keeps parent and source in compact named title icons with keyboard-accessible read-only destinations", async ({
   page,
 }) => {
   const items = await seed(page);
@@ -141,11 +143,23 @@ test("daily context keeps the parent visible and its real source in a compact ti
     ["context-from-waiting", "context-waiting"],
   ]) {
     const item = items.find((item) => item.id === id);
-    await expect(context(page, id)).not.toContainText(item.projectCode);
-    await expect(context(page, id)).not.toContainText(item.workType);
-    await expect(link(page, id, "goal-details", "context-week")).toContainText(
-      "Haftalık teknik teslim",
+    await expect(row(page, id)).not.toContainText(item.projectCode);
+    await expect(row(page, id)).not.toContainText(item.workType);
+    await expect(row(page, id).locator(".task-meta-line")).toHaveCount(0);
+    const parent = link(page, id, "goal-details", "context-week");
+    await expect(parent).toBeVisible();
+    await expect(parent).toHaveClass(/record-parent-link/);
+    await expect(parent).toHaveText("");
+    await expect(parent.locator("svg")).toHaveCount(1);
+    await expect(parent).toHaveAttribute(
+      "title",
+      "Haftalık hedef: Haftalık teknik teslim",
     );
+    await expect(parent).toHaveAttribute(
+      "aria-label",
+      "Haftalık hedef: Haftalık teknik teslim: üst hedefi aç",
+    );
+    await expect(parent).toHaveAttribute("aria-controls", "goal-detail-panel");
     const source = link(page, id, "edit", sourceId);
     const sourceRecord = items.find((item) => item.id === sourceId);
     await expect(source).toBeVisible();
@@ -159,7 +173,7 @@ test("daily context keeps the parent visible and its real source in a compact ti
     await expect(
       context(page, id).locator('[data-context-kind="source"]'),
     ).toHaveCount(0);
-    await expect(context(page, id)).not.toContainText("Toplantıdan gelen iş");
+    await expect(row(page, id)).not.toContainText("Toplantıdan gelen iş");
     await expect(source.locator("xpath=..")).toHaveClass(
       "record-title-content",
     );
@@ -224,8 +238,8 @@ test("weekly and monthly context names the actual upper goal and shows a human p
     await expect(
       page.locator("#goal-detail-panel .goal-panel-title"),
     ).toHaveText(parentTitle);
-    await expect(page.locator("#goal-next-step-form")).toHaveAttribute(
-      "data-id",
+    await expect(page.locator("#goal-detail-panel")).toHaveAttribute(
+      "data-goal-id",
       parentId,
     );
     await page.keyboard.press("Escape");
@@ -241,7 +255,7 @@ test("weekly and monthly context names the actual upper goal and shows a human p
   }
 });
 
-test("selected yearly goals and plain daily records have no filler while meeting decisions and dates are primary and people stay in optional details", async ({
+test("selected yearly goals and plain daily records have no filler while meeting decisions and dates stay primary after contact cleanup", async ({
   page,
 }) => {
   await seed(page);
@@ -276,11 +290,12 @@ test("selected yearly goals and plain daily records have no filler while meeting
   );
   await row(page, "context-owned-meeting").locator(".task-name").click();
   await openCreationExtras(page);
-  await expect(page.locator('#record-form [name="owner"]')).toHaveValue(
-    "Aslı Kaya",
-  );
-  await expect(page.locator('#record-form [name="participants"]')).toHaveValue(
-    "Tasarım ve üretim ekibi",
+  for (const name of ["owner", "participants"]) {
+    await expect(page.locator(`#record-form [name="${name}"]`)).toBeHidden();
+    await expect(page.locator(`#record-form [name="${name}"]`)).toHaveValue("");
+  }
+  await expect(page.locator('#record-form [name="decision"]')).toHaveValue(
+    "Paylaşılan gerçek toplantı kararı.",
   );
   await expect(page.locator('#record-form [name="sourceDate"]')).toHaveValue(
     "05.11.2026",
@@ -289,7 +304,7 @@ test("selected yearly goals and plain daily records have no filler while meeting
   expect(await saved(page)).toBe(before);
 });
 
-test("context escapes long captions and removes Turkish-equivalent duplicates without merging distinct accents or dotted I", async ({
+test("connection icons escape full long captions and omit legacy project and work-type subtitles without changing records", async ({
   page,
 }) => {
   const attack = '<img src=x onerror="window.recordContextInjected=1">';
@@ -347,27 +362,40 @@ test("context escapes long captions and removes Turkish-equivalent duplicates wi
   await seed(page, items);
   const before = await saved(page);
   await view(page, "daily");
-  await expect(link(page, "long-child", "edit", "long-source")).toContainText(
-    longTitle,
+  const source = link(page, "long-child", "edit", "long-source");
+  const parent = link(page, "long-child", "goal-details", "long-goal");
+  await expect(source).toHaveAttribute("title", `Toplantı: ${items[0].title}`);
+  await expect(source).toHaveAttribute(
+    "aria-label",
+    `Toplantı: ${items[0].title}: kaynak kaydı aç`,
   );
-  await expect(
-    link(page, "long-child", "goal-details", "long-goal"),
-  ).toContainText(items[1].title);
-  await expect(context(page, "long-child")).toContainText(items[2].projectCode);
-  await expect(
-    context(page, "nfkc-duplicate").locator(".record-context-part"),
-  ).toHaveCount(1);
-  await expect(
-    row(page, "title-duplicate").locator(".task-meta-line, .task-sub"),
-  ).toHaveCount(0);
-  await expect(context(page, "accent-distinct")).toContainText("Ölçüm");
-  await expect(context(page, "accent-distinct")).toContainText("Olcum");
-  await expect(
-    context(page, "dotless-same").locator(".record-context-part"),
-  ).toHaveCount(1);
-  await expect(context(page, "dotted-distinct")).toContainText("I-42");
-  await expect(context(page, "dotted-distinct")).toContainText("İ-42");
-  await expect(page.locator(".task-meta-line img")).toHaveCount(0);
+  await expect(parent).toHaveAttribute(
+    "title",
+    `Haftalık hedef: ${items[1].title}`,
+  );
+  await expect(parent).toHaveAttribute(
+    "aria-label",
+    `Haftalık hedef: ${items[1].title}: üst hedefi aç`,
+  );
+  for (const control of [source, parent]) {
+    await expect(control).toBeVisible();
+    await expect(control).toHaveText("");
+    await expect(control.locator("svg")).toHaveCount(1);
+    await expect(control.locator("xpath=..")).toHaveClass(
+      "record-title-content",
+    );
+  }
+  for (const item of items.filter((item) => item.type === "daily")) {
+    await expect(
+      row(page, item.id).locator(".task-meta-line, .task-sub"),
+    ).toHaveCount(0);
+  }
+  await expect(row(page, "long-child").locator(".task-name")).toHaveText(
+    items[2].title,
+  );
+  await expect(row(page, "long-child")).not.toContainText(items[2].projectCode);
+  await expect(row(page, "long-child")).not.toContainText(items[2].workType);
+  await expect(page.locator(".full-table img")).toHaveCount(0);
   expect(
     await page.evaluate(() => window.recordContextInjected),
   ).toBeUndefined();
@@ -376,6 +404,17 @@ test("context escapes long captions and removes Turkish-equivalent duplicates wi
       () => document.documentElement.scrollWidth <= innerWidth,
     ),
   ).toBe(true);
+  await parent.focus();
+  await page.keyboard.press("Enter");
+  await expect(page.locator("#goal-detail-panel")).toHaveAttribute(
+    "data-goal-id",
+    "long-goal",
+  );
+  await expect(page.locator("#goal-detail-panel .goal-panel-title")).toHaveText(
+    items[1].title,
+  );
+  await page.keyboard.press("Escape");
+  expect(await saved(page)).toBe(before);
   await link(page, "long-child", "edit", "long-source").click();
   await expect(page.locator('#record-form [name="title"]')).toHaveValue(
     longTitle.trim(),

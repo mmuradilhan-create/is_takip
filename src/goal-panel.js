@@ -477,9 +477,16 @@ export function createGoalPanel({
     target?.scrollIntoView({ block: "nearest" });
   }
 
+  function canActivate() {
+    return !destroyed && !linking && !progressSaving;
+  }
+
+  function canOpen(id) {
+    return canActivate() && GOALS.has(find(id)?.type);
+  }
+
   function open(id, { section = null } = {}) {
-    const record = find(id);
-    if (destroyed || !record || !GOALS.has(record.type)) return;
+    if (!canOpen(id)) return;
     captureProgressDraft();
     selectedId = id;
     renderKey = "";
@@ -738,5 +745,5 @@ export function createGoalPanel({
   panel.addEventListener("close", captureProgressDraft);
   owner.addEventListener("pagehide", destroy, { once: true });
   owner.addEventListener("keydown", onEscape);
-  return { open, refresh, close, destroy };
+  return { open, canOpen, canActivate, refresh, close, destroy };
 }

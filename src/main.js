@@ -62,12 +62,20 @@ import {
 } from "./record-editor-period.js";
 import { createRecordNoteUI } from "./record-note-ui.js";
 import { installRecordFormShortcuts } from "./record-form-shortcuts.js";
+import {
+  DISCARD_RECORD_CHANGES,
+  recordFormValues,
+} from "./record-form-discard.js";
 import { installDialogLightDismiss } from "./dialog-light-dismiss.js";
 import { createTopbarClock } from "./topbar-clock.js";
 import { createMeetingBothUI } from "./meeting-both-ui.js";
 import { createRecordCreationUI } from "./record-creation-ui.js";
 import { arrangeRecordEditor } from "./record-editor-layout.js";
 import { renderMeetingStatusMenu } from "./meeting-status-menu.js";
+import {
+  cleanupMeetingContacts,
+  runMeetingContactCleanup,
+} from "./meeting-contact-cleanup.js";
 import { recordContextParts } from "./record-context.js";
 import { prepareRecordCreation } from "./record-creation.js";
 import { createDashboardCalendar } from "./dashboard-calendar.js";
@@ -329,6 +337,30 @@ export async function startMainApp() {
   const NOTES_CLEANUP_KEY = `${STORAGE_KEY}-import-notes-cleanup`;
   const WAITING_NOTES_CLEANUP_KEY = `${STORAGE_KEY}-waiting-notes-cleanup`;
   const WAITING_STATE_MIGRATION_KEY = `${STORAGE_KEY}-waiting-state-migration`;
+  const MEETING_CONTACT_CLEANUP_KEY = `${STORAGE_KEY}-meeting-contact-cleanup`;
+  function cleanupMeetingContactsOnce() {
+    if (storageError) return;
+    try {
+      const result = runMeetingContactCleanup({
+        records: state.records,
+        storage: localStorage,
+        markerKey: MEETING_CONTACT_CLEANUP_KEY,
+        saveRecords: (records) =>
+          saveRecords(records, "Toplantı kişi alanlarını temizleme", {
+            syncLinks: false,
+          }),
+      });
+      if (result.status === "cleaned")
+        toast(
+          `${result.recordsChanged} toplantının sorumlu ve katılımcı bilgileri silindi. İşlem geri alınabilir.`,
+        );
+    } catch {
+      toast(
+        "Toplantı kişi bilgileri silinemedi. Tarayıcı depolamasını kontrol et.",
+        true,
+      );
+    }
+  }
   function migrateWaitingState(automatic = false) {
     const migrated = migrateBlockedToWaiting(state.records);
     if (migrated === state.records || storageError) return;
@@ -556,7 +588,23 @@ export async function startMainApp() {
   }
 
   const app = document.querySelector("#app");
-  installDialogLightDismiss(document);
+  installDialogLightDismiss(document, {
+    allowOutsideActivation(event, dialog) {
+      if (dialog.id !== "goal-detail-panel") return false;
+      const control = event.target.closest?.("[data-action]");
+      if (control?.id === "undo-button" && control.dataset.action === "undo")
+        return !control.disabled && goalPanel?.canActivate();
+      return (
+        [
+          "goal-details",
+          "goal-card-details",
+          "goal-progress-open",
+          "goal-children-open",
+        ].includes(control?.dataset.action) &&
+        goalPanel?.canOpen(control.dataset.id)
+      );
+    },
+  });
   const today = () => localDate();
   const dateFmt = new Intl.DateTimeFormat("tr-TR", {
     day: "numeric",
@@ -609,7 +657,9 @@ export async function startMainApp() {
         ? syncActionLinks(state.records, records)
         : records;
       workspaceStore.saveRecords(
-        syncLinks ? stampWaitingClosures(state.records, linked) : linked,
+        cleanupMeetingContacts(
+          syncLinks ? stampWaitingClosures(state.records, linked) : linked,
+        ),
         label,
       );
       syncWorkspaceView();
@@ -652,7 +702,7 @@ export async function startMainApp() {
     try {
       workspaceStore.saveWorkspace(
         {
-          records,
+          records: cleanupMeetingContacts(records),
           preferences: {
             ...preferences,
             choiceLists: normalizeChoiceLists(choiceLists),
@@ -941,7 +991,11 @@ export async function startMainApp() {
         const contextParts = recordContextParts(record, state.records, {
           showPeriod: !state.planningPeriods[record.type],
         });
-        const context = contextParts.filter((part) => part.kind !== "source");
+        const context = contextParts.filter(
+          (part) =>
+            part.kind !== "source" &&
+            !(record.type === "daily" && part.kind === "parent"),
+        );
         const subtitle = context.map((part) => part.text).join(" · ");
         const contextMarkup = context.length
           ? `<div class="task-meta-line"><div class="task-sub" data-record-context title="${esc(subtitle)}">${context.map((part) => (part.targetId ? `<button type="button" class="record-context-link" data-context-kind="${esc(part.kind)}" data-action="${part.kind === "parent" ? "goal-details" : "edit"}" data-id="${esc(part.targetId)}" title="${esc(part.text)}" aria-label="${esc(part.text)}: ${part.kind === "parent" ? "üst hedefi aç" : part.kind === "source" ? "kaynak kaydı aç" : "bilgiyi düzenle"}">${part.kind === "parent" ? parentContextLabel(part.text) : esc(part.text)}</button>` : `<span class="record-context-part" data-context-kind="${esc(part.kind)}">${esc(part.text)}</span>`)).join('<span class="record-context-separator" aria-hidden="true">·</span>')}</div></div>`
@@ -1113,7 +1167,7 @@ export async function startMainApp() {
       )
       .join("")}</div>`;
     return `<section class="panel focus-panel"><div class="panel-header"><div class="focus-heading"><h2>Güncel işler</h2>${filters}${goalLinkReviewTrigger()}</div><button class="text-btn open-list" data-action="open-list" data-view="daily">Günlük işler ${icon("arrow")}</button></div>
-    ${records.length ? `<ul class="focus-list" tabindex="0" aria-label="Güncel işler">${records.map((r) => `<li class="focus-row${r.focusDate === today() ? " is-day-focus" : ""}" ${recordRow(r)}>${completionControl(r)}<div class="focus-task"><div class="focus-title-line">${dayFocusButton(r)}${waitingInfo?.button(r) || ""}${focusTitleContent(r)}</div>${r.parentId ? `<div class="focus-goal-context">${focusGoalLink(r)}</div>` : ""}</div>${statusBadge(r)}<span class="focus-priority">${inlineFields ? inlineFields.priorityControl(r) : priorityBadge(r)}</span><span class="focus-date ${deadlineTone(r, today())}">${inlineFields ? inlineFields.dateControl(r) : renderDeadlineChip(r, { label: formatDate(r.dueDate), today: today() })}</span>${workControl(r)}</li>`).join("")}</ul>` : `<div class="focus-empty${state.focusFilter === "focus" ? " day-focus-empty" : ""}"><h3>${emptyTitle}</h3><p>${state.search ? "Başka bir kelimeyle arayabilirsin." : state.focusFilter === "focus" ? "Açık işler listesindeki yıldızlarla bugün çalışacağın en fazla 3 işi seç. Teslim tarihleri değişmez." : state.focusFilter === "open" ? "Yeni kayıt düğmesiyle günlük iş ekleyebilirsin." : "Diğer açık işlerini Açık işler bölümünde görebilirsin."}</p></div>`}
+    ${records.length ? `<ul class="focus-list" tabindex="0" aria-label="Güncel işler">${records.map((r) => `<li class="focus-row${r.focusDate === today() ? " is-day-focus" : ""}" ${recordRow(r)}>${completionControl(r)}<div class="focus-task"><div class="focus-title-line">${dayFocusButton(r)}${waitingInfo?.button(r) || ""}${focusTitleContent(r)}</div></div>${statusBadge(r)}<span class="focus-priority">${inlineFields ? inlineFields.priorityControl(r) : priorityBadge(r)}</span><span class="focus-date ${deadlineTone(r, today())}">${inlineFields ? inlineFields.dateControl(r) : renderDeadlineChip(r, { label: formatDate(r.dueDate), today: today() })}</span>${workControl(r)}</li>`).join("")}</ul>` : `<div class="focus-empty${state.focusFilter === "focus" ? " day-focus-empty" : ""}"><h3>${emptyTitle}</h3><p>${state.search ? "Başka bir kelimeyle arayabilirsin." : state.focusFilter === "focus" ? "Açık işler listesindeki yıldızlarla bugün çalışacağın en fazla 3 işi seç. Teslim tarihleri değişmez." : state.focusFilter === "open" ? "Yeni kayıt düğmesiyle günlük iş ekleyebilirsin." : "Diğer açık işlerini Açık işler bölümünde görebilirsin."}</p></div>`}
     </section>`;
   }
   function dayFocusButton(record) {
@@ -1216,13 +1270,26 @@ export async function startMainApp() {
     const caption = `${source.type === "meeting" ? "Toplantı" : "Bekleyen konu"}: ${source.title}`;
     return `<button type="button" class="record-context-link record-source-link" data-context-kind="source" data-source-type="${esc(source.type)}" data-action="edit" data-id="${esc(source.id)}" title="${esc(caption)}" aria-label="${esc(caption)}: kaynak kaydı aç" aria-haspopup="dialog" aria-controls="editor">${icon(source.type === "meeting" ? "people" : "clock")}</button>`;
   }
+  function parentTitleControl(
+    record,
+    parts = recordContextParts(record, state.records),
+  ) {
+    if (record.type !== "daily") return "";
+    const parent = parts.find(
+      (part) => part.kind === "parent" && part.targetId,
+    );
+    return parent
+      ? `<button type="button" class="record-context-link record-parent-link" data-context-kind="parent" data-action="goal-details" data-id="${esc(parent.targetId)}" title="${esc(parent.text)}" aria-label="${esc(parent.text)}: üst hedefi aç" aria-haspopup="dialog" aria-controls="goal-detail-panel">${icon("target")}</button>`
+      : "";
+  }
   function focusTitleContent(record) {
-    return `<div class="record-title-content"><button class="focus-title" data-action="edit" data-id="${esc(record.id)}" title="${esc(record.title)}">${esc(record.title)}</button>${sourceContextControl(record)}${recordNotes?.button(record) || ""}</div>`;
+    return `<div class="record-title-content"><button class="focus-title" data-action="edit" data-id="${esc(record.id)}" title="${esc(record.title)}">${esc(record.title)}</button>${parentTitleControl(record)}${sourceContextControl(record)}${recordNotes?.button(record) || ""}</div>`;
   }
   function recordTitleContent(record, title, extras = "", parts) {
+    const parent = parentTitleControl(record, parts);
     const source = sourceContextControl(record, parts);
-    return source
-      ? `<div class="record-title-content">${title}${source}${extras}</div>`
+    return parent || source
+      ? `<div class="record-title-content">${title}${parent}${source}${extras}</div>`
       : `${title}${extras}`;
   }
   function parentContextLabel(text) {
@@ -1235,9 +1302,6 @@ export async function startMainApp() {
     return parent
       ? `<button type="button" class="${className}" data-context-kind="parent" data-action="goal-details" data-id="${esc(parent.targetId)}" title="${esc(parent.text)}" aria-label="${esc(parent.text)}: üst hedefi aç">${parentContextLabel(parent.text)}</button>`
       : "";
-  }
-  function focusGoalLink(record) {
-    return parentContextControl(record, "focus-goal-link record-context-link");
   }
   function weeklyDashboardPanel() {
     const { records, total, period, isUpcoming } = selectDashboardWeek(
@@ -1795,31 +1859,16 @@ export async function startMainApp() {
     if (!form) return;
     const select = form.elements.parentId;
     const selected = selectedId ?? select.value;
-    const expanded = form.dataset.showCompletedParents === "true";
     const candidates = state.records.filter(
       (record) =>
         record.type === "weekly" &&
         record.id !== form.elements.id.value &&
         (!isDailyInboxGoal(record) || record.id === selected),
     );
-    const completed = candidates.filter(
-      (record) => record.status === "completed",
-    );
     const shown = candidates.filter(
-      (record) =>
-        active(record) ||
-        record.id === selected ||
-        (expanded && record.status === "completed"),
+      (record) => active(record) || record.id === selected,
     );
-    select.innerHTML = `<option value="">Bağlantı yok</option>${shown.map((record) => `<option value="${esc(record.id)}" ${record.id === selected ? "selected" : ""}>${record.periodKey ? `${esc(record.periodKey)} · ` : ""}${esc(record.title)}${!active(record) ? ` (${esc(statusLabel(record.type, record.status))}${!expanded && record.id === selected ? " · seçili bağlantı" : ""})` : ""}</option>`).join("")}`;
-    const toggle = form.querySelector(
-      '[data-action="toggle-completed-parents"]',
-    );
-    toggle.hidden = completed.length === 0;
-    toggle.setAttribute("aria-pressed", String(expanded));
-    toggle.textContent = expanded
-      ? "Tamamlananları gizle"
-      : `Tamamlananları göster (${completed.length})`;
+    select.innerHTML = `<option value="">Bağlantı yok</option>${shown.map((record) => `<option value="${esc(record.id)}" ${record.id === selected ? "selected" : ""}>${record.periodKey ? `${esc(record.periodKey)} · ` : ""}${esc(record.title)}${!active(record) ? ` (${esc(statusLabel(record.type, record.status))}${record.id === selected ? " · seçili bağlantı" : ""})` : ""}</option>`).join("")}`;
     const current = candidates.find((record) => record.id === selected);
     const hint = form.querySelector("#parent-target-hint");
     hint.textContent =
@@ -1998,7 +2047,7 @@ export async function startMainApp() {
       <label class="field"><span id="source-date-caption">${type === "waiting" ? "Beklemeye başlama tarihi" : "Kayıt / açılış tarihi"}</span>${dateInput({ name: "sourceDate", value: values.sourceDate || (!record && type === "waiting" ? today() : ""), label: type === "waiting" ? "Beklemeye başlama tarihi" : "Kayıt / açılış tarihi" })}</label>
       <label class="field" id="owner-field">Sorumlu<input name="owner" maxlength="120" placeholder="İsim (isteğe bağlı)" value="${esc(values.owner || "")}"></label>
       <label class="field full" id="context-field" ${type !== "daily" ? "hidden" : ""}>Çalışma bağlamı<select name="workContext" ${type !== "daily" ? "disabled" : ""}>${options(DAILY_CONTEXTS, values.workContext || "")}</select></label>
-      <div class="field full" id="parent-field" ${type !== "daily" ? "hidden" : ""}><div class="parent-goal-heading"><label for="weekly-parent-select">Bağlı haftalık hedef</label><button type="button" class="parent-goal-toggle" data-action="toggle-completed-parents" aria-pressed="false">Tamamlananları göster</button></div><select id="weekly-parent-select" name="parentId" aria-describedby="parent-target-hint"><option value="">Bağlantı yok</option></select><span id="parent-target-hint" class="field-help"></span>${record && unresolved(record) ? `<span class="field-help">Önceki hedef: ${esc(record.sourceFields.__unresolvedParent)}</span>` : ""}</div>
+      <div class="field full" id="parent-field" ${type !== "daily" ? "hidden" : ""}><div class="parent-goal-heading"><label for="weekly-parent-select">Bağlı haftalık hedef</label></div><select id="weekly-parent-select" name="parentId" aria-describedby="parent-target-hint"><option value="">Bağlantı yok</option></select><span id="parent-target-hint" class="field-help"></span>${record && unresolved(record) ? `<span class="field-help">Önceki hedef: ${esc(record.sourceFields.__unresolvedParent)}</span>` : ""}</div>
       <label class="field full" id="higher-goal-field" ${["weekly", "monthly"].includes(type) ? "" : "hidden"}><span id="higher-goal-caption">Bağlı üst hedef</span><select name="goalParentId" id="higher-goal-select" aria-describedby="higher-goal-hint"><option value="">Bağlantı yok</option></select><span class="field-help" id="higher-goal-hint">Bağlantı isteğe bağlıdır.</span></label>
       <label class="field full" id="waiting-reason-field" ${type === "daily" && record?.status === "waiting" ? "" : "hidden"}>Neyi/kimi bekliyorum?<textarea name="waitingReason" maxlength="1000" rows="2" placeholder="Örn. Tasarım yanıtı veya malzeme bekleniyor.">${esc(waitingReasonText(values))}</textarea></label><label class="field full">Sonraki adım<textarea name="nextAction" maxlength="10000" placeholder="Bir sonraki somut adım…">${esc(values.nextAction || "")}</textarea></label>
       <label class="field full">Notlar<textarea name="description" maxlength="50000" placeholder="Ayrıntılar, hatırlatmalar…">${esc(values.description || "")}</textarea></label>
@@ -2027,6 +2076,8 @@ export async function startMainApp() {
         .querySelector("button").disabled = true;
     }
     const editor = document.querySelector("#editor");
+    document.querySelector("#record-form").dataset.initialValues =
+      recordFormValues(document.querySelector("#record-form"));
     if (!editor.open) editor.showModal();
   }
   function openLinkedAction(id, routeType = null) {
@@ -2215,6 +2266,22 @@ export async function startMainApp() {
   document
     .querySelector("#editor")
     .addEventListener("close", restoreMeetingRoute);
+  document.querySelector("#editor").addEventListener("cancel", (event) => {
+    const form = event.currentTarget.querySelector(
+      '#record-form:not([data-creation="true"])',
+    );
+    if (!form) return;
+    if (
+      form &&
+      recordFormValues(form) !== form.dataset.initialValues &&
+      !confirm(DISCARD_RECORD_CHANGES)
+    ) {
+      event.preventDefault();
+      return;
+    }
+    datePicker?.close();
+    choiceFields?.close();
+  });
   const topbarClock = createTopbarClock({ root: app });
   window.addEventListener("pagehide", topbarClock.destroy, { once: true });
   workSessions = createWorkSessionUI({
@@ -2505,7 +2572,6 @@ export async function startMainApp() {
         toast("Bu kayıt artık bulunamıyor.", true);
         return;
       }
-      navigate(record.type);
       openEditor(id);
     },
     onNewRecord: ({ type, values }) =>
@@ -2844,14 +2910,6 @@ export async function startMainApp() {
                 : undefined,
         });
         break;
-      case "toggle-completed-parents": {
-        const form = document.querySelector("#record-form");
-        if (!form) break;
-        form.dataset.showCompletedParents =
-          form.dataset.showCompletedParents === "true" ? "false" : "true";
-        updateParentOptions();
-        break;
-      }
       case "meeting-route":
         openLinkedAction(id, button.dataset.route);
         break;
@@ -2944,6 +3002,15 @@ export async function startMainApp() {
         deleteRecord(id);
         break;
       case "close":
+        if (button.closest("#editor")) {
+          const editor = button.closest("dialog");
+          if (typeof editor.requestClose === "function") editor.requestClose();
+          else if (
+            editor.dispatchEvent(new Event("cancel", { cancelable: true }))
+          )
+            editor.close();
+          break;
+        }
         datePicker?.close();
         choiceFields?.close();
         button.closest("dialog")?.close();
@@ -3427,6 +3494,7 @@ export async function startMainApp() {
   const stopThemeWatch = watchTheme(document, () => preferences, window);
   window.addEventListener("pagehide", stopThemeWatch, { once: true });
   render();
+  cleanupMeetingContactsOnce();
   migrateInbox(true);
   cleanupImportNotes(true);
   cleanupWaitingNotes(true);

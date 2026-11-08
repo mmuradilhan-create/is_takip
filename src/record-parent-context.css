@@ -10,8 +10,7 @@
   line-height: 12px;
 }
 
-.dashboard-goal-context > .record-context-link,
-.focus-goal-context > .focus-goal-link {
+.dashboard-goal-context > .record-context-link {
   display: block;
   width: auto;
   max-width: 100%;
@@ -31,16 +30,9 @@
   white-space: nowrap;
 }
 
-.focus-goal-context {
-  min-width: 0;
-  margin-top: 3px;
-  line-height: 12px;
-}
-
 .task-sub[data-record-context]
   > .record-context-link[data-context-kind="parent"],
-.dashboard-goal-context > .record-context-link[data-context-kind="parent"],
-.focus-goal-context > .focus-goal-link[data-context-kind="parent"] {
+.dashboard-goal-context > .record-context-link[data-context-kind="parent"] {
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -59,49 +51,10 @@
   white-space: nowrap;
 }
 
-.dashboard-goal-context > .record-context-link:hover,
-.focus-goal-context > .focus-goal-link:hover {
+.dashboard-goal-context > .record-context-link:hover {
   background: transparent;
   color: var(--theme-accent, #52734d);
   text-decoration: underline;
-}
-
-/* Keep context text on the title column; its target icon hangs in the gutter. */
-.daily-task-copy,
-.focus-task {
-  --context-star-offset: 0px;
-  --context-waiting-offset: 0px;
-}
-
-.daily-task-copy:has(> .task-name-line > .day-focus-toggle) {
-  --context-star-offset: 28px;
-}
-
-.daily-task-copy:has(> .task-name-line > .waiting-info-trigger) {
-  --context-waiting-offset: 24px;
-}
-
-.focus-task:has(> .focus-title-line > .day-focus-toggle) {
-  --context-star-offset: 27px;
-}
-
-.focus-task:has(> .focus-title-line > .waiting-info-trigger) {
-  --context-waiting-offset: 23px;
-}
-
-.daily-task-copy > .task-meta-line,
-.focus-task > .focus-goal-context {
-  padding-inline-start: calc(
-    var(--context-star-offset) + var(--context-waiting-offset)
-  );
-}
-
-.daily-task-copy
-  > .task-meta-line
-  > .task-sub[data-record-context]
-  > .record-context-link[data-context-kind="parent"]:first-child,
-.focus-goal-context > .focus-goal-link[data-context-kind="parent"] {
-  margin-inline-start: -16px;
 }
 
 /* Reserve room for the same parent context and controls in both lower panels. */

@@ -1,6 +1,9 @@
 // Use each dialog's normal cancel path so drafts, saving guards, and caller
 // restoration behave the same way as a native dismissal request.
-export function installDialogLightDismiss(document = globalThis.document) {
+export function installDialogLightDismiss(
+  document = globalThis.document,
+  { allowOutsideActivation = () => false } = {},
+) {
   const owner = document.defaultView;
   const opened = [];
   const versions = new WeakMap();
@@ -108,8 +111,11 @@ export function installDialogLightDismiss(document = globalThis.document) {
     )
       return;
 
-    // An outside click dismisses one layer; it must not also activate a page
-    // control underneath, including when a saving guard refuses dismissal.
+    // A nonmodal preview may handle a deliberate switch to another item in
+    // place. Modal backdrops and every other outside click still dismiss only
+    // one layer, including when a saving guard refuses dismissal.
+    if (!dialog.matches(":modal") && allowOutsideActivation(event, dialog))
+      return;
     event.preventDefault();
     event.stopPropagation();
     if (typeof dialog.requestClose === "function") dialog.requestClose();

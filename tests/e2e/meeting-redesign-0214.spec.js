@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { createRecord } from "../../src/model.js";
+import { cleanupMeetingContacts } from "../../src/meeting-contact-cleanup.js";
 import { openCreationExtras } from "./creation-support.js";
 
 const KEY = "is-takip-v1";
@@ -37,8 +38,8 @@ const source = (id, extra = {}) =>
     dueDate: "2026-11-06",
     nextAction: "Korunacak eski toplantı adımı.",
     sourceDate: "2026-10-28",
-    owner: "Özgün toplantı sorumlusu",
-    participants: "Tasarım ve üretim",
+    owner: "",
+    participants: "",
     description: "Özgün toplantı bağlamı.",
     sourceFields: { original: { value: "Ham toplantı bilgisi" } },
     ...extra,
@@ -222,12 +223,21 @@ test("creating both routes saves the daily work's own priority and delivery sepa
   expect(await saved(page)).toBe(before);
 });
 
-test("existing meeting edits and new routes preserve hidden legacy source fields instead of copying them into action defaults", async ({
+test("existing meeting edits and new routes preserve remaining legacy source fields while retired contact fields stay empty", async ({
   page,
 }) => {
-  const original = source("legacy");
-  await seed(page, [original]);
+  const legacy = source("legacy", {
+    owner: "Özgün toplantı sorumlusu",
+    participants: "Tasarım ve üretim",
+    sourceFields: {
+      original: { value: "Ham toplantı bilgisi" },
+      Katılımcılar: "Tasarım ve üretim",
+    },
+  });
+  const original = cleanupMeetingContacts([legacy])[0];
+  await seed(page, [legacy]);
   const before = await saved(page);
+  const beforeHistory = (await stored(page)).odak.history.length;
   await row(page, original.id).locator(".task-name").click();
   await expect(
     form(page).locator('[data-record-editor-basic] [name="decision"]'),
@@ -323,7 +333,7 @@ test("existing meeting edits and new routes preserve hidden legacy source fields
     dueDate: "",
     nextAction: "",
   });
-  expect(after.odak.history).toHaveLength(1);
+  expect(after.odak.history).toHaveLength(beforeHistory + 1);
   await undo(page);
   expect(await saved(page)).toBe(before);
 });

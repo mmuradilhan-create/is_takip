@@ -24,6 +24,15 @@ async function seed(page) {
       metric: "Rapor",
     }),
     make({
+      id: "dismiss-peer",
+      type: "weekly",
+      title: "Doğrudan geçilecek ikinci hedef",
+      periodKey: "2026-W45",
+      targetValue: 12,
+      currentValue: 2,
+      metric: "Parça",
+    }),
+    make({
       id: "dismiss-day",
       title: "Takvimden açılan gerçek günlük iş",
       parentId: "dismiss-week",
@@ -108,12 +117,14 @@ test("native editor padding, input and an inside-to-backdrop drag keep drafts op
   await expect(editor(page)).toBeVisible();
   await expect(title).toHaveValue("Kaydedilmeyen mevcut kayıt taslağı");
   expect(await saved(page)).toBe(before);
+  page.once("dialog", (dialog) => dialog.accept());
   await clickPoint(page, outside);
   await expect(editor(page)).not.toBeVisible();
   await expect(page.locator("#page-title")).toHaveText("Günlük işler");
   expect(await saved(page)).toBe(before);
   await page.getByRole("button", { name: "Yeni kayıt", exact: true }).click();
   await editor(page).locator('[name="title"]').fill("Kaydedilmeyen yeni kayıt");
+  page.once("dialog", (dialog) => dialog.accept());
   await clickPoint(page, await backdropPoint(page, editor(page)));
   await expect(editor(page)).not.toBeVisible();
   expect(await saved(page)).toBe(before);
@@ -159,6 +170,72 @@ test("a nonmodal goal dismisses outside without activating navigation and retain
   expect(await saved(page)).toBe(before);
 });
 
+test("an open goal preview switches directly to another page goal, preserves drafts and accepts Undo while modal editors still dismiss one layer", async ({
+  page,
+}) => {
+  const before = await seed(page);
+  await page.setViewportSize({ width: 1920, height: 1000 });
+  await page.locator('#nav [data-view="weekly"]').click();
+  const firstTitle = row(page, "dismiss-week").locator(".task-name");
+  const peerTitle = row(page, "dismiss-peer").locator(".task-name");
+  const current = panel(page).locator("#goal-progress-current");
+  await firstTitle.click();
+  await current.fill("7");
+  await panel(page).evaluate((element) => {
+    window.goalPreviewCloseCount = 0;
+    element.addEventListener("close", () => window.goalPreviewCloseCount++);
+  });
+  await peerTitle.click();
+  await expect(panel(page)).toHaveAttribute("data-goal-id", "dismiss-peer");
+  await expect(current).toHaveValue("2");
+  await expect(peerTitle).toBeFocused();
+  await current.fill("8");
+  const firstCell = row(page, "dismiss-week").locator("td").first();
+  const cell = await firstCell.boundingBox();
+  await page.mouse.click(cell.x + 8, cell.y + cell.height - 8);
+  await expect(panel(page)).toHaveAttribute("data-goal-id", "dismiss-week");
+  await expect(current).toHaveValue("7");
+  await expect(row(page, "dismiss-week")).toBeFocused();
+  expect(await saved(page)).toBe(before);
+  await panel(page)
+    .getByRole("button", { name: "Değeri kaydet", exact: true })
+    .click();
+  await expect(current).toHaveValue("7");
+  await page.getByRole("button", { name: "Geri al", exact: true }).click();
+  await expect(panel(page)).toBeVisible();
+  await expect(panel(page)).toHaveAttribute("data-goal-id", "dismiss-week");
+  await expect(current).toHaveValue("4");
+  expect(await saved(page)).toBe(before);
+  await current.fill("7");
+  await panel(page)
+    .getByRole("button", { name: "Hedefi düzenle", exact: true })
+    .click();
+  await expect(editor(page)).toBeVisible();
+  const peerBounds = await peerTitle.boundingBox();
+  const editorBounds = await editor(page).boundingBox();
+  const point = {
+    x: peerBounds.x + 4,
+    y: peerBounds.y + peerBounds.height / 2,
+  };
+  expect(point.x).toBeLessThan(editorBounds.x);
+  await clickPoint(page, point);
+  await expect(editor(page)).not.toBeVisible();
+  await expect(panel(page)).toBeVisible();
+  await expect(panel(page)).toHaveAttribute("data-goal-id", "dismiss-week");
+  await expect(current).toHaveValue("7");
+  await clickPoint(page, point);
+  await expect(panel(page)).toHaveAttribute("data-goal-id", "dismiss-peer");
+  await expect(current).toHaveValue("8");
+  expect(await page.evaluate(() => window.goalPreviewCloseCount)).toBe(0);
+  await clickStaticHeading(page);
+  await expect(panel(page)).not.toBeVisible();
+  await expect(page.locator("#page-title")).toHaveText("Haftalık plan");
+  expect(await page.evaluate(() => window.goalPreviewCloseCount)).toBe(1);
+  await firstTitle.click();
+  await expect(current).toHaveValue("7");
+  expect(await saved(page)).toBe(before);
+});
+
 test("a date popover closes before its editor and backdrop cancellation returns only to the still-open selected calendar", async ({
   page,
 }) => {
@@ -194,6 +271,7 @@ test("a date popover closes before its editor and backdrop cancellation returns 
   );
   await expect(calendar).toBeVisible();
   expect(await saved(page)).toBe(before);
+  page.once("dialog", (dialog) => dialog.accept());
   await clickPoint(page, outside);
   await expect(editor(page)).not.toBeVisible();
   await expect(calendar).toBeVisible();
@@ -207,4 +285,119 @@ test("a date popover closes before its editor and backdrop cancellation returns 
   await clickPoint(page, await backdropPoint(page, calendar));
   await expect(calendar).not.toBeVisible();
   expect(await saved(page)).toBe(before);
+});
+
+test("dirty edit and creation forms require discard confirmation while pristine, reverted and saved forms close without it", async ({
+  page,
+}) => {
+  const before = await seed(page);
+  await page.locator('#nav [data-view="weekly"]').click();
+  await row(page, "dismiss-week").locator(".task-name").click();
+  await panel(page).locator("#goal-progress-current").fill("7");
+  await panel(page)
+    .getByRole("button", { name: "Hedefi düzenle", exact: true })
+    .click();
+  const title = editor(page).locator('[name="title"]');
+  const originalTitle = await title.inputValue();
+  await title.fill("Kaydedilmeyen hedef düzenlemesi");
+  const dismissals = [
+    () => clickPoint(page, awaitPoint),
+    () => page.keyboard.press("Escape"),
+    () =>
+      editor(page)
+        .getByRole("button", { name: "Pencereyi kapat", exact: true })
+        .click(),
+    () =>
+      editor(page).getByRole("button", { name: "Vazgeç", exact: true }).click(),
+  ];
+  const awaitPoint = await backdropPoint(page, editor(page));
+  for (const dismiss of dismissals) {
+    const confirmation = page.waitForEvent("dialog");
+    const action = dismiss();
+    const dialog = await confirmation;
+    expect(dialog.type()).toBe("confirm");
+    expect(dialog.message()).toContain("Kaydedilmemiş değişiklikler");
+    await dialog.dismiss();
+    await action;
+    await expect(editor(page)).toBeVisible();
+    await expect(title).toHaveValue("Kaydedilmeyen hedef düzenlemesi");
+    await expect(panel(page)).toHaveAttribute("data-goal-id", "dismiss-week");
+    await expect(panel(page).locator("#goal-progress-current")).toHaveValue(
+      "7",
+    );
+    expect(await saved(page)).toBe(before);
+  }
+  page.once("dialog", (dialog) => dialog.accept());
+  await clickPoint(page, awaitPoint);
+  await expect(editor(page)).not.toBeVisible();
+  await expect(panel(page)).toBeVisible();
+  expect(await saved(page)).toBe(before);
+
+  const unexpectedDialogs = [];
+  const rejectUnexpected = async (dialog) => {
+    unexpectedDialogs.push(dialog.message());
+    await dialog.dismiss();
+  };
+  page.on("dialog", rejectUnexpected);
+  for (const revert of [false, true]) {
+    await panel(page)
+      .getByRole("button", { name: "Hedefi düzenle", exact: true })
+      .click();
+    if (revert) {
+      await title.fill("Geçici değişiklik");
+      await title.fill(originalTitle);
+    }
+    await page.keyboard.press("Escape");
+    await expect(editor(page)).not.toBeVisible();
+    expect(await saved(page)).toBe(before);
+  }
+  await panel(page)
+    .getByRole("button", { name: "Hedefi düzenle", exact: true })
+    .click();
+  await title.fill("Kaydedilen hedef düzenlemesi");
+  await editor(page)
+    .getByRole("button", { name: "Değişiklikleri kaydet", exact: true })
+    .click();
+  await expect(editor(page)).not.toBeVisible();
+  await expect(panel(page).locator(".goal-panel-title")).toHaveText(
+    "Kaydedilen hedef düzenlemesi",
+  );
+  expect(
+    JSON.parse(await saved(page)).records.find(
+      (record) => record.id === "dismiss-week",
+    ).title,
+  ).toBe("Kaydedilen hedef düzenlemesi");
+  expect(unexpectedDialogs).toEqual([]);
+  page.off("dialog", rejectUnexpected);
+  await panel(page).getByRole("button", { name: "Kapat", exact: true }).click();
+  await page.locator('#nav [data-view="daily"]').click();
+  const afterSave = await saved(page);
+  await page.getByRole("button", { name: "Yeni kayıt", exact: true }).click();
+  await title.fill("Kaydedilmeyen yeni iş taslağı");
+  await editor(page).locator('[name="type"]').selectOption("waiting");
+  await editor(page).locator('[name="type"]').selectOption("daily");
+  await expect(title).toHaveValue("Kaydedilmeyen yeni iş taslağı");
+  const confirmation = page.waitForEvent("dialog");
+  const dismissal = clickPoint(page, await backdropPoint(page, editor(page)));
+  const dialog = await confirmation;
+  expect(dialog.type()).toBe("confirm");
+  await dialog.dismiss();
+  await dismissal;
+  await expect(title).toHaveValue("Kaydedilmeyen yeni iş taslağı");
+  expect(await saved(page)).toBe(afterSave);
+  page.once("dialog", (next) => next.accept());
+  await editor(page)
+    .getByRole("button", { name: "Vazgeç", exact: true })
+    .click();
+  await expect(editor(page)).not.toBeVisible();
+  expect(await saved(page)).toBe(afterSave);
+
+  page.on("dialog", rejectUnexpected);
+  await page.getByRole("button", { name: "Yeni kayıt", exact: true }).click();
+  await editor(page)
+    .getByRole("button", { name: "Vazgeç", exact: true })
+    .click();
+  await expect(editor(page)).not.toBeVisible();
+  expect(unexpectedDialogs).toEqual([]);
+  expect(await saved(page)).toBe(afterSave);
 });

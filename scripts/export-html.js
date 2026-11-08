@@ -3,6 +3,7 @@ import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { resolve } from "node:path";
 import { validateStore, emptyStore } from "../src/model.js";
+import { cleanupMeetingContacts } from "../src/meeting-contact-cleanup.js";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 const directory = resolve(root, ".local");
@@ -18,6 +19,7 @@ for (const file of ["current-data.json", "imported-data.json"]) {
     if (error.code !== "ENOENT") throw error;
   }
 }
+data.records = cleanupMeetingContacts(data.records);
 const result = await build({
   root,
   build: {

@@ -9,6 +9,10 @@ import { dateInput, dateValue as readDateValue } from "./date-picker.js";
 import { DAILY_CONTEXTS, isDailyInboxGoal } from "./daily-context.js";
 import { makePlanningPeriod, shiftPlanningPeriod } from "./planning-periods.js";
 import { linkedAction } from "./action-links.js";
+import {
+  DISCARD_RECORD_CHANGES,
+  recordFormValues,
+} from "./record-form-discard.js";
 
 const esc = (value) =>
   String(value ?? "").replace(
@@ -147,6 +151,8 @@ export function createRecordCreationUI({
   const document = root.ownerDocument;
   const owner = document.defaultView;
   const drafts = new Map();
+  const initialValues = new Map();
+  const draftValues = new Map();
   const renderedOptions = new WeakMap();
   let context = null;
   let currentType = "daily";
@@ -212,7 +218,6 @@ export function createRecordCreationUI({
       _numeric: false,
       _advanced: true,
       _meetingRoute: "",
-      _showCompleted: false,
       ...values,
     };
     initial.status = Object.hasOwn(statusesForType(type), initial.status)
@@ -243,6 +248,10 @@ export function createRecordCreationUI({
   function capture() {
     const current = form();
     if (!current || !draft()) return;
+    draftValues.set(
+      currentType,
+      recordFormValues(current, { exclude: ["type"] }),
+    );
     for (const name of FIELDS)
       if (current.elements[name]) draft()[name] = current.elements[name].value;
     draft()._numeric = Boolean(current.elements.numeric?.checked);
@@ -284,7 +293,7 @@ export function createRecordCreationUI({
 
   function parentMarkup() {
     if (currentType === "daily")
-      return `<div class="field creation-full" id="parent-field"><div class="creation-parent-heading"><label for="weekly-parent-select">Bağlı haftalık hedef <small>İsteğe bağlı</small></label><button type="button" class="parent-goal-toggle" data-action="creation-toggle-completed-parents" aria-pressed="false">Tamamlananları göster</button></div><select name="parentId" id="weekly-parent-select"><option value="">Bağlantı yok</option></select><span class="field-help creation-parent-hint" hidden></span></div>`;
+      return `<div class="field creation-full" id="parent-field"><div class="creation-parent-heading"><label for="weekly-parent-select">Bağlı haftalık hedef <small>İsteğe bağlı</small></label></div><select name="parentId" id="weekly-parent-select"><option value="">Bağlantı yok</option></select><span class="field-help creation-parent-hint" hidden></span></div>`;
     if (["weekly", "monthly"].includes(currentType))
       return `<label class="field creation-full" id="higher-goal-field">${currentType === "weekly" ? "Bağlı aylık hedef" : "Bağlı senelik hedef"} <small>İsteğe bağlı</small><select name="goalParentId" id="higher-goal-select"><option value="">Bağlantı yok</option></select><span class="field-help creation-parent-hint" hidden></span></label>`;
     return "";
@@ -450,6 +459,11 @@ export function createRecordCreationUI({
         input.value = values[name] || "";
     }
     refresh();
+    if (!initialValues.has(currentType))
+      initialValues.set(
+        currentType,
+        recordFormValues(form(), { exclude: ["type"] }),
+      );
   }
 
   function updateParentOptions() {
@@ -479,10 +493,7 @@ export function createRecordCreationUI({
       (record) =>
         !CLOSED.has(record.status) ||
         record.id === fixed ||
-        (daily
-          ? record.status === "completed" &&
-            (draft()._showCompleted || record.id === selected)
-          : record.id === selected),
+        record.id === selected,
     );
     const missing = selected && !shown.some((record) => record.id === selected);
     const markup = `<option value="">Bağlantı yok</option>${missing ? `<option value="${esc(selected)}" selected>Seçili hedef artık bulunamıyor</option>` : ""}${shown.map((record) => `<option value="${esc(record.id)}" ${record.id === selected ? "selected" : ""}>${record.periodKey ? `${esc(record.periodKey)} · ` : ""}${esc(record.title)}${CLOSED.has(record.status) ? ` (${esc(statusLabel(parentType, record.status))})` : ""}</option>`).join("")}`;
@@ -494,20 +505,6 @@ export function createRecordCreationUI({
       daily ? "#parent-field" : "#higher-goal-field",
     ).hidden = false;
     select.disabled = saving;
-    if (daily) {
-      const toggle = current.querySelector(
-        '[data-action="creation-toggle-completed-parents"]',
-      );
-      const count = candidates.filter(
-        (record) => record.status === "completed",
-      ).length;
-      toggle.hidden = !count;
-      toggle.disabled = saving;
-      toggle.setAttribute("aria-pressed", String(draft()._showCompleted));
-      toggle.textContent = draft()._showCompleted
-        ? "Tamamlananları gizle"
-        : `Tamamlananları göster (${count})`;
-    }
     const hint = select
       .closest(".field")
       .querySelector(".creation-parent-hint");
@@ -623,6 +620,8 @@ export function createRecordCreationUI({
       };
       currentType = type;
       drafts.clear();
+      initialValues.clear();
+      draftValues.clear();
       drafts.set(
         type,
         makeDraft(type, {
@@ -662,6 +661,15 @@ export function createRecordCreationUI({
       previous?.isConnected
     )
       previous.focus({ preventScroll: true });
+  }
+
+  function requestClose() {
+    if (saving) return;
+    capture();
+    const dirty = [...draftValues].some(
+      ([type, values]) => values !== initialValues.get(type),
+    );
+    if (!dirty || owner.confirm(DISCARD_RECORD_CHANGES)) close();
   }
 
   function updatePeriod() {
@@ -742,13 +750,7 @@ export function createRecordCreationUI({
     if (!current || !current.contains(control)) return;
     if (control.dataset.action === "creation-close") {
       event.preventDefault();
-      if (!saving) close();
-    }
-    if (control.dataset.action === "creation-toggle-completed-parents") {
-      event.preventDefault();
-      capture();
-      draft()._showCompleted = !draft()._showCompleted;
-      updateParentOptions();
+      requestClose();
     }
     if (control.dataset.action === "creation-meeting-route") {
       event.preventDefault();
@@ -881,7 +883,7 @@ export function createRecordCreationUI({
   function onCancel(event) {
     if (!form()) return;
     event.preventDefault();
-    if (!saving) close();
+    requestClose();
   }
   function onClose() {
     if (dialog.open || !context) return;

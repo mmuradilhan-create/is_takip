@@ -234,7 +234,7 @@ const palette = (control) =>
     };
   });
 
-test("Dashboard metadata explains follow-up age, offers reversible type-specific status menus and separates meaningful context visibly", async ({
+test("Dashboard metadata explains follow-up age, offers reversible type-specific status menus and keeps daily connections in compact accessible title icons", async ({
   page,
 }) => {
   const items = await seed(page);
@@ -292,7 +292,7 @@ test("Dashboard metadata explains follow-up age, offers reversible type-specific
     '.dashboard-goal-context .record-context-link[data-action="goal-details"][data-id="metadata-month"]',
   );
   const dailyParent = focus.locator(
-    '.focus-goal-context .focus-goal-link[data-id="metadata-goal"]',
+    '.focus-title-line .record-parent-link[data-id="metadata-goal"]',
   );
   await expect(goalParent).toBeVisible();
   await expect(dailyParent).toBeVisible();
@@ -344,7 +344,13 @@ test("Dashboard metadata explains follow-up age, offers reversible type-specific
   await expect(page.locator("#page-title")).toHaveText("Genel bakış");
   expect(await saved(page)).toBe(before);
   const goalParentText = await goalParent.innerText();
-  const dailyParentText = await dailyParent.innerText();
+  const dailyParentText = "Haftalık hedef: Haftalık ölçümlü hedef";
+  await expect(dailyParent).toHaveText("");
+  await expect(dailyParent).toHaveAttribute("title", dailyParentText);
+  await expect(dailyParent).toHaveAttribute(
+    "aria-label",
+    `${dailyParentText}: üst hedefi aç`,
+  );
   const goalTitleBox = await goal(page)
     .locator(".dashboard-goal-title")
     .boundingBox();
@@ -360,13 +366,23 @@ test("Dashboard metadata explains follow-up age, offers reversible type-specific
   expect(goalMetadataBox.y).toBeGreaterThanOrEqual(
     goalContextBox.y + goalContextBox.height - 1,
   );
-  const focusTitleBox = await focus.locator(".focus-title-line").boundingBox();
-  const focusContextBox = await focus
-    .locator(".focus-goal-context")
+  await expect(focus.locator(".focus-goal-context")).toHaveCount(0);
+  const focusTitleBox = await focus.locator(".focus-title").boundingBox();
+  const plainFocusBox = await page
+    .locator('.focus-row[data-id="metadata-plain"]')
     .boundingBox();
-  expect(focusContextBox.y).toBeGreaterThanOrEqual(
-    focusTitleBox.y + focusTitleBox.height - 1,
-  );
+  expect(
+    Math.abs((await focus.boundingBox()).height - plainFocusBox.height),
+  ).toBeLessThanOrEqual(1);
+  let previousRight = focusTitleBox.x + focusTitleBox.width;
+  for (const control of [dailyParent, focusSource, focusNote]) {
+    const box = await control.boundingBox();
+    expect(box.x).toBeGreaterThanOrEqual(previousRight + 4);
+    expect(Math.abs(box.y - focusTitleBox.y)).toBeLessThanOrEqual(1);
+    expect(box.width).toBe(18);
+    expect(box.height).toBe(18);
+    previousRight = box.x + box.width;
+  }
   await goalParent.focus();
   await page.keyboard.press("Enter");
   await expect(panel(page)).toHaveAttribute("data-goal-id", "metadata-month");
@@ -455,12 +471,24 @@ test("Dashboard metadata explains follow-up age, offers reversible type-specific
     ),
   ).toEqual(dashboardPalette);
   await view(page, "daily");
-  const context = row(page, "metadata-child").locator("[data-record-context]");
-  await expect(context).not.toContainText("GK-42");
-  await expect(context).not.toContainText("Test");
-  await expect(
-    context.locator('.record-context-link[data-id="metadata-goal"]'),
-  ).toHaveText(dailyParentText);
+  const daily = row(page, "metadata-child");
+  const context = daily.locator("[data-record-context]");
+  await expect(daily.locator(".task-meta-line")).toHaveCount(0);
+  const tableParent = daily.locator(
+    '.task-name-line .record-parent-link[data-id="metadata-goal"]',
+  );
+  await expect(tableParent).toBeVisible();
+  await expect(tableParent).toHaveText("");
+  await expect(tableParent).toHaveAttribute("title", dailyParentText);
+  await expect(tableParent).toHaveAttribute(
+    "aria-label",
+    `${dailyParentText}: üst hedefi aç`,
+  );
+  await expect(tableParent.locator("svg")).toHaveCount(1);
+  await tableParent.focus();
+  await page.keyboard.press("Enter");
+  await expect(panel(page)).toHaveAttribute("data-goal-id", "metadata-goal");
+  await closePanel(page);
   const source = row(page, "metadata-child").locator(
     '.task-name-line .record-source-link[data-context-kind="source"][data-id="metadata-source"][data-action="edit"]',
   );
@@ -473,7 +501,7 @@ test("Dashboard metadata explains follow-up age, offers reversible type-specific
     "aria-label",
     "Toplantı: Kaynak toplantı kararı: kaynak kaydı aç",
   );
-  await expect(context).not.toContainText("Kaynak toplantı kararı");
+  await expect(context).toHaveCount(0);
   await source.focus();
   await page.keyboard.press("Enter");
   await expect(page.locator('#record-form [name="id"]')).toHaveValue(

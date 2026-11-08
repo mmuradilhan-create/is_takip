@@ -31,15 +31,30 @@ function fixture() {
   );
 }
 
-async function seed(page, records = fixture()) {
+async function seed(page, records = fixture(), canonical = false) {
   await page.clock.install({ time: new Date("2026-11-07T12:00:00Z") });
   await page.addInitScript(
-    ({ key, records }) => {
+    ({ key, records, canonical }) => {
       if (sessionStorage.getItem("goal-arrangement-seeded")) return;
-      localStorage.setItem(key, JSON.stringify({ version: 1, records }));
+      localStorage.setItem(
+        key,
+        JSON.stringify({
+          version: 1,
+          records,
+          ...(canonical
+            ? {
+                odak: {
+                  version: 1,
+                  preferences: { density: "compact" },
+                  history: [],
+                },
+              }
+            : {}),
+        }),
+      );
       sessionStorage.setItem("goal-arrangement-seeded", "1");
     },
-    { key: KEY, records },
+    { key: KEY, records, canonical },
   );
   await page.goto("/");
   return records;
@@ -266,7 +281,7 @@ test("monthly and yearly plans share details and child actions while preserving 
   }
 });
 
-test("weekly parent choices start with active goals, optionally show completed goals and keep an existing closed link", async ({
+test("weekly parent choices have no completed toggle and preserve selected closed links, presets and type drafts", async ({
   page,
 }) => {
   const goals = ["planned", "completed", "cancelled", "transferred"].map(
@@ -289,47 +304,133 @@ test("weekly parent choices start with active goals, optionally show completed g
     createdAt: STAMP,
     updatedAt: STAMP,
   });
-  const records = [...goals, linked];
-  await seed(page, records);
+  const closedLinks = [
+    linked,
+    ...["cancelled", "transferred"].map((status) =>
+      createRecord({
+        ...linked,
+        id: `existing-${status}-link`,
+        title: `${status} hedefe bağlı günlük iş`,
+        parentId: `parent-${status}`,
+      }),
+    ),
+  ];
+  const records = [...goals, ...closedLinks];
+  await seed(page, records, true);
+  const before = await readSaved(page);
+  const discardChanges = async () => {
+    const confirmation = page.waitForEvent("dialog");
+    const dismissal = form
+      .getByRole("button", { name: "Vazgeç", exact: true })
+      .click();
+    const dialog = await confirmation;
+    expect(dialog.type()).toBe("confirm");
+    await dialog.accept();
+    await dismissal;
+  };
   await openList(page, "daily");
   await page.getByRole("button", { name: "Yeni kayıt", exact: true }).click();
   const form = page.locator("#record-form");
   const parent = form.locator('[name="parentId"]');
+  const noToggle = () =>
+    expect(
+      form.locator('[data-action*="toggle-completed-parents"]'),
+    ).toHaveCount(0);
   const choices = () =>
     parent
       .locator("option")
       .evaluateAll((options) => options.map((option) => option.value));
+  await noToggle();
   expect(await choices()).toEqual(["", "parent-planned"]);
-  await form
-    .locator('[data-action="creation-toggle-completed-parents"]')
-    .click();
-  expect(await choices()).toEqual(["", "parent-planned", "parent-completed"]);
-  await parent.selectOption("parent-completed");
-  await form
-    .locator('[data-action="creation-toggle-completed-parents"]')
-    .click();
-  await expect(parent).toHaveValue("parent-completed");
-  expect(await choices()).toContain("parent-completed");
-  expect(await choices()).not.toContain("parent-cancelled");
-  expect(await choices()).not.toContain("parent-transferred");
-  await form.getByRole("button", { name: "Vazgeç", exact: true }).click();
-  expect(await readRecords(page)).toEqual(records);
-  await page.getByRole("button", { name: linked.title, exact: true }).click();
-  await expect(parent).toHaveValue("parent-completed");
-  expect(await choices()).toEqual(["", "parent-planned", "parent-completed"]);
-  await openCreationExtras(page);
-  await form
-    .locator('[name="description"]')
-    .fill("Bağlantıyı koruyan düzenleme");
-  await form
-    .getByRole("button", { name: "Değişiklikleri kaydet", exact: true })
-    .click();
-  expect(
-    (await readRecords(page)).find((record) => record.id === linked.id)
-      .parentId,
-  ).toBe("parent-completed");
-  await page.getByRole("button", { name: "Geri al", exact: true }).click();
-  expect(await readRecords(page)).toEqual(records);
+  await parent.selectOption("parent-planned");
+  const peer = await page.context().newPage();
+  await peer.goto("/");
+  await openList(peer, "weekly");
+  await peer.locator('tr[data-id="parent-planned"] .quick-complete').click();
+  await expect(parent).toHaveValue("parent-planned");
+  await expect(parent.locator('option[value="parent-planned"]')).toContainText(
+    "Tamamlandı",
+  );
+  await form.locator('[name="type"]').selectOption("waiting");
+  await form.locator('[name="type"]').selectOption("daily");
+  await noToggle();
+  await expect(parent).toHaveValue("parent-planned");
+  expect(await choices()).toEqual(["", "parent-planned"]);
+  await peer.getByRole("button", { name: "Geri al", exact: true }).click();
+  await expect(
+    parent.locator('option[value="parent-planned"]'),
+  ).not.toContainText("Tamamlandı");
+  await peer.close();
+  await discardChanges();
+  expect(await readSaved(page)).toBe(before);
+
+  // Explicitly opening a new daily step from a closed goal keeps that preset;
+  // unrelated closed goals are never offered as additional choices.
+  await openList(page, "weekly");
+  await page.locator('[data-action="list-scope"][data-scope="all"]').click();
+  for (const status of ["completed", "cancelled"]) {
+    await page
+      .locator(`tr[data-id="parent-${status}"] [data-action="new-linked"]`)
+      .click();
+    await noToggle();
+    await expect(form).toHaveAttribute("data-creation", "true");
+    await expect(parent).toHaveValue(`parent-${status}`);
+    expect(await choices()).toEqual(["", "parent-planned", `parent-${status}`]);
+    if (status === "completed") {
+      await form
+        .locator('[name="title"]')
+        .fill("Kapalı hedefin açıkça eklenen günlük işi");
+      await form
+        .getByRole("button", { name: "Kaydı ekle", exact: true })
+        .click();
+      const added = (await readRecords(page)).filter(
+        (item) => !records.some((old) => old.id === item.id),
+      );
+      expect(added).toHaveLength(1);
+      expect(added[0].parentId).toBe("parent-completed");
+      expect(
+        (await readRecords(page)).filter((item) => item.id !== added[0].id),
+      ).toEqual(records);
+      await page.getByRole("button", { name: "Geri al", exact: true }).click();
+    } else
+      await form.getByRole("button", { name: "Vazgeç", exact: true }).click();
+    expect(await readSaved(page)).toBe(before);
+  }
+
+  // Archived weekly goals have no new-step action; all existing closed links
+  // remain selected and editable without offering unrelated closed choices.
+  await openList(page, "daily");
+  for (const linked of closedLinks) {
+    await page.getByRole("button", { name: linked.title, exact: true }).click();
+    await noToggle();
+    await expect(parent).toHaveValue(linked.parentId);
+    expect(await choices()).toEqual(["", "parent-planned", linked.parentId]);
+    await openCreationExtras(page);
+    await form
+      .locator('[name="description"]')
+      .fill("İptal edilecek bağlantı notu");
+    await discardChanges();
+    expect(await readSaved(page)).toBe(before);
+    await page.getByRole("button", { name: linked.title, exact: true }).click();
+    await noToggle();
+    await openCreationExtras(page);
+    await form
+      .locator('[name="description"]')
+      .fill("Bağlantıyı koruyan düzenleme");
+    await form
+      .getByRole("button", { name: "Değişiklikleri kaydet", exact: true })
+      .click();
+    const changed = (await readRecords(page)).find(
+      (item) => item.id === linked.id,
+    );
+    expect(changed.parentId).toBe(linked.parentId);
+    expect(changed.description).toBe("Bağlantıyı koruyan düzenleme");
+    expect(
+      (await readRecords(page)).filter((item) => item.id !== linked.id),
+    ).toEqual(records.filter((item) => item.id !== linked.id));
+    await page.getByRole("button", { name: "Geri al", exact: true }).click();
+    expect(await readSaved(page)).toBe(before);
+  }
 });
 
 test("a status popover remains usable after a goal next-step reset rerenders its panel", async ({

@@ -243,7 +243,7 @@ test("right work controls run, pause and resume with a minute-only view while ra
     .getByRole("button", { name: "Kaydet ve bitir", exact: true })
     .click();
   await expect(panel(page)).not.toBeVisible();
-  await expect(page.locator("#sidebar-saved-time")).toHaveText("1 dk altı");
+  await expect(page.locator("#sidebar-saved-time")).toHaveText("1 dk");
   await expect(page.locator("#sidebar-saved-count")).toHaveText("1 oturum");
   const stored = JSON.parse((await primaryState(page)).records);
   const shortSession = stored.records.find(

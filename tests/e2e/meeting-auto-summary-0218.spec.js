@@ -82,13 +82,15 @@ async function expectAssignmentChoices(page) {
       ),
   ).toEqual([
     { value: "planned", label: "Planlanacak", disabled: false },
-    { value: "completed", label: "Tamamlandı", disabled: false },
+    { value: "completed", label: "Arşivlendi", disabled: false },
     { value: "cancelled", label: "İptal", disabled: false },
   ]);
 }
 
 async function openUnlinkedMenu(page, id) {
-  await row(page, id).locator(".status-trigger").click();
+  await row(page, id)
+    .locator(".meeting-title-state .status-trigger, .meeting-archive-control")
+    .click();
   await expect(menu(page)).toBeVisible();
   expect(
     await menu(page)
@@ -185,11 +187,26 @@ test("legacy unlinked open meetings display Planlanacak without rewriting their 
   expect(await saved(page)).toBe(original);
 });
 
-test("an unlinked meeting has idempotent Planlanacak and explicit cancel, reopen and checkbox completion with one Undo per transition", async ({
+test("an unlinked meeting archives from its form and reopens from its compact title control with exact Undo per transition", async ({
   page,
 }) => {
   const item = source("unlinked-transition", "waiting");
   const original = await seed(page, [item]);
+  await expect(page.locator(".list-scope-tabs button")).toHaveText([
+    "Güncel",
+    "Arşiv",
+    "Tümü",
+  ]);
+  await expect(
+    row(page, item.id).locator(
+      ".task-name-line .meeting-title-state .status-trigger",
+    ),
+  ).toHaveText("Planlanacak");
+  await expect(
+    row(page, item.id).locator(
+      ".quick-complete, .completion-mark, .meeting-unlinked-status",
+    ),
+  ).toHaveCount(0);
   await page.locator('[data-action="list-scope"][data-scope="all"]').click();
   await openUnlinkedMenu(page, item.id);
   await menu(page).locator('[data-status="planned"]').click();
@@ -207,20 +224,51 @@ test("an unlinked meeting has idempotent Planlanacak and explicit cancel, reopen
   };
   expect(await records(page)).toEqual([cancelled]);
   expect((await stored(page)).odak.history).toHaveLength(1);
-  await expect(row(page, item.id).locator(".status-trigger")).toHaveText(
-    "İptal",
-  );
+  await expect(
+    row(page, item.id).locator(".meeting-archive-control"),
+  ).toHaveAttribute("title", "İptal · Durumu değiştir");
 
   await openUnlinkedMenu(page, item.id);
   await menu(page).locator('[data-status="planned"]').click();
   const reopened = { ...item, status: "planned", updatedAt: NOW.toISOString() };
   expect(await records(page)).toEqual([reopened]);
   expect((await stored(page)).odak.history).toHaveLength(2);
-  await row(page, item.id).locator(".quick-complete").click();
+  await row(page, item.id).locator(".task-name").click();
+  await expectAssignmentChoices(page);
+  await form(page).locator('[name="status"]').selectOption("completed");
+  await saveEditor(page);
   expect(await records(page)).toEqual([{ ...reopened, status: "completed" }]);
   expect((await stored(page)).odak.history).toHaveLength(3);
   const completedBytes = await saved(page);
+  const archiveControl = row(page, item.id).locator(
+    ".task-name-line .meeting-archive-control",
+  );
+  await expect(archiveControl).toHaveAttribute(
+    "title",
+    "Arşivlendi · Durumu değiştir",
+  );
+  await expect(
+    row(page, item.id).locator(
+      ".status-trigger, .meeting-route, .quick-complete, .completion-mark",
+    ),
+  ).toHaveCount(0);
+  await page
+    .locator('[data-action="list-scope"][data-scope="completed"]')
+    .click();
+  await expect(row(page, item.id)).toBeVisible();
   await page.reload();
+  expect(await saved(page)).toBe(completedBytes);
+  await list(page);
+  await page
+    .locator('[data-action="list-scope"][data-scope="completed"]')
+    .click();
+  await openUnlinkedMenu(page, item.id);
+  await menu(page).locator('[data-status="planned"]').click();
+  await expect(row(page, item.id)).toHaveCount(0);
+  expect(await records(page)).toEqual([reopened]);
+  expect((await stored(page)).odak.history).toHaveLength(4);
+  await page.locator('[data-action="list-scope"][data-scope="all"]').click();
+  await undo(page);
   expect(await saved(page)).toBe(completedBytes);
   await undo(page);
   expect(await records(page)).toEqual([reopened]);

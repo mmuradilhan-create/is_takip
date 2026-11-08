@@ -61,7 +61,7 @@ export const TYPE_STATUSES = {
   },
   meeting: {
     planned: { label: "Planlanacak" },
-    completed: { label: "Tamamlandı" },
+    completed: { label: "Arşivlendi" },
     cancelled: { label: "İptal" },
   },
   waiting: {

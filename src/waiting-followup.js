@@ -272,11 +272,11 @@ export function updateFollowUp(record, entryId, patch, options = {}) {
   };
 }
 
-/** A closed record has no proven closing date, so never invent a frozen age. */
-export function waitingAge(record, today = localToday()) {
-  if (record?.type !== "waiting" || CLOSED.has(record.status)) return null;
-  return calendarDays(record.sourceDate, today);
-}
+export {
+  stampWaitingClosures,
+  waitingAge,
+  waitingAgePresentation,
+} from "./waiting-age.js";
 
 export function followUpPresentation(record, today = localToday()) {
   const date = calendarDate(record?.nextFollowUpDate)

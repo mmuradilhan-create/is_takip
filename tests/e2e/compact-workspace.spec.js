@@ -453,7 +453,7 @@ test("sidebar journal keeps idle history available and saves only finished work 
     .click();
   await expect(panel).not.toBeVisible();
   await expect(control).toBeVisible();
-  await expect(today).toHaveText("5 dk");
+  await expect(today).toHaveText("6 dk");
   await expect(control.locator("#sidebar-saved-count")).toHaveText("3 oturum");
   const records = await readRecords(page);
   const changed = records.find((record) => record.id === "compact-urgent");

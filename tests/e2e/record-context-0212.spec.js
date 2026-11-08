@@ -13,7 +13,7 @@ const row = (page, id) =>
 const context = (page, id) =>
   row(page, id).locator(".task-meta-line .task-sub");
 const link = (page, rowId, action, id) =>
-  context(page, rowId).locator(
+  (action === "edit" ? row(page, rowId) : context(page, rowId)).locator(
     `.record-context-link[data-action="${action}"][data-id="${id}"]`,
   );
 const view = (page, type) => page.locator(`#nav [data-view="${type}"]`).click();
@@ -130,7 +130,7 @@ async function seed(page, items = fixture()) {
   return items;
 }
 
-test("daily context keeps project, work type, weekly goal and real origin with keyboard-accessible read-only destinations", async ({
+test("daily context keeps the parent visible and its real source in a compact title icon with keyboard-accessible read-only destinations", async ({
   page,
 }) => {
   const items = await seed(page);
@@ -141,18 +141,28 @@ test("daily context keeps project, work type, weekly goal and real origin with k
     ["context-from-waiting", "context-waiting"],
   ]) {
     const item = items.find((item) => item.id === id);
-    await expect(context(page, id)).toContainText(item.projectCode);
-    await expect(context(page, id)).toContainText(item.workType);
+    await expect(context(page, id)).not.toContainText(item.projectCode);
+    await expect(context(page, id)).not.toContainText(item.workType);
     await expect(link(page, id, "goal-details", "context-week")).toContainText(
       "Haftalık teknik teslim",
     );
-    await expect(link(page, id, "edit", sourceId)).toBeVisible();
-    if (sourceId === "context-meeting") {
-      await expect(link(page, id, "edit", sourceId)).toHaveText(
-        "Toplantıdan gelen iş",
-      );
-      await expect(context(page, id)).not.toContainText(item.title);
-    }
+    const source = link(page, id, "edit", sourceId);
+    const sourceRecord = items.find((item) => item.id === sourceId);
+    await expect(source).toBeVisible();
+    await expect(source).toHaveClass(/record-source-link/);
+    await expect(source).toHaveText("");
+    await expect(source.locator("svg")).toHaveCount(1);
+    await expect(source).toHaveAttribute(
+      "title",
+      `${sourceRecord.type === "meeting" ? "Toplantı" : "Bekleyen konu"}: ${sourceRecord.title}`,
+    );
+    await expect(
+      context(page, id).locator('[data-context-kind="source"]'),
+    ).toHaveCount(0);
+    await expect(context(page, id)).not.toContainText("Toplantıdan gelen iş");
+    await expect(source.locator("xpath=..")).toHaveClass(
+      "record-title-content",
+    );
     await link(page, id, "goal-details", "context-week").focus();
     await page.keyboard.press("Enter");
     const panel = page.locator("#goal-detail-panel");
@@ -160,10 +170,7 @@ test("daily context keeps project, work type, weekly goal and real origin with k
     await expect(panel.locator(".goal-panel-title")).toHaveText(
       "Haftalık teknik teslim",
     );
-    await expect(panel.locator("#goal-next-step-form")).toHaveAttribute(
-      "data-id",
-      "context-week",
-    );
+    await expect(panel).toHaveAttribute("data-goal-id", "context-week");
     await expect(page.locator("#editor")).not.toBeVisible();
     await expect(page.locator("#page-title")).toHaveText("Günlük işler");
     await page.keyboard.press("Escape");

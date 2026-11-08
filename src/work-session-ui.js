@@ -38,9 +38,7 @@ function miniDuration(milliseconds) {
 
 function savedDuration(milliseconds) {
   const value = Math.max(0, Number(milliseconds) || 0);
-  if (!value) return "0 dk";
-  if (value < 60000) return "1 dk altı";
-  const totalMinutes = Math.floor(value / 60000);
+  const totalMinutes = Math.round(value / 60000);
   const hours = Math.floor(totalMinutes / 60);
   const minutes = totalMinutes % 60;
   return hours

@@ -131,7 +131,7 @@ test("old waiting goals remain readable, filterable and lossless through edits, 
   assert.equal(JSON.stringify(records), before);
 });
 
-test("meeting actions offer only planning or closure while waiting subjects retain their own vocabulary", () => {
+test("meeting actions offer planning or archive labels while waiting subjects retain their own vocabulary", () => {
   const meetings = statusesForType("meeting");
   assert.deepEqual(Object.keys(meetings), [
     "planned",
@@ -140,7 +140,7 @@ test("meeting actions offer only planning or closure while waiting subjects reta
   ]);
   assert.deepEqual(
     Object.values(meetings).map(({ label }) => label),
-    ["Planlanacak", "Tamamlandı", "İptal"],
+    ["Planlanacak", "Arşivlendi", "İptal"],
   );
   const waiting = statusesForType("waiting");
   assert.deepEqual(Object.keys(waiting), [
@@ -155,7 +155,9 @@ test("meeting actions offer only planning or closure while waiting subjects reta
   );
   assert.equal(statusLabel("daily", "planned"), "Yapılacak");
   assert.equal(statusLabel("meeting", "planned"), "Planlanacak");
+  assert.equal(statusLabel("meeting", "completed"), "Arşivlendi");
   assert.equal(statusLabel("meeting", "waiting"), "Beklemede");
+  assert.equal(statusLabel("daily", "completed"), "Tamamlandı");
   assert.equal(statusLabel("waiting", "completed"), "Kapandı");
 });
 
@@ -187,7 +189,10 @@ test("meeting manual choices exclude derived and historical states without chang
     (status) => !manual.includes(status),
   );
   for (const status of Object.keys(STATUSES)) {
-    assert.equal(isStatusSelectable("meeting", status), manual.includes(status));
+    assert.equal(
+      isStatusSelectable("meeting", status),
+      manual.includes(status),
+    );
     const input = { type: "meeting", title: `Toplantı ${status}`, status };
     if (manual.includes(status))
       assert.equal(
@@ -219,7 +224,9 @@ test("meeting manual choices exclude derived and historical states without chang
   const original = JSON.stringify(records);
   const choices = statusesForType("meeting", historical);
   assert.deepEqual(
-    Object.keys(choices).filter((status) => isStatusSelectable("meeting", status)),
+    Object.keys(choices).filter((status) =>
+      isStatusSelectable("meeting", status),
+    ),
     manual,
   );
   for (const record of records)
@@ -239,7 +246,10 @@ test("meeting manual choices exclude derived and historical states without chang
     ),
   );
   for (const [index, record] of edited.entries())
-    assert.deepEqual({ ...record, title: records[index].title }, records[index]);
+    assert.deepEqual(
+      { ...record, title: records[index].title },
+      records[index],
+    );
   workspace.saveRecords(edited, "Karar başlığını düzelt");
   const restored = createWorkspaceStore({ storage, key });
   assert.deepEqual(restored.records, edited);

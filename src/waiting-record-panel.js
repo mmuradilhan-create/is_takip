@@ -1,5 +1,5 @@
 import { localDate, statusForDisplay, statusLabel } from "./model.js";
-import { waitingAge } from "./waiting-followup.js";
+import { waitingAgePresentation } from "./waiting-followup.js";
 
 const CLOSED = new Set(["completed", "cancelled", "transferred"]);
 const esc = (value) =>
@@ -99,6 +99,8 @@ export function createWaitingRecordPanel({
   }
 
   function render(record, { resetScroll = false } = {}) {
+    const currentDay = localDate();
+    const age = waitingAgePresentation(record, currentDay, { formatDate });
     const nextKey = JSON.stringify([
       record.id,
       record.title,
@@ -110,7 +112,10 @@ export function createWaitingRecordPanel({
       record.lastFollowUpDate,
       record.description,
       record.followUpLog,
-      localDate(),
+      record.sourceFields?.__waitingClosure,
+      record.sourceFields?.["Kaç Gün Bekledi"],
+      currentDay,
+      age,
     ]);
     if (renderKey === nextKey) return;
     const scrollTop = resetScroll
@@ -120,18 +125,11 @@ export function createWaitingRecordPanel({
     const focusedAction = panel.contains(active) ? active.dataset.action : null;
     const bodyFocused = active?.classList?.contains("waiting-record-body");
     const entries = latestEntries(record);
-    const days = waitingAge(record, localDate());
-    const age =
-      days === null
-        ? record.sourceDate
-          ? "Bekleme süresi bilinmiyor"
-          : "Bekleme başlangıcı yok"
-        : `${days} gündür bekliyor`;
     const status =
       typeof renderStatus === "function"
         ? renderStatus(record)
         : `<span class="badge status-${esc(statusForDisplay(record.status))}"><span class="dot"></span>${esc(statusLabel("waiting", record.status))}</span>`;
-    panel.innerHTML = `<div class="modal-header"><div class="waiting-record-heading"><p>Bekleyen konu</p><h2 class="waiting-record-title" title="${esc(record.title)}">${esc(record.title)}</h2><div class="waiting-record-summary">${status}${record.sourceDate ? `<span>Başlangıç: ${dateMarkup(record.sourceDate, "")}</span>` : ""}</div></div><button type="button" class="close-modal" data-action="waiting-record-close" aria-label="Pencereyi kapat">${closeIcon}</button></div><div class="modal-body waiting-record-body" tabindex="0" aria-label="Konu ve takip ayrıntıları"><dl class="waiting-record-facts"><div data-waiting-fact="expectedFrom"><dt>Kimden / nereden bekleniyor?</dt><dd>${esc(record.expectedFrom || "Belirtilmedi.")}</dd></div><div data-waiting-fact="latestUpdate"><dt>Son gelişme</dt><dd>${esc(record.latestUpdate || "Son gelişme eklenmedi.")}</dd></div><div data-waiting-fact="nextFollowUpDate"><dt>Sonraki takip</dt><dd>${dateMarkup(record.nextFollowUpDate, "Planlanmadı.")}</dd></div><div data-waiting-fact="lastFollowUpDate"><dt>Son takip</dt><dd>${dateMarkup(record.lastFollowUpDate, entries.length ? "Son takip tarihi yok." : "Henüz takip edilmedi.")}</dd></div><div data-waiting-fact="age"><dt>Bekleme</dt><dd>${esc(age)}</dd></div></dl>${historyMarkup(entries)}${String(record.description || "").trim() ? `<section class="waiting-record-note"><h3>Notlar</h3><p>${esc(record.description)}</p></section>` : ""}</div><div class="modal-footer"><button type="button" class="btn" data-action="waiting-record-edit" data-id="${esc(record.id)}">Kaydı düzenle</button>${CLOSED.has(record.status) ? "" : `<button type="button" class="btn" data-action="waiting-record-followup" data-id="${esc(record.id)}">Takip ettim</button>`}<button type="button" class="btn primary" data-action="waiting-record-close">Kapat</button></div>`;
+    panel.innerHTML = `<div class="modal-header"><div class="waiting-record-heading"><p>Bekleyen konu</p><h2 class="waiting-record-title" title="${esc(record.title)}">${esc(record.title)}</h2><div class="waiting-record-summary">${status}${record.sourceDate ? `<span>Başlangıç: ${dateMarkup(record.sourceDate, "")}</span>` : ""}</div></div><button type="button" class="close-modal" data-action="waiting-record-close" aria-label="Pencereyi kapat">${closeIcon}</button></div><div class="modal-body waiting-record-body" tabindex="0" aria-label="Konu ve takip ayrıntıları"><dl class="waiting-record-facts"><div data-waiting-fact="expectedFrom"><dt>Kimden / nereden bekleniyor?</dt><dd>${esc(record.expectedFrom || "Belirtilmedi.")}</dd></div><div data-waiting-fact="latestUpdate"><dt>Son gelişme</dt><dd>${esc(record.latestUpdate || "Son gelişme eklenmedi.")}</dd></div><div data-waiting-fact="nextFollowUpDate"><dt>Sonraki takip</dt><dd>${dateMarkup(record.nextFollowUpDate, "Planlanmadı.")}</dd></div><div data-waiting-fact="lastFollowUpDate"><dt>Son takip</dt><dd>${dateMarkup(record.lastFollowUpDate, entries.length ? "Son takip tarihi yok." : "Henüz takip edilmedi.")}</dd></div><div data-waiting-fact="age"><dt>Bekleme</dt><dd data-waiting-age-kind="${esc(age.kind)}" title="${esc(age.title)}" aria-label="${esc(age.ariaLabel)}">${esc(age.description)}</dd></div></dl>${historyMarkup(entries)}${String(record.description || "").trim() ? `<section class="waiting-record-note"><h3>Notlar</h3><p>${esc(record.description)}</p></section>` : ""}</div><div class="modal-footer"><button type="button" class="btn" data-action="waiting-record-edit" data-id="${esc(record.id)}">Kaydı düzenle</button>${CLOSED.has(record.status) ? "" : `<button type="button" class="btn" data-action="waiting-record-followup" data-id="${esc(record.id)}">Takip ettim</button>`}<button type="button" class="btn primary" data-action="waiting-record-close">Kapat</button></div>`;
     const body = panel.querySelector(".waiting-record-body");
     body.scrollTop = scrollTop;
     renderKey = nextKey;

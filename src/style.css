@@ -535,7 +535,7 @@ tbody tr:hover {
 }
 .task-name.completed {
   color: #657562;
-  text-decoration: line-through;
+  text-decoration: none;
 }
 .task-sub {
   font-size: 11px;

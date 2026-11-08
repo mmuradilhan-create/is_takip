@@ -287,6 +287,14 @@ test("Dashboard metadata explains follow-up age, offers reversible type-specific
   await expect(dailyParent).toBeVisible();
   await expect(goalParent.locator("svg")).toHaveCount(1);
   await expect(dailyParent.locator("svg")).toHaveCount(1);
+  const focusSource = focus.locator(
+    '.focus-title-line .record-source-link[data-context-kind="source"][data-action="edit"][data-id="metadata-source"]',
+  );
+  await expect(focusSource).toBeVisible();
+  await expect(focusSource).toHaveAttribute(
+    "title",
+    "Toplantı: Kaynak toplantı kararı",
+  );
   const goalParentText = await goalParent.innerText();
   const dailyParentText = await dailyParent.innerText();
   const goalTitleBox = await goal(page)
@@ -405,10 +413,19 @@ test("Dashboard metadata explains follow-up age, offers reversible type-specific
   await expect(
     context.locator('.record-context-link[data-id="metadata-goal"]'),
   ).toHaveText(dailyParentText);
-  const source = context.locator(
-    '.record-context-link[data-id="metadata-source"][data-action="edit"]',
+  const source = row(page, "metadata-child").locator(
+    '.task-name-line .record-source-link[data-context-kind="source"][data-id="metadata-source"][data-action="edit"]',
   );
-  await expect(source).toContainText("Kaynak toplantı kararı");
+  await expect(source).toBeVisible();
+  await expect(source).toHaveAttribute(
+    "title",
+    "Toplantı: Kaynak toplantı kararı",
+  );
+  await expect(source).toHaveAttribute(
+    "aria-label",
+    "Toplantı: Kaynak toplantı kararı: kaynak kaydı aç",
+  );
+  await expect(context).not.toContainText("Kaynak toplantı kararı");
   await source.focus();
   await page.keyboard.press("Enter");
   await expect(page.locator('#record-form [name="id"]')).toHaveValue(
@@ -417,7 +434,7 @@ test("Dashboard metadata explains follow-up age, offers reversible type-specific
   await page.locator('#editor [data-action="close"]').last().click();
   await expect(page.locator("#page-title")).toHaveText("Günlük işler");
   expect(await saved(page)).toBe(before);
-  await expect(context.locator(".record-context-separator")).toHaveCount(1);
+  await expect(context.locator(".record-context-separator")).toHaveCount(0);
   await expect(
     row(page, "metadata-plain").locator("[data-record-context], .task-sub"),
   ).toHaveCount(0);

@@ -354,7 +354,9 @@ test("meeting tables place status below its own route control, omit missing date
     cell(page, "none", "waiting").locator(".meeting-linked-date"),
   ).toHaveCount(0);
   await expect(
-    row(page, "none").locator(".meeting-unlinked-status .status-trigger"),
+    row(page, "none").locator(
+      ".task-name-line .meeting-title-state .status-trigger",
+    ),
   ).toHaveText("Planlanacak");
   await expect(
     row(page, "both").locator(".meeting-unlinked-status, .meeting-status-cell"),

@@ -117,9 +117,9 @@ test("a linked meeting exposes independent job and follow-up badges and changes 
       '.meeting-linked-cell[data-route="waiting"] .status-trigger',
     ),
   ).toHaveAttribute("data-target-id", "reply");
-  await expect(
-    row(page, "dual").locator(".meeting-unlinked-status"),
-  ).toHaveCount(0);
+  await expect(row(page, "dual").locator(".meeting-title-state")).toHaveCount(
+    0,
+  );
   await openMenu(page, "dual", "own");
   await expect(menu(page).locator(".status-menu-heading")).toContainText(
     "Aksiyon durumu",

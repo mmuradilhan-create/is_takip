@@ -1,0 +1,83 @@
+/* The real source stays beside the title; parent targets remain below it. */
+.record-source-link {
+  display: inline-flex;
+  flex: 0 0 22px;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  min-width: 22px;
+  height: 22px;
+  min-height: 22px;
+  margin: 0;
+  padding: 4px;
+  border: 1px solid var(--theme-border, #dce5d5);
+  border-radius: 5px;
+  background: var(--theme-soft, #f2f6ed);
+  color: var(--theme-muted, #73856a);
+  vertical-align: middle;
+  cursor: pointer;
+}
+
+.record-source-link > svg {
+  flex: 0 0 12px;
+  width: 12px;
+  height: 12px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.record-source-link:hover,
+.record-source-link:focus-visible {
+  background: var(--theme-hover, #eaf2e3);
+  color: var(--theme-accent, #4c7047);
+}
+
+.record-title-content {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.record-title-content > :is(.task-name, .focus-title) {
+  display: inline;
+  width: auto;
+  max-width: 100%;
+  overflow: visible;
+  vertical-align: baseline;
+  white-space: normal;
+  -webkit-line-clamp: unset;
+}
+
+.record-title-content
+  > :is(.record-source-link, .record-note-trigger, .record-history-trigger) {
+  margin-inline-start: 6px;
+  vertical-align: middle;
+}
+
+.record-title-content > a.task-name:hover {
+  text-decoration: underline;
+}
+
+/* The overview keeps its two-line title and a separately reachable source. */
+.focus-title-line > .record-title-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.focus-title-line > .record-title-content > .focus-title {
+  display: -webkit-box;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-height: 2.9em;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.focus-title-line > .record-title-content > .record-source-link {
+  margin-inline-start: 0;
+}

@@ -95,10 +95,12 @@ Klavye odağı satırı hafifçe renklendirir ve başlığın altını çizer; b
 satırı çevreleyen çerçeve kullanılmaz. Kaydı satıra
 veya başlığa tıklayarak aç; aynı işi tekrarlayan ayrı açma düğmesi yoktur.
 Başlığın altında işlem düğmesi ve bağlı iş sayısı tekrarlanmaz.
+Pencere veya yan panel dışındaki boş alana tıklamak onu kapatır;
+içte açılan pencere önce kapanır.
 
-Satır altında yalnız gerçek hedef ve kaynak bağlantıları görünür.
-Anlık iş, proje kodu ve iş türü etiketleri gösterilmez. Kaynak
-toplantının başlığı işinkiyle aynıysa Toplantıdan gelen iş yazılır. Hedefin
+Bağlı hedef satır altında görünür. Kaynak bağlantısı başlık yanındaki küçük
+simgededir; üzerine gelince adı okunur, tıklayınca kaynak kayıt açılır.
+Anlık iş, proje kodu ve iş türü etiketleri gösterilmez. Hedefin
 üst hedef bağlantısı küçük hedef simgesi ve adıyla açılır. Tüm haftalar/aylar/yıllar
 görünümünde dönem 16-22 Kasım 2026 / Kasım 2026 / 2026 gibi okunur; seçili
 dönem üstte yazıyorsa satırda tekrarlanmaz. Toplantıda karar ve varsa
@@ -322,7 +324,9 @@ veya son gelişme eksikse Beklemeyi netleştir önerisi görünür; ikisi de
 tamamlanınca veya konu kapanınca o konu öneriden çıkar. Süre, Beklemeye başlama tarihi
 ile bugün arasındaki takvim günü farkıdır; günlük hesaplanır ve 103 gün
 gibi kısa gösterilir. Başlangıç tarihi üzerine gelince okunur; tarih
-bilinmiyorsa veya kapanış tarihi bilinmeyen kapalı konuda çizgi görünür.
+bilinmiyorsa çizgi görünür. Yeni kapanışta toplam süre o günde sabitlenir;
+yeniden açılınca canlı hesap sürer. Eski kapalı konunun sayısal Excel süresi
+varsa kaynak açıklamasıyla gösterilir; kapanış tarihi olarak yorumlanmaz.
 
 Takip planla veya sonraki tarih düğmesi yalnız hatırlatmayı düzenler;
 gerçekleşmiş takip kaydı oluşturmaz. Takip filtresi sonraki tarihi kullanır:
@@ -456,7 +460,7 @@ saat:dakika sayacı, Duraklat / Devam et ve Bitir. İş adına tıklamak kaydı 
 Notlar ve sonraki adım düğmesi mevcut bilgileri ayrı bir pencerede gösterir.
 
 Oturum yokken kart tek satır Bugün/süre/oturum özeti ve geçmiş bağlantısıdır.
-Pozitif bir dakikadan kısa kayıtlı süre 1 dk altı görünür; ham süre değişmez.
+Özetteki kayıtlı süre en yakın tam dakikaya yuvarlanır; ham süre değişmez.
 Kaydedilmemiş sayaç bu toplama dahil değildir. Çalışma geçmişi, bulunduğun
 bölümden haftalık özeti açar. Köşe ve sol menü kaydırmadan sabit kalır.
 Aktif kart iş adını, çalışma durumunu ve yan yana kontrolleri gösterir;
@@ -510,17 +514,19 @@ konu açılabilir. Ben yapacağım benim çalışmamı; Başkasından bekliyorum
 yanıtı takip eder. Formdan vazgeçmek kayıt oluşturmaz. İlgili türde kayıt
 varsa düğme İşi aç / Takibi aç olur ve o kaydı açar; ikinci kopya oluşturmaz.
 
-Listede Aksiyon / karar, Bağlı iş ve Takip sütunları vardır.
-Durum rozeti kendi bağlı işinin veya takibinin altında yer alır; akışı
-olmayan kararın durumu kararın altında görünür.
+Listede Aksiyon / karar, Bağlı iş ve Takip sütunları vardır; üstte
+Güncel / Arşiv / Tümü seçilir. Toplantıda tamamlama kutusu yoktur.
+Bağlantısız kararın durum/arşiv kontrolü başlık hizasındadır; kararın
+altında ayrı durum satırı yoktur. Bağlı iş/takip kendi durumunu gösterir.
 Her akışın düğmesi kaydı toplantı sayfasının üzerinde açar; kapatınca aynı
-toplantıda kalırsın. Akış yoksa İş oluştur / Takip oluştur
-formunu açar. Tarih varsa bağlı kayıttan İş teslimi / Sonraki takip
+toplantıda kalırsın. Güncel kararda akış yoksa İş oluştur / Takip oluştur
+formunu açar; arşivdeki bağlantısız satırda bu düğmeler gösterilmez. Tarih varsa bağlı kayıttan İş teslimi / Sonraki takip
 olarak kendi sütununda gösterilir.
 Öncelik ve teslim tarihi filtreleri bu listede kullanılmaz.
 İş ve Takip durumları ayrı rozetlerde görünür; her rozet kendi gerçek kaydının
 menüsünü açar. Bu menülerde Tamamlandı / Kapandı yoktur; tamamlama ilgili
-kaydın kendi arayüzünden yapılır. Toplantının genel kapanışı bağlı kayıtları izler.
+kaydın kendi arayüzünden yapılır. Toplantının güncel/arşiv görünümü bağlı kayıtları izler; arşiv simgesi bağlı
+işi veya takibi tamamlamaz.
 
 Her ikisi de, Yapacağım iş ve Beklediğim sonuç için iki ayrı bölüm içeren
 formu açar. İki akışı kaydet ile birlikte oluşturabilirsin. Bir akış zaten

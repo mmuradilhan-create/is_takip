@@ -486,3 +486,150 @@ test("cancelled, future and failed follow-up saves preserve records and keep a r
   await undo(page);
   expect(await saved(page)).toBe(initialBytes);
 });
+
+test("closed waiting topics distinguish imported snapshots from actual closure and keep reopen, backup and exact Undo atomic", async ({
+  page,
+  context,
+}) => {
+  test.setTimeout(45_000);
+  const original = fixture().map((item) =>
+    item.id === "waiting-closed"
+      ? {
+          ...item,
+          sourceFields: {
+            "Kaç Gün Bekledi": 27,
+            __formulas: {
+              "Kaç Gün Bekledi": { formula: "TODAY()-A2", result: 27 },
+            },
+          },
+        }
+      : item,
+  );
+  original.push(
+    record({
+      id: "waiting-closed-unknown",
+      type: "waiting",
+      title: "Başlangıcı bilinmeyen kapalı konu",
+      status: "completed",
+      sourceFields: { "Kaç Gün Bekledi": 31 },
+    }),
+  );
+  await seed(page, original);
+  const initialBytes = await saved(page);
+  await list(page);
+  await page.locator('[data-action="list-scope"][data-scope="all"]').click();
+  const legacy = row(page, "waiting-closed").locator(".waiting-age");
+  await expect(legacy).toHaveText("27 gün");
+  await expect(legacy).toHaveAttribute("data-waiting-age-kind", "imported");
+  await expect(legacy).toHaveAttribute(
+    "title",
+    "Excel’den aktarılan süre; kapanış tarihi bilinmiyor",
+  );
+  await expect(legacy).toHaveAttribute(
+    "aria-label",
+    /kapanış tarihi bilinmiyor/,
+  );
+  const unknown = row(page, "waiting-closed-unknown").locator(".waiting-age");
+  await expect(unknown).toHaveText("—");
+  await expect(unknown).toHaveAttribute("data-waiting-age-kind", "unknown");
+  expect(await saved(page)).toBe(initialBytes);
+  await page.locator('#nav [data-view="dashboard"]').click();
+  await overview(page).locator(".followup-title").click();
+  const detail = page.locator("#waiting-record-panel");
+  const detailAge = detail.locator('[data-waiting-fact="age"] dd');
+  await expect(detailAge).toHaveText("10 gündür bekliyor");
+
+  const other = await context.newPage();
+  await other.clock.install({ time: NOW });
+  await other.clock.pauseAt(NOW);
+  await other.goto("/");
+  await list(other);
+  await row(other).locator('[data-action="quick-complete"]').click();
+  await other.locator('[data-action="list-scope"][data-scope="all"]').click();
+  const age = row(other).locator(".waiting-age");
+  await expect(age).toHaveText("10 gün");
+  await expect(age).toHaveAttribute("data-waiting-age-kind", "closure");
+  await expect(detailAge).toHaveText("10 gün bekledi");
+  await expect(detailAge).toHaveAttribute("data-waiting-age-kind", "closure");
+  await expect(
+    detail.locator('[data-action="waiting-record-followup"]'),
+  ).toHaveCount(0);
+  const closed = (await records(other)).find(
+    (item) => item.id === "waiting-primary",
+  );
+  expect(closed.sourceFields).toEqual({
+    ...original[0].sourceFields,
+    __waitingClosure: {
+      version: 1,
+      closedDate: "2026-11-07",
+      closedAt: NOW.toISOString(),
+    },
+  });
+  const firstClosedBytes = await saved(other);
+  const later = new Date("2026-11-09T12:00:00.000Z");
+  await other.clock.setFixedTime(later);
+  await other.reload();
+  await list(other);
+  await other.locator('[data-action="list-scope"][data-scope="all"]').click();
+  await expect(age).toHaveText("10 gün");
+  expect(await saved(other)).toBe(firstClosedBytes);
+  await row(other).locator('[data-action="status-menu"]').click();
+  await other
+    .locator('#status-menu [data-action="set-status"][data-status="follow_up"]')
+    .click();
+  await expect(age).toHaveText("12 gün");
+  await expect(age).toHaveAttribute("data-waiting-age-kind", "live");
+  await row(other).locator('[data-action="quick-complete"]').click();
+  await expect(age).toHaveText("12 gün");
+  await expect(age).toHaveAttribute("data-waiting-age-kind", "closure");
+  await expect(detailAge).toHaveText("12 gün bekledi");
+  const reclosedRecords = await records(other);
+  expect(
+    reclosedRecords.find((item) => item.id === closed.id).sourceFields
+      .__waitingClosure,
+  ).toEqual({
+    version: 1,
+    closedDate: "2026-11-09",
+    closedAt: later.toISOString(),
+  });
+  expect(reclosedRecords.filter((item) => item.id !== closed.id)).toEqual(
+    original.filter((item) => item.id !== closed.id),
+  );
+  await other.getByRole("button", { name: "Ayarlar", exact: true }).click();
+  const backupDetails = other.locator("#settings-dialog .settings-backup");
+  if (!(await backupDetails.evaluate((element) => element.open)))
+    await backupDetails.locator(":scope > summary").click();
+  const downloadPromise = other.waitForEvent("download");
+  await other.locator('[data-action="backup-records"]').click();
+  const download = await downloadPromise;
+  const backup = JSON.parse(await readFile(await download.path(), "utf8"));
+  expect(validateStore(backup).records).toEqual(reclosedRecords);
+  await other.locator('#settings-dialog [data-action="close"]').last().click();
+  await undo(other);
+  await expect(age).toHaveAttribute("data-waiting-age-kind", "live");
+  await undo(other);
+  expect(await saved(other)).toBe(firstClosedBytes);
+  await undo(other);
+  expect(await saved(other)).toBe(initialBytes);
+
+  await other.getByRole("button", { name: "Ayarlar", exact: true }).click();
+  const restored = original.map((item) =>
+    item.id === "waiting-primary" ? { ...item, status: "completed" } : item,
+  );
+  other.once("dialog", (confirmation) => confirmation.accept());
+  await other.locator("#restore-file").setInputFiles({
+    name: "eski-kapali-kayitlar.json",
+    mimeType: "application/json",
+    buffer: Buffer.from(JSON.stringify({ version: 1, records: restored })),
+  });
+  await expect(other.locator("#settings-dialog")).not.toBeVisible();
+  expect(await records(other)).toEqual(restored);
+  expect(
+    (await records(other)).find((item) => item.id === closed.id).sourceFields,
+  ).toEqual(original[0].sourceFields);
+  await undo(other);
+  expect(await saved(other)).toBe(initialBytes);
+  await other.close();
+  await detail.locator('[data-action="waiting-record-close"]').last().click();
+  expect(await saved(page)).toBe(initialBytes);
+});

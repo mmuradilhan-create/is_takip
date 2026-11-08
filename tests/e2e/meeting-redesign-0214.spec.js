@@ -236,12 +236,26 @@ test("existing meeting edits and new routes preserve hidden legacy source fields
     await expect(field(page, name)).not.toBeVisible();
     await expect(field(page, name)).toBeDisabled();
   }
+  for (const name of ["owner", "participants"]) {
+    await expect(field(page, name)).toBeHidden();
+    await expect(field(page, name)).toBeDisabled();
+    await expect(field(page, name)).toHaveValue(original[name]);
+    await expect(
+      form(page).locator(`[data-record-editor-unused] [name="${name}"]`),
+    ).toHaveCount(1);
+  }
   await openCreationExtras(page);
   await expect(field(page, "sourceDate")).toHaveAttribute(
     "aria-label",
     "Toplantı tarihi",
   );
-  for (const name of ["priority", "dueDate", "nextAction"])
+  for (const name of [
+    "priority",
+    "dueDate",
+    "nextAction",
+    "owner",
+    "participants",
+  ])
     await expect(field(page, name)).not.toBeVisible();
   await field(page, "decision").fill("Toplantı kararındaki yazım düzeltildi.");
   await field(page, "description").fill("Toplantı bağlamı netleştirildi.");
@@ -339,7 +353,7 @@ test("meeting tables place status below its own route control, omit missing date
   await seed(page, items);
   const before = await saved(page);
   await expect(page.locator(".meeting-table thead th")).toHaveText([
-    "Aksiyon / karar",
+    "Aksiyon / Karar",
     "Bağlı iş",
     "Takip",
   ]);

@@ -82,7 +82,7 @@ test("a meeting with two routes names and opens each exact destination without c
     );
     await expect(routes).toHaveText(["İşi aç", "Takibi aç"]);
     await expect(page.locator(".meeting-table > thead th")).toHaveText([
-      "Aksiyon / karar",
+      "Aksiyon / Karar",
       "Durum",
       "Bağlı iş",
       "Takip",

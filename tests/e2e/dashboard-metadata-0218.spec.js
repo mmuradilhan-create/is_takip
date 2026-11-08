@@ -242,11 +242,15 @@ test("Dashboard metadata explains follow-up age, offers reversible type-specific
   const subtitle = page.locator(".attention-panel .dashboard-panel-subtitle");
   await expect(subtitle).toBeVisible();
   await expect(subtitle).toHaveText("Gecikenler, bugün ve önümüzdeki 3 gün");
-  await expect(waiting(page).locator(".waiting-age")).toHaveText(
-    "115 gündür bekliyor",
-  );
-  await expect(waiting(page).locator(".followup-last")).toContainText(
-    /Son takip:\s*3 Ağu/,
+  await expect(waiting(page).locator(".waiting-age")).toHaveText("115 gün");
+  await expect(waiting(page).locator(".followup-last")).toHaveText("3 Ağu");
+  await expect(waiting(page).locator(".followup-fact-label")).toHaveText([
+    "Bekleme",
+    "Son takip",
+  ]);
+  await expect(waiting(page).locator(".waiting-followup-trigger")).toHaveCSS(
+    "background-color",
+    "rgb(255, 255, 255)",
   );
   const dashboardPalette = await palette(waiting(page).locator(".badge"));
   await expect(
@@ -258,6 +262,13 @@ test("Dashboard metadata explains follow-up age, offers reversible type-specific
     ),
   ).toHaveCount(1);
   await expect(goalDate(page)).toBeVisible();
+  await expect(goal(page).locator(".goal-progress-label")).toHaveText(
+    "%25 · 2 / 8",
+  );
+  await expect(goal(page).locator(".goal-progress-label")).toHaveAttribute(
+    "title",
+    /Rapor/,
+  );
   await expect(
     goal(page).locator(".dashboard-goal-meta, .dashboard-goal-linked"),
   ).toHaveCount(0);
@@ -295,6 +306,43 @@ test("Dashboard metadata explains follow-up age, offers reversible type-specific
     "title",
     "Toplantı: Kaynak toplantı kararı",
   );
+  const focusNote = focus.locator('[data-action="record-note"]');
+  const notePreview = page.locator("#record-note-popover");
+  await expect(focusNote).toBeVisible();
+  await expect(
+    page.locator(
+      '.focus-row[data-id="metadata-plain"] [data-action="record-note"]',
+    ),
+  ).toHaveCount(0);
+  const expectedNote = items.find(
+    (item) => item.id === "metadata-child",
+  ).description;
+  for (const reveal of [
+    () => focusNote.hover(),
+    () => focusNote.focus(),
+    () => focusNote.click(),
+  ]) {
+    await reveal();
+    await expect(notePreview).toBeVisible();
+    await expect(notePreview.locator(".record-note-body")).toHaveText(
+      expectedNote,
+    );
+    await expect(page.locator("#editor")).not.toBeVisible();
+    await expect(panel(page)).not.toBeVisible();
+    expect(await saved(page)).toBe(before);
+    await page.keyboard.press("Escape");
+    await expect(notePreview).not.toBeVisible();
+  }
+  await expect(focusNote).toBeFocused();
+  await focusSource.focus();
+  await page.keyboard.press("Enter");
+  await expect(page.locator('#record-form [name="id"]')).toHaveValue(
+    "metadata-source",
+  );
+  await page.locator('#editor [data-action="close"]').last().click();
+  await expect(page.locator("#editor")).not.toBeVisible();
+  await expect(page.locator("#page-title")).toHaveText("Genel bakış");
+  expect(await saved(page)).toBe(before);
   const goalParentText = await goalParent.innerText();
   const dailyParentText = await dailyParent.innerText();
   const goalTitleBox = await goal(page)

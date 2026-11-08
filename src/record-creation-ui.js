@@ -340,14 +340,9 @@ export function createRecordCreationUI({
     );
     if (["weekly", "monthly"].includes(currentType))
       fields.push(dateField("dueDate", "Teslim tarihi", values.dueDate));
-    if (currentType === "meeting")
-      fields.push(
-        textField("owner", "Sorumlu", values.owner, 'maxlength="120"'),
-      );
-    else
-      fields.push(
-        `<input type="hidden" name="owner" value="${esc(values.owner)}">`,
-      );
+    fields.push(
+      `<input type="hidden" name="owner" value="${esc(values.owner)}">`,
+    );
     if (currentType === "waiting")
       fields.push(
         `<input type="hidden" name="dueDate" value="${esc(values.dueDate)}">`,
@@ -381,12 +376,7 @@ export function createRecordCreationUI({
       );
     if (currentType === "meeting")
       fields.push(
-        textField(
-          "participants",
-          "Katılımcılar",
-          values.participants,
-          'maxlength="1000"',
-        ),
+        `<input type="hidden" name="participants" value="${esc(values.participants)}">`,
       );
     if (currentType === "waiting")
       fields.push(textArea("latestUpdate", "Son gelişme", values.latestUpdate));

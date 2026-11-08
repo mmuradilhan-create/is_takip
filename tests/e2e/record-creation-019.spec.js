@@ -211,6 +211,11 @@ test("all six creation forms expose a short optional workflow and save title-onl
     } else {
       await expect(field(page, "decision")).toBeVisible();
       await expect(field(page, "dueDate")).toHaveCount(0);
+      for (const name of ["owner", "participants"]) {
+        await expect(field(page, name)).toHaveAttribute("type", "hidden");
+        await expect(field(page, name)).toBeHidden();
+        await expect(field(page, name)).toHaveValue("");
+      }
       await expect(
         form(page).locator('[data-action="creation-meeting-route"]'),
       ).toHaveCount(3);
@@ -243,6 +248,10 @@ test("all six creation forms expose a short optional workflow and save title-onl
       dueDate: "",
     });
     if (type === "waiting") expect(created.lastFollowUpDate).toBe("");
+    if (type === "meeting") {
+      expect(created.owner).toBe("");
+      expect(created.participants).toBe("");
+    }
     if (type === "daily") {
       expect(created.workContext).toBe("ad_hoc");
       expect(created.projectCode).toBe("");

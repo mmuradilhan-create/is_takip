@@ -100,6 +100,8 @@ içte açılan pencere önce kapanır.
 
 Bağlı hedef satır altında görünür. Kaynak bağlantısı başlık yanındaki küçük
 simgededir; üzerine gelince adı okunur, tıklayınca kaynak kayıt açılır.
+Güncel işlerde kaynak ve not simgeleri aynı küçük ölçüde başlık yanındadır;
+not simgesi gerçek notu önizler.
 Anlık iş, proje kodu ve iş türü etiketleri gösterilmez. Hedefin
 üst hedef bağlantısı küçük hedef simgesi ve adıyla açılır. Tüm haftalar/aylar/yıllar
 görünümünde dönem 16-22 Kasım 2026 / Kasım 2026 / 2026 gibi okunur; seçili
@@ -151,9 +153,8 @@ Tabloda ilerleme 5 / 100, 1 / 2, 3 alt hedef, Tamamlandı veya Ölçüm yok
 gibi kısa gösterilir. Özetin açıklaması ölçümün tamamını verir;
 satır/başlık hedef panelini açar. Uzun ve çok satırlı ölçümler panelde
 satırlara bölünür. Görüntüleme hesaplama yöntemini veya kayıtları değiştirmez.
-Sorumlu alanı listede gizlidir. Yeni ve mevcut kayıt formlarında yalnız
-toplantı aksiyonlarında görünür; diğer türlerdeki mevcut değerler kayıtlarda
-ve yedeklerde korunur. Günlük iş oluşturma formundaki eski Kategori alanı
+Sorumlu alanı listede ve kayıt formlarında gösterilmez; mevcut değerler
+kayıtlarda ve yedeklerde korunur. Günlük iş oluşturma formundaki eski Kategori alanı
 gizlidir; saklanan değer korunur. Proje kodu ve İş türü girişleri de günlük
 iş formlarında gösterilmez; eski değerler korunur.
 
@@ -507,15 +508,16 @@ alanı yalnızca gerçek bir hata mesajı varken görünür.
 
 TOPLANTI KARARINDAN ISE VEYA TAKIBE
 
-Toplantı kaydında konu ve Alınan karar öndedir. Toplantı tarihi, katılımcılar,
-sorumlu ve notlar Ek bilgiler altındadır. Ayrı öncelik, teslim tarihi veya
+Toplantı kaydında konu ve Alınan karar öndedir. Toplantı tarihi ve notlar
+Ek bilgiler altındadır. Sorumlu/Katılımcılar girişleri gösterilmez;
+mevcut bilgiler ve form taslakları korunur. Ayrı öncelik, teslim tarihi veya
 sonraki adım alanı yoktur; eski değerler kayıtta ve yedekte korunur.
 Aynı aksiyondan bir günlük iş ve bir bekleyen
 konu açılabilir. Ben yapacağım benim çalışmamı; Başkasından bekliyorum dış
 yanıtı takip eder. Formdan vazgeçmek kayıt oluşturmaz. İlgili türde kayıt
 varsa düğme İşi aç / Takibi aç olur ve o kaydı açar; ikinci kopya oluşturmaz.
 
-Listede Aksiyon / karar, Bağlı iş ve Takip sütunları vardır; üstte
+Listede Aksiyon / Karar, Bağlı iş ve Takip sütunları vardır; üstte
 Güncel / Arşiv / Tümü seçilir. Toplantıda tamamlama kutusu yoktur.
 Bağlantısız kararın durum/arşiv kontrolü başlık hizasındadır; kararın
 altında ayrı durum satırı yoktur. Bağlı iş/takip kendi durumunu gösterir.

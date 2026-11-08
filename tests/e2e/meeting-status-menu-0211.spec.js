@@ -100,7 +100,7 @@ test("a linked meeting exposes independent job and follow-up badges and changes 
     "Cevap bekleniyor",
   );
   await expect(page.locator(".meeting-table thead th")).toHaveText([
-    "Aksiyon / karar",
+    "Aksiyon / Karar",
     "Bağlı iş",
     "Takip",
   ]);

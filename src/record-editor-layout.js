@@ -157,7 +157,6 @@ export function arrangeRecordEditor(
     ...(goal && type !== "yearly" ? ["dueDate"] : []),
     "description",
     ...(daily ? ["workContext"] : []),
-    ...(type === "meeting" ? ["owner", "participants"] : []),
   ];
   const activeNames = new Set([
     ...basicNames,

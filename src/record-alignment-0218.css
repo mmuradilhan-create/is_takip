@@ -1,0 +1,295 @@
+/* Semantic columns keep planning lists aligned when progress moves after dates. */
+.full-table.record-table {
+  --record-control-width: 96px;
+  --record-column-width: 112px;
+}
+
+.full-table.record-table
+  > thead
+  > tr
+  > th:is(.status-col, .priority-col, .date-col) {
+  width: var(--record-column-width);
+}
+
+.full-table.record-table > thead > tr > th.progress-col {
+  width: 148px;
+}
+
+.full-table.record-table
+  > thead
+  > tr
+  > th:is(.status-col, .priority-col, .date-col),
+.full-table.record-table
+  > tbody
+  > tr
+  > td:is(.status-col, .priority-col, .date-col) {
+  padding-right: 8px;
+  padding-left: 8px;
+  text-align: left;
+}
+
+.full-table.record-table > tbody > tr > td.status-col > .status-trigger,
+.full-table.record-table > tbody > tr > td.priority-col > .priority,
+.full-table.record-table > tbody > tr > td.date-col > .deadline-tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: var(--record-control-width);
+  max-width: 100%;
+  height: 30px;
+  min-height: 30px;
+  margin: 0;
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-size: 11px;
+  line-height: 12px;
+  text-align: center;
+}
+
+.full-table.record-table > tbody > tr > td.status-col > .status-trigger {
+  white-space: normal;
+}
+
+.full-table.record-table > thead > tr > th.progress-col,
+.full-table.record-table > tbody > tr > td.metric-cell {
+  padding-right: 12px;
+  padding-left: 12px;
+}
+
+/* Status, priority and delivery date use the same reading order on the overview. */
+@media (min-width: 761px) {
+  .focus-row > .status-trigger {
+    grid-column: 3;
+    grid-row: 1;
+  }
+
+  .focus-row > .focus-priority {
+    grid-column: 4;
+    grid-row: 1;
+  }
+
+  .focus-row > .focus-date {
+    grid-column: 5;
+    grid-row: 1;
+  }
+}
+
+@media (max-width: 760px) {
+  .focus-row > .status-trigger {
+    grid-column: 2 / 4;
+    grid-row: 2;
+  }
+
+  .focus-row > .focus-priority {
+    grid-column: 2;
+    grid-row: 3;
+  }
+
+  .focus-row > .focus-date {
+    grid-column: 3;
+    grid-row: 3;
+  }
+}
+
+/* Goal cards use the same status/date row as follow-up cards, retaining colors. */
+.dashboard-rows
+  .dashboard-bottom-row
+  :is(.dashboard-goal-meta-controls, .followup-meta) {
+  display: grid;
+  flex: 0 0 auto;
+  grid-template-columns: minmax(0, 1fr) max-content;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  margin-top: 4px;
+}
+
+.dashboard-goal-meta-controls > .badge,
+.dashboard-rows .dashboard-bottom-row .followup-meta > .badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  justify-self: start;
+  gap: 4px;
+  min-width: 0;
+  max-width: 100%;
+  height: 28px;
+  min-height: 28px;
+  padding: 2px 4px;
+  font-size: 10px;
+  line-height: 11px;
+  overflow: visible;
+  white-space: nowrap;
+  overflow-wrap: normal;
+}
+
+.dashboard-goal-meta-controls > :is(.deadline-tag, .dashboard-goal-date),
+.dashboard-goal-meta-controls .dashboard-goal-date > .deadline-tag,
+.dashboard-rows .dashboard-bottom-row .attention-date > .deadline-tag {
+  justify-self: end;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 28px;
+  margin: 0;
+  padding: 2px 4px;
+  font-size: 10px;
+  line-height: 12px;
+}
+
+.dashboard-goal-meta-controls > .dashboard-goal-date {
+  display: inline-flex;
+  align-items: center;
+  padding: 0;
+}
+
+.dashboard-rows
+  .dashboard-bottom-row
+  .dashboard-goal-row
+  .dashboard-goal-actions {
+  flex: 0 0 auto;
+  margin-top: auto;
+  padding-top: 4px;
+}
+
+.dashboard-goal-actions
+  :is(.dashboard-goal-progress-action, .dashboard-goal-children-action) {
+  height: 28px;
+  padding: 2px 3px;
+  line-height: 11px;
+}
+
+.dashboard-goal-count {
+  flex: 0 0 auto;
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.dashboard-rows
+  .dashboard-bottom-row
+  .dashboard-goal-row
+  > .dashboard-goal-title,
+.dashboard-rows .dashboard-bottom-row .followup-title-line > .followup-title {
+  display: -webkit-box;
+  flex-shrink: 0;
+  width: 100%;
+  min-height: 30px;
+  height: 30px;
+  max-height: 30px;
+  overflow: hidden;
+  line-height: 15px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.dashboard-rows .dashboard-bottom-row .dashboard-goal-context {
+  flex: 0 0 12px;
+  min-height: 12px;
+  height: 12px;
+  max-height: 12px;
+  margin-top: 2px;
+  overflow: hidden;
+  line-height: 12px;
+}
+
+.dashboard-rows .dashboard-bottom-row .followup-tracking {
+  display: grid;
+  flex: 0 0 auto;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: 11px 11px 28px;
+  align-items: center;
+  gap: 1px;
+  margin-top: auto;
+  padding-top: 2px;
+}
+
+.dashboard-rows .dashboard-bottom-row .followup-wait-info {
+  display: contents;
+}
+
+.dashboard-rows .dashboard-bottom-row .followup-wait-info > .waiting-age {
+  grid-column: 1;
+  grid-row: 1;
+  justify-self: start;
+  height: 11px;
+  line-height: 11px;
+  white-space: nowrap;
+}
+
+.dashboard-rows .dashboard-bottom-row .followup-wait-info > .followup-last {
+  grid-column: 1;
+  grid-row: 2;
+  height: 11px;
+  margin: 0;
+  padding: 0;
+  line-height: 11px;
+  white-space: nowrap;
+}
+
+.dashboard-rows
+  .dashboard-bottom-row
+  .followup-tracking
+  > .waiting-followup-trigger {
+  grid-column: 1;
+  grid-row: 3;
+  justify-self: stretch;
+  align-self: end;
+  width: 100%;
+  min-width: 0;
+  min-height: 28px;
+  height: 28px;
+  max-height: 28px;
+  white-space: nowrap;
+  overflow-wrap: normal;
+}
+
+/* Focus stays on each action instead of outlining the whole card list. */
+.dashboard-rows
+  .dashboard-bottom-row
+  :is(.dashboard-goals, .attention-list):focus {
+  outline: none;
+  box-shadow: none;
+}
+
+/* Tracking facts have full rows, separate from the action below them. */
+.dashboard-rows .dashboard-bottom-row .followup-last {
+  min-width: 0;
+}
+
+.dashboard-rows .dashboard-bottom-row .followup-last .waiting-last-date {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  column-gap: 3px;
+  max-width: 100%;
+  font-size: 10px;
+  line-height: 11px;
+  white-space: nowrap;
+  overflow-wrap: normal;
+}
+
+.dashboard-rows
+  .dashboard-bottom-row
+  .followup-last
+  :is(.followup-last-caption, .followup-last-value) {
+  white-space: nowrap;
+}
+
+@media (min-width: 761px) and (max-width: 1439px) {
+  .dashboard-rows[data-card-columns="3"]
+    .dashboard-bottom-row
+    :is(.dashboard-goal-meta-controls, .followup-meta) {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 3px;
+  }
+
+  .dashboard-rows[data-card-columns="3"]
+    .dashboard-bottom-row
+    :is(.dashboard-goal-meta-controls, .followup-meta)
+    > :is(.deadline-tag, .dashboard-goal-date, .attention-date) {
+    justify-self: start;
+  }
+}

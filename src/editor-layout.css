@@ -1,0 +1,120 @@
+/* Keep record actions visible while only the form's fields scroll. */
+#editor {
+  --editor-max-height: min(90dvh, calc(100dvh - 24px));
+  max-height: var(--editor-max-height);
+  overflow: hidden;
+}
+
+#editor #record-form {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-height: calc(var(--editor-max-height) - 2px);
+  margin: 0;
+}
+
+#editor .modal-header,
+#editor .modal-footer {
+  flex: 0 0 auto;
+}
+
+#editor .modal-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scroll-padding-block: 18px;
+}
+
+#editor .modal-footer {
+  position: relative;
+  z-index: 1;
+  background: #fcfdf9;
+}
+
+/* Existing record controls share a small typed form and optional details. */
+#editor form[data-record-editor-layout] .modal-body {
+  padding: 19px 22px;
+}
+
+#editor [data-record-editor-basic],
+#editor .record-editor-details-grid {
+  gap: 13px 16px;
+  min-width: 0;
+}
+
+#editor .record-editor-details {
+  min-width: 0;
+  margin-top: 16px;
+  overflow: hidden;
+  border: 1px solid var(--theme-border, #dce5d5);
+  border-radius: 8px;
+  background: var(--theme-surface, #fff);
+}
+
+#editor [data-record-editor-measurement] {
+  margin-top: 2px;
+}
+
+#editor .record-editor-details > summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 8px 11px;
+  color: var(--theme-muted, #607856);
+  background: var(--theme-soft, #f7f9f4);
+  font-size: 12px;
+  font-weight: 600;
+  list-style: none;
+  cursor: pointer;
+}
+
+#editor .record-editor-details > summary::-webkit-details-marker {
+  display: none;
+}
+
+#editor .record-editor-details > summary::after {
+  content: "›";
+  margin-left: auto;
+  font-size: 18px;
+  font-weight: 400;
+  line-height: 16px;
+}
+
+#editor .record-editor-details[open] > summary {
+  border-bottom: 1px solid var(--theme-border, #dce5d5);
+}
+
+#editor .record-editor-details[open] > summary::after {
+  transform: rotate(90deg);
+}
+
+#editor .record-editor-details > summary:focus-visible {
+  outline: 2px solid var(--theme-accent, #80b8a6);
+  outline-offset: -2px;
+}
+
+#editor .record-editor-details-grid {
+  padding: 13px 11px;
+}
+
+#editor .record-editor-followup-heading {
+  margin: 2px 0 -3px;
+  padding-top: 9px;
+  border-top: 1px solid var(--theme-border, #dce5d5);
+  color: var(--theme-ink, #405b49);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+@media (max-width: 520px) {
+  #editor form[data-record-editor-layout] .modal-body {
+    padding: 16px;
+  }
+
+  #editor .record-editor-details-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

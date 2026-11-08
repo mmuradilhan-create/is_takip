@@ -1,0 +1,41 @@
+.record-editor-period-field {
+  min-width: 0;
+}
+
+.record-editor-period-selects {
+  display: grid;
+  grid-template-columns: minmax(90px, 0.5fr) minmax(0, 1.5fr);
+  gap: 12px;
+  min-width: 0;
+}
+
+.record-editor-period-selects.is-yearly {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.record-editor-period-choice {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  color: inherit;
+  font: inherit;
+}
+
+.record-editor-period-choice select {
+  width: 100%;
+  min-width: 0;
+}
+
+.record-editor-period-legacy {
+  display: block;
+  margin-top: 6px;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 480px) {
+  .record-editor-period-selects {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+  }
+}

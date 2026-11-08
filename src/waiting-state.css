@@ -1,0 +1,67 @@
+.status-waiting-info {
+  display: grid;
+  gap: 6px;
+  margin-top: 6px;
+  padding: 10px 9px 3px;
+  border-top: 1px solid #e1e8db;
+}
+
+.status-waiting-info > p,
+.status-waiting-info > small {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  color: #66785e;
+  font-size: 11px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.status-waiting-info > small {
+  color: #84907a;
+  font-size: 10px;
+}
+
+.waiting-details-control {
+  justify-self: start;
+  min-height: 28px;
+  padding: 4px 8px;
+  border: 1px solid #d4e0cc;
+  border-radius: 6px;
+  background: #f7faf4;
+  color: #456e43;
+  font-size: 11px;
+}
+
+.waiting-details-control:hover {
+  border-color: #a9c39c;
+  background: #edf5e7;
+}
+
+.waiting-details-control:focus-visible {
+  outline: 2px solid #80b8a6;
+  outline-offset: 2px;
+}
+
+.work-session-waiting-reason {
+  margin: 12px 0;
+  padding: 10px 12px;
+  border: 1px solid #eadbb6;
+  border-radius: 8px;
+  background: #fffbf1;
+}
+
+.work-session-waiting-reason h3 {
+  margin: 0 0 5px;
+  color: #846722;
+  font-size: 12px;
+}
+
+.work-session-waiting-reason p {
+  margin: 0;
+  color: #63745a;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

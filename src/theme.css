@@ -1,0 +1,1010 @@
+/* Dark mode changes the palette only; spacing and window geometry stay shared. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --theme-bg: #0d0e10;
+  --theme-surface: #18191b;
+  --theme-raised: #202226;
+  --theme-soft: #1d1f22;
+  --theme-hover: #292c30;
+  --theme-selected: #303438;
+  --theme-ink: #e9eaec;
+  --theme-muted: #b7bbc2;
+  --theme-faint: #969ca5;
+  --theme-accent: #9dd8b7;
+  --theme-border: #3d4249;
+  --green: var(--theme-accent);
+  --muted: var(--theme-muted);
+  --line: var(--theme-border);
+  --paper: var(--theme-surface);
+  color: var(--theme-ink);
+  background: var(--theme-bg);
+  accent-color: #8dcda9;
+}
+
+[data-theme="dark"]
+  :is(
+    .sidebar,
+    .topbar,
+    .panel,
+    .stat,
+    .modal,
+    .linked-tasks-table,
+    .quick-field-menu,
+    .status-menu,
+    .choice-menu,
+    .odak-date-picker,
+    .date-popover,
+    .blocker-popover,
+    .waiting-info-popover,
+    .work-session-panel,
+    .settings-appearance,
+    .settings-backup,
+    .settings-theme-choice
+  ) {
+  color: var(--theme-ink);
+  background: var(--theme-surface);
+  border-color: var(--theme-border);
+}
+
+[data-theme="dark"]
+  :is(
+    .modal-footer,
+    .list-pagination,
+    .list-scope-tabs,
+    .weekly-backlog,
+    .weekly-archive-note,
+    .sidebar-work-journal,
+    .goal-panel-summary,
+    .goal-panel-empty,
+    .work-finish-summary,
+    .work-journal-totals,
+    .work-journal-empty,
+    .daily-context-banner,
+    .daily-source-existing,
+    .waiting-followup-latest,
+    .work-session-context,
+    .dashboard-previous,
+    .meeting-route-panel,
+    .action-source-context,
+    .planning-prompts,
+    .goal-parent-context,
+    .empty-icon,
+    .overview-icon,
+    .focus-card
+  ) {
+  color: var(--theme-muted);
+  background: var(--theme-soft);
+  border-color: var(--theme-border);
+}
+
+[data-theme="dark"]
+  :is(
+    #editor,
+    #settings-dialog,
+    #waiting-details-dialog,
+    #waiting-followup-dialog,
+    #goal-detail-panel
+  )
+  .modal-footer {
+  background: var(--theme-soft);
+  border-color: var(--theme-border);
+}
+
+[data-theme="dark"]
+  :is(
+    td,
+    th,
+    .overview-item,
+    .linked-children li,
+    .goal-child-row,
+    .goal-panel-section,
+    .work-week-record,
+    .work-journal-entry,
+    .followup-list > li,
+    .followup-foot,
+    .followup-tracking,
+    .focus-row,
+    .weekly-backlog-body,
+    .weekly-backlog li,
+    .waiting-followup-history li,
+    .status-menu-heading,
+    .status-waiting-info,
+    .quick-field-heading,
+    .date-picker-footer,
+    .goal-panel-section + .goal-panel-section,
+    .settings-backup-body,
+    .settings-option,
+    .settings-section-heading
+  ) {
+  border-color: var(--theme-border);
+}
+
+[data-theme="dark"] th,
+[data-theme="dark"] .linked-tasks-table > thead > tr > th {
+  color: var(--theme-muted);
+  background: var(--theme-soft);
+}
+
+[data-theme="dark"]
+  :is(
+    tbody tr:hover,
+    [data-record-row]:hover,
+    [data-record-row]:focus-visible,
+    .focus-row:hover,
+    .dashboard-goal-row:focus-within,
+    .agenda-stats > .stat:hover
+  ) {
+  background-color: var(--theme-hover);
+}
+
+[data-theme="dark"]
+  .weekly-goal-row:has(.linked-toggle[aria-expanded="true"])
+  > td,
+[data-theme="dark"] .full-table > tbody > .linked-detail-row > td {
+  background: var(--theme-soft);
+}
+
+[data-theme="dark"]
+  :is(
+    .task-name,
+    .focus-title,
+    .followup-title,
+    .followup-header h2,
+    .goal-title button,
+    .weekly-card .goal-title button,
+    .goal-panel-title,
+    .goal-panel-summary strong,
+    .goal-child-title,
+    .goal-panel-section-heading h3,
+    .goal-panel-section > h3,
+    .dashboard-goal-row .dashboard-goal-title,
+    .linked-detail-header h3,
+    .backlog-title,
+    .period-label,
+    .waiting-details-topic,
+    .waiting-followup-topic,
+    .waiting-followup-history-heading h3,
+    .waiting-followup-history li p,
+    .waiting-followup-latest > p,
+    .work-finish-title,
+    .work-journal-subtitle,
+    .work-journal-field p,
+    .work-journal-entry-heading,
+    .work-journal-entry-heading strong,
+    .work-week-period,
+    .work-week-record > header h3,
+    .work-journal-empty strong,
+    .work-finish-summary time,
+    .work-finish-summary output,
+    .work-journal-totals strong,
+    .work-session-heading h2,
+    .sidebar .work-session-task-link,
+    .sidebar-journal-heading h2,
+    .sidebar-journal-saved strong,
+    .settings-option label,
+    .settings-backup summary,
+    .settings-section-heading,
+    .settings-theme-choice,
+    .quick-field-heading strong,
+    .blocker-popover-heading > strong,
+    .waiting-info-heading > strong,
+    .overview-text strong,
+    .goal-parent-context strong,
+    .goal-child-progress strong,
+    .focus-card h3,
+    .daily-source-existing strong,
+    .meeting-route-panel h3,
+    .action-source-context h3,
+    .meeting-route-panel strong,
+    .action-source-context strong,
+    .work-session-context h3,
+    .work-session-context p
+  ) {
+  color: var(--theme-ink);
+}
+
+[data-theme="dark"]
+  :is(
+    .nav-label,
+    .nav button,
+    .search svg,
+    .today,
+    .stat-top,
+    .stat-foot,
+    .stat-value > span,
+    .agenda-summary,
+    .panel-header p,
+    .task-sub,
+    .date-cell,
+    .table-footer,
+    .page-footer,
+    .field,
+    .field-help,
+    .check-field,
+    .extra-heading,
+    .source-details,
+    .source-details dt,
+    .metric-cell small,
+    .period-note,
+    .goal-sub,
+    .goal-title span,
+    .goal-panel-period,
+    .goal-panel-metric,
+    .goal-panel-summary span,
+    .goal-child-meta,
+    .goal-next-step-form .field,
+    .goal-panel-note,
+    .goal-panel-hint,
+    .goal-panel-empty,
+    .weekly-work-time,
+    .work-journal-trigger,
+    .work-journal-trigger small,
+    .work-journal-hint,
+    .work-journal-field h3,
+    .work-journal-entry-heading time,
+    .work-finish-summary span,
+    .work-journal-totals span,
+    .work-week-record > header > span,
+    .work-log-duration > span,
+    .work-log-edit-fields .field-help,
+    .work-finish-body .field-help,
+    .work-session-duration small,
+    .work-session-heading p,
+    .sidebar-journal-saved,
+    .sidebar-journal-saved small,
+    .sidebar-journal-idle,
+    .sidebar-journal-heading h2 svg,
+    .sidebar-journal-phase,
+    .work-session-context p.work-session-empty,
+    .followup-order,
+    .followup-meta,
+    .followup-foot,
+    .followup-last,
+    .followup-panel .waiting-age,
+    .attention-panel .waiting-age,
+    .waiting-table .waiting-age,
+    .waiting-last-date,
+    .waiting-latest,
+    .waiting-followup-latest > span,
+    .waiting-followup-planned,
+    .waiting-followup-muted,
+    .waiting-followup-history li .waiting-followup-muted,
+    .focus-date,
+    .focus-sort-label,
+    .focus-sort-note,
+    .focus-empty p,
+    .focus-panel > .panel-header p,
+    .focus-panel > header p,
+    .focus-panel > .panel-header small,
+    .focus-panel > header small,
+    .dashboard-goal-meta,
+    .goal-progress-label,
+    .attention-source,
+    .dashboard-goals-empty,
+    .dashboard-empty-goals,
+    .weekly-dashboard-empty,
+    .weekly-dashboard-panel > .soft-empty,
+    .soft-empty,
+    .weekly-empty,
+    .backlog-task > span,
+    .weekly-backlog-body > p,
+    .linked-detail-summary,
+    .linked-empty,
+    .week-dates,
+    .day small,
+    .day span,
+    .week-head svg,
+    .focus-top,
+    .focus-card p,
+    .overview-text small,
+    .empty-state p,
+    .welcome p,
+    .filter-control,
+    .filter-caption,
+    .filters .result-count,
+    .result-count,
+    .list-sort,
+    .list-pagination,
+    .list-scope-tabs > button,
+    .tabs button,
+    .quick-field-heading > span,
+    .status-menu-heading,
+    .status-waiting-info > p,
+    .status-waiting-info > small,
+    .date-picker-weekdays,
+    .choice-custom small,
+    .choice-empty,
+    .planning-prompts-label,
+    .settings-option small,
+    .settings-theme-choice small,
+    .goal-parent-context span,
+    .goal-progress-basis,
+    .goal-link-child-form > label
+  ) {
+  color: var(--theme-muted);
+}
+
+[data-theme="dark"] :is(.stat-value, .metric-cell strong, #work-session-time),
+[data-theme="dark"] .sidebar #work-session-time,
+[data-theme="dark"]
+  .sidebar-work-journal[data-phase="idle"]
+  .sidebar-journal-saved
+  strong {
+  color: var(--theme-accent);
+}
+
+[data-theme="dark"]
+  :is(
+    .btn,
+    .filter-control,
+    .filter-select,
+    .list-sort select,
+    .focus-sort-label select,
+    .list-pagination button,
+    .period-navigation button,
+    .period-current,
+    .period-all,
+    .show-completed,
+    .goal-add-step,
+    .goal-next-step,
+    .work-start,
+    .quick-complete,
+    .task-check,
+    .task-check[data-status],
+    .daily-source-control,
+    .completion-mark,
+    .work-session-controls button,
+    .work-session-details,
+    .sidebar .work-session-details,
+    .sidebar-journal-history,
+    .waiting-followup-trigger,
+    .waiting-details-control,
+    .work-week-navigation button,
+    .work-log-action,
+    .work-log-delete-confirm button,
+    .waiting-info-edit,
+    .goal-child-open,
+    .carry-weekly,
+    .undo-trigger,
+    .widget-trigger,
+    .settings-trigger,
+    .meeting-route-actions > button,
+    .meeting-route > button,
+    button.meeting-route,
+    .row-icon-action,
+    .planning-prompt
+  ) {
+  color: var(--theme-muted);
+  background: var(--theme-raised);
+  border-color: var(--theme-border);
+}
+
+[data-theme="dark"] :is(input, select, textarea),
+[data-theme="dark"] .field :is(input, select, textarea),
+[data-theme="dark"] .date-picker-header :is(input, select),
+[data-theme="dark"] .search input,
+[data-theme="dark"] #block-reason-field textarea {
+  color: var(--theme-ink);
+  background-color: #121416;
+  border-color: var(--theme-border);
+}
+
+[data-theme="dark"] :is(input, textarea)::placeholder {
+  color: var(--theme-faint);
+  opacity: 1;
+}
+
+[data-theme="dark"] option {
+  color: var(--theme-ink);
+  background: var(--theme-raised);
+}
+
+[data-theme="dark"]
+  :is(
+    .btn:hover,
+    .row-menu:hover,
+    .icon-btn:hover,
+    .close-modal:hover,
+    .undo-trigger:not(:disabled):hover,
+    .widget-trigger:hover,
+    .settings-trigger:hover,
+    .sidebar-journal-history:hover,
+    .waiting-followup-trigger:hover,
+    .waiting-details-control:hover,
+    .carry-weekly:hover,
+    .period-navigation button:hover,
+    .period-current:hover,
+    .period-all:hover,
+    .show-completed:hover,
+    .list-pagination button:hover:not(:disabled),
+    .goal-add-step:hover,
+    .goal-next-step:hover,
+    .work-log-action:hover,
+    .work-week-navigation button:hover:not(:disabled),
+    .work-session-controls .work-session-finish:hover,
+    .work-session-details:hover,
+    .work-start:hover:not(:disabled),
+    .quick-complete:hover:not(:disabled),
+    .task-check[data-status]:hover,
+    .task-check[data-status][aria-expanded="true"],
+    .daily-source-control:hover:not(:disabled),
+    .planning-prompt:hover,
+    .row-icon-action:hover,
+    .waiting-info-edit:hover,
+    .waiting-info-close:hover,
+    .goal-child-open:hover,
+    .choice-toggle:hover,
+    .choice-toggle[aria-expanded="true"],
+    .date-picker-toggle:hover,
+    .date-picker-toggle[aria-expanded="true"],
+    .date-picker-nav:hover,
+    .date-picker-day:hover,
+    .focus-more:hover,
+    .clear-filters:hover,
+    .parent-goal-toggle:hover,
+    .meeting-route-actions > button:hover,
+    .meeting-route > button:hover,
+    button.meeting-route:hover,
+    .focus-goal-link:hover
+  ) {
+  color: var(--theme-accent);
+  background-color: var(--theme-hover);
+  border-color: #626a74;
+}
+
+[data-theme="dark"] #goal-detail-panel .close-modal:hover,
+[data-theme="dark"]
+  :is(.work-finish-modal, .work-journal-modal, .work-week-modal)
+  .close-modal:hover {
+  background: var(--theme-hover);
+}
+
+[data-theme="dark"]
+  :is(
+    .text-btn,
+    .row-menu,
+    .icon-btn,
+    .close-modal,
+    .clear-filters,
+    .goal-details-trigger,
+    .linked-toggle,
+    .dashboard-goal-linked,
+    .focus-panel .open-list,
+    .focus-goal-link,
+    .choice-toggle,
+    .choice-check,
+    .date-picker-toggle,
+    .date-picker-footer button,
+    .waiting-info-close,
+    .mobile-toggle,
+    .tabs button.active
+  ) {
+  color: var(--theme-accent);
+}
+
+[data-theme="dark"] :is(.task-name.completed, .completion-mark) {
+  color: var(--theme-faint);
+}
+
+[data-theme="dark"] :is(.btn.primary, .work-start.is-running),
+[data-theme="dark"] .work-session-controls .work-session-toggle,
+[data-theme="dark"] .date-picker-day.is-selected,
+[data-theme="dark"] .day.current span {
+  color: #10251b;
+  background: #8dcda9;
+  border-color: #8dcda9;
+}
+
+[data-theme="dark"] :is(.btn.primary:hover, .work-start.is-running:hover),
+[data-theme="dark"] .work-session-controls .work-session-toggle:hover {
+  color: #10251b;
+  background: #a4ddbc;
+  border-color: #a4ddbc;
+}
+
+[data-theme="dark"]
+  :is(.quick-complete.done, .completion-mark.is-completed, .task-check.done),
+[data-theme="dark"] .task-check[data-status="completed"] {
+  color: #a9e5bd;
+  background: #24432f;
+  border-color: #6b9f7d;
+}
+
+[data-theme="dark"] :is(.btn.danger, .work-log-delete-confirm),
+[data-theme="dark"] .work-log-delete-error {
+  color: #f1aea5;
+  border-color: #785049;
+}
+
+[data-theme="dark"] .work-log-action.work-log-delete:hover,
+[data-theme="dark"]
+  .work-log-delete-confirm
+  [data-action="work-log-delete-confirm"],
+[data-theme="dark"] #settings-dialog .settings-reset .btn.danger,
+[data-theme="dark"]
+  #settings-dialog
+  .settings-reset
+  .btn.danger:hover:not(:disabled) {
+  color: #f1b2a7;
+  background: #432c28;
+  border-color: #8b594f;
+}
+
+[data-theme="dark"]
+  :is(
+    .nav button:hover,
+    .nav button.active,
+    .focus-filters button.active,
+    .filter-control.is-active,
+    .list-scope-tabs > button[aria-pressed="true"],
+    .period-current[aria-pressed="true"],
+    .period-all[aria-pressed="true"],
+    .show-completed[aria-pressed="true"],
+    .show-completed.active,
+    .settings-theme-choice[aria-checked="true"],
+    .settings-theme-choice[aria-pressed="true"],
+    .settings-theme-choice.is-selected,
+    .parent-goal-toggle[aria-pressed="true"],
+    .daily-source-control.is-linked
+  ) {
+  color: var(--theme-accent);
+  background: var(--theme-selected);
+  border-color: #626a74;
+}
+
+[data-theme="dark"] .settings-theme-choice:has(input:checked) {
+  color: var(--theme-accent);
+  background: var(--theme-selected);
+  border-color: #626a74;
+}
+
+[data-theme="dark"]
+  :is(
+    .nav button .count,
+    .tab-count,
+    .backlog-count,
+    .followup-header h2 span,
+    .waiting-followup-history-heading > span,
+    .list-scope-tabs > button > span,
+    .list-scope-tabs > button > small,
+    .settings-summary-icon,
+    .stat-icon,
+    .stat:nth-child(2) .stat-icon,
+    .stat:nth-child(3) .stat-icon,
+    .stat:nth-child(4) .stat-icon
+  ) {
+  color: var(--theme-muted);
+  background: var(--theme-hover);
+}
+
+[data-theme="dark"] .nav button.active .count,
+[data-theme="dark"]
+  .list-scope-tabs
+  > button[aria-pressed="true"]
+  > :is(span, small) {
+  color: var(--theme-accent);
+  background: #353b41;
+}
+
+[data-theme="dark"]
+  :is(
+    .focus-filters button,
+    .focus-more,
+    .parent-goal-toggle,
+    .date-picker-nav
+  ) {
+  color: var(--theme-muted);
+  background: var(--theme-soft);
+}
+
+[data-theme="dark"] .focus-filters button:hover {
+  background: var(--theme-hover);
+}
+
+[data-theme="dark"]
+  :is(
+    .status-option,
+    .status-picker-option,
+    .quick-priority-option,
+    .choice-option
+  ) {
+  color: var(--theme-ink);
+  background: var(--theme-surface);
+}
+
+[data-theme="dark"]
+  :is(
+    .status-option:hover,
+    .status-option:focus-visible,
+    .status-picker-option:hover,
+    .status-picker-option:focus-visible,
+    .quick-priority-option:hover,
+    .quick-priority-option:focus-visible,
+    .choice-option:hover,
+    .choice-option.is-highlighted,
+    .choice-option:focus-visible
+  ) {
+  color: var(--theme-ink);
+  background: var(--theme-hover);
+}
+
+[data-theme="dark"]
+  :is(
+    .status-option[aria-checked="true"],
+    .status-picker-option[aria-checked="true"],
+    .quick-priority-option[aria-checked="true"]
+  ) {
+  color: var(--theme-accent);
+  background: var(--theme-selected);
+}
+
+[data-theme="dark"] .add-inline {
+  color: var(--theme-accent);
+  background: var(--theme-surface);
+  border-color: var(--theme-border);
+}
+
+[data-theme="dark"] .add-inline:hover {
+  background: var(--theme-hover);
+}
+
+[data-theme="dark"]
+  :is(.progress-track, .dashboard-goal-progress .progress-track) {
+  background: #353a41;
+}
+
+[data-theme="dark"]
+  :is(.progress-track span, .dashboard-goal-progress .progress-track > span) {
+  background: #8dcda9;
+}
+
+/* Lifecycle and urgency keep their meanings on dark surfaces. */
+[data-theme="dark"] .status-planned {
+  --status-ink: #c3c8cf;
+  --status-paper: #2b2f34;
+}
+[data-theme="dark"] .status-in_progress {
+  --status-ink: #b2d2fc;
+  --status-paper: #24384e;
+}
+[data-theme="dark"] :is(.status-waiting, .status-waiting_response) {
+  --status-ink: #f1cf91;
+  --status-paper: #42351f;
+}
+[data-theme="dark"] .status-partially_completed {
+  --status-ink: #d3bfed;
+  --status-paper: #3b304a;
+}
+[data-theme="dark"] .status-completed {
+  --status-ink: #a7ddb6;
+  --status-paper: #24412f;
+}
+[data-theme="dark"] .status-cancelled {
+  --status-ink: #d6bac8;
+  --status-paper: #42333c;
+}
+[data-theme="dark"] .status-follow_up {
+  --status-ink: #a5d8dd;
+  --status-paper: #233e42;
+}
+[data-theme="dark"] .status-transferred {
+  --status-ink: #c1c7e8;
+  --status-paper: #33384c;
+}
+
+[data-theme="dark"] :is(.badge[class*="status-"], .status-trigger) {
+  color: var(--status-ink, #c3c8cf);
+  background: var(--status-paper, #2b2f34);
+}
+
+[data-theme="dark"]
+  :is(.priority-low, .quick-priority-option[data-priority="low"]) {
+  --priority-ink: #a7d7b8;
+  --priority-paper: #273c30;
+  --priority-line: #496b55;
+}
+[data-theme="dark"]
+  :is(.priority-normal, .quick-priority-option[data-priority="normal"]) {
+  --priority-ink: #c1cae6;
+  --priority-paper: #30374b;
+  --priority-line: #58637c;
+}
+[data-theme="dark"]
+  :is(.priority-high, .quick-priority-option[data-priority="high"]) {
+  --priority-ink: #ebca85;
+  --priority-paper: #403620;
+  --priority-line: #7b6840;
+}
+[data-theme="dark"]
+  :is(.priority-urgent, .quick-priority-option[data-priority="urgent"]) {
+  --priority-ink: #f0b1c2;
+  --priority-paper: #482f39;
+  --priority-line: #835061;
+}
+
+[data-theme="dark"] .inline-priority:hover,
+[data-theme="dark"] .inline-priority[aria-expanded="true"] {
+  box-shadow: 0 0 0 1px var(--priority-ink);
+}
+
+[data-theme="dark"]
+  :is(
+    .deadline-tag,
+    .inline-date.deadline-tag,
+    .focus-date .inline-date.deadline-tag,
+    .goal-child-date.deadline-tag,
+    .waiting-next-date
+  ) {
+  --deadline-paper: #262d34;
+  color: #c7d1dc;
+  background: var(--deadline-paper);
+  border-color: #4a5662;
+}
+
+[data-theme="dark"]
+  :is(
+    .deadline-tag,
+    .inline-date.deadline-tag,
+    .focus-date .inline-date.deadline-tag,
+    .goal-child-date.deadline-tag,
+    .waiting-next-date
+  ):is([data-deadline-state="overdue"], [data-followup-state="overdue"]) {
+  --deadline-paper: #452a29;
+  color: #f1b2aa;
+  background: var(--deadline-paper);
+  border-color: #94625a;
+}
+
+[data-theme="dark"]
+  :is(
+    .deadline-tag,
+    .inline-date.deadline-tag,
+    .focus-date .inline-date.deadline-tag,
+    .goal-child-date.deadline-tag,
+    .waiting-next-date
+  ):is(
+    [data-deadline-state="due-soon"],
+    [data-followup-state="today"],
+    [data-followup-state="soon"]
+  ) {
+  --deadline-paper: #42351f;
+  color: #f1cf91;
+  background: var(--deadline-paper);
+  border-color: #8d7549;
+}
+
+[data-theme="dark"]
+  :is(
+    .deadline-tag,
+    .inline-date.deadline-tag,
+    .focus-date .inline-date.deadline-tag,
+    .goal-child-date.deadline-tag,
+    .waiting-next-date
+  ):is([data-deadline-state="missing"], [data-followup-state="missing"]) {
+  --deadline-paper: #23272b;
+  color: #b9c0c9;
+  background: var(--deadline-paper);
+  border-color: var(--theme-border);
+}
+
+[data-theme="dark"]
+  :is(
+    .date-cell.overdue,
+    .focus-date.overdue,
+    .goal-child-date.overdue,
+    .followup-meta .overdue,
+    .stat-foot.overdue-number,
+    .stat-foot .overdue-number
+  ) {
+  color: #f1b2aa;
+}
+
+[data-theme="dark"]
+  :is(.date-cell.due-soon, .focus-date.due-soon, .goal-child-date.due-soon) {
+  color: #f1cf91;
+}
+
+[data-theme="dark"]
+  :is(
+    .error-message,
+    .settings-reset,
+    .blocker-popover > section,
+    .blocked-badge
+  ) {
+  color: #f1b2aa;
+  background: #3d2a26;
+  border-color: #785049;
+}
+
+[data-theme="dark"]
+  :is(
+    .settings-reset-copy h3,
+    .settings-reset-copy p,
+    .blocker-popover h3,
+    .blocker-popover p
+  ) {
+  color: #f1b2aa;
+}
+
+[data-theme="dark"]
+  :is(
+    .waiting-followup-availability,
+    .waiting-details-availability,
+    .work-session-waiting-reason,
+    .unsaved-warning,
+    .link-warning,
+    #block-reason-field
+  ) {
+  color: #efd19c;
+  background: #3a3222;
+  border-color: #746446;
+}
+
+[data-theme="dark"]
+  :is(
+    .work-session-waiting-reason h3,
+    .work-session-waiting-reason p,
+    .link-warning .text-btn,
+    .work-session-context .work-session-blocked,
+    #work-session-context .work-session-blocked
+  ) {
+  color: #efd19c;
+}
+
+[data-theme="dark"] .blocker-popover > section + section {
+  background: var(--theme-soft);
+  border-color: var(--theme-border);
+}
+
+[data-theme="dark"] .blocker-popover .blocker-popover-next :is(h3, p) {
+  color: var(--theme-muted);
+}
+
+[data-theme="dark"]
+  #work-session-context
+  .work-session-context-grid
+  :is(h3, p) {
+  color: var(--theme-ink);
+}
+
+[data-theme="dark"]
+  #work-session-context
+  .work-session-context-grid
+  .work-session-empty {
+  color: var(--theme-muted);
+}
+
+[data-theme="dark"] .goal-link-child-form {
+  border-color: var(--theme-border);
+}
+
+[data-theme="dark"] #goal-link-child-error {
+  color: #f1b2aa;
+}
+
+[data-theme="dark"]
+  :is(.waiting-info-trigger, .waiting-info-popover > section) {
+  color: #efd19c;
+  background: #3a3222;
+  border-color: #746446;
+}
+
+[data-theme="dark"] .waiting-info-trigger:hover,
+[data-theme="dark"] .waiting-info-trigger[aria-expanded="true"] {
+  color: #ffe0aa;
+  background: #4a3c25;
+  border-color: #ab8f58;
+}
+
+[data-theme="dark"] .waiting-info-popover :is(h3, p) {
+  color: #efd19c;
+}
+
+[data-theme="dark"] .waiting-info-popover > section + section {
+  background: var(--theme-soft);
+  border-color: var(--theme-border);
+}
+
+[data-theme="dark"] .waiting-info-popover .waiting-info-next :is(h3, p) {
+  color: var(--theme-muted);
+}
+
+[data-theme="dark"] .focus-row.is-working {
+  background: #223e2f;
+  box-shadow: inset 3px 0 #8cc7a2;
+}
+
+[data-theme="dark"] .focus-row.is-working:hover {
+  background: #2c4b39;
+}
+
+[data-theme="dark"] .focus-row.is-working .focus-title,
+[data-theme="dark"] .work-session-heading p span {
+  color: #b0e0c0;
+}
+
+[data-theme="dark"] .work-session-indicator {
+  color: #b0e0c0;
+  background: #303438;
+}
+
+[data-theme="dark"]
+  .work-session-panel[data-phase="paused"]
+  .work-session-indicator,
+[data-theme="dark"]
+  .work-session-panel[data-phase="paused"]
+  .work-session-heading
+  p
+  span,
+[data-theme="dark"] .sidebar-journal-phase[data-phase="paused"] {
+  color: #efd19c;
+  background: #3a3222;
+}
+
+[data-theme="dark"] .sidebar .work-session-panel {
+  background: transparent;
+  box-shadow: none;
+}
+
+[data-theme="dark"] .work-start:disabled {
+  color: var(--theme-faint);
+  background: var(--theme-soft);
+  border-color: var(--theme-border);
+}
+
+[data-theme="dark"] .welcome {
+  background: linear-gradient(110deg, #25282c, #1b1e22);
+  border-color: var(--theme-border);
+}
+
+[data-theme="dark"] .modal::backdrop,
+[data-theme="dark"] #goal-detail-panel::backdrop {
+  background: #000000ad;
+}
+
+[data-theme="dark"]
+  :is(
+    .modal,
+    .quick-field-menu,
+    .status-menu,
+    .choice-menu,
+    .odak-date-picker,
+    .blocker-popover,
+    .waiting-info-popover,
+    .work-session-panel
+  ) {
+  box-shadow: 0 14px 48px #0007;
+}
+
+[data-theme="dark"] #goal-detail-panel.goal-detail-panel {
+  color: var(--theme-ink);
+  background: var(--theme-surface);
+  border-color: var(--theme-border);
+  box-shadow: 0 14px 48px #0007;
+}
+
+[data-theme="dark"] .date-picker-day.is-today {
+  border-color: #8dcda9;
+}
+
+[data-theme="dark"]
+  :is(button, a, input, select, textarea, summary):focus-visible {
+  outline-color: #a3dfbd;
+}
+
+[data-theme="dark"] ::selection {
+  color: #eafff1;
+  background: #376147;
+}
+
+[data-theme="dark"] #toast {
+  color: #edf0ef;
+  background: #282d31;
+  border: 1px solid #64776b;
+}
+
+[data-theme="dark"] #toast.error {
+  color: #ffdfda;
+  background: #6e3e36;
+  border-color: #b57e70;
+}

@@ -1,0 +1,39 @@
+/* Card bodies open details; their controls retain separate actions and focus. */
+.dashboard-rows .dashboard-bottom-row .dashboard-detail-card {
+  cursor: pointer;
+  transition: background-color 120ms ease;
+}
+
+.dashboard-rows .dashboard-bottom-row .dashboard-detail-card:focus,
+.dashboard-rows
+  .dashboard-bottom-row
+  .dashboard-detail-card
+  :is(.followup-title, .dashboard-goal-title):focus {
+  outline: none;
+  box-shadow: none;
+}
+
+.dashboard-rows .dashboard-bottom-row .dashboard-detail-card:hover,
+.dashboard-rows .dashboard-bottom-row .dashboard-detail-card:focus-visible {
+  background: var(--theme-hover, #fafcf7);
+}
+
+.dashboard-rows
+  .dashboard-bottom-row
+  .dashboard-detail-card
+  .dashboard-goal-title {
+  cursor: inherit;
+}
+
+.dashboard-rows
+  .dashboard-bottom-row
+  .dashboard-detail-card:focus-visible
+  :is(.dashboard-goal-title, .followup-title),
+.dashboard-rows
+  .dashboard-bottom-row
+  .dashboard-detail-card
+  :is(.dashboard-goal-title, .followup-title):focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+}

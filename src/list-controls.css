@@ -1,0 +1,237 @@
+/* The real select covers the caption, value and chevron as one click target. */
+.filter-control.filter-surface {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  align-content: center;
+  gap: 1px;
+  min-height: 44px;
+  padding: 4px 27px 3px 9px;
+}
+
+.filter-surface .filter-caption,
+.filter-surface .filter-value,
+.filter-surface .filter-chevron {
+  pointer-events: none;
+}
+
+.filter-value {
+  display: block;
+  min-width: 0;
+  min-height: 23px;
+  overflow: hidden;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 23px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.filter-chevron {
+  position: absolute;
+  right: 9px;
+  bottom: 10px;
+  width: 12px;
+  height: 12px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
+.filter-control.filter-surface .filter-select {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  min-height: 0;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: inherit;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.filter-control.filter-surface:focus-within {
+  border-color: #6ea28e;
+  box-shadow: 0 0 0 2px #80b8a626;
+}
+
+/* Open/completed navigation is separate from the detailed status filter. */
+.list-view-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  min-height: 59px;
+  padding: 13px 16px 9px;
+}
+
+.list-scope-tabs {
+  display: inline-flex;
+  align-items: stretch;
+  gap: 3px;
+  max-width: 100%;
+  padding: 3px;
+  border: 1px solid #e0e8d9;
+  border-radius: 9px;
+  background: #f1f5ed;
+}
+
+.list-scope-tabs > button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 31px;
+  padding: 6px 11px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: #73836b;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.list-scope-tabs > button:hover {
+  background: #e7efe1;
+  color: #3e6346;
+}
+
+.list-scope-tabs > button[aria-pressed="true"] {
+  border-color: #a8c2a4;
+  background: #fff;
+  box-shadow: 0 1px 3px #274a2c0c;
+  color: #205a46;
+  font-weight: 650;
+}
+
+.list-scope-tabs > button > span,
+.list-scope-tabs > button > small {
+  display: inline-grid;
+  place-items: center;
+  min-width: 17px;
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: #e7ecdf;
+  color: #7a8b70;
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.list-scope-tabs > button[aria-pressed="true"] > span,
+.list-scope-tabs > button[aria-pressed="true"] > small {
+  background: #e3eee2;
+  color: #3b7149;
+}
+
+.list-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  max-width: 100%;
+  margin-left: auto;
+  color: #7a8772;
+  font-size: 11px;
+}
+
+.list-sort select {
+  width: 182px;
+  max-width: 100%;
+  min-height: 32px;
+  margin: 0;
+  padding: 5px 8px;
+  border: 1px solid #d9e3d2;
+  border-radius: 7px;
+  background: #fff;
+  color: #476543;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.list-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-height: 53px;
+  padding: 10px 16px;
+  border-top: 1px solid #e3e9dc;
+  background: #fbfcf9;
+  color: #718369;
+  font-size: 11px;
+}
+
+.list-pagination .pagination-summary,
+.list-pagination > span:first-child {
+  margin-right: auto;
+}
+
+.list-pagination button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 30px;
+  padding: 5px 9px;
+  border: 1px solid #d7e1d0;
+  border-radius: 6px;
+  background: #fff;
+  color: #4b6e47;
+  font-size: 11px;
+}
+
+.list-pagination button svg {
+  width: 12px;
+  height: 12px;
+}
+
+.list-pagination button:hover:not(:disabled) {
+  border-color: #a8c2a0;
+  background: #edf4e7;
+}
+
+.list-pagination button:disabled {
+  opacity: 0.42;
+  cursor: default;
+}
+
+.list-scope-tabs > button:focus-visible,
+.list-sort select:focus-visible,
+.list-pagination button:focus-visible {
+  outline: 2px solid #80b8a6;
+  outline-offset: 2px;
+}
+
+@media (max-width: 600px) {
+  .list-view-toolbar {
+    gap: 9px;
+    padding: 11px 12px 8px;
+  }
+
+  .list-sort {
+    justify-content: space-between;
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .list-sort select {
+    flex: 1;
+    width: auto;
+    max-width: 235px;
+  }
+
+  .list-pagination {
+    padding-right: 12px;
+    padding-left: 12px;
+  }
+}

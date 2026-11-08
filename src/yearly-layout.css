@@ -1,0 +1,8 @@
+/* A yearly goal's period supplies its time horizon. */
+.full-table.has-progress.without-deadline {
+  min-width: 650px;
+}
+
+.full-table.has-progress.without-deadline > thead > tr > th.row-action-col {
+  width: 100px;
+}

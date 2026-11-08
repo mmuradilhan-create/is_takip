@@ -1,0 +1,80 @@
+.dashboard-goal-context {
+  display: flex;
+  flex: 0 0 auto;
+  min-width: 0;
+  min-height: 12px;
+  margin-top: 3px;
+  overflow: hidden;
+  color: var(--theme-muted, #74836a);
+  font-size: 10px;
+  line-height: 12px;
+}
+
+.dashboard-goal-context > .record-context-link,
+.focus-goal-context > .focus-goal-link {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  height: auto;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: 2px;
+  background: transparent;
+  color: var(--theme-muted, #74836a);
+  font-size: 10px;
+  line-height: 12px;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.focus-goal-context {
+  min-width: 0;
+  margin-top: 3px;
+  line-height: 12px;
+}
+
+.task-sub[data-record-context]
+  > .record-context-link[data-context-kind="parent"],
+.dashboard-goal-context > .record-context-link[data-context-kind="parent"],
+.focus-goal-context > .focus-goal-link[data-context-kind="parent"] {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.record-context-link[data-context-kind="parent"] > svg {
+  flex: 0 0 12px;
+  width: 12px;
+  height: 12px;
+}
+
+.record-context-link[data-context-kind="parent"] > .record-context-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dashboard-goal-context > .record-context-link:hover,
+.focus-goal-context > .focus-goal-link:hover {
+  background: transparent;
+  color: var(--theme-accent, #52734d);
+  text-decoration: underline;
+}
+
+/* Reserve room for the same parent context and controls in both lower panels. */
+@media (min-width: 1100px) and (min-height: 640px) {
+  .main.is-dashboard .dashboard-workspace.dashboard-rows {
+    grid-template-rows: minmax(0, 1fr) clamp(216px, 27dvh, 280px);
+  }
+}
+
+@media (min-width: 1100px) and (min-height: 640px) and (max-height: 740px) {
+  .main.is-dashboard .dashboard-workspace.dashboard-rows {
+    grid-template-rows: minmax(0, 1fr) 210px;
+  }
+}

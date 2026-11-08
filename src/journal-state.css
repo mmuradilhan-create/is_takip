@@ -1,0 +1,34 @@
+/* Saved journal entries have their own state, independent of a running timer. */
+.work-journal-trigger:not(.has-entries) {
+  color: var(--theme-muted, #71816c);
+  background: var(--theme-surface, #fff);
+  border-color: var(--theme-border, #d2decc);
+}
+
+.work-journal-trigger.has-entries {
+  color: #76529c;
+  background: #f1eafa;
+  border-color: #c4abdf;
+}
+
+.work-journal-trigger.has-entries:hover {
+  color: #654285;
+  background: #e9def5;
+  border-color: #b895d6;
+}
+
+.work-journal-trigger.has-entries small {
+  color: inherit;
+}
+
+[data-theme="dark"] .work-journal-trigger.has-entries {
+  color: #d4b9f2;
+  background: #30253d;
+  border-color: #75608e;
+}
+
+[data-theme="dark"] .work-journal-trigger.has-entries:hover {
+  color: #e1ccf7;
+  background: #3a2e48;
+  border-color: #9b80b8;
+}

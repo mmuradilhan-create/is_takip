@@ -1,0 +1,121 @@
+/* The left column keeps current work and attention together in every layout. */
+.dashboard-main-column {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+.dashboard-main-column > .attention-panel {
+  margin-top: 0;
+}
+
+/* Short and narrow windows retain ordinary page scrolling. */
+@media (min-width: 1100px) and (min-height: 640px) {
+  .main.is-dashboard {
+    display: flex;
+    flex-direction: column;
+    height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .main.is-dashboard > .topbar,
+  .main.is-dashboard > .unsaved-warning {
+    flex: 0 0 auto;
+  }
+
+  .main.is-dashboard > .dashboard-content {
+    display: flex;
+    flex: 1 1 0;
+    flex-direction: column;
+    width: 100%;
+    min-height: 0;
+    margin: 0 auto;
+    overflow: hidden;
+  }
+
+  .main.is-dashboard .dashboard-content > .stats,
+  .main.is-dashboard .dashboard-content > .planning-prompts {
+    flex: 0 0 auto;
+  }
+
+  .main.is-dashboard .dashboard-workspace {
+    flex: 0 1 auto;
+    grid-template-rows: minmax(0, 1fr);
+    align-items: stretch;
+    min-height: 0;
+  }
+
+  .main.is-dashboard .dashboard-main-column,
+  .main.is-dashboard .dashboard-followups {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .main.is-dashboard .dashboard-followups {
+    contain: size;
+    contain-intrinsic-block-size: 550px;
+  }
+
+  .main.is-dashboard .dashboard-main-column > .focus-panel {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-height: 0;
+    max-height: 100%;
+  }
+
+  .main.is-dashboard .focus-panel > .panel-header,
+  .main.is-dashboard .focus-panel > .focus-more,
+  .main.is-dashboard .attention-panel {
+    flex: 0 0 auto;
+  }
+
+  .main.is-dashboard .focus-panel > .focus-list,
+  .main.is-dashboard .focus-panel > .focus-empty {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    scroll-padding-block: 8px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--theme-border, #cbd5c3) transparent;
+  }
+
+  .main.is-dashboard .dashboard-calendar {
+    flex: 1 1 auto;
+    height: 356px;
+    min-height: min(356px, calc(100% - 194px));
+    max-height: none;
+    overflow: hidden;
+  }
+
+  .main.is-dashboard .weekly-dashboard-panel {
+    display: flex;
+    flex: 0 1 auto;
+    flex-direction: column;
+    min-height: 180px;
+  }
+
+  .main.is-dashboard .weekly-dashboard-panel > .panel-header,
+  .main.is-dashboard .weekly-dashboard-panel > .dashboard-week-note,
+  .main.is-dashboard .weekly-dashboard-panel > .dashboard-goals-more {
+    flex: 0 0 auto;
+  }
+
+  .main.is-dashboard .weekly-dashboard-panel > .dashboard-goals,
+  .main.is-dashboard .weekly-dashboard-panel > .weekly-dashboard-empty {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    scroll-padding-block: 8px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--theme-border, #cbd5c3) transparent;
+  }
+}

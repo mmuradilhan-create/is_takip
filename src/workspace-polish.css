@@ -1,0 +1,504 @@
+/* Planning suggestions use one quiet bar; counts are independent, not a score. */
+.planning-prompts {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px 10px;
+  min-width: 0;
+  margin: 0 0 16px;
+  padding: 10px 12px;
+  border: 1px solid var(--theme-border, #e0e7db);
+  border-radius: 10px;
+  background: var(--theme-soft, #f1f5ed);
+}
+
+.planning-prompts-label,
+.planning-prompts > h2 {
+  flex: 0 0 auto;
+  margin: 0 3px 0 0;
+  color: var(--theme-muted, #718168);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+.planning-prompt-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+  min-width: 0;
+}
+
+.planning-prompt {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 0;
+  min-height: 30px;
+  max-width: 100%;
+  padding: 5px 8px;
+  border: 1px solid var(--theme-border, #d8e2d0);
+  border-radius: 6px;
+  background: var(--theme-surface, #fff);
+  color: var(--theme-accent, #4c6e4b);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.4;
+  text-align: left;
+}
+
+.planning-prompt:hover {
+  border-color: var(--theme-accent, #a1ba96);
+  background: var(--theme-hover, #f8fbf5);
+}
+
+.planning-prompt > svg {
+  flex: 0 0 13px;
+  width: 13px;
+  height: 13px;
+}
+
+.planning-prompt > span,
+.planning-prompt > small,
+.planning-prompt > strong {
+  min-width: 0;
+}
+
+.planning-prompt > .planning-prompt-count,
+.planning-prompt > small,
+.planning-prompt > strong {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  min-width: 18px;
+  min-height: 18px;
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: var(--theme-soft, #edf3e7);
+  color: var(--theme-accent, #5a7953);
+  font-size: 10px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.planning-prompts[hidden] {
+  display: none;
+}
+
+.planning-prompt-list {
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.planning-prompt-list > li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.planning-prompt-list > li:last-child {
+  border-bottom: 0;
+}
+
+.planning-prompt-list > li > span {
+  min-width: 0;
+  color: var(--theme-ink, #35563e);
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.planning-prompt-row-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-width: 100%;
+}
+
+.planning-prompt-period {
+  display: block;
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.planning-prompt-list > li > .btn,
+.planning-prompt-row-actions > .btn,
+.planning-prompt-row-actions > .carry-weekly {
+  flex: 0 0 auto;
+  min-height: 30px;
+  padding: 5px 8px;
+  font-size: 11px;
+}
+
+.planning-prompt-list .btn > svg {
+  width: 12px;
+  height: 12px;
+}
+
+/* Scope, sorting and detailed filters share one compact wrapping toolbar. */
+.list-controls-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  min-width: 0;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.list-controls-bar > .list-view-toolbar {
+  flex: 1 1 auto;
+  justify-content: flex-start;
+  gap: 8px 10px;
+  min-width: 0;
+  min-height: 32px;
+  padding: 0;
+}
+
+.list-controls-bar .list-scope-tabs {
+  padding: 2px;
+  border-radius: 7px;
+}
+
+.list-controls-bar .list-scope-tabs > button {
+  min-height: 28px;
+  padding: 5px 9px;
+  border-radius: 5px;
+  font-size: 11px;
+}
+
+.list-controls-bar .list-sort {
+  gap: 5px;
+  margin-left: auto;
+  font-size: 10px;
+}
+
+.list-controls-bar .list-sort select {
+  width: 166px;
+  min-height: 32px;
+  padding: 5px 7px;
+  border-radius: 6px;
+  font-size: 11px;
+}
+
+.list-controls-bar > .filters {
+  flex: 1 1 auto;
+  justify-content: flex-end;
+  gap: 6px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.list-controls-bar .filter-control.filter-surface {
+  flex: 0 0 auto;
+  width: 110px;
+  min-width: 0;
+  min-height: 32px;
+  padding: 4px 25px 4px 9px;
+  border-radius: 6px;
+}
+
+.list-controls-bar .filter-control:has(#work-context-filter) {
+  width: 102px;
+}
+
+.list-controls-bar .filter-control:has(#status-filter) {
+  width: 126px;
+}
+
+.list-controls-bar .filter-surface .filter-caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.list-controls-bar .filter-value {
+  min-height: 22px;
+  line-height: 22px;
+}
+
+.list-controls-bar .filter-chevron {
+  top: 50%;
+  right: 8px;
+  bottom: auto;
+  transform: translateY(-50%);
+}
+
+.list-controls-bar .clear-filters {
+  min-height: 30px;
+  padding: 5px;
+  font-size: 10px;
+}
+
+.list-controls-bar .filters .result-count {
+  flex: 0 1 auto;
+  max-width: 180px;
+  min-width: 0;
+  margin-left: 4px;
+  overflow: hidden;
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Every row action has the same footprint and a descriptive accessible name. */
+.task-name-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  min-width: 0;
+}
+
+.task-name-line > .task-name {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.row-end-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: nowrap;
+  gap: 5px;
+  min-width: 0;
+}
+
+.row-icon-action,
+.row-end-actions > .row-icon-action,
+.row-end-actions > .work-start,
+.row-end-actions > .daily-source-control,
+.row-end-actions .work-start.row-icon-action,
+.row-end-actions .goal-details-trigger.row-icon-action,
+.row-end-actions .goal-add-step.row-icon-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 30px;
+  width: 30px;
+  min-width: 30px;
+  height: 30px;
+  min-height: 30px;
+  margin: 0;
+  padding: 6px;
+  border: 1px solid var(--theme-border, #d2decc);
+  border-radius: 6px;
+  background: var(--theme-surface, #fff);
+  color: var(--theme-accent, #52734d);
+  font-size: 11px;
+  line-height: 1;
+  text-decoration: none;
+}
+
+.row-icon-action > svg,
+.row-end-actions .row-icon-action > svg,
+.row-end-actions > .work-start > svg,
+.row-end-actions > .daily-source-control > svg {
+  flex: 0 0 14px;
+  width: 14px;
+  height: 14px;
+}
+
+.row-icon-action:hover:not(:disabled) {
+  border-color: var(--theme-accent, #9fb995);
+  background: var(--theme-hover, #f0f6eb);
+  color: var(--green);
+}
+
+.row-icon-action:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.row-icon-action.work-start.is-running,
+.row-end-actions > .work-start.is-running {
+  border-color: var(--green);
+  background: var(--green);
+  color: var(--theme-surface, #fff);
+}
+
+.row-icon-action.work-start.is-running:hover,
+.row-end-actions > .work-start.is-running:hover {
+  border-color: var(--green);
+  background: var(--green);
+  color: var(--theme-surface, #fff);
+  filter: brightness(1.08);
+}
+
+.full-table > thead > tr > th.row-action-col,
+.full-table:not(.has-progress) > thead > tr > th.row-action-col,
+.full-table.waiting-table > thead > tr > th.row-action-col {
+  width: 88px;
+}
+
+.full-table:has(.row-end-actions > :nth-child(3))
+  > thead
+  > tr
+  > th.row-action-col {
+  width: 122px;
+}
+
+.full-table:has(.meeting-route-actions) > thead > tr > th.row-action-col {
+  width: 88px;
+}
+
+.row-end-actions > .meeting-route-actions {
+  flex-wrap: nowrap;
+  gap: 5px;
+}
+
+.row-end-actions .meeting-route.row-icon-action {
+  flex: 0 0 30px;
+  width: 30px;
+  min-width: 30px;
+  height: 30px;
+  min-height: 30px;
+  margin: 0;
+  padding: 6px;
+}
+
+/* Settings keep appearance choices grouped ahead of storage actions. */
+.settings-section-heading {
+  margin: 0 0 10px;
+  color: var(--theme-accent, #405f45);
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.5;
+}
+
+.settings-theme-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  min-width: 0;
+  margin-bottom: 14px;
+}
+
+.settings-theme-choice {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  min-height: 58px;
+  padding: 8px 5px;
+  border: 1px solid var(--theme-border, #dce5d5);
+  border-radius: 7px;
+  background: var(--theme-surface, #fff);
+  color: var(--theme-muted, #6d8064);
+  font-size: 11px;
+  line-height: 1.4;
+  text-align: center;
+}
+
+.settings-theme-choice > input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.settings-theme-choice > svg {
+  width: 17px;
+  height: 17px;
+}
+
+.settings-theme-choice:hover {
+  background: var(--theme-hover, #f0f6ea);
+}
+
+.settings-theme-choice[aria-pressed="true"],
+.settings-theme-choice:has(input:checked) {
+  border-color: var(--theme-accent, #9fbc98);
+  background: var(--theme-selected, #eaf3e4);
+  color: var(--theme-accent, #365f40);
+  font-weight: 600;
+}
+
+.settings-appearance .settings-option + .settings-option {
+  margin-top: 12px;
+}
+
+.planning-prompt:focus-visible,
+.row-icon-action:focus-visible,
+.settings-theme-choice:focus-visible,
+.settings-theme-choice:focus-within {
+  outline: 2px solid var(--theme-accent, #80b8a6);
+  outline-offset: 2px;
+}
+
+@media (max-width: 1100px) {
+  .list-controls-bar > .list-view-toolbar,
+  .list-controls-bar > .filters {
+    flex-basis: 100%;
+  }
+
+  .list-controls-bar > .filters {
+    justify-content: flex-start;
+  }
+
+  .list-controls-bar .filters .result-count {
+    margin-left: auto;
+  }
+}
+
+@media (max-width: 600px) {
+  .planning-prompts {
+    gap: 7px;
+    padding: 9px 10px;
+  }
+
+  .planning-prompts-label {
+    flex-basis: 100%;
+  }
+
+  .planning-prompt-list > li {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .planning-prompt-row-actions {
+    justify-content: flex-start;
+  }
+
+  .list-controls-bar {
+    padding: 10px 12px;
+  }
+
+  .list-controls-bar .filter-control.filter-surface {
+    flex: 1 1 125px;
+  }
+
+  .list-controls-bar .list-sort {
+    width: auto;
+    max-width: 100%;
+  }
+
+  .list-controls-bar .list-sort select {
+    width: 166px;
+  }
+}

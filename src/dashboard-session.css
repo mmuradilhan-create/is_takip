@@ -1,0 +1,13 @@
+/* The execution state is separate from a task's saved lifecycle status. */
+.focus-row.is-working {
+  background: #edf6ed;
+  box-shadow: inset 3px 0 #75a68a;
+}
+
+.focus-row.is-working:hover {
+  background: #e5f1e7;
+}
+
+.focus-row.is-working .focus-title {
+  color: #205941;
+}

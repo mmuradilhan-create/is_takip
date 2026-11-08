@@ -1,0 +1,26 @@
+{
+  "name": "is-takip",
+  "version": "0.21.13",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "vite build",
+    "preview": "vite preview --host 0.0.0.0",
+    "test": "node --test --test-isolation=none --test-reporter=spec tests/*.test.js",
+    "test:e2e": "playwright test",
+    "import:local": "node scripts/import-local.js",
+    "export:html": "node scripts/export-html.js",
+    "export:desktop": "npm run export:html && node scripts/export-desktop.js"
+  },
+  "dependencies": {
+    "exceljs": "4.4.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.56.1",
+    "vite": "7.3.7"
+  },
+  "overrides": {
+    "uuid": "11.1.1"
+  }
+}

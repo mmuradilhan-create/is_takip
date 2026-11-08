@@ -1,0 +1,110 @@
+.full-table.meeting-table {
+  min-width: 760px;
+}
+
+.full-table.meeting-table
+  > thead
+  > tr
+  > th.meeting-linked-heading:nth-child(n + 2) {
+  width: 205px;
+  text-align: left;
+}
+
+.meeting-table .meeting-decision {
+  display: -webkit-box;
+  overflow: hidden;
+  margin-top: 6px;
+  color: var(--theme-ink, #415e45);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.5;
+  white-space: pre-line;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.meeting-table .meeting-date {
+  margin-top: 5px;
+}
+
+.meeting-linked-content {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.meeting-table .meeting-route {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  margin: 0;
+  min-height: 30px;
+  padding: 5px 9px;
+  border: 1px solid var(--theme-border, #d2decc);
+  border-radius: 6px;
+  background: var(--theme-surface, #fff);
+  color: var(--theme-accent, #52734d);
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.meeting-table .meeting-route svg {
+  width: 15px;
+  height: 15px;
+}
+
+.meeting-table .meeting-route:hover {
+  background: var(--theme-hover, #f0f6eb);
+}
+
+.meeting-table .meeting-route:focus-visible {
+  outline: 2px solid var(--theme-accent, #80b8a6);
+  outline-offset: 2px;
+}
+
+.meeting-linked-title {
+  display: -webkit-box;
+  overflow: hidden;
+  max-width: 100%;
+  color: var(--theme-ink, #415e45);
+  font-size: 11px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.meeting-linked-date {
+  color: var(--theme-muted, #788a70);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.meeting-unlinked-status {
+  margin-top: 8px;
+}
+
+.meeting-table
+  :is(.meeting-linked-content, .meeting-unlinked-status)
+  > .status-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  width: 112px;
+  max-width: 100%;
+  height: 30px;
+  min-height: 30px;
+  margin: 0;
+  padding: 2px 3px;
+  border-radius: 6px;
+  font-size: 11px;
+  line-height: 12px;
+  text-align: center;
+  white-space: nowrap;
+}

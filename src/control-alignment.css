@@ -1,0 +1,92 @@
+/* Keep each row's related controls balanced without widening its play button. */
+@media (min-width: 761px) {
+  .focus-row {
+    --focus-control-width: 96px;
+    grid-template-columns:
+      22px minmax(0, 1fr) repeat(3, var(--focus-control-width))
+      22px;
+    column-gap: 6px;
+  }
+
+  .focus-row > :is(.focus-priority, .focus-date) {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .focus-row > .focus-priority > .priority,
+  .focus-row > .focus-date > .deadline-tag,
+  .focus-row > .status-trigger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    width: 100%;
+    max-width: 100%;
+    height: 30px;
+    min-height: 30px;
+    margin: 0;
+    padding: 2px 6px;
+    border-radius: 6px;
+    font-size: 10px;
+    line-height: 12px;
+    text-align: center;
+  }
+
+  .focus-row > .status-trigger {
+    justify-self: stretch;
+    white-space: nowrap;
+  }
+}
+
+@media (min-width: 761px) and (max-width: 1279px) {
+  .focus-row {
+    --focus-control-width: 88px;
+  }
+}
+
+/* Matching column and control widths keep status and both action routes aligned. */
+.full-table.meeting-table > thead > tr > th:nth-child(n + 2) {
+  width: 160px;
+}
+
+.meeting-table > tbody > tr > td:nth-child(2) > .status-trigger,
+.meeting-table .meeting-linked-cell .meeting-route {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  width: 112px;
+  max-width: 100%;
+  height: 30px;
+  min-height: 30px;
+  margin: 0;
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-size: 11px;
+  line-height: 12px;
+  text-align: center;
+}
+
+.meeting-table > tbody > tr > td:nth-child(2) > .status-trigger {
+  white-space: nowrap;
+}
+
+/* Keep the full status label and its dot on one line within the shared size. */
+.full-table.record-table
+  > tbody
+  > tr
+  > td.status-col
+  > .status-trigger[data-action="status-menu"],
+.focus-row > .status-trigger[data-action="status-menu"],
+.meeting-table
+  > tbody
+  > tr
+  > td:nth-child(2)
+  > .status-trigger[data-action="status-menu"] {
+  flex-wrap: nowrap;
+  gap: 2px;
+  padding-inline: 3px;
+  white-space: nowrap;
+  overflow-wrap: normal;
+  word-break: normal;
+}

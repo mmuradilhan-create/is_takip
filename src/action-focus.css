@@ -1,0 +1,48 @@
+/* Action focus uses text and icon cues; form fields keep their focus styling. */
+:is(#app, .calendar-dialog)
+  :is(
+    button,
+    a,
+    summary,
+    [data-record-row],
+    [data-goal-section-heading],
+    .waiting-record-body,
+    .record-note-body
+  ):focus:not(:disabled) {
+  outline: none;
+  outline-offset: 0;
+  box-shadow: none;
+}
+
+:is(#app, .calendar-dialog)
+  :is(button, a, summary, [data-goal-section-heading]):focus-visible:not(
+    :disabled
+  ) {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+}
+
+:is(#app, .calendar-dialog)
+  :is(button, a, summary):focus-visible:not(:disabled)
+  svg {
+  stroke-width: 2.4;
+}
+
+#app .quick-complete {
+  position: relative;
+}
+
+#app .quick-complete:focus-visible::after {
+  content: "";
+  position: absolute;
+  inset-inline: 5px;
+  bottom: 4px;
+  height: 2px;
+  border-radius: 1px;
+  background: currentColor;
+}
+
+#app :is(.waiting-record-body, .record-note-body):focus-visible {
+  background: var(--theme-hover, #f6f8f3);
+}

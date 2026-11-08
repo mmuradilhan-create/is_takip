@@ -1,0 +1,50 @@
+/* Dual meeting routes name their separate destinations inside the action cell. */
+.full-table:has(.meeting-route-actions.has-both)
+  > thead
+  > tr
+  > th.row-action-col {
+  width: 180px;
+}
+
+.row-end-actions > .meeting-route-actions.has-both {
+  flex: 0 0 auto;
+  flex-wrap: nowrap;
+  gap: 6px;
+  min-width: 0;
+}
+
+.row-end-actions .meeting-route-actions.has-both > .route-text-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  gap: 4px;
+  width: auto;
+  min-width: 0;
+  height: 30px;
+  min-height: 30px;
+  margin: 0;
+  padding: 5px 9px;
+  border: 1px solid var(--theme-border, #d2decc);
+  border-radius: 6px;
+  background: var(--theme-surface, #fff);
+  color: var(--theme-accent, #52734d);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.4;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.row-end-actions .meeting-route-actions.has-both > .route-text-action:hover {
+  border-color: var(--theme-accent, #9fb995);
+  background: var(--theme-hover, #f0f6eb);
+  color: var(--green);
+}
+
+.row-end-actions
+  .meeting-route-actions.has-both
+  > .route-text-action:focus-visible {
+  outline: 2px solid var(--theme-accent, #80b8a6);
+  outline-offset: 2px;
+}

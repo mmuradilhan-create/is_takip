@@ -1,0 +1,26 @@
+/* Leave the existing responsive date visibility and header width unchanged. */
+.today > svg {
+  align-self: flex-start;
+  flex: none;
+  margin-top: 1px;
+}
+
+.today-copy {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  line-height: 1.2;
+}
+
+.today-date {
+  white-space: nowrap;
+}
+
+.today-clock {
+  color: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}

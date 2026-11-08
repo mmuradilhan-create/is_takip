@@ -1,0 +1,146 @@
+.choice-input-wrap {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  width: 100%;
+}
+
+.choice-input-wrap > input[data-choice-kind] {
+  min-width: 0;
+  width: 100%;
+  padding-right: 43px;
+}
+
+.choice-toggle {
+  position: absolute;
+  top: 50%;
+  right: 4px;
+  display: grid;
+  place-items: center;
+  width: 33px;
+  height: 33px;
+  padding: 6px;
+  transform: translateY(-50%);
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #5d7757;
+}
+
+.choice-toggle:hover,
+.choice-toggle[aria-expanded="true"] {
+  background: #edf4e8;
+  color: #174d43;
+}
+
+.choice-toggle svg,
+.choice-check svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.choice-toggle[aria-expanded="true"] svg {
+  transform: rotate(180deg);
+}
+
+.choice-toggle:focus-visible {
+  outline: 2px solid #80b8a6;
+  outline-offset: -2px;
+}
+
+.choice-menu {
+  position: fixed;
+  inset: auto;
+  min-width: 0;
+  width: 320px;
+  max-width: calc(100vw - 16px);
+  max-height: min(320px, calc(100dvh - 16px));
+  margin: 0;
+  padding: 5px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 1px solid #dce5d7;
+  border-radius: 10px;
+  background: #fff;
+  color: #38513d;
+  box-shadow: 0 10px 32px #173d2926;
+  font-size: 13px;
+}
+
+.choice-menu::backdrop {
+  background: transparent;
+}
+
+.choice-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  min-height: 35px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: #fff;
+  color: inherit;
+  font: inherit;
+  line-height: 1.45;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+.choice-option > span:first-child {
+  min-width: 0;
+}
+
+.choice-option:hover,
+.choice-option.is-highlighted,
+.choice-option:focus-visible {
+  background: #edf4e8;
+  color: #174d43;
+  outline: none;
+}
+
+.choice-check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 15px;
+  width: 15px;
+  height: 15px;
+  color: #174d43;
+}
+
+.choice-custom {
+  margin-top: 3px;
+  border-top: 1px solid #e7ede1;
+  border-radius: 0 0 6px 6px;
+}
+
+.choice-custom > span:first-child {
+  display: grid;
+  gap: 2px;
+}
+
+.choice-custom strong {
+  font-weight: 600;
+}
+
+.choice-custom small {
+  color: #72836a;
+  font-size: 10px;
+  font-weight: 400;
+}
+
+.choice-empty {
+  margin: 0;
+  padding: 10px;
+  color: #77866e;
+  font-size: 12px;
+  line-height: 1.6;
+}

@@ -1,0 +1,212 @@
+/* Attention stays in one paged row, with at most three cards visible. */
+.attention-panel {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.dashboard-workspace + .attention-panel {
+  margin-top: 14px;
+}
+
+.attention-panel .attention-list.followup-list {
+  display: grid;
+  grid-template-columns: repeat(var(--attention-columns, 3), minmax(0, 1fr));
+  align-items: stretch;
+  gap: 12px;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  margin: 0;
+  padding: 12px 14px;
+  overflow: hidden;
+}
+
+.attention-pagination {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--theme-muted, #74836a);
+  font-size: 10px;
+}
+
+.attention-pagination button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 27px;
+  height: 27px;
+  padding: 5px;
+  border: 1px solid var(--theme-border, #dce5d5);
+  border-radius: 5px;
+  background: var(--theme-surface, #fff);
+  color: var(--theme-accent, #52734d);
+}
+
+.attention-pagination button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.attention-pagination button:hover:not(:disabled) {
+  background: var(--theme-hover, #f0f6eb);
+}
+
+.attention-pagination svg {
+  width: 13px;
+  height: 13px;
+}
+
+.attention-pagination .attention-prev svg {
+  transform: rotate(180deg);
+}
+
+.attention-panel .attention-list:focus-visible {
+  outline: 2px solid var(--theme-accent, #80b8a6);
+  outline-offset: -2px;
+}
+
+.attention-panel .attention-list > li.followup-row {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: stretch;
+  min-width: 0;
+  max-width: none;
+  min-height: 150px;
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--theme-border, #e0e7d9);
+  border-radius: 8px;
+  background: var(--theme-surface, #fff);
+}
+
+.attention-panel .attention-list > li.followup-row:hover,
+.attention-panel .attention-list > li.followup-row:focus-within {
+  background: var(--theme-hover, #fafcf7);
+}
+
+.attention-panel .attention-source {
+  flex: 0 0 auto;
+  margin: 0 0 5px;
+  color: var(--theme-muted, #809071);
+}
+
+.attention-panel .followup-title-line {
+  flex: 0 0 auto;
+  min-width: 0;
+  min-height: 36px;
+  gap: 8px;
+}
+
+.attention-panel .followup-title {
+  display: -webkit-box;
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  font-size: 12px;
+  line-height: 1.45;
+  text-align: left;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.attention-panel .followup-meta {
+  flex: 0 0 auto;
+  min-width: 0;
+  margin-top: 8px;
+  padding-left: 0;
+  gap: 6px;
+}
+
+.attention-panel .attention-date {
+  display: inline-flex;
+  align-items: center;
+  justify-self: end;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.attention-panel .attention-date > :is(.deadline-tag, .waiting-next-date) {
+  max-width: 100%;
+}
+
+.attention-panel .followup-tracking,
+.attention-panel .meeting-route-actions {
+  min-width: 0;
+  margin-top: auto;
+  margin-left: 0;
+  padding-top: 9px;
+  padding-left: 0;
+}
+
+.attention-panel .meeting-route-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+}
+
+.attention-panel .meeting-route-actions > button {
+  max-width: 100%;
+  min-height: 27px;
+  padding: 4px 6px;
+  font-size: 10px;
+  white-space: normal;
+}
+
+.attention-panel .followup-wait-info {
+  min-width: 0;
+}
+
+.attention-panel .waiting-age,
+.attention-panel .followup-last {
+  color: var(--theme-muted, #74836a);
+  font-size: 10px;
+}
+
+.attention-panel .followup-last {
+  margin-top: 2px;
+}
+
+.attention-panel .waiting-followup-trigger {
+  min-height: 27px;
+  max-width: 100%;
+  padding: 4px 6px;
+  font-size: 10px;
+}
+
+/* Near dates are amber here for either source type; overdue dates stay red. */
+.attention-panel
+  .attention-date.attention-date-near
+  :is(.deadline-tag, .inline-date, .waiting-next-date) {
+  --deadline-paper: #fff1d7;
+  color: #955400;
+  background: var(--deadline-paper);
+  border-color: #e5c082;
+}
+
+[data-theme="dark"]
+  .attention-panel
+  .attention-date.attention-date-near
+  :is(.deadline-tag, .inline-date, .waiting-next-date) {
+  --deadline-paper: #42351f;
+  color: #f1cf91;
+  background: var(--deadline-paper);
+  border-color: #8d7549;
+}
+
+@media (max-width: 600px) {
+  .dashboard-workspace + .attention-panel {
+    margin-top: 12px;
+  }
+
+  .attention-panel .attention-list.followup-list {
+    gap: 10px;
+    padding: 10px 12px;
+  }
+}

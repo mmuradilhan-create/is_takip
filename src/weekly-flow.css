@@ -1,0 +1,195 @@
+/* Earlier open goals stay close to the selected week's work. */
+.weekly-backlog {
+  margin: 12px 16px;
+  border: 1px solid #d5dfce;
+  border-radius: 8px;
+  background: #f7faf4;
+}
+
+.weekly-backlog > summary {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 38px;
+  padding: 9px 11px;
+  color: #456140;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  list-style: none;
+}
+
+.weekly-backlog > summary::-webkit-details-marker {
+  display: none;
+}
+
+.weekly-backlog svg {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+}
+
+.weekly-backlog > summary > svg:last-child {
+  margin-left: auto;
+  transition: transform 120ms ease;
+}
+
+.weekly-backlog[open] > summary > svg:last-child {
+  transform: rotate(180deg);
+}
+
+.backlog-count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 21px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 5px;
+  background: #e7efdf;
+  font-size: 10px;
+}
+
+.weekly-backlog-body {
+  border-top: 1px solid #e0e8da;
+}
+
+.weekly-backlog-body > p {
+  margin: 0;
+  padding: 10px 11px 3px;
+  color: #72826b;
+  font-size: 11px;
+}
+
+.weekly-backlog ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.weekly-backlog li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 130px 146px;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 11px;
+}
+
+.weekly-backlog li + li {
+  border-top: 1px solid #e5ebdf;
+}
+
+.backlog-task {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.backlog-title {
+  justify-self: start;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #345a41;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+.backlog-task > span {
+  color: #7c8976;
+  font-size: 10px;
+}
+
+.weekly-backlog .status-trigger {
+  justify-self: start;
+}
+
+.carry-weekly {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  justify-self: end;
+  gap: 5px;
+  min-height: 30px;
+  padding: 5px 9px;
+  border: 1px solid #b9cfac;
+  border-radius: 6px;
+  background: #fff;
+  color: #3d6b43;
+  font-size: 11px;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.carry-weekly:hover {
+  border-color: #7d9e6e;
+  background: #edf5e8;
+}
+
+.carry-weekly svg {
+  width: 13px;
+  height: 13px;
+}
+
+.carry-weekly.is-compact {
+  width: 25px;
+  min-height: 27px;
+  padding: 4px;
+}
+
+.weekly-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 106px;
+  padding: 25px 16px;
+  color: #7c8b74;
+  font-size: 12px;
+}
+
+.weekly-empty svg {
+  width: 18px;
+  height: 18px;
+}
+
+.weekly-empty p {
+  margin: 0;
+}
+
+.weekly-archive-note {
+  margin: 0;
+  padding: 11px 16px;
+  border-bottom: 1px solid #e7ecdf;
+  background: #f7f8f5;
+  color: #7c8376;
+  font-size: 11px;
+}
+
+.full-table:has(.weekly-goal-row) > thead > tr > th.row-action-col {
+  width: 98px;
+}
+
+.weekly-backlog > summary:focus-visible,
+.carry-weekly:focus-visible,
+.backlog-title:focus-visible {
+  outline: 2px solid #80b8a6;
+  outline-offset: 2px;
+}
+
+@media (max-width: 760px) {
+  .weekly-backlog li {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 7px;
+  }
+
+  .backlog-task {
+    grid-column: 1 / -1;
+  }
+
+  .weekly-backlog {
+    margin-right: 10px;
+    margin-left: 10px;
+  }
+}

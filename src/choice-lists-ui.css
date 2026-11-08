@@ -1,0 +1,231 @@
+.settings-choice-lists {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--theme-border, #dce5d5);
+  border-radius: 10px;
+  background: var(--theme-surface, #fff);
+  scrollbar-width: thin;
+}
+
+.settings-choice-lists > h3 {
+  margin: 0;
+  color: var(--theme-ink, #405b49);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.choice-catalog-help {
+  margin: 4px 0 10px;
+  color: var(--theme-muted, #677b6a);
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.choice-catalog {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--theme-border, #dce5d5);
+  border-radius: 7px;
+}
+
+.choice-catalog + .choice-catalog {
+  margin-top: 7px;
+}
+
+.choice-catalog > summary {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 34px;
+  padding: 7px 9px;
+  color: var(--theme-ink, #405b49);
+  background: var(--theme-soft, #f7f9f4);
+  font-size: 11px;
+  font-weight: 600;
+  list-style: none;
+  cursor: pointer;
+}
+
+.choice-catalog > summary::-webkit-details-marker {
+  display: none;
+}
+
+.choice-catalog-count {
+  min-width: 18px;
+  padding: 0 4px;
+  border-radius: 4px;
+  background: var(--theme-surface, #fff);
+  color: var(--theme-muted, #708069);
+  font-size: 10px;
+  font-weight: 400;
+  text-align: center;
+}
+
+.choice-catalog-chevron {
+  margin-left: auto;
+  font-size: 16px;
+  line-height: 14px;
+}
+
+.choice-catalog[open] > summary .choice-catalog-chevron {
+  transform: rotate(90deg);
+}
+
+.choice-catalog-body {
+  min-width: 0;
+  padding: 8px;
+  border-top: 1px solid var(--theme-border, #dce5d5);
+}
+
+.choice-catalog-add,
+.choice-catalog-rename,
+.choice-catalog-row,
+.choice-catalog-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+.choice-catalog-add {
+  margin-bottom: 7px;
+}
+
+.choice-catalog-add input,
+.choice-catalog-rename input {
+  flex: 1 1 0;
+  width: 0;
+  min-width: 0;
+  min-height: 29px;
+  padding: 5px 7px;
+  border: 1px solid var(--theme-border, #dce5d5);
+  border-radius: 5px;
+  background: var(--theme-surface, #fff);
+  color: var(--theme-ink, #405b49);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.choice-catalog button {
+  flex: 0 0 auto;
+  min-height: 27px;
+  padding: 4px 6px;
+  border: 1px solid var(--theme-border, #dce5d5);
+  border-radius: 5px;
+  background: var(--theme-surface, #fff);
+  color: var(--theme-muted, #607856);
+  font-size: 10px;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.choice-catalog button:hover:not(:disabled) {
+  background: var(--theme-hover, #f0f5eb);
+  color: var(--theme-accent, #3a7049);
+}
+
+.choice-catalog button:disabled {
+  opacity: 0.55;
+}
+
+.choice-catalog :is(button, input, summary):focus-visible {
+  outline: 2px solid var(--theme-accent, #80b8a6);
+  outline-offset: 1px;
+}
+
+.choice-catalog-list,
+.choice-catalog-hidden-list {
+  max-height: 150px;
+  margin: 0;
+  padding: 0 2px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  list-style: none;
+  scrollbar-width: thin;
+}
+
+.choice-catalog-hidden-list {
+  max-height: 100px;
+  margin-top: 5px;
+}
+
+.choice-catalog-row {
+  min-height: 34px;
+  padding: 4px 0;
+}
+
+.choice-catalog-row + .choice-catalog-row {
+  border-top: 1px solid var(--theme-border, #e5eadf);
+}
+
+.choice-catalog-value {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--theme-ink, #405b49);
+  font-size: 11px;
+  line-height: 1.5;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.choice-catalog-row-actions {
+  flex: 0 0 auto;
+  gap: 4px;
+}
+
+.choice-catalog-row-actions button {
+  min-height: 25px;
+  padding: 3px 5px;
+  font-size: 9px;
+}
+
+.choice-catalog-rename {
+  width: 100%;
+}
+
+.choice-catalog-error {
+  margin: 0 0 6px;
+  color: var(--theme-danger, #b04439);
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.choice-catalog-error[hidden] {
+  display: none;
+}
+
+.choice-catalog-empty {
+  padding: 5px 0;
+  color: var(--theme-muted, #7c8d77);
+  font-size: 10px;
+}
+
+.choice-catalog-removed {
+  margin-top: 7px;
+  padding-top: 5px;
+  border-top: 1px solid var(--theme-border, #e5eadf);
+}
+
+.choice-catalog-removed > summary {
+  padding: 3px 0;
+  color: var(--theme-muted, #7c8d77);
+  font-size: 10px;
+  cursor: pointer;
+}
+
+@media (max-width: 380px) {
+  .settings-choice-lists {
+    padding: 9px;
+  }
+
+  .choice-catalog-row-actions {
+    gap: 2px;
+  }
+
+  .choice-catalog-row-actions button {
+    padding-right: 3px;
+    padding-left: 3px;
+  }
+}

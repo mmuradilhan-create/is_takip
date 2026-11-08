@@ -1,0 +1,240 @@
+/* Keep page headings and summary cards focused on their labels and values. */
+.page-heading h1 {
+  margin: 0;
+  line-height: 1.2;
+}
+
+.stats {
+  margin-bottom: 16px;
+}
+
+.stat {
+  grid-template-areas: "label value";
+  row-gap: 0;
+  min-height: 66px;
+  padding: 12px 14px;
+}
+
+.stat-top {
+  font-size: 11px;
+}
+
+.stat-icon {
+  width: 21px;
+  height: 21px;
+}
+
+.stat-value {
+  font-size: 25px;
+}
+
+/* Dashboard fields share the same small editors as the main task lists. */
+.focus-row > .focus-date {
+  overflow: visible;
+}
+
+.focus-priority .inline-priority,
+.focus-date .inline-date {
+  max-width: 100%;
+  min-width: 0;
+  min-height: 25px;
+  margin: 0;
+  padding: 3px 5px;
+  font-size: inherit;
+  line-height: inherit;
+  text-align: left;
+}
+
+.focus-priority .inline-priority {
+  gap: 4px;
+  font-size: 10px;
+}
+
+.focus-date .inline-date {
+  overflow: hidden;
+  color: inherit;
+  font-weight: inherit;
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.focus-date .inline-date:hover,
+.focus-date .inline-date[aria-expanded="true"] {
+  border-color: #d6e2ce;
+  background: #f0f6eb;
+}
+
+.priority .priority-flag {
+  width: 10px;
+  height: 10px;
+  flex: 0 0 10px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* A label stays visible after selecting a value, so each filter is clear. */
+.filters {
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+}
+
+.filter-control {
+  display: grid;
+  align-content: center;
+  flex: 0 0 auto;
+  gap: 1px;
+  width: 120px;
+  min-width: 0;
+  min-height: 44px;
+  padding: 4px 9px 3px;
+  border: 1px solid #dfe7d9;
+  border-radius: 8px;
+  background: #fff;
+  color: #536b4d;
+  cursor: pointer;
+}
+
+.filter-control:has(#work-context-filter) {
+  width: 110px;
+}
+
+.filter-control:has(#status-filter) {
+  width: 144px;
+}
+
+.filter-control:has(#priority-filter) {
+  width: 114px;
+}
+
+.filter-caption {
+  overflow: hidden;
+  color: #7c8b73;
+  font-size: 9px;
+  font-weight: 500;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.filter-control .filter-select {
+  appearance: none;
+  width: 100%;
+  min-width: 0;
+  min-height: 23px;
+  margin: 0;
+  padding: 1px 18px 1px 0;
+  border: 0;
+  border-radius: 0;
+  outline: none;
+  background: transparent
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23657b5c' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")
+    no-repeat right center;
+  color: inherit;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.4;
+  cursor: pointer;
+  text-overflow: ellipsis;
+}
+
+.filter-control:hover {
+  border-color: #b8cdb0;
+}
+
+.filter-control:focus-within {
+  border-color: #80b8a6;
+  box-shadow: 0 0 0 2px #80b8a620;
+}
+
+.filter-control.is-active {
+  border-color: #b7cfae;
+  background: #f1f7ed;
+  color: #315c3c;
+}
+
+.filter-control.is-active .filter-caption {
+  color: #66865b;
+}
+
+.filters .show-completed,
+.filters .btn.secondary.work-week-trigger {
+  min-height: 32px;
+  padding: 6px 9px;
+  font-size: 11px;
+}
+
+.clear-filters {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  gap: 4px;
+  min-height: 30px;
+  padding: 5px 6px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: #61775a;
+  font-size: 11px;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.clear-filters svg {
+  width: 12px;
+  height: 12px;
+}
+
+.clear-filters:hover {
+  background: #eef4e8;
+  color: var(--green);
+}
+
+.filters .result-count {
+  flex: 0 0 auto;
+  width: auto;
+  margin-left: auto;
+  color: #7b8a71;
+  font-size: 11px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+@media (max-width: 760px) {
+  .filters {
+    gap: 7px;
+    padding: 12px;
+  }
+
+  .filter-control {
+    flex: 1 1 120px;
+    max-width: none;
+  }
+
+  .filter-control:has(#status-filter) {
+    flex-basis: 144px;
+  }
+}
+
+@media (max-width: 600px) {
+  .stat {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "label" "value";
+    row-gap: 5px;
+    min-height: 74px;
+    padding: 10px 12px;
+  }
+
+  .stat-top {
+    justify-content: space-between;
+  }
+
+  .stat-value {
+    justify-self: end;
+  }
+}

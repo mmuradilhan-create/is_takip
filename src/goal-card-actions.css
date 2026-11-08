@@ -1,0 +1,83 @@
+.dashboard-goal-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  width: 100%;
+  min-width: 0;
+  margin-top: auto;
+  padding-top: 4px;
+}
+
+.dashboard-goal-actions
+  :is(.dashboard-goal-progress-action, .dashboard-goal-children-action) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-width: 0;
+  min-height: 28px;
+  margin: 0;
+  padding: 4px 5px;
+  border: 1px solid var(--theme-border, #d4dfcd);
+  border-radius: 5px;
+  background: var(--theme-surface, #fff);
+  color: var(--theme-accent, #52734d);
+  font-size: 10px;
+  font-weight: 550;
+  line-height: 14px;
+  text-align: center;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.dashboard-goal-actions button:hover {
+  background: var(--theme-hover, #f0f6eb);
+  border-color: var(--theme-accent, #6f9264);
+}
+
+.dashboard-goal-actions button:focus-visible,
+#goal-detail-panel [data-goal-section-heading]:focus-visible {
+  outline: 2px solid var(--theme-accent, #80b8a6);
+  outline-offset: 2px;
+}
+
+.dashboard-goal-actions button svg {
+  flex: 0 0 11px;
+  width: 11px;
+  height: 11px;
+}
+
+.dashboard-goal-row :is(span, strong).dashboard-goal-title,
+.dashboard-goal-row :is(span, strong).dashboard-goal-title:hover {
+  color: var(--theme-accent, #355a42);
+  cursor: default;
+}
+
+.dashboard-rows
+  .dashboard-bottom-row
+  .dashboard-goal-row
+  .dashboard-goal-title {
+  line-height: 1.25;
+}
+
+.dashboard-rows
+  .dashboard-bottom-row
+  .dashboard-goal-row
+  .dashboard-goal-progress {
+  margin-top: 4px;
+}
+
+.dashboard-rows .dashboard-bottom-row .dashboard-goal-row .dashboard-goal-meta {
+  margin-top: 3px;
+  line-height: 12px;
+}
+
+.dashboard-rows
+  .dashboard-bottom-row
+  .dashboard-goal-row
+  .dashboard-goal-linked {
+  min-height: 14px;
+  margin-top: 4px;
+  padding-top: 0;
+  line-height: 14px;
+}

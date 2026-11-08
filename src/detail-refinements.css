@@ -1,0 +1,161 @@
+/* Every delivery date has the same compact label and an explicit state. */
+.deadline-tag,
+.inline-date.deadline-tag,
+.focus-date .inline-date.deadline-tag,
+.goal-child-date.deadline-tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 5px;
+  max-width: 100%;
+  min-height: 24px;
+  margin: 0;
+  padding: 3px 7px;
+  overflow: hidden;
+  border: 1px solid #d5dee6;
+  border-radius: 6px;
+  background: #f0f4f7;
+  color: #536574;
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.4;
+  text-align: left;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.deadline-symbol {
+  width: 11px;
+  height: 11px;
+  flex: 0 0 11px;
+}
+
+.deadline-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.deadline-tag[data-deadline-state="overdue"],
+.inline-date.deadline-tag[data-deadline-state="overdue"],
+.focus-date .inline-date.deadline-tag[data-deadline-state="overdue"],
+.goal-child-date.deadline-tag[data-deadline-state="overdue"] {
+  --deadline-paper: #fdece9;
+  border-color: #e9b4ae;
+  background: #fdece9;
+  color: #ac2d24;
+}
+
+.deadline-tag[data-deadline-state="due-soon"],
+.inline-date.deadline-tag[data-deadline-state="due-soon"],
+.focus-date .inline-date.deadline-tag[data-deadline-state="due-soon"],
+.goal-child-date.deadline-tag[data-deadline-state="due-soon"] {
+  --deadline-paper: #fff1d7;
+  border-color: #e5c082;
+  background: #fff1d7;
+  color: #955400;
+}
+
+.deadline-tag[data-deadline-state="missing"],
+.inline-date.deadline-tag[data-deadline-state="missing"],
+.focus-date .inline-date.deadline-tag[data-deadline-state="missing"],
+.goal-child-date.deadline-tag[data-deadline-state="missing"] {
+  --deadline-paper: #f7f8f5;
+  border-color: #e0e5df;
+  background: #f7f8f5;
+  color: #7b8879;
+  font-weight: 500;
+}
+
+.deadline-tag[data-deadline-state="missing"] .deadline-symbol {
+  opacity: 0.55;
+}
+
+.inline-date.deadline-tag:hover,
+.inline-date.deadline-tag[aria-expanded="true"] {
+  border-color: currentColor;
+  background: var(--deadline-paper, #f0f4f7);
+  box-shadow: 0 0 0 1px currentColor;
+}
+
+.inline-date.deadline-tag:focus-visible {
+  outline: 2px solid #80b8a6;
+  outline-offset: 2px;
+}
+
+.focus-date .inline-date.deadline-tag {
+  min-height: 23px;
+  gap: 4px;
+  padding: 3px 4px;
+  font-size: 10px;
+}
+
+.goal-child-date.deadline-tag {
+  min-height: 21px;
+  padding: 2px 5px;
+  font-size: 10px;
+}
+
+/* A blocker is distinct from the task's normal status and can carry a reason. */
+.blocked-badge {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 2px;
+  border: 1px solid #edc0bd;
+  border-radius: 5px;
+  background: #fff0ee;
+  color: #bd4b44;
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 1.45;
+  white-space: nowrap;
+}
+
+.blocked-badge svg {
+  width: 12px;
+  height: 12px;
+  flex: 0 0 12px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.focus-title-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 5px;
+  min-width: 0;
+}
+
+.focus-title-line > .focus-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  width: auto;
+}
+
+.focus-title-line > .blocked-badge {
+  margin: 1px 0 0;
+}
+
+#block-reason-field {
+  padding: 10px 12px;
+  border: 1px solid #e7d8bd;
+  border-radius: 8px;
+  background: #fffaf0;
+}
+
+#block-reason-field[hidden] {
+  display: none;
+}
+
+#block-reason-field textarea {
+  min-height: 65px;
+  background: #fff;
+}

@@ -1,0 +1,252 @@
+/* The record itself opens editing; status controls stay separate. */
+[data-record-row] {
+  cursor: pointer;
+  transition: background-color 120ms ease;
+}
+
+[data-record-row]:hover {
+  background-color: #f4f8f2;
+}
+
+[data-record-row]:focus {
+  outline: none;
+}
+
+[data-record-row]:focus-visible {
+  background-color: #f4f8f2;
+}
+
+[data-record-row]:focus-visible :is(.task-name, .focus-title, .followup-title) {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.focus-row {
+  grid-template-columns: 22px minmax(0, 1fr) auto;
+}
+
+.status-planned {
+  --status-ink: #58685d;
+  --status-paper: #edf1ec;
+}
+.status-in_progress {
+  --status-ink: #365b88;
+  --status-paper: #e7f0fc;
+}
+.status-waiting,
+.status-waiting_response {
+  --status-ink: #8a570d;
+  --status-paper: #fff1d6;
+}
+.status-partially_completed {
+  --status-ink: #6c5e92;
+  --status-paper: #f0ecf8;
+}
+.status-completed {
+  --status-ink: #2f6b43;
+  --status-paper: #e7f3e8;
+}
+.status-cancelled {
+  --status-ink: #705763;
+  --status-paper: #f2eef0;
+}
+.status-follow_up {
+  --status-ink: #356b72;
+  --status-paper: #e8f3f3;
+}
+.status-transferred {
+  --status-ink: #5f6689;
+  --status-paper: #eff0f7;
+}
+
+.status-trigger,
+.status-summary {
+  border: 1px solid transparent;
+  color: var(--status-ink, #58685d);
+  background: var(--status-paper, #edf1ec);
+  line-height: 1.4;
+}
+
+.status-trigger > .dot {
+  flex: 0 0 5px;
+}
+
+.status-trigger:hover,
+.status-trigger[aria-expanded="true"] {
+  border-color: currentColor;
+}
+
+.task-check[data-status] {
+  width: 22px;
+  height: 22px;
+  background: #fff;
+  color: #71846f;
+  border-color: #a6b8a1;
+}
+
+.task-check[data-status]:hover,
+.task-check[data-status][aria-expanded="true"] {
+  background: #f0f5ee;
+  border-color: var(--green);
+}
+
+.task-check .state-dot {
+  display: block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.task-check[data-status="in_progress"] {
+  color: #365b88;
+  border-color: #9bb7d7;
+}
+.task-check[data-status="waiting"],
+.task-check[data-status="waiting_response"] {
+  color: #956018;
+  border-color: #d7bf92;
+}
+.task-check[data-status="partially_completed"] {
+  color: #756198;
+  border-color: #bcaed1;
+}
+.task-check[data-status="follow_up"] {
+  color: #356b72;
+  border-color: #9dbfc1;
+}
+.task-check[data-status="cancelled"],
+.task-check[data-status="transferred"] {
+  color: #8b7f89;
+  border-color: #c4b8c0;
+}
+.task-check[data-status="completed"] {
+  background: #397347;
+  color: #fff;
+  border-color: #397347;
+}
+.task-check[data-status="completed"]:hover,
+.task-check[data-status="completed"][aria-expanded="true"] {
+  background: #2f643b;
+}
+
+.linked-children li .status-trigger.badge {
+  flex: 0 0 auto;
+  min-width: 0;
+  padding: 5px 8px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  font-size: 11px;
+  text-align: center;
+  background: var(--status-paper, #edf1ec);
+  color: var(--status-ink, #58685d);
+}
+.linked-children li .status-trigger.badge:hover,
+.linked-children li .status-trigger.badge[aria-expanded="true"] {
+  border-color: currentColor;
+}
+
+.status-menu {
+  position: fixed;
+  inset: auto;
+  width: 256px;
+  max-width: calc(100vw - 20px);
+  max-height: min(400px, calc(100dvh - 20px));
+  margin: 0;
+  padding: 6px;
+  overflow-y: auto;
+  border: 1px solid #dce5d9;
+  border-radius: 12px;
+  background: #fff;
+  color: #253833;
+  box-shadow:
+    0 10px 36px #173d2926,
+    0 2px 6px #173d2910;
+}
+.status-menu::backdrop {
+  background: transparent;
+}
+.status-menu-heading {
+  margin: 0 4px 4px;
+  padding: 8px 6px 10px;
+  border-bottom: 1px solid #edf1e9;
+  color: #64745f;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+.status-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 36px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 7px;
+  background: #fff;
+  color: #38513d;
+  font-size: 13px;
+  line-height: 1.4;
+  text-align: left;
+}
+.status-option:hover,
+.status-option:focus-visible {
+  background: #f0f5ec;
+}
+.status-option:focus-visible {
+  outline: 2px solid #80b8a6;
+  outline-offset: -2px;
+}
+.status-option[aria-checked="true"] {
+  background: #eaf2e8;
+  color: #174d43;
+  font-weight: 600;
+}
+.status-option .status-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  margin-left: auto;
+  visibility: hidden;
+}
+.status-option[aria-checked="true"] .status-mark {
+  visibility: visible;
+}
+.status-option .status-mark svg {
+  width: 15px;
+  height: 15px;
+}
+
+.meeting-status-group {
+  min-width: 0;
+  padding-top: 3px;
+}
+
+.meeting-status-group + .meeting-status-group {
+  margin-top: 5px;
+  padding-top: 6px;
+  border-top: 1px solid var(--theme-border, #edf1e9);
+}
+
+.meeting-status-group-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  margin: 0 4px 3px;
+  padding: 3px 6px;
+  color: var(--theme-muted, #64745f);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.meeting-status-target-title {
+  overflow: hidden;
+  font-size: 10px;
+  font-weight: 400;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

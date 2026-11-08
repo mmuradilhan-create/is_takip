@@ -1,0 +1,462 @@
+/* Weekly intent and follow-up attention share the existing compact side rail. */
+.dashboard-goals:focus,
+.focus-list:focus {
+  outline: none;
+}
+
+.dashboard-goals:focus-visible,
+.focus-list:focus-visible {
+  outline: 2px solid var(--theme-accent, #80b8a6);
+  outline-offset: -2px;
+}
+
+.weekly-dashboard-panel,
+.attention-panel {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.weekly-dashboard-panel > .panel-header,
+.weekly-dashboard-panel > .followup-header,
+.attention-panel > .panel-header,
+.attention-panel > .followup-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 5px 8px;
+  min-height: 41px;
+  padding: 10px 13px 8px;
+  border-bottom: 1px solid var(--line);
+}
+
+.weekly-dashboard-panel h2,
+.attention-panel h2 {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.weekly-dashboard-panel > .panel-header > .text-btn,
+.weekly-dashboard-panel > .followup-header > .text-btn,
+.attention-panel > .panel-header > .text-btn,
+.attention-panel > .followup-header > .text-btn {
+  min-height: 25px;
+  padding: 3px 0;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.dashboard-goals,
+.attention-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dashboard-goal-row {
+  min-width: 0;
+  padding: 11px 13px;
+}
+
+.dashboard-goal-row + .dashboard-goal-row {
+  border-top: 1px solid var(--line);
+}
+
+.dashboard-goal-row:focus-within {
+  background: #f7faf4;
+}
+
+.dashboard-goal-row .dashboard-goal-title {
+  display: -webkit-box;
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  background: transparent;
+  color: #355a42;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.45;
+  text-align: left;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.dashboard-goal-row .dashboard-goal-title:hover {
+  color: #164e40;
+}
+
+.dashboard-goal-progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  margin-top: 7px;
+}
+
+.dashboard-goal-progress .progress-track {
+  flex: 1 1 70px;
+  min-width: 42px;
+  height: 5px;
+  margin: 0;
+  overflow: hidden;
+  border-radius: 4px;
+  background: #e5ecdf;
+}
+
+.dashboard-goal-progress .progress-track > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #6d9860;
+}
+
+.goal-progress-label {
+  flex: 0 1 auto;
+  max-width: 68%;
+  overflow: hidden;
+  color: #648157;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dashboard-goal-meta {
+  display: block;
+  min-width: 0;
+  margin: 6px 0 0;
+  overflow: hidden;
+  color: #74806b;
+  font-size: 10px;
+  line-height: 1.5;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dashboard-goal-linked {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 17px;
+  margin-top: 5px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #627e59;
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.dashboard-goal-linked svg {
+  width: 11px;
+  height: 11px;
+}
+
+.dashboard-previous {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 7px;
+  width: 100%;
+  min-height: 34px;
+  margin: 0;
+  padding: 8px 13px;
+  border: 0;
+  border-top: 1px dashed #dce6d5;
+  background: #f7faf3;
+  color: #6b835e;
+  font-size: 10px;
+  line-height: 1.4;
+  text-align: left;
+}
+
+button.dashboard-previous:hover,
+.dashboard-previous > button:hover {
+  color: #355b3e;
+  background: #eef5e7;
+}
+
+.dashboard-previous svg {
+  flex: 0 0 12px;
+  width: 12px;
+  height: 12px;
+}
+
+.dashboard-goals-empty,
+.dashboard-empty-goals,
+.weekly-dashboard-empty,
+.weekly-dashboard-panel > .soft-empty {
+  margin: 0;
+  padding: 14px 13px;
+  color: #7b8973;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.dashboard-goals-empty .btn,
+.dashboard-empty-goals .btn,
+.weekly-dashboard-empty .btn {
+  min-height: 28px;
+  margin-top: 8px;
+  padding: 4px 8px;
+  font-size: 11px;
+}
+
+.weekly-dashboard-empty > p {
+  margin: 0;
+}
+
+.dashboard-goals-more {
+  width: 100%;
+  min-height: 30px;
+  padding: 7px 13px;
+  border-top: 1px solid var(--line);
+  font-size: 10px;
+  text-align: left;
+}
+
+.attention-list > li {
+  min-width: 0;
+  padding: 10px 13px;
+}
+
+.attention-list > li + li {
+  border-top: 1px solid var(--line);
+}
+
+.attention-panel .followup-title-line {
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.attention-panel .followup-title {
+  min-width: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.attention-panel .followup-meta {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  margin-top: 6px;
+  padding-left: 28px;
+}
+
+.attention-panel .followup-meta > .badge {
+  min-height: 24px;
+  padding: 3px 6px;
+  font-size: 10px;
+}
+
+.attention-panel .inline-date.deadline-tag,
+.attention-panel .waiting-next-date.deadline-tag {
+  min-height: 24px;
+  padding: 3px 6px;
+  font-size: 10px;
+}
+
+.attention-source {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  margin-top: 0;
+  margin-bottom: 4px;
+  overflow: hidden;
+  color: #829075;
+  font-size: 9px;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.attention-source svg {
+  width: 11px;
+  height: 11px;
+}
+
+.attention-panel .followup-tracking {
+  margin-top: 6px;
+}
+
+.attention-panel .waiting-age {
+  color: #6a785f;
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.meeting-route-actions,
+.meeting-route {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+  min-width: 0;
+}
+
+.meeting-route-actions > button,
+.meeting-route > button,
+button.meeting-route {
+  justify-content: center;
+  min-height: 27px;
+  padding: 4px 7px;
+  border: 1px solid #d4e0cd;
+  border-radius: 5px;
+  background: #fbfcf8;
+  color: #537248;
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.meeting-route-actions > button:hover,
+.meeting-route > button:hover,
+button.meeting-route:hover {
+  border-color: #acc6a0;
+  background: #edf5e7;
+  color: #305b3e;
+}
+
+.meeting-route-actions svg,
+.meeting-route svg {
+  width: 12px;
+  height: 12px;
+}
+
+.attention-list .meeting-route-actions {
+  margin-top: 7px;
+  margin-left: 28px;
+}
+
+.meeting-route-panel,
+.action-source-context {
+  display: block;
+  min-width: 0;
+  padding: 11px 12px;
+  border: 1px solid #d7e2d0;
+  border-radius: 8px;
+  background: #f6faf2;
+  color: #687b5f;
+  font-size: 11px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.meeting-route-panel p,
+.action-source-context p {
+  margin: 0;
+}
+
+.meeting-route-panel p + p,
+.action-source-context p + p {
+  margin-top: 5px;
+}
+
+.meeting-route-panel .meeting-route-actions,
+.action-source-context .meeting-route-actions {
+  margin-top: 8px;
+}
+
+.meeting-route-panel h3,
+.action-source-context h3,
+.meeting-route-panel strong,
+.action-source-context strong {
+  margin: 0 0 5px;
+  color: #3a6444;
+  font-size: 12px;
+}
+
+.action-source-context .btn {
+  min-height: 28px;
+  margin-top: 8px;
+  padding: 4px 8px;
+  font-size: 11px;
+}
+
+.focus-goal-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 20px;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  padding: 4px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: #809875;
+}
+
+.focus-goal-link:hover {
+  background: #eaf3e3;
+  color: #3b714a;
+}
+
+.focus-goal-link svg {
+  flex: 0 0 12px;
+  width: 12px;
+  height: 12px;
+}
+
+.full-table:has(.meeting-route-actions) {
+  min-width: 850px;
+}
+
+.full-table:has(.meeting-route-actions) > thead > tr > th.row-action-col {
+  width: 190px;
+}
+
+.dashboard-goal-title:focus-visible,
+.dashboard-goal-linked:focus-visible,
+.dashboard-previous:focus-visible,
+.focus-goal-link:focus-visible,
+.meeting-route-actions > button:focus-visible,
+button.meeting-route:focus-visible {
+  outline: 2px solid #80b8a6;
+  outline-offset: 2px;
+}
+
+.dashboard-previous[hidden],
+.meeting-route-panel[hidden],
+.action-source-context[hidden] {
+  display: none;
+}
+
+@media (min-width: 1201px) and (max-height: 760px) {
+  .dashboard-goal-row,
+  .attention-list > li {
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+
+  .dashboard-goal-progress,
+  .dashboard-goal-meta,
+  .attention-panel .followup-meta {
+    margin-top: 5px;
+  }
+}
+
+@media (max-width: 600px) {
+  .weekly-dashboard-panel > .panel-header,
+  .weekly-dashboard-panel > .followup-header,
+  .attention-panel > .panel-header,
+  .attention-panel > .followup-header,
+  .dashboard-goal-row,
+  .attention-list > li {
+    padding-right: 12px;
+    padding-left: 12px;
+  }
+}

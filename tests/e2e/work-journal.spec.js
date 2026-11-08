@@ -1,0 +1,636 @@
+import { test, expect } from "@playwright/test";
+import { readFile } from "node:fs/promises";
+import { createRecord, validateStore } from "../../src/model.js";
+import { openCreationExtras } from "./creation-support.js";
+
+const KEY = "is-takip-v1";
+const SESSION_KEY = `${KEY}-work-session`;
+const START = new Date("2026-11-07T12:00:00Z");
+const STAMP = "2026-11-01T09:00:00.000Z";
+const NOTE =
+  '<img src=x onerror="window.journalInjected=1"> Üç madde incelendi.';
+const NEXT =
+  "<script>window.journalInjected=1</script> Tasarım yanıtını değerlendir.";
+
+function recordsFixture() {
+  return [
+    createRecord({
+      id: "journal-weekly",
+      type: "weekly",
+      title: "Haftalık inceleme hedefi",
+      periodKey: "2026-W45",
+      targetValue: 10,
+      currentValue: 4,
+      metric: "Madde",
+      createdAt: STAMP,
+      updatedAt: STAMP,
+    }),
+    createRecord({
+      id: "journal-daily",
+      title: "Dokümanları incele",
+      status: "in_progress",
+      parentId: "journal-weekly",
+      priority: "high",
+      dueDate: "2026-11-07",
+      nextAction: "İlk üç maddeyi kontrol et",
+      description: "Kaynak notu korunmalı.",
+      sourceFields: { "Özgün alan": { value: "Korunacak veri" } },
+      createdAt: STAMP,
+      updatedAt: STAMP,
+    }),
+  ];
+}
+
+function log(id, date, durationMs, note = "", nextAction = "") {
+  return {
+    id,
+    date,
+    endedAt: `${date}T12:00:00.000Z`,
+    durationMs,
+    note,
+    nextAction,
+  };
+}
+
+async function seed(page, records = recordsFixture()) {
+  await page.clock.install({ time: START });
+  await page.clock.pauseAt(START);
+  await page.addInitScript(
+    ({ key, sessionKey, records }) => {
+      if (sessionStorage.getItem("work-journal-test-seeded")) return;
+      localStorage.setItem(
+        key,
+        JSON.stringify({
+          version: 1,
+          records,
+          odak: {
+            version: 1,
+            preferences: { density: "comfortable" },
+            history: [],
+          },
+        }),
+      );
+      localStorage.setItem(
+        `${key}-preferences`,
+        JSON.stringify({ density: "comfortable" }),
+      );
+      localStorage.removeItem(sessionKey);
+      sessionStorage.setItem("work-journal-test-seeded", "true");
+    },
+    { key: KEY, sessionKey: SESSION_KEY, records },
+  );
+  await page.goto("/");
+  await page.locator('#nav [data-view="daily"]').click();
+  return records;
+}
+
+const readRecords = (page) =>
+  page.evaluate((key) => JSON.parse(localStorage.getItem(key)).records, KEY);
+const readSaved = (page) =>
+  page.evaluate((key) => localStorage.getItem(key), KEY);
+const row = (page, id) =>
+  page.locator(`.full-table > tbody > tr[data-record-row][data-id="${id}"]`);
+const panel = (page) => page.locator("#work-session-panel");
+const finishDialog = (page) => page.locator("#work-finish-dialog");
+
+async function beginFinish(page, durationMs = 65_000) {
+  await row(page, "journal-daily").locator(".work-start").click();
+  await page.clock.fastForward(durationMs);
+  await panel(page)
+    .getByRole("button", { name: "Oturumu bitir", exact: true })
+    .click();
+  await expect(finishDialog(page)).toBeVisible();
+  await expect(panel(page)).toHaveAttribute("data-phase", "paused");
+}
+
+async function finish(page, { note = "", nextAction } = {}) {
+  await finishDialog(page).locator('[name="resultNote"]').fill(note);
+  if (nextAction !== undefined)
+    await finishDialog(page).locator('[name="nextAction"]').fill(nextAction);
+  await finishDialog(page)
+    .getByRole("button", { name: "Kaydet ve bitir", exact: true })
+    .click();
+  await expect(finishDialog(page)).not.toBeVisible();
+  await expect(panel(page)).not.toBeVisible();
+}
+
+async function openBackup(page) {
+  await page.getByRole("button", { name: "Ayarlar", exact: true }).click();
+  const backup = page.locator("#settings-dialog .settings-backup");
+  if (!(await backup.evaluate((element) => element.open)))
+    await backup.locator(":scope > summary").click();
+}
+
+test("finishing freezes the session, saves one dated journal entry with the next step, and reload undo restores the exact old record", async ({
+  page,
+}) => {
+  const originals = await seed(page);
+  await beginFinish(page);
+  await expect(finishDialog(page).locator('[name="nextAction"]')).toHaveValue(
+    originals[1].nextAction,
+  );
+  await page.clock.fastForward(120_000);
+  await expect(page.locator("#work-session-time")).toHaveText("00:01:05");
+  expect(await readRecords(page)).toEqual(originals);
+  await finish(page, { note: NOTE, nextAction: NEXT });
+  const saved = await readRecords(page);
+  expect(saved[0]).toEqual(originals[0]);
+  const daily = saved.find((record) => record.id === "journal-daily");
+  expect(daily.workLog).toHaveLength(1);
+  expect(daily.workLog[0]).toEqual({
+    id: expect.any(String),
+    date: "2026-11-07",
+    endedAt: "2026-11-07T12:01:05.000Z",
+    durationMs: 65_000,
+    note: NOTE,
+    nextAction: NEXT,
+  });
+  expect(daily.nextAction).toBe(NEXT);
+  expect({
+    ...daily,
+    nextAction: originals[1].nextAction,
+    updatedAt: originals[1].updatedAt,
+    workLog: undefined,
+  }).toEqual({ ...originals[1], workLog: undefined });
+  const state = await page.evaluate(
+    (key) => JSON.parse(localStorage.getItem(key)),
+    SESSION_KEY,
+  );
+  expect(state.currentId).toBeNull();
+  expect(
+    state.entries.find((entry) => entry.recordId === daily.id).status,
+  ).toBe("finished");
+  await page.reload();
+  await page.locator('#nav [data-view="daily"]').click();
+  await page
+    .locator('[data-action="work-journal"][data-id="journal-daily"]')
+    .click();
+  const journal = page.locator("#work-journal-dialog");
+  await expect(journal).toBeVisible();
+  await expect(journal.locator(".work-journal-entry")).toHaveCount(1);
+  await expect(journal).toContainText(NOTE);
+  await expect(journal).toContainText(NEXT);
+  await expect(journal.locator("img, script")).toHaveCount(0);
+  expect(await page.evaluate(() => window.journalInjected)).toBeUndefined();
+  await journal.getByRole("button", { name: "Tamam", exact: true }).click();
+  await page.getByRole("button", { name: "Geri al", exact: true }).click();
+  expect(await readRecords(page)).toEqual(originals);
+  await expect(
+    page.getByRole("button", { name: "Geri al", exact: true }),
+  ).toBeDisabled();
+});
+
+test("results are optional and successive sessions have separate durable entries without completing the task", async ({
+  page,
+}) => {
+  const originals = await seed(page);
+  await beginFinish(page, 10_000);
+  await finish(page);
+  await beginFinish(page, 20_000);
+  await finish(page, { nextAction: "Son kontrolü yap" });
+  const daily = (await readRecords(page)).find(
+    (record) => record.id === "journal-daily",
+  );
+  expect(daily.status).toBe(originals[1].status);
+  expect(daily.workLog.map((entry) => entry.durationMs)).toEqual([
+    10_000, 20_000,
+  ]);
+  expect(new Set(daily.workLog.map((entry) => entry.id)).size).toBe(2);
+  expect(daily.workLog.map((entry) => entry.note)).toEqual(["", ""]);
+  expect(daily.workLog.map((entry) => entry.nextAction)).toEqual([
+    originals[1].nextAction,
+    "Son kontrolü yap",
+  ]);
+});
+
+test("a failed journal write retains the paused draft and retry saves the log and next step once", async ({
+  page,
+}) => {
+  const originals = await seed(page);
+  await beginFinish(page);
+  await finishDialog(page)
+    .locator('[name="resultNote"]')
+    .fill("Kaybolmayacak sonuç");
+  await finishDialog(page)
+    .locator('[name="nextAction"]')
+    .fill("Kaybolmayacak sonraki adım");
+  await page.evaluate((key) => {
+    window.journalSetItem = Storage.prototype.setItem;
+    Storage.prototype.setItem = function (storageKey, value) {
+      if (storageKey === key)
+        throw new DOMException("Depolama dolu", "QuotaExceededError");
+      return window.journalSetItem.call(this, storageKey, value);
+    };
+  }, KEY);
+  await finishDialog(page)
+    .getByRole("button", { name: "Kaydet ve bitir", exact: true })
+    .click();
+  await expect(finishDialog(page)).toBeVisible();
+  await expect(finishDialog(page).locator('[role="alert"]')).toBeVisible();
+  await expect(finishDialog(page).locator('[name="resultNote"]')).toHaveValue(
+    "Kaybolmayacak sonuç",
+  );
+  await expect(finishDialog(page).locator('[name="nextAction"]')).toHaveValue(
+    "Kaybolmayacak sonraki adım",
+  );
+  await expect(panel(page)).toHaveAttribute("data-phase", "paused");
+  expect(await readRecords(page)).toEqual(originals);
+  await page.evaluate(() => {
+    Storage.prototype.setItem = window.journalSetItem;
+  });
+  await finishDialog(page)
+    .getByRole("button", { name: "Kaydet ve bitir", exact: true })
+    .click();
+  await expect(finishDialog(page)).not.toBeVisible();
+  const daily = (await readRecords(page)).find(
+    (record) => record.id === "journal-daily",
+  );
+  expect(daily.workLog).toHaveLength(1);
+  expect(daily.workLog[0]).toMatchObject({
+    durationMs: 65_000,
+    note: "Kaybolmayacak sonuç",
+    nextAction: "Kaybolmayacak sonraki adım",
+  });
+  expect(daily.nextAction).toBe("Kaybolmayacak sonraki adım");
+});
+
+test("finishing the same session from two open windows records its duration only once", async ({
+  page,
+  context,
+}) => {
+  await seed(page);
+  await beginFinish(page, 45_000);
+  await finishDialog(page)
+    .locator('[name="resultNote"]')
+    .fill("İlk kaydedilen sonuç");
+  const other = await context.newPage();
+  await other.goto("/");
+  await panel(other)
+    .getByRole("button", { name: "Oturumu bitir", exact: true })
+    .click();
+  await expect(finishDialog(other)).toBeVisible();
+  await finishDialog(other)
+    .locator('[name="resultNote"]')
+    .fill("İkinci pencerenin sonucu");
+  await finishDialog(page)
+    .getByRole("button", { name: "Kaydet ve bitir", exact: true })
+    .click();
+  await expect(finishDialog(page)).not.toBeVisible();
+  await finishDialog(other)
+    .getByRole("button", { name: "Kaydet ve bitir", exact: true })
+    .click();
+  await expect(finishDialog(other)).not.toBeVisible();
+  const daily = (await readRecords(other)).find(
+    (record) => record.id === "journal-daily",
+  );
+  expect(daily.workLog).toHaveLength(1);
+  expect(daily.workLog[0]).toMatchObject({
+    durationMs: 45_000,
+    note: "İlk kaydedilen sonuç",
+  });
+  await other.reload();
+  expect(
+    (await readRecords(other)).find((record) => record.id === daily.id).workLog,
+  ).toEqual(daily.workLog);
+});
+
+test("a saved journal whose timer finalization fails cannot resume and recovers without losing subsequent work", async ({
+  page,
+}) => {
+  await seed(page);
+  await beginFinish(page, 45_000);
+  const refuseSessionWrites = ({ sessionKey, flag }) => {
+    const original = Storage.prototype.setItem;
+    Storage.prototype.setItem = function (storageKey, value) {
+      if (storageKey === sessionKey && sessionStorage.getItem(flag))
+        throw new DOMException("Oturum yazılamadı", "QuotaExceededError");
+      return original.call(this, storageKey, value);
+    };
+  };
+  const config = {
+    sessionKey: SESSION_KEY,
+    flag: "journal-block-session-writes",
+  };
+  await page.evaluate(
+    (flag) => sessionStorage.setItem(flag, "true"),
+    config.flag,
+  );
+  await page.addInitScript(refuseSessionWrites, config);
+  await page.evaluate(refuseSessionWrites, config);
+  await finishDialog(page)
+    .getByRole("button", { name: "Kaydet ve bitir", exact: true })
+    .click();
+  await expect(finishDialog(page).locator('[role="alert"]')).toBeVisible();
+  await finishDialog(page)
+    .getByRole("button", { name: "Vazgeç", exact: true })
+    .click();
+  let daily = (await readRecords(page)).find(
+    (record) => record.id === "journal-daily",
+  );
+  expect(daily.workLog).toHaveLength(1);
+  expect(daily.workLog[0].durationMs).toBe(45_000);
+  await expect(row(page, daily.id).locator(".work-start")).toBeDisabled();
+  await page.reload();
+  await page.locator('#nav [data-view="daily"]').click();
+  await expect(row(page, daily.id).locator(".work-start")).toBeDisabled();
+  await page.evaluate((flag) => sessionStorage.removeItem(flag), config.flag);
+  await page.reload();
+  await page.locator('#nav [data-view="daily"]').click();
+  await expect(row(page, daily.id).locator(".work-start")).toBeEnabled();
+  await beginFinish(page, 10_000);
+  await finish(page);
+  daily = (await readRecords(page)).find((record) => record.id === daily.id);
+  expect(daily.workLog.map((entry) => entry.durationMs)).toEqual([
+    45_000, 10_000,
+  ]);
+  expect(new Set(daily.workLog.map((entry) => entry.id)).size).toBe(2);
+});
+
+test("a journal backup survives reset and restores all records and journal fields losslessly", async ({
+  page,
+}) => {
+  await seed(page);
+  await beginFinish(page, 61_000);
+  await finish(page, { note: NOTE, nextAction: NEXT });
+  const records = await readRecords(page);
+  await openBackup(page);
+  const [download] = await Promise.all([
+    page.waitForEvent("download"),
+    page
+      .getByRole("button", { name: "Kayıt yedeğini indir", exact: true })
+      .click(),
+  ]);
+  const bytes = await readFile(await download.path());
+  expect(validateStore(JSON.parse(bytes.toString("utf8"))).records).toEqual(
+    records,
+  );
+  page.once("dialog", (dialog) => dialog.accept());
+  await page
+    .getByRole("button", { name: "Çalışma alanını sıfırla", exact: true })
+    .click();
+  expect(await readRecords(page)).toEqual([]);
+  await expect(page.locator("#settings-dialog")).not.toBeVisible();
+  await openBackup(page);
+  page.once("dialog", (dialog) => dialog.accept());
+  await page.locator("#restore-file").setInputFiles({
+    name: "is-gunlugu-yedegi.json",
+    mimeType: "application/json",
+    buffer: bytes,
+  });
+  await expect.poll(() => readRecords(page)).toEqual(records);
+  await page.reload();
+  expect(await readRecords(page)).toEqual(records);
+});
+
+test("a backup with malformed journal data is rejected before replacement and does not alter the workspace", async ({
+  page,
+}) => {
+  const records = await seed(page);
+  await openBackup(page);
+  const saved = await readSaved(page);
+  let confirmations = 0;
+  page.on("dialog", async (dialog) => {
+    confirmations++;
+    await dialog.dismiss();
+  });
+  const valid = log("invalid-backup-entry", "2026-11-07", 60_000);
+  for (const workLog of [
+    [{ ...valid, durationMs: -1 }],
+    [{ ...valid, date: "2026-02-30" }],
+    [valid, valid],
+  ]) {
+    const backup = {
+      version: 1,
+      records: records.map((record) =>
+        record.type === "daily" ? { ...record, workLog } : record,
+      ),
+    };
+    await page.locator("#restore-file").setInputFiles({
+      name: "gecersiz-gunluk.json",
+      mimeType: "application/json",
+      buffer: Buffer.from(JSON.stringify(backup)),
+    });
+    await expect(page.locator("#settings-backup-error")).toBeVisible();
+    await expect(page.locator("#settings-backup-error")).not.toBeEmpty();
+    expect(await readSaved(page)).toBe(saved);
+  }
+  expect(confirmations).toBe(0);
+});
+
+test("weekly goals total saved daily time across statuses while keeping their numeric progress", async ({
+  page,
+}) => {
+  const records = recordsFixture();
+  records[1].workLog = [log("active-log", "2026-11-07", 30 * 60_000)];
+  records.push(
+    ...["completed", "cancelled", "transferred"].map((status) =>
+      createRecord({
+        id: `journal-${status}`,
+        title: `Geçmiş çalışma ${status}`,
+        status,
+        parentId: "journal-weekly",
+        workLog: [log(`${status}-log`, "2026-10-29", 30 * 60_000)],
+      }),
+    ),
+  );
+  await seed(page, records);
+  const saved = await readSaved(page);
+  await page.locator('#nav [data-view="weekly"]').click();
+  await expect(
+    row(page, "journal-weekly").locator(".metric-cell"),
+  ).toContainText("%40");
+  await expect(
+    row(page, "journal-weekly").locator(".weekly-work-time"),
+  ).toHaveCount(0);
+  await row(page, "journal-weekly")
+    .locator('[data-action="goal-details"]')
+    .click();
+  await expect(page.locator("#goal-detail-panel")).toContainText(
+    /2\s*(?:sa|saat)/,
+  );
+  await expect(row(page, "journal-weekly").locator(".work-start")).toHaveCount(
+    0,
+  );
+  expect(await readSaved(page)).toBe(saved);
+});
+
+test("the weekly report uses saved entry dates from Monday through Sunday and escapes journal text", async ({
+  page,
+}) => {
+  const records = recordsFixture();
+  records[1].workLog = [
+    log("previous-week", "2026-11-01", 60_000, "Önceki haftanın sonucu"),
+    log("monday", "2026-11-02", 120_000, NOTE, NEXT),
+    log("sunday", "2026-11-08", 180_000, "Pazar sonucu"),
+    log("next-week", "2026-11-09", 240_000, "Sonraki haftanın sonucu"),
+  ];
+  await seed(page, records);
+  const saved = await readSaved(page);
+  await page.locator('[data-action="work-session-history"]').click();
+  const report = page.locator("#work-week-dialog");
+  await expect(report).toBeVisible();
+  await expect(report.locator(".work-week-record")).toHaveCount(1);
+  await expect(report).toContainText(NOTE);
+  await expect(report).toContainText("Pazar sonucu");
+  await expect(report).not.toContainText("Önceki haftanın sonucu");
+  await expect(report).not.toContainText("Sonraki haftanın sonucu");
+  await expect(report.locator("img, script")).toHaveCount(0);
+  expect(await page.evaluate(() => window.journalInjected)).toBeUndefined();
+  await report.locator('[data-action="work-week-prev"]').click();
+  await expect(report).toContainText("Önceki haftanın sonucu");
+  await expect(report).not.toContainText("Pazar sonucu");
+  await report.locator('[data-action="work-week-current"]').click();
+  await report.locator('[data-action="work-week-next"]').click();
+  await expect(report).toContainText("Sonraki haftanın sonucu");
+  await expect(report).not.toContainText(NOTE);
+  expect(await readSaved(page)).toBe(saved);
+});
+
+for (const type of ["meeting", "waiting"]) {
+  test(`${type} follow-ups create a linked daily task only on save and reopen that task without duplicates`, async ({
+    page,
+  }) => {
+    const source = createRecord({
+      id: `source-${type}`,
+      type,
+      title: `Takip edilecek ${type}`,
+      status: type === "waiting" ? "waiting_response" : "in_progress",
+      priority: "high",
+      dueDate: "2026-11-10",
+      nextAction: "Yanıtı incele",
+      description: "Kaynak açıklaması",
+      owner: "Kişisel kullanıcı",
+      sourceFields: { "Özgün kaynak": "Korunmalı" },
+      createdAt: STAMP,
+      updatedAt: STAMP,
+    });
+    const records = [recordsFixture()[0], source];
+    await seed(page, records);
+    await page.locator(`#nav [data-view="${type}"]`).click();
+    const trigger = page.locator(
+      type === "meeting"
+        ? `[data-action="meeting-route"][data-route="daily"][data-id="${source.id}"]`
+        : `[data-action="daily-from-source"][data-id="${source.id}"]`,
+    );
+    const saved = await readSaved(page);
+    await trigger.click();
+    const editor = page.locator("#editor");
+    const form = page.locator("#record-form");
+    await expect(editor).toBeVisible();
+    await openCreationExtras(page);
+    for (const name of ["title", "description"]) {
+      await expect(form.locator(`[name="${name}"]`)).toHaveValue(source[name]);
+    }
+    await expect(form.locator('[name="priority"]')).toHaveValue(
+      type === "meeting" ? "normal" : source.priority,
+    );
+    await expect(form.locator('[name="nextAction"]')).toHaveValue(
+      type === "meeting" ? "" : source.nextAction,
+    );
+    await expect(form.locator('[name="owner"]')).toHaveValue(
+      type === "meeting" ? "" : source.owner,
+    );
+    await expect(form.locator('[name="dueDate"]')).toHaveValue(
+      type === "meeting" ? "" : "10.11.2026",
+    );
+    await expect(form.locator('select[name="type"]')).toHaveValue("daily");
+    await expect(form.locator('[name="status"]')).toHaveValue("planned");
+    expect(await readSaved(page)).toBe(saved);
+    await editor.getByRole("button", { name: "Vazgeç", exact: true }).click();
+    expect(await readSaved(page)).toBe(saved);
+    await trigger.click();
+    await form.locator('[name="parentId"]').selectOption("journal-weekly");
+    await editor
+      .getByRole("button", { name: "Kaydı ekle", exact: true })
+      .click();
+    await expect(editor).not.toBeVisible();
+    const created = await readRecords(page);
+    const daily = created.find((record) => record.type === "daily");
+    expect(created).toHaveLength(3);
+    expect(created.find((record) => record.id === source.id)).toEqual(
+      type === "meeting"
+        ? {
+            ...source,
+            status: daily.status,
+          }
+        : source,
+    );
+    expect(daily.status).toBe("planned");
+    expect(daily.parentId).toBe("journal-weekly");
+    expect(daily.sourceFields.__followupSource).toEqual({
+      recordId: source.id,
+      type,
+    });
+    await page.locator(`#nav [data-view="${type}"]`).click();
+    await page
+      .locator(
+        type === "meeting"
+          ? `[data-action="open-linked-action"][data-id="${source.id}"]`
+          : `[data-action="daily-from-source"][data-id="${source.id}"]`,
+      )
+      .last()
+      .click();
+    await expect(
+      editor.getByRole("button", {
+        name: "Değişiklikleri kaydet",
+        exact: true,
+      }),
+    ).toBeVisible();
+    await editor
+      .getByRole("button", { name: "Değişiklikleri kaydet", exact: true })
+      .click();
+    expect(
+      (await readRecords(page)).filter((record) => record.type === "daily"),
+    ).toHaveLength(1);
+  });
+}
+
+test("two already-open source forms do not create duplicate daily tasks across windows", async ({
+  page,
+  context,
+}) => {
+  const source = createRecord({
+    id: "source-shared",
+    type: "meeting",
+    title: "Ortak takip konusu",
+  });
+  await seed(page, [source]);
+  await page.locator('#nav [data-view="meeting"]').click();
+  await page
+    .locator(
+      '[data-action="meeting-route"][data-route="daily"][data-id="source-shared"]',
+    )
+    .click();
+  const other = await context.newPage();
+  await other.goto("/");
+  await other.locator('#nav [data-view="meeting"]').click();
+  await other
+    .locator(
+      '[data-action="meeting-route"][data-route="daily"][data-id="source-shared"]',
+    )
+    .click();
+  await page
+    .locator("#editor")
+    .getByRole("button", { name: "Kaydı ekle", exact: true })
+    .click();
+  const firstSaved = await readSaved(page);
+  const daily = (await readRecords(page)).find(
+    (record) => record.type === "daily",
+  );
+  await expect(other.locator('#record-form [type="submit"]')).toHaveText(
+    "Mevcut kaydı aç",
+  );
+  await other.locator('#record-form [type="submit"]').click();
+  await expect(other.locator('#record-form [name="id"]')).toHaveValue(daily.id);
+  expect(await readSaved(other)).toBe(firstSaved);
+  await expect
+    .poll(
+      async () =>
+        (await readRecords(other)).filter((record) => record.type === "daily")
+          .length,
+    )
+    .toBe(1);
+  expect(
+    (await readRecords(other)).find((record) => record.id === source.id),
+  ).toEqual(source);
+});

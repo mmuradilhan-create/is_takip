@@ -1,0 +1,131 @@
+/* Keep the calendar action beside the existing toolbar controls. */
+html {
+  scrollbar-gutter: stable;
+}
+
+@media (min-width: 761px) {
+  .topbar {
+    gap: 12px;
+  }
+
+  .topbar-right {
+    flex: 1 1 auto;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
+  .topbar-right .search {
+    flex: 0 1 220px;
+    min-width: 120px;
+  }
+
+  .topbar-right .search input {
+    width: 100%;
+  }
+}
+
+.calendar-trigger {
+  min-height: 40px;
+  padding: 8px 11px;
+  gap: 6px;
+  border-radius: 8px;
+  border-color: var(--theme-border, #dbe5d3);
+  background: var(--theme-raised, #f4f7ef);
+  color: var(--theme-accent, #456346);
+  font-size: 12px;
+}
+
+.calendar-trigger:hover {
+  background: var(--theme-hover, #eaf2e2);
+}
+
+.calendar-trigger svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Narrow desktop lists use a full-width controls row with a flexible search. */
+@media (min-width: 761px) and (max-width: 1099px) {
+  .topbar {
+    flex-wrap: wrap;
+    row-gap: 10px;
+  }
+
+  .topbar-start {
+    flex: 1 1 100%;
+  }
+
+  .topbar-right {
+    display: flex;
+    flex: 1 1 100%;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .topbar-right .search {
+    flex: 1 1 150px;
+    min-width: 120px;
+  }
+
+  .topbar .search input {
+    width: 100%;
+  }
+}
+
+/* Every section reserves the same title row at medium desktop widths. */
+@media (min-width: 1100px) and (max-width: 1250px) {
+  .topbar {
+    flex-wrap: wrap;
+    row-gap: 10px;
+  }
+
+  .topbar-start {
+    flex: 1 1 100%;
+  }
+
+  .topbar-right {
+    display: flex;
+    flex: 1 1 100%;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .topbar-right .search {
+    flex: 1 1 150px;
+    min-width: 120px;
+  }
+
+  .topbar .search input {
+    width: 100%;
+  }
+}
+
+/* Calendar remains a named icon action; search and New record share row two. */
+@media (max-width: 760px) {
+  .topbar {
+    grid-template-columns: minmax(0, 1fr) auto auto auto;
+    grid-template-areas:
+      "title calendar undo settings"
+      "search search search new";
+  }
+
+  .topbar .calendar-trigger {
+    grid-area: calendar;
+    width: 36px;
+    min-width: 36px;
+    height: 38px;
+    min-height: 38px;
+    padding: 0;
+  }
+
+  .topbar .calendar-trigger > span {
+    display: none;
+  }
+}

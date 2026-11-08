@@ -1,0 +1,565 @@
+/* The journal stays small when idle and expands only for active controls. */
+.sidebar-work-journal {
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: 18px auto 15px 26px;
+  gap: 6px;
+  flex: 0 0 auto;
+  width: 100%;
+  height: auto;
+  min-width: 0;
+  min-height: 0;
+  max-height: none;
+  margin-top: auto;
+  padding: 10px;
+  overflow: hidden;
+  border: 1px solid var(--theme-border, #dce6d8);
+  border-radius: 11px;
+  background: var(--theme-soft, #f7faf4);
+  color: var(--theme-ink, #36513d);
+}
+
+.sidebar-journal-heading {
+  grid-row: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  min-width: 0;
+}
+
+.sidebar-journal-heading h2 {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  margin: 0;
+  color: #385c45;
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.sidebar-journal-heading h2 svg {
+  width: 12px;
+  height: 12px;
+  flex: 0 0 12px;
+  color: #6e8966;
+}
+
+.sidebar-journal-phase {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+  padding: 2px 4px;
+  border-radius: 4px;
+  background: var(--theme-surface, #fff);
+  color: #4d8059;
+  font-size: 9px;
+  font-weight: 550;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.sidebar-journal-phase::before {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: currentColor;
+  content: "";
+}
+
+.sidebar-journal-phase[data-phase="paused"] {
+  color: #927343;
+}
+
+.sidebar-journal-phase[hidden] {
+  display: none;
+}
+
+.sidebar .work-session-panel {
+  grid-row: 2;
+  align-self: stretch;
+  position: static;
+  inset: auto;
+  z-index: auto;
+  width: auto;
+  max-width: 100%;
+  min-width: 0;
+  min-height: 0;
+  max-height: 100%;
+  margin: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.sidebar .work-session-panel[hidden] {
+  display: none;
+}
+
+.sidebar .work-session-summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 4px;
+  min-height: 0;
+  padding: 0;
+}
+
+.sidebar .work-session-task-link {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  min-width: 0;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: 2px;
+  background: transparent;
+  color: #365b40;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.4;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+.sidebar .work-session-task-link:hover {
+  color: var(--green);
+  text-decoration: underline;
+}
+
+.sidebar .work-session-duration {
+  grid-column: auto;
+  grid-row: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+  min-height: 25px;
+  text-align: left;
+}
+
+.sidebar #work-session-time {
+  color: #174d43;
+  font-size: 22px;
+  line-height: 1.15;
+  letter-spacing: 0.2px;
+}
+
+.sidebar .work-session-controls {
+  grid-column: auto;
+  grid-row: auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 6px;
+  min-width: 0;
+}
+
+.sidebar .work-session-controls button {
+  gap: 4px;
+  min-width: 0;
+  min-height: 28px;
+  padding: 5px;
+  border-radius: 6px;
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.sidebar .work-session-controls button svg {
+  width: 10px;
+  height: 10px;
+}
+
+.sidebar .work-session-details {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 24px;
+  width: 24px;
+  min-width: 24px;
+  height: 24px;
+  min-height: 24px;
+  margin: 0;
+  padding: 5px;
+  border: 1px solid #dce6d7;
+  border-radius: 5px;
+  background: #fff;
+  color: #657f5c;
+}
+
+.sidebar .work-session-details > span {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.sidebar .work-session-details svg {
+  width: 12px;
+  height: 12px;
+  transform: none;
+}
+
+.sidebar-journal-saved {
+  grid-row: 3;
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  min-width: 0;
+  margin: 0;
+  color: #7b8b73;
+  font-size: 9px;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.sidebar-journal-saved strong {
+  overflow: hidden;
+  color: #55734c;
+  font-size: 10px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+}
+
+.sidebar-journal-saved small {
+  color: #8a9683;
+  font-size: 9px;
+  white-space: nowrap;
+}
+
+.sidebar-journal-separator {
+  color: var(--theme-faint, #9aa393);
+}
+
+.sidebar-work-journal[data-phase="idle"] {
+  grid-template-rows: 18px 15px 26px;
+}
+
+.sidebar-work-journal[data-phase="idle"] .sidebar-journal-saved {
+  grid-row: 2;
+}
+
+.sidebar-work-journal[data-phase="idle"] .sidebar-journal-history {
+  grid-row: 3;
+}
+
+.sidebar-journal-history {
+  grid-row: 4;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 5px;
+  width: 100%;
+  min-width: 0;
+  min-height: 26px;
+  max-width: 100%;
+  margin: 0;
+  padding: 4px 7px;
+  border: 1px solid #dce7d7;
+  border-radius: 6px;
+  background: #fff;
+  color: #4d724b;
+  font-size: 10px;
+  font-weight: 550;
+  line-height: 1.4;
+  text-align: left;
+}
+
+.sidebar-journal-history:hover {
+  border-color: #b5cdae;
+  color: var(--green);
+  background: #f1f7ed;
+}
+
+.sidebar-journal-history svg {
+  width: 11px;
+  height: 11px;
+}
+
+/* Notes use a separate window; they never lengthen the navigation. */
+#work-session-context.work-context-modal {
+  --work-context-height: min(620px, calc(100dvh - 32px));
+  width: 560px;
+  max-width: calc(100vw - 32px);
+  max-height: var(--work-context-height);
+  padding: 0;
+  overflow: hidden;
+  border-radius: 13px;
+}
+
+.work-context-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-height: calc(var(--work-context-height) - 2px);
+}
+
+#work-session-context .modal-header,
+#work-session-context .modal-footer {
+  flex: 0 0 auto;
+  padding: 14px 20px;
+}
+
+#work-session-context .modal-header h2 {
+  font-size: 16px;
+  line-height: 1.45;
+}
+
+#work-session-context .work-context-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 18px 20px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+#work-session-context .work-session-context-grid {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 18px;
+}
+
+#work-session-context .work-session-context-grid h3 {
+  margin: 0 0 6px;
+  color: #3e6244;
+  font-size: 12px;
+}
+
+#work-session-context .work-session-context-grid p {
+  margin: 0;
+  color: #52694e;
+  font-size: 13px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+#work-session-context .work-session-context-grid .work-session-empty {
+  color: #86917d;
+}
+
+#work-session-context .work-session-blocked {
+  margin: 0 0 17px;
+  color: #95652b;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+#work-session-context .modal-footer .btn {
+  min-height: 34px;
+  padding: 8px 13px;
+  font-size: 12px;
+}
+
+/* Short windows retain space for navigation and the session actions. */
+@media (max-height: 780px) {
+  .sidebar .brand-lockup {
+    padding-bottom: 12px;
+    margin-bottom: 12px;
+  }
+
+  .sidebar .nav-label {
+    margin-bottom: 7px;
+  }
+
+  .sidebar .nav {
+    gap: 3px;
+  }
+
+  .sidebar .nav button {
+    min-height: 38px;
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+
+  .sidebar .nav-separator {
+    margin-top: 7px;
+    margin-bottom: 7px;
+  }
+}
+
+@media (max-height: 650px) {
+  .sidebar .brand-lockup {
+    padding-bottom: 7px;
+    margin-bottom: 7px;
+  }
+
+  .sidebar .nav-label {
+    margin-bottom: 4px;
+    font-size: 10px;
+  }
+
+  .sidebar .nav {
+    gap: 2px;
+  }
+
+  .sidebar .nav button {
+    min-height: 32px;
+    padding-top: 5px;
+    padding-bottom: 5px;
+    font-size: 12px;
+  }
+
+  .sidebar .nav-separator {
+    margin-top: 3px;
+    margin-bottom: 3px;
+  }
+
+  .sidebar-work-journal {
+    grid-template-rows: 16px auto 13px 24px;
+    gap: 5px;
+    padding: 9px;
+  }
+
+  .sidebar-work-journal[data-phase="idle"] {
+    grid-template-rows: 16px 13px 24px;
+  }
+
+  .sidebar-journal-history {
+    min-height: 24px;
+  }
+}
+
+@media (max-height: 520px) {
+  .sidebar {
+    padding-top: 10px;
+    padding-bottom: 8px;
+  }
+
+  .sidebar .brand-lockup {
+    padding-bottom: 6px;
+    margin-bottom: 6px;
+  }
+
+  .sidebar .brand-lettering {
+    width: 132px;
+  }
+
+  .sidebar .nav-label,
+  .sidebar .nav-separator {
+    display: none;
+  }
+
+  .sidebar .nav {
+    gap: 2px;
+  }
+
+  .sidebar .nav button {
+    min-height: 29px;
+    padding-top: 4px;
+    padding-bottom: 4px;
+    font-size: 11px;
+  }
+
+  .sidebar-work-journal {
+    grid-template-rows: 15px auto 12px 22px;
+    gap: 4px;
+    padding: 8px;
+    border-radius: 9px;
+  }
+
+  .sidebar-work-journal[data-phase="idle"] {
+    grid-template-rows: 15px 12px 22px;
+  }
+
+  .sidebar-journal-heading h2 {
+    gap: 4px;
+    font-size: 10px;
+  }
+
+  .sidebar-journal-heading h2 svg {
+    width: 10px;
+    height: 10px;
+    flex-basis: 10px;
+  }
+
+  .sidebar-journal-phase {
+    gap: 3px;
+    font-size: 8px;
+  }
+
+  .sidebar .work-session-summary {
+    gap: 3px;
+  }
+
+  .sidebar .work-session-task-link {
+    -webkit-line-clamp: 1;
+    font-size: 10px;
+  }
+
+  .sidebar .work-session-duration {
+    min-height: 21px;
+  }
+
+  .sidebar #work-session-time {
+    font-size: 18px;
+  }
+
+  .sidebar .work-session-controls button {
+    min-height: 24px;
+    padding-top: 4px;
+    padding-bottom: 4px;
+    font-size: 9px;
+  }
+
+  .sidebar-journal-saved,
+  .sidebar-journal-saved small {
+    font-size: 8px;
+  }
+
+  .sidebar-journal-saved strong {
+    font-size: 9px;
+  }
+
+  .sidebar-journal-history {
+    min-height: 22px;
+    padding: 3px 6px;
+    font-size: 9px;
+  }
+}
+
+@media (max-height: 420px) {
+  .sidebar .nav {
+    gap: 1px;
+  }
+
+  .sidebar .nav button {
+    min-height: 27px;
+    padding-top: 3px;
+    padding-bottom: 3px;
+  }
+
+  .sidebar-work-journal {
+    grid-template-rows: 14px auto 11px 20px;
+    gap: 3px;
+    padding: 6px;
+  }
+
+  .sidebar-work-journal[data-phase="idle"] {
+    grid-template-rows: 14px 11px 20px;
+  }
+
+  .sidebar-journal-heading h2 {
+    font-size: 9px;
+  }
+
+  .sidebar-journal-history {
+    min-height: 20px;
+    padding-top: 2px;
+    padding-bottom: 2px;
+  }
+}

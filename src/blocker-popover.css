@@ -1,0 +1,127 @@
+.blocked-badge[data-action="blocker-details"] {
+  cursor: pointer;
+}
+
+.blocked-badge[data-action="blocker-details"]:hover,
+.blocked-badge[data-action="blocker-details"][aria-expanded="true"] {
+  border-color: #d78f89;
+  background: #ffe4e0;
+  color: #a53c36;
+}
+
+.blocked-badge[data-action="blocker-details"]:focus-visible {
+  outline: 2px solid #cf837d;
+  outline-offset: 2px;
+}
+
+.blocker-popover {
+  position: fixed;
+  inset: auto;
+  box-sizing: border-box;
+  width: 300px;
+  max-width: calc(100vw - 16px);
+  max-height: calc(100dvh - 16px);
+  margin: 0;
+  padding: 12px;
+  overflow: auto;
+  border: 1px solid #e3d4cf;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 10px 30px #25372b26;
+  color: #405b44;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.blocker-popover-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.blocker-popover-heading > strong {
+  display: -webkit-box;
+  flex: 1 1 auto;
+  min-width: 0;
+  padding-top: 2px;
+  overflow: hidden;
+  color: #3d5c44;
+  font-size: 12px;
+  font-weight: 650;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.blocker-popover-close {
+  display: inline-grid;
+  flex: 0 0 26px;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  margin: 0;
+  padding: 5px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: #7d8977;
+  cursor: pointer;
+}
+
+.blocker-popover-close:hover {
+  background: #f1f4ee;
+  color: #3d5c44;
+}
+
+.blocker-popover-close:focus-visible {
+  outline: 2px solid #80b8a6;
+  outline-offset: 1px;
+}
+
+.blocker-popover-close svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+}
+
+.blocker-popover > section {
+  margin: 0;
+  padding: 8px 9px;
+  border: 1px solid #f0d7d3;
+  border-radius: 6px;
+  background: #fff6f4;
+}
+
+.blocker-popover > section + section {
+  margin-top: 8px;
+  border-color: #e2e9dc;
+  background: #f7faf4;
+}
+
+.blocker-popover h3 {
+  margin: 0 0 3px;
+  color: #af5149;
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.blocker-popover .blocker-popover-next h3 {
+  color: #63805b;
+}
+
+.blocker-popover p {
+  margin: 0;
+  color: #674a45;
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.blocker-popover .blocker-popover-next p {
+  color: #425f46;
+}

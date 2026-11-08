@@ -1,0 +1,85 @@
+/* Summary and undo controls share the existing application toolbar. */
+.undo-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  min-height: 40px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: #fff;
+  color: #456346;
+}
+.undo-trigger:not(:disabled):hover {
+  background: #edf3e8;
+  border-color: #bdcdb5;
+}
+.undo-trigger:disabled {
+  opacity: 0.4;
+}
+.undo-trigger svg {
+  width: 19px;
+  height: 19px;
+}
+.widget-trigger {
+  min-height: 40px;
+  padding: 8px 11px;
+  gap: 6px;
+  border-radius: 8px;
+  background: #f4f7ef;
+  border-color: #dbe5d3;
+  color: #456346;
+  font-size: 12px;
+}
+.widget-trigger:hover {
+  background: #eaf2e2;
+}
+.widget-trigger svg {
+  width: 16px;
+  height: 16px;
+}
+@media (max-width: 1400px) and (min-width: 761px) {
+  .topbar .today {
+    display: none;
+  }
+  .topbar-right {
+    gap: 9px;
+  }
+  .topbar .search input {
+    width: 180px;
+  }
+}
+@media (max-width: 1100px) and (min-width: 761px) {
+  .topbar .search input {
+    width: 150px;
+  }
+  .topbar-right {
+    gap: 7px;
+  }
+  .widget-trigger {
+    padding-left: 9px;
+    padding-right: 9px;
+  }
+}
+@media (max-width: 760px) {
+  .topbar {
+    grid-template-columns: minmax(0, 1fr) auto auto auto;
+    grid-template-areas: "title undo new settings" "search search search search";
+    column-gap: 7px;
+  }
+  .topbar .widget-trigger {
+    display: none;
+  }
+  .topbar .undo-trigger {
+    grid-area: undo;
+    width: 36px;
+    height: 38px;
+    min-width: 36px;
+    min-height: 38px;
+    border-radius: 9px;
+  }
+}

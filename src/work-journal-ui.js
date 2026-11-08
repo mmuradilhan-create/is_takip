@@ -1,0 +1,524 @@
+import { localDate } from "./model.js";
+import { makePlanningPeriod, shiftPlanningPeriod } from "./planning-periods.js";
+import { totalWorkMs, weekWorkSummary } from "./work-journal.js";
+import { dateInput, dateValue } from "./date-picker.js";
+
+const escapeHtml = (value) =>
+  String(value ?? "").replace(
+    /[&<>"']/g,
+    (character) =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[
+        character
+      ],
+  );
+const journalIcon =
+  '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5H6a2 2 0 0 0-2 2v13h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M8 3h8v4H8zM8 12h8M8 16h5"/></svg>';
+const closeIcon =
+  '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>';
+const previousIcon =
+  '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 6-6 6 6 6"/></svg>';
+const nextIcon =
+  '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m10 6 6 6-6 6"/></svg>';
+const editIcon =
+  '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m16 3 5 5-13 13H3v-5L16 3Zm-2 2 5 5"/></svg>';
+const trashIcon =
+  '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7m4-7v7"/></svg>';
+const dateFormatter = new Intl.DateTimeFormat("tr-TR", {
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+  weekday: "long",
+});
+
+export function formatWorkDuration(milliseconds) {
+  const value = Math.max(0, Number(milliseconds) || 0);
+  const seconds = Math.floor(value / 1000);
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor(seconds / 60) % 60;
+  if (hours) return `${hours} sa${minutes ? ` ${minutes} dk` : ""}`;
+  if (minutes)
+    return `${minutes} dk${seconds % 60 ? ` ${seconds % 60} sn` : ""}`;
+  if (seconds) return `${seconds} sn`;
+  return value ? "1 sn’den az" : "0 dk";
+}
+
+function dateLabel(date) {
+  const parsed = new Date(`${date}T12:00:00`);
+  return Number.isNaN(parsed.getTime())
+    ? String(date || "")
+    : dateFormatter.format(parsed);
+}
+
+function savedEntries(record) {
+  return Array.isArray(record?.workLog) ? record.workLog : [];
+}
+
+function latestFirst(entries) {
+  return [...entries].sort(
+    (first, second) =>
+      String(second.date).localeCompare(String(first.date)) ||
+      String(second.endedAt).localeCompare(String(first.endedAt)) ||
+      String(second.id).localeCompare(String(first.id)),
+  );
+}
+
+function entryMarkup(entry, actions = "") {
+  return `<li><article class="work-journal-entry" data-log-id="${escapeHtml(entry.id)}"><div class="work-journal-entry-heading"><time datetime="${escapeHtml(entry.date)}">${escapeHtml(dateLabel(entry.date))}</time><div class="work-journal-entry-tools"><strong>${escapeHtml(formatWorkDuration(entry.durationMs))}</strong>${actions}</div></div>${entry.note ? `<section class="work-journal-field"><h3>Sonuç</h3><p>${escapeHtml(entry.note)}</p></section>` : '<p class="work-journal-hint">Sonuç notu eklenmemiş.</p>'}${entry.nextAction ? `<section class="work-journal-field"><h3>Sonraki adım</h3><p>${escapeHtml(entry.nextAction)}</p></section>` : ""}</article></li>`;
+}
+
+function totalsMarkup(items) {
+  return `<div class="work-journal-totals">${items.map(([label, value]) => `<div><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`).join("")}</div>`;
+}
+
+function emptyMarkup(title, text) {
+  return `<div class="work-journal-empty"><strong>${escapeHtml(title)}</strong><p>${escapeHtml(text)}</p></div>`;
+}
+
+/** Saved daily work sessions, with explicit corrections and deletions. */
+export function createWorkJournalUI({
+  root = document.querySelector("#app"),
+  getRecords,
+  onUpdateEntry,
+  onDeleteEntry,
+  onError = () => {},
+} = {}) {
+  if (!root || typeof getRecords !== "function")
+    throw new TypeError("İş günlüğü için kayıt listesi gereklidir.");
+  const document = root.ownerDocument;
+  const owner = document.defaultView;
+  const journalDialog = document.createElement("dialog");
+  journalDialog.id = "work-journal-dialog";
+  journalDialog.className = "modal work-journal-modal";
+  journalDialog.setAttribute("aria-label", "İş günlüğü");
+  const weekDialog = document.createElement("dialog");
+  weekDialog.id = "work-week-dialog";
+  weekDialog.className = "modal work-week-modal";
+  weekDialog.setAttribute("aria-label", "Haftalık yapılanlar");
+  const editDialog = document.createElement("dialog");
+  editDialog.id = "work-log-edit-dialog";
+  editDialog.className = "modal work-log-edit-modal";
+  editDialog.setAttribute("aria-label", "Çalışma oturumunu düzenle");
+  root.append(journalDialog, weekDialog, editDialog);
+  let recordId = null;
+  let selectedWeek = makePlanningPeriod("weekly", localDate());
+  let journalKey = "";
+  let weekKey = "";
+  let destroyed = false;
+  let editing = null;
+  let deleting = null;
+  let saving = false;
+  let deletionError = "";
+
+  function find(id) {
+    return getRecords().find((record) => record.id === id);
+  }
+
+  function findEntry(id, entryId) {
+    const record = find(id);
+    return record?.type === "daily"
+      ? savedEntries(record).find((entry) => entry.id === entryId)
+      : null;
+  }
+
+  function entryActions(id, entry) {
+    const values = `data-record-id="${escapeHtml(id)}" data-entry-id="${escapeHtml(entry.id)}"`;
+    if (deleting?.recordId === id && deleting.entryId === entry.id)
+      return `<span class="work-log-delete-confirm" role="group" aria-label="Oturumu silme"><span>Bu oturum silinsin mi?</span><button type="button" data-action="work-log-delete-confirm" ${values} ${saving ? "disabled" : ""}>Sil</button><button type="button" data-action="work-log-delete-cancel" ${saving ? "disabled" : ""}>Vazgeç</button>${deletionError ? `<span class="work-log-delete-error" role="alert">${escapeHtml(deletionError)}</span>` : ""}</span>`;
+    return `${typeof onUpdateEntry === "function" ? `<button type="button" class="work-log-action" data-action="work-log-edit" ${values} aria-label="${escapeHtml(dateLabel(entry.date))}: oturumu düzenle" title="Oturumu düzenle">${editIcon}<span>Düzenle</span></button>` : ""}${typeof onDeleteEntry === "function" ? `<button type="button" class="work-log-action work-log-delete" data-action="work-log-delete" ${values} aria-label="${escapeHtml(dateLabel(entry.date))}: oturumu sil" title="Oturumu sil">${trashIcon}<span>Sil</span></button>` : ""}`;
+  }
+
+  function buttonContent(record) {
+    const count = savedEntries(record).length;
+    return `${journalIcon}<span>İş günlüğü</span><small>${count} oturum${count ? ` · ${escapeHtml(formatWorkDuration(totalWorkMs(record)))}` : ""}</small>`;
+  }
+
+  function buttonLabel(record, count) {
+    return `${record.title}: iş günlüğünü gör · ${count} kayıtlı oturum`;
+  }
+
+  function buttonTitle(record, count) {
+    return `İş günlüğü: ${count} oturum${count ? ` · ${formatWorkDuration(totalWorkMs(record))}` : ""}`;
+  }
+
+  function button(record, { compact = false } = {}) {
+    if (record?.type !== "daily") return "";
+    const count = savedEntries(record).length;
+    return `<button type="button" class="${compact ? "row-icon-action " : ""}work-journal-trigger${count ? " has-entries" : ""}" data-action="work-journal" data-id="${escapeHtml(record.id)}" data-session-count="${count}" aria-label="${escapeHtml(buttonLabel(record, count))}" title="${escapeHtml(buttonTitle(record, count))}">${compact ? journalIcon : buttonContent(record)}</button>`;
+  }
+
+  function weeklyButton() {
+    return `<button type="button" class="btn secondary work-week-trigger" data-action="work-week-report">${journalIcon}<span>Haftalık özet</span></button>`;
+  }
+
+  function shell(title, body, closeAction) {
+    return `<div class="work-journal-shell"><div class="modal-header"><h2>${escapeHtml(title)}</h2><button type="button" class="close-modal" data-action="${closeAction}" aria-label="Pencereyi kapat">${closeIcon}</button></div><div class="modal-body work-journal-body">${body}</div><div class="modal-footer"><button type="button" class="btn primary" data-action="${closeAction}">Tamam</button></div></div>`;
+  }
+
+  function replaceContent(dialog, markup) {
+    const scrollTop = dialog.querySelector(".modal-body")?.scrollTop || 0;
+    const active = document.activeElement;
+    const action = dialog.contains(active) ? active?.dataset?.action : null;
+    dialog.innerHTML = markup;
+    const body = dialog.querySelector(".modal-body");
+    if (body) body.scrollTop = scrollTop;
+    if (action)
+      [...dialog.querySelectorAll("[data-action]")]
+        .find((element) => element.dataset.action === action)
+        ?.focus({ preventScroll: true });
+  }
+
+  function renderJournal(force = false) {
+    const record = find(recordId);
+    const entries = savedEntries(record);
+    const nextKey = JSON.stringify([
+      recordId,
+      record?.type,
+      record?.title,
+      entries,
+    ]);
+    if (!force && nextKey === journalKey) return;
+    let body;
+    if (!record || record.type !== "daily") {
+      body = emptyMarkup(
+        "Bu günlük iş bulunamadı",
+        "Kayıt silinmiş veya başka bir listeye taşınmış olabilir.",
+      );
+    } else {
+      body = `<p class="work-journal-subtitle">${escapeHtml(record.title)}</p>${totalsMarkup(
+        [
+          ["Kaydedilen süre", formatWorkDuration(totalWorkMs(record))],
+          ["Oturum", entries.length],
+        ],
+      )}${
+        entries.length
+          ? `<p class="work-journal-hint">Kaydedilen oturumlar; en yenisi üstte.</p><ol class="work-journal-list">${latestFirst(
+              entries,
+            )
+              .map((entry) =>
+                entryMarkup(entry, entryActions(record.id, entry)),
+              )
+              .join("")}</ol>`
+          : emptyMarkup(
+              "Henüz çalışma kaydı yok",
+              "Bu günlük işte bir çalışma oturumu başlatıp bitirdiğinde tarih ve süre burada görünür.",
+            )
+      }`;
+    }
+    replaceContent(
+      journalDialog,
+      shell("İş günlüğü", body, "work-journal-close"),
+    );
+    journalKey = nextKey;
+  }
+
+  function renderWeek(force = false) {
+    const summary = weekWorkSummary(getRecords(), selectedWeek);
+    const nextKey = JSON.stringify([selectedWeek.key, summary]);
+    if (!force && nextKey === weekKey) return;
+    const isCurrent =
+      selectedWeek.key === makePlanningPeriod("weekly", localDate()).key;
+    const navigation = `<div class="work-week-navigation"><button type="button" class="btn secondary small" data-action="work-week-prev" aria-label="Önceki hafta">${previousIcon}</button><strong class="work-week-period">${escapeHtml(selectedWeek.label)}</strong><button type="button" class="btn secondary small" data-action="work-week-next" aria-label="Sonraki hafta">${nextIcon}</button><button type="button" class="btn secondary small" data-action="work-week-current" ${isCurrent ? "disabled" : ""}>Bu hafta</button></div>`;
+    const content = summary.sessionCount
+      ? `<div class="work-week-records">${summary.byRecord
+          .map(
+            (record) =>
+              `<section class="work-week-record" data-record-id="${escapeHtml(record.recordId)}"><header><h3>${escapeHtml(record.title)}</h3><span>${record.sessionCount} oturum · ${escapeHtml(formatWorkDuration(record.totalMs))}</span></header><ol class="work-journal-list">${latestFirst(
+                record.entries,
+              )
+                .map((entry) =>
+                  entryMarkup(entry, entryActions(record.recordId, entry)),
+                )
+                .join("")}</ol></section>`,
+          )
+          .join("")}</div>`
+      : emptyMarkup(
+          "Bu hafta çalışma kaydı yok",
+          "Günlük işlerde bitirip kaydettiğin oturumlar burada toplanır. Önceki haftaları da inceleyebilirsin.",
+        );
+    const body = `${navigation}${totalsMarkup([
+      ["Kaydedilen süre", formatWorkDuration(summary.totalMs)],
+      ["Üzerinde çalışılan iş", summary.recordCount],
+      ["Oturum", summary.sessionCount],
+    ])}<p class="work-journal-hint">Yalnızca bitirip kaydettiğin oturumlar gösterilir. İşler toplam çalışma süresine göre sıralanır.</p>${content}`;
+    replaceContent(
+      weekDialog,
+      shell("Haftalık yapılanlar", body, "work-week-close"),
+    );
+    weekKey = nextKey;
+  }
+
+  function refreshReports() {
+    if (journalDialog.open) renderJournal(true);
+    if (weekDialog.open) renderWeek(true);
+  }
+
+  function releaseCalendar() {
+    const calendar = editDialog.querySelector("#odak-date-picker");
+    if (!calendar) return;
+    if (calendar.matches(":popover-open")) calendar.hidePopover();
+    root.append(calendar);
+  }
+
+  function editError(message) {
+    const error = editDialog.querySelector("#work-log-edit-error");
+    if (!error) return;
+    const text = String(message ?? "").trim();
+    error.textContent = text;
+    error.hidden = !text;
+  }
+
+  function refreshEditor() {
+    if (!editDialog.open || !editing) return;
+    const current = findEntry(editing.recordId, editing.entryId);
+    const unavailable =
+      !current || JSON.stringify(current) !== editing.baseline;
+    const fieldset = editDialog.querySelector("fieldset");
+    const save = editDialog.querySelector(".work-log-edit-save");
+    fieldset.disabled = unavailable || saving;
+    save.disabled = unavailable || saving;
+    if (unavailable)
+      editError(
+        current
+          ? "Bu oturum başka bir pencerede değişti. Yazdıkların korunuyor; güncel kaydı açmak için pencereyi kapat."
+          : "Bu oturum artık bulunamıyor. Yazdıkların bu pencereyi kapatana kadar korunur.",
+      );
+  }
+
+  function openEditor(id, entryId) {
+    if (typeof onUpdateEntry !== "function") return;
+    const record = find(id);
+    const entry = findEntry(id, entryId);
+    if (!entry) throw new Error("Düzenlenecek çalışma oturumu bulunamadı.");
+    if (editDialog.open) return;
+    deleting = null;
+    deletionError = "";
+    refreshReports();
+    const hours = Math.floor(entry.durationMs / 3_600_000);
+    const minutes = Math.floor((entry.durationMs % 3_600_000) / 60_000);
+    editing = {
+      recordId: id,
+      entryId,
+      baseline: JSON.stringify(entry),
+      hours,
+      minutes,
+    };
+    releaseCalendar();
+    editDialog.innerHTML = `<form id="work-log-edit-form"><div class="modal-header"><h2>Çalışma oturumunu düzenle</h2><button type="button" class="close-modal" data-action="work-log-edit-close" aria-label="Pencereyi kapat">${closeIcon}</button></div><div class="modal-body work-log-edit-body"><p class="work-journal-subtitle">${escapeHtml(record.title)}</p><fieldset class="work-log-edit-fields"><label class="field">Oturum tarihi${dateInput({ name: "workLogDate", id: "work-log-edit-date", value: entry.date, label: "Oturum tarihi", max: localDate() })}</label><div class="work-log-duration"><span>Süre</span><div><label class="field">Saat<input name="workLogHours" type="number" min="0" step="1" required value="${hours}"></label><label class="field">Dakika<input name="workLogMinutes" type="number" min="0" max="59" step="1" required value="${minutes}"></label></div></div><label class="field">Sonuç<textarea name="workLogNote" maxlength="10000" rows="3">${escapeHtml(entry.note)}</textarea></label><label class="field">Oturumdaki sonraki adım<textarea name="workLogNextAction" maxlength="10000" rows="3">${escapeHtml(entry.nextAction)}</textarea></label><p class="field-help">Bu geçmiş kaydı düzeltmek işin güncel sonraki adımını değiştirmez.</p></fieldset><p id="work-log-edit-error" class="error-message" role="alert" hidden></p></div><div class="modal-footer"><button type="button" class="btn secondary" data-action="work-log-edit-close">Vazgeç</button><button type="submit" class="btn primary work-log-edit-save">Değişiklikleri kaydet</button></div></form>`;
+    editDialog.showModal();
+    editDialog
+      .querySelector('[name="workLogNote"]')
+      .focus({ preventScroll: true });
+  }
+
+  async function saveEdit(event) {
+    if (!event.target.matches("#work-log-edit-form")) return;
+    event.preventDefault();
+    if (saving || !editing) return;
+    try {
+      const current = findEntry(editing.recordId, editing.entryId);
+      if (!current || JSON.stringify(current) !== editing.baseline)
+        throw new Error(
+          "Oturum değişmiş veya silinmiş. Yazdıkların korunuyor; güncel kaydı yeniden aç.",
+        );
+      const form = event.target;
+      const date = dateValue(form.elements.workLogDate);
+      if (!date) throw new Error("Oturum tarihini seç.");
+      if (!form.reportValidity()) return;
+      const hours = Number(form.elements.workLogHours.value);
+      const minutes = Number(form.elements.workLogMinutes.value);
+      // Text/date edits retain the saved precision hidden by the minute fields.
+      const durationMs =
+        hours === editing.hours && minutes === editing.minutes
+          ? current.durationMs
+          : hours * 3_600_000 + minutes * 60_000;
+      if (
+        !Number.isInteger(hours) ||
+        hours < 0 ||
+        !Number.isInteger(minutes) ||
+        minutes < 0 ||
+        minutes > 59 ||
+        !Number.isSafeInteger(durationMs) ||
+        durationMs < 0
+      )
+        throw new Error("Geçerli bir saat ve dakika süresi gir.");
+      const patch = {
+        date,
+        durationMs,
+        note: form.elements.workLogNote.value,
+        nextAction: form.elements.workLogNextAction.value,
+      };
+      editError("");
+      saving = true;
+      refreshEditor();
+      if (await onUpdateEntry(editing.recordId, editing.entryId, patch)) {
+        releaseCalendar();
+        editDialog.close();
+        refreshReports();
+      } else
+        editError(
+          "Oturum kaydedilemedi. Yazdıkların korunuyor; yeniden deneyebilirsin.",
+        );
+    } catch (error) {
+      editError(error instanceof Error ? error.message : String(error));
+    } finally {
+      saving = false;
+      refreshEditor();
+    }
+  }
+
+  async function deleteEntry(id, entryId) {
+    if (saving || !deleting || typeof onDeleteEntry !== "function") return;
+    try {
+      const current = findEntry(id, entryId);
+      if (!current || JSON.stringify(current) !== deleting.baseline)
+        throw new Error(
+          "Oturum değişmiş veya silinmiş. Güncel kaydı yeniden aç.",
+        );
+      saving = true;
+      deletionError = "";
+      refreshReports();
+      if (await onDeleteEntry(id, entryId)) deleting = null;
+      else
+        deletionError =
+          "Oturum silinemedi. Kayıt korunuyor; yeniden deneyebilirsin.";
+    } catch (error) {
+      deletionError = error instanceof Error ? error.message : String(error);
+    } finally {
+      saving = false;
+      refreshReports();
+    }
+  }
+
+  function close() {
+    if (editDialog.open) editDialog.close();
+    if (journalDialog.open) journalDialog.close();
+    if (weekDialog.open) weekDialog.close();
+  }
+
+  function openWeek() {
+    if (destroyed) return;
+    try {
+      if (journalDialog.open) journalDialog.close();
+      selectedWeek = makePlanningPeriod("weekly", localDate());
+      renderWeek(true);
+      if (!weekDialog.open) weekDialog.showModal();
+      weekDialog.querySelector(".modal-body").scrollTop = 0;
+    } catch (error) {
+      onError(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  function refresh() {
+    if (destroyed) return;
+    for (const control of root.querySelectorAll(
+      ".work-journal-trigger[data-id]",
+    )) {
+      const record = find(control.dataset.id);
+      control.hidden = record?.type !== "daily";
+      const count = control.hidden ? 0 : savedEntries(record).length;
+      control.classList.toggle("has-entries", count > 0);
+      control.dataset.sessionCount = String(count);
+      if (control.hidden) continue;
+      const iconOnly = control.classList.contains("row-icon-action");
+      control.innerHTML = iconOnly ? journalIcon : buttonContent(record);
+      control.title = buttonTitle(record, count);
+      control.setAttribute("aria-label", buttonLabel(record, count));
+    }
+    if (journalDialog.open) renderJournal();
+    if (weekDialog.open) renderWeek();
+    refreshEditor();
+  }
+
+  function onClick(event) {
+    const control = event.target.closest?.("[data-action]");
+    if (!control || !root.contains(control)) return;
+    const { action, id } = control.dataset;
+    if (
+      ![
+        "work-journal",
+        "work-week-report",
+        "work-journal-close",
+        "work-week-close",
+        "work-week-prev",
+        "work-week-next",
+        "work-week-current",
+        "work-log-edit",
+        "work-log-edit-close",
+        "work-log-delete",
+        "work-log-delete-confirm",
+        "work-log-delete-cancel",
+      ].includes(action)
+    )
+      return;
+    event.preventDefault();
+    try {
+      if (action === "work-log-edit")
+        openEditor(control.dataset.recordId, control.dataset.entryId);
+      else if (action === "work-log-edit-close") editDialog.close();
+      else if (action === "work-log-delete") {
+        const entry = findEntry(
+          control.dataset.recordId,
+          control.dataset.entryId,
+        );
+        if (!entry || typeof onDeleteEntry !== "function") return;
+        deleting = {
+          recordId: control.dataset.recordId,
+          entryId: control.dataset.entryId,
+          baseline: JSON.stringify(entry),
+        };
+        deletionError = "";
+        refreshReports();
+      } else if (action === "work-log-delete-confirm") {
+        void deleteEntry(control.dataset.recordId, control.dataset.entryId);
+      } else if (action === "work-log-delete-cancel") {
+        deleting = null;
+        deletionError = "";
+        refreshReports();
+      } else if (action === "work-journal-close") journalDialog.close();
+      else if (action === "work-week-close") weekDialog.close();
+      else if (action === "work-journal") {
+        if (find(id)?.type !== "daily") return;
+        recordId = id;
+        if (weekDialog.open) weekDialog.close();
+        renderJournal(true);
+        if (!journalDialog.open) journalDialog.showModal();
+        journalDialog.querySelector(".modal-body").scrollTop = 0;
+      } else if (action === "work-week-report") {
+        openWeek();
+      } else if (weekDialog.open) {
+        selectedWeek =
+          action === "work-week-current"
+            ? makePlanningPeriod("weekly", localDate())
+            : shiftPlanningPeriod(
+                selectedWeek,
+                action === "work-week-prev" ? -1 : 1,
+              );
+        renderWeek(true);
+        weekDialog.querySelector(".modal-body").scrollTop = 0;
+      }
+    } catch (error) {
+      onError(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  function destroy() {
+    if (destroyed) return;
+    destroyed = true;
+    close();
+    root.removeEventListener("click", onClick);
+    root.removeEventListener("submit", saveEdit);
+    owner.removeEventListener("pagehide", destroy);
+    journalDialog.remove();
+    weekDialog.remove();
+    editDialog.remove();
+  }
+
+  root.addEventListener("click", onClick);
+  root.addEventListener("submit", saveEdit);
+  editDialog.addEventListener("close", () => {
+    releaseCalendar();
+    editing = null;
+  });
+  owner.addEventListener("pagehide", destroy, { once: true });
+  return { button, weeklyButton, openWeek, refresh, close, destroy };
+}

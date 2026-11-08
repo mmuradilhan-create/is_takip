@@ -1,0 +1,356 @@
+/* Give meeting actions and waiting topics enough room to act on their dates. */
+.dashboard-workspace {
+  grid-template-columns: minmax(0, 1fr) clamp(290px, 22vw, 330px);
+  gap: 14px;
+}
+
+.dashboard-followups {
+  gap: 14px;
+}
+
+.followup-header {
+  align-items: center;
+  gap: 8px;
+  padding: 9px 14px 7px;
+}
+
+.followup-header h2 {
+  flex-wrap: nowrap;
+  gap: 6px;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.followup-header h2 > span {
+  flex: 0 0 auto;
+  min-width: 19px;
+  line-height: 18px;
+  padding: 0 5px;
+}
+
+.followup-header .text-btn {
+  flex: 0 0 auto;
+  min-height: 26px;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.followup-list > li {
+  padding: 8px 14px;
+}
+
+.followup-title-line {
+  gap: 8px;
+}
+
+.followup-title {
+  line-height: 1.5;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.followup-title-line > .quick-complete,
+.followup-title-line > .completion-mark {
+  margin-top: 1px;
+}
+
+.followup-panel .followup-meta {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content;
+  align-items: center;
+  gap: 6px;
+  margin-top: 5px;
+  padding-left: 28px;
+}
+
+.followup-meta > .badge {
+  justify-self: start;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 26px;
+  padding: 4px 7px;
+  overflow: hidden;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.followup-meta > .inline-date,
+.followup-meta > .deadline-tag {
+  justify-self: end;
+}
+
+.followup-panel .inline-date.deadline-tag {
+  min-height: 26px;
+  padding: 4px 7px;
+  font-size: 11px;
+}
+
+/* Follow-up dates use their own field and state, separate from delivery dates. */
+.waiting-next-date.deadline-tag {
+  min-height: 26px;
+  padding: 4px 7px;
+  font-size: 11px;
+}
+
+.waiting-next-date[data-followup-state="overdue"] {
+  --deadline-paper: #fdece9;
+  border-color: #e9b4ae;
+  background: #fdece9;
+  color: #ac2d24;
+}
+
+.waiting-next-date[data-followup-state="today"],
+.waiting-next-date[data-followup-state="soon"] {
+  --deadline-paper: #fff1d7;
+  border-color: #e5c082;
+  background: #fff1d7;
+  color: #955400;
+}
+
+.waiting-next-date[data-followup-state="missing"] {
+  --deadline-paper: #f4f8f0;
+  border-color: #ccd9c3;
+  background: #f4f8f0;
+  color: #607354;
+  font-weight: 500;
+}
+
+.waiting-next-date:hover,
+.waiting-next-date[aria-expanded="true"] {
+  border-color: currentColor;
+  background: var(--deadline-paper, #f0f4f7);
+  box-shadow: 0 0 0 1px currentColor;
+}
+
+.waiting-next-date:focus-visible {
+  outline: 2px solid #80b8a6;
+  outline-offset: 2px;
+}
+
+.followup-panel .waiting-age {
+  justify-self: end;
+  color: #6a785f;
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1.4;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.followup-tracking {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px;
+  margin-top: 5px;
+  padding-left: 28px;
+}
+
+.followup-tracking > :first-child {
+  justify-self: start;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.followup-tracking > :last-child {
+  justify-self: end;
+}
+
+.followup-panel .waiting-followup-trigger {
+  min-height: 26px;
+  gap: 4px;
+  padding: 4px 6px;
+  border-radius: 6px;
+  font-size: 10px;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.followup-panel .waiting-followup-trigger svg {
+  width: 12px;
+  height: 12px;
+  flex: 0 0 12px;
+}
+
+.followup-last {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 7px;
+  min-width: 0;
+  margin-top: 6px;
+  padding-left: 28px;
+  color: #65755c;
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.followup-last svg {
+  width: 11px;
+  height: 11px;
+  flex: 0 0 11px;
+}
+
+.followup-last > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.followup-wait-info {
+  display: grid;
+  align-content: center;
+  gap: 2px;
+  min-width: 0;
+}
+
+.followup-wait-info > .waiting-age {
+  justify-self: start;
+  text-align: left;
+}
+
+.followup-wait-info > .followup-last {
+  margin: 0;
+  padding: 0;
+}
+
+.followup-panel .waiting-followup-trigger:focus-visible {
+  outline: 2px solid #80b8a6;
+  outline-offset: 2px;
+}
+
+/* Waiting topics compare elapsed time and follow-up dates in their own columns. */
+.full-table.waiting-table {
+  min-width: 880px;
+}
+
+.full-table.waiting-table > thead > tr > th:nth-child(2) {
+  width: 136px;
+}
+
+.full-table.waiting-table > thead > tr > th.waiting-age-col {
+  width: 114px;
+}
+
+.full-table.waiting-table > thead > tr > th.waiting-last-col {
+  width: 100px;
+}
+
+.full-table.waiting-table > thead > tr > th.waiting-next-col {
+  width: 134px;
+}
+
+.full-table.waiting-table > thead > tr > th.row-action-col {
+  width: 150px;
+}
+
+.full-table.waiting-table > thead > tr > th:not(:first-child),
+.full-table.waiting-table > tbody > tr > td:not(:first-child) {
+  padding-left: 12px;
+  padding-right: 12px;
+}
+
+.full-table.waiting-table > tbody > tr > td {
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
+
+.full-table.waiting-table > tbody > tr > td.row-action-col,
+.full-table.waiting-table > thead > tr > th.row-action-col {
+  padding-right: 16px;
+  padding-left: 6px;
+}
+
+.waiting-table .badge {
+  max-width: 100%;
+  min-height: 26px;
+  padding: 4px 6px;
+  overflow: hidden;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.waiting-table .waiting-age {
+  color: #66785e;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.waiting-last-date {
+  color: #70816a;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.waiting-latest {
+  max-width: 100%;
+  margin-top: 4px;
+  overflow: hidden;
+  color: #6b7b62;
+  font-size: 11px;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.waiting-table .row-end-actions {
+  flex-wrap: nowrap;
+}
+
+.waiting-table .waiting-followup-trigger {
+  min-height: 28px;
+  gap: 4px;
+  padding: 4px 6px;
+  font-size: 10px;
+}
+
+.waiting-table .waiting-followup-trigger svg {
+  width: 12px;
+  height: 12px;
+  flex: 0 0 12px;
+}
+
+@media (min-width: 1201px) and (max-height: 760px) {
+  .dashboard-followups {
+    gap: 10px;
+  }
+
+  .followup-header {
+    padding-top: 6px;
+    padding-bottom: 4px;
+  }
+
+  .followup-list > li {
+    padding-top: 4px;
+    padding-bottom: 4px;
+  }
+
+  .followup-panel .followup-meta,
+  .followup-tracking {
+    margin-top: 4px;
+  }
+
+  .followup-wait-info {
+    gap: 1px;
+  }
+}
+
+@media (max-width: 1200px) {
+  .dashboard-workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .dashboard-followups {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  .dashboard-followups {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

@@ -1,0 +1,558 @@
+/* All personal planning lists share the same compact row layout. */
+.full-table {
+  min-width: 620px;
+  table-layout: fixed;
+}
+
+.full-table > thead > tr > th,
+.full-table > tbody > tr:not(.linked-detail-row) > td {
+  padding-left: 16px;
+  padding-right: 16px;
+}
+
+.full-table > tbody > tr:not(.linked-detail-row) > td {
+  padding-top: 14px;
+  padding-bottom: 14px;
+}
+
+.full-table > thead > tr > th:nth-child(2) {
+  width: 156px;
+}
+
+.full-table:not(.has-progress) > thead > tr > th:nth-child(3) {
+  width: 120px;
+}
+
+.full-table:not(.has-progress) > thead > tr > th:nth-child(4) {
+  width: 150px;
+}
+
+.full-table.has-progress {
+  min-width: 780px;
+}
+
+.full-table.has-progress > thead > tr > th:nth-child(3) {
+  width: 176px;
+}
+
+.full-table.has-progress > thead > tr > th:nth-child(4) {
+  width: 112px;
+}
+
+.full-table.has-progress > thead > tr > th:nth-child(5) {
+  width: 144px;
+}
+
+.full-table .task-title-cell {
+  min-width: 0;
+  gap: 10px;
+}
+
+.full-table .task-title-cell > div {
+  min-width: 0;
+}
+
+.full-table .task-sub {
+  max-width: 100%;
+}
+
+.full-table .metric-cell {
+  min-width: 0;
+}
+
+.full-table .metric-cell > strong {
+  float: right;
+  width: 32px;
+  margin-left: 8px;
+  line-height: 18px;
+  text-align: right;
+}
+
+.full-table .metric-cell .progress-track {
+  height: 5px;
+  margin: 6px 40px 7px 0;
+}
+
+.full-table .metric-cell small {
+  clear: both;
+  display: block;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+[data-density="compact"] .full-table > tbody > tr:not(.linked-detail-row) > td {
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+
+.linked-toggle {
+  display: flex;
+  clear: both;
+  align-items: center;
+  gap: 5px;
+  max-width: 100%;
+  width: fit-content;
+  min-height: 25px;
+  margin-top: 3px;
+  padding: 3px 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--green);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.45;
+  text-align: left;
+}
+
+.linked-toggle:hover {
+  text-decoration: underline;
+}
+
+.linked-toggle svg {
+  flex: 0 0 auto;
+  width: 12px;
+  height: 12px;
+  transition: transform 120ms ease;
+}
+
+.linked-toggle[aria-expanded="true"] svg {
+  transform: rotate(180deg);
+}
+
+.weekly-goal-row:has(.linked-toggle[aria-expanded="true"]) > td {
+  border-bottom-color: #e4ece0;
+  background: #f8fbf6;
+}
+
+.full-table > tbody > .linked-detail-row > td {
+  padding: 0;
+  background: #f8fbf6;
+}
+
+.linked-detail-row:hover {
+  background: transparent;
+}
+
+.linked-detail {
+  min-width: 0;
+  padding: 12px 18px 18px;
+  border-left: 3px solid #c8dcc4;
+}
+
+.linked-detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 5px;
+}
+
+.linked-detail-header h3 {
+  margin: 0;
+  color: #33573f;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.linked-detail-header .text-btn,
+.linked-detail-header .btn {
+  min-height: 28px;
+  padding: 4px 8px;
+  font-size: 11px;
+}
+
+.linked-detail-summary {
+  margin: 0 0 10px;
+  color: #657660;
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.linked-tasks-table {
+  width: 100%;
+  table-layout: fixed;
+  border: 1px solid #e2e9de;
+  background: #fff;
+}
+
+.linked-tasks-table > thead > tr > th {
+  padding: 8px 12px;
+  background: #f1f6ed;
+  font-size: 10px;
+  letter-spacing: 0.2px;
+}
+
+.linked-tasks-table > thead > tr > th:nth-child(2) {
+  width: 146px;
+}
+
+.linked-tasks-table > thead > tr > th:nth-child(3) {
+  width: 108px;
+}
+
+.linked-tasks-table > thead > tr > th:nth-child(4) {
+  width: 140px;
+}
+
+.linked-tasks-table > tbody > tr > td {
+  padding: 10px 12px;
+}
+
+.linked-tasks-table .task-name {
+  font-size: 12px;
+}
+
+.linked-tasks-table .task-title-cell {
+  gap: 9px;
+}
+
+.linked-tasks-table .task-sub {
+  display: none;
+}
+
+.linked-empty {
+  margin: 8px 0 0;
+  padding: 12px;
+  border: 1px dashed #d6e1d0;
+  border-radius: 7px;
+  background: #fff;
+  color: #62765a;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.planning-periodbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--line);
+}
+
+.period-navigation {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.period-navigation button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  min-height: 32px;
+  padding: 6px 8px;
+  border: 1px solid #dfe7d9;
+  border-radius: 7px;
+  background: #fff;
+  color: #4c6749;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.period-navigation button:hover,
+.period-current:hover {
+  border-color: #a8bfa2;
+  background: #f3f7ef;
+}
+
+.period-navigation button svg {
+  width: 14px;
+  height: 14px;
+}
+
+.period-label {
+  min-width: 170px;
+  padding: 0 7px;
+  color: #36513b;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.45;
+  text-align: center;
+}
+
+.period-shortcuts {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.period-prev svg {
+  transform: rotate(180deg);
+}
+
+.period-current,
+.period-all {
+  min-height: 32px;
+  padding: 6px 10px;
+  border: 1px solid #dfe7d9;
+  border-radius: 7px;
+  background: #fff;
+  color: #4c6749;
+  font-size: 11px;
+}
+
+.period-all:hover {
+  border-color: #a8bfa2;
+  background: #f3f7ef;
+}
+
+.period-current[aria-pressed="true"],
+.period-all[aria-pressed="true"] {
+  border-color: #bbd1b3;
+  background: #eaf2e5;
+  color: var(--green);
+}
+
+.show-completed {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 7px 10px;
+  border: 1px solid #dce5d7;
+  border-radius: 7px;
+  background: #fff;
+  color: #526e4a;
+  font-size: 11px;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.show-completed:hover {
+  border-color: #9db598;
+}
+
+.show-completed[aria-pressed="true"],
+.show-completed.active {
+  border-color: #bbd1b3;
+  background: #eaf2e5;
+  color: var(--green);
+}
+
+.show-completed svg {
+  width: 13px;
+  height: 13px;
+}
+
+.inline-priority,
+.inline-date {
+  min-height: 26px;
+  margin: -3px -5px;
+  padding: 3px 5px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  text-align: left;
+}
+
+.inline-priority:hover,
+.inline-date:hover,
+.inline-priority[aria-expanded="true"],
+.inline-date[aria-expanded="true"] {
+  border-color: #d7e2d0;
+  background: #f1f6ed;
+}
+
+.quick-field-menu {
+  position: fixed;
+  inset: auto;
+  width: 270px;
+  max-width: calc(100vw - 20px);
+  max-height: min(430px, calc(100dvh - 20px));
+  margin: 0;
+  padding: 6px;
+  overflow-y: auto;
+  border: 1px solid #dce5d9;
+  border-radius: 12px;
+  background: #fff;
+  color: #253833;
+  box-shadow:
+    0 10px 36px #173d2926,
+    0 2px 6px #173d2910;
+}
+
+.quick-field-menu::backdrop {
+  background: transparent;
+}
+
+.quick-field-heading {
+  display: grid;
+  gap: 4px;
+  margin: 0 4px 4px;
+  padding: 8px 6px 10px;
+  border-bottom: 1px solid #edf1e9;
+}
+
+.quick-field-heading strong {
+  color: #36543a;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.quick-field-heading > span {
+  overflow: hidden;
+  color: #6e7e67;
+  font-size: 11px;
+  line-height: 1.5;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.quick-priority-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 36px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 7px;
+  background: #fff;
+  color: #38513d;
+  font-size: 13px;
+  line-height: 1.4;
+  text-align: left;
+}
+
+.quick-priority-option:hover,
+.quick-priority-option:focus-visible {
+  background: var(--priority-paper, #f1f4f8);
+  color: var(--priority-ink, #53657f);
+}
+
+.quick-priority-option:focus-visible {
+  outline: 2px solid var(--priority-ink, #53657f);
+  outline-offset: -2px;
+}
+
+.quick-priority-option[aria-checked="true"] {
+  background: var(--priority-paper, #f1f4f8);
+  color: var(--priority-ink, #53657f);
+  box-shadow: inset 0 0 0 1px var(--priority-line, #d9e1ec);
+  font-weight: 600;
+}
+
+.quick-priority-option .priority {
+  font-size: 12px;
+}
+
+.inline-priority.priority {
+  margin: -3px 0;
+  padding: 4px 6px;
+  border-color: var(--priority-line, #d9e1ec);
+  background: var(--priority-paper, #f1f4f8);
+}
+
+.inline-priority.priority:hover,
+.inline-priority.priority[aria-expanded="true"] {
+  border-color: var(--priority-ink, #53657f);
+  background: var(--priority-paper, #f1f4f8);
+}
+
+.quick-field-check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  margin-left: auto;
+  visibility: hidden;
+}
+
+.quick-priority-option[aria-checked="true"] .quick-field-check {
+  visibility: visible;
+}
+
+.quick-field-check svg {
+  width: 14px;
+  height: 14px;
+}
+
+.quick-date-menu {
+  width: 340px;
+}
+
+.quick-date-form {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 8px 10px 10px;
+}
+
+.quick-date-form .field {
+  gap: 6px;
+  font-size: 12px;
+}
+
+.quick-date-form input[type="date"] {
+  min-height: 38px;
+  padding: 8px 10px;
+  font-size: 13px;
+}
+
+.quick-date-form #quick-date-error:empty {
+  display: none;
+}
+
+.quick-date-form .error-message {
+  margin: 0;
+  padding: 8px 10px;
+  font-size: 11px;
+}
+
+.quick-date-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.quick-date-actions .btn {
+  min-height: 34px;
+  padding: 7px 9px;
+  font-size: 11px;
+}
+
+.quick-date-actions .btn:first-child {
+  margin-right: auto;
+}
+
+@media (max-width: 1000px) {
+  .full-table > thead > tr > th,
+  .full-table > tbody > tr:not(.linked-detail-row) > td {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .full-table.has-progress > thead > tr > th:nth-child(3) {
+    width: 164px;
+  }
+
+  .linked-detail {
+    padding-right: 12px;
+    padding-left: 12px;
+  }
+}
+
+@media (max-width: 760px) {
+  .planning-periodbar {
+    padding: 12px 14px;
+  }
+
+  .period-label {
+    min-width: 140px;
+    font-size: 12px;
+  }
+
+  .linked-detail-header {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 5px 12px;
+  }
+}

@@ -1,0 +1,194 @@
+/* Keep daily work in stable columns while the title uses the remaining room. */
+.dashboard-workspace {
+  grid-template-columns: minmax(0, 1fr) 260px;
+  gap: 16px;
+}
+
+.focus-panel > .panel-header {
+  min-height: 42px;
+  padding: 11px 16px 7px;
+}
+
+.focus-panel > .panel-header h2 {
+  font-size: 15px;
+}
+
+.focus-toolbar {
+  gap: 7px 12px;
+  padding: 0 16px 10px;
+  border-bottom: 1px solid var(--line);
+}
+
+.focus-filters {
+  gap: 4px;
+}
+
+.focus-filters button {
+  gap: 4px;
+  min-height: 28px;
+  padding: 4px 7px;
+  border-radius: 6px;
+  font-size: 11px;
+}
+
+.focus-sort-group {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 5px 9px;
+  min-width: 0;
+  margin-left: auto;
+}
+
+.focus-sort-label {
+  gap: 5px;
+  margin-left: 0;
+}
+
+.focus-sort-label select {
+  max-width: 128px;
+  min-height: 28px;
+  padding: 4px 7px;
+  border-radius: 6px;
+}
+
+.focus-sort-group .focus-sort-note {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  font-size: 10px;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.focus-row {
+  grid-template-columns: 22px minmax(0, 1fr) 64px 82px 112px 22px;
+  gap: 6px;
+  min-height: 52px;
+  padding: 8px 16px;
+}
+
+.focus-task {
+  min-width: 0;
+}
+
+.focus-title {
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.focus-priority {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.focus-priority .priority {
+  max-width: 100%;
+  min-height: 23px;
+  padding: 3px 5px;
+  font-size: 10px;
+}
+
+.focus-priority .priority svg {
+  width: 11px;
+  height: 11px;
+}
+
+.focus-row > .focus-date {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 10px;
+  line-height: 1.45;
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.focus-row > .badge {
+  justify-self: start;
+  max-width: 100%;
+  padding: 4px 6px;
+  font-size: 10px;
+}
+
+.focus-row > .work-start {
+  justify-self: end;
+}
+
+.quick-complete {
+  min-width: 22px;
+  min-height: 22px;
+}
+
+.quick-complete:focus-visible {
+  outline: 2px solid #80b8a6;
+  outline-offset: 2px;
+}
+
+@media (max-width: 1200px) {
+  .dashboard-workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .dashboard-followups {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+}
+
+@media (max-width: 760px) {
+  .focus-toolbar {
+    gap: 7px;
+  }
+
+  .focus-sort-group {
+    justify-content: flex-start;
+    margin-left: 0;
+  }
+
+  .focus-row {
+    grid-template-columns: 22px minmax(0, 1fr) 104px 22px;
+    gap: 5px 7px;
+    min-height: 0;
+    padding: 9px 12px;
+  }
+
+  .focus-row > .quick-complete,
+  .focus-row > .completion-mark {
+    grid-column: 1;
+    grid-row: 1 / 4;
+  }
+
+  .focus-row > .focus-task {
+    grid-column: 2 / 4;
+    grid-row: 1;
+  }
+
+  .focus-row > .focus-priority {
+    grid-column: 2;
+    grid-row: 2;
+  }
+
+  .focus-row > .focus-date {
+    grid-column: 3;
+    grid-row: 2;
+  }
+
+  .focus-row > .badge {
+    grid-column: 2 / 4;
+    grid-row: 3;
+  }
+
+  .focus-row > .work-start {
+    grid-column: 4;
+    grid-row: 1 / 4;
+  }
+}
+
+@media (max-width: 600px) {
+  .dashboard-followups {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

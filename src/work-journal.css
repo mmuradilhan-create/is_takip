@@ -1,0 +1,785 @@
+/* Daily work history stays on the task's secondary line. */
+.task-meta-line {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  margin-top: 4px;
+}
+
+.task-meta-line > .task-sub {
+  flex: 0 1 auto;
+  min-width: 0;
+  margin: 0;
+}
+
+.work-journal-trigger {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: 4px;
+  min-height: 20px;
+  padding: 1px 0;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  color: #627b5b;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.45;
+  white-space: nowrap;
+}
+
+.work-journal-trigger svg {
+  width: 12px;
+  height: 12px;
+  flex: 0 0 12px;
+}
+
+.work-journal-trigger small {
+  color: #788973;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.work-journal-trigger:hover {
+  color: var(--green);
+}
+
+.work-journal-trigger:hover > span {
+  text-decoration: underline;
+}
+
+.work-journal-trigger[hidden],
+.daily-source-control[hidden],
+.work-start[hidden] {
+  display: none;
+}
+
+[data-density="compact"] .task-meta-line {
+  margin-top: 2px;
+}
+
+.full-table .metric-cell .weekly-work-time,
+.weekly-work-time {
+  display: flex;
+  align-items: center;
+  clear: both;
+  gap: 4px;
+  margin: 3px 0 0;
+  color: #6a7d61;
+  font-size: 10px;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.5;
+}
+
+.weekly-work-time svg {
+  width: 11px;
+  height: 11px;
+  flex: 0 0 11px;
+}
+
+.btn.secondary.work-week-trigger {
+  gap: 6px;
+  min-height: 34px;
+  padding: 7px 10px;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.work-week-trigger svg {
+  width: 13px;
+  height: 13px;
+}
+
+/* A source record can lead to daily work without starting a timer. */
+.daily-source-control {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 22px;
+  width: 22px;
+  height: 22px;
+  margin: 1px 0 0;
+  padding: 0;
+  border: 1px solid #c1cfb8;
+  border-radius: 6px;
+  background: #fff;
+  color: #5c7850;
+}
+
+.daily-source-control svg {
+  width: 12px;
+  height: 12px;
+  stroke-width: 2;
+}
+
+.daily-source-control:hover:not(:disabled) {
+  border-color: #83a473;
+  background: #f0f6eb;
+  color: var(--green);
+}
+
+.daily-source-control.is-linked {
+  border-color: #bad0b1;
+  background: #edf4e8;
+  color: #456f3c;
+}
+
+.focus-row > .daily-source-control {
+  margin-top: 0;
+}
+
+.daily-source-existing {
+  margin: 0 0 16px;
+  padding: 9px 11px;
+  border-left: 2px solid #c9dbbe;
+  border-radius: 0 6px 6px 0;
+  background: #f6f9f2;
+  color: #687d5d;
+  font-size: 11px;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+
+.daily-source-existing strong {
+  color: #45643d;
+  font-weight: 500;
+}
+
+/* Status and one-click completion remain separate actions in one small group. */
+.status-cell-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 100%;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.full-table > thead > tr > th:nth-child(2) {
+  width: 184px;
+}
+
+.linked-tasks-table > thead > tr > th:nth-child(2) {
+  width: 180px;
+}
+
+.status-cell-controls > .badge {
+  flex: 0 0 auto;
+}
+
+.quick-complete {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 22px;
+  width: 22px;
+  height: 22px;
+  min-width: 22px;
+  margin: 0;
+  padding: 0;
+  border: 1px solid #d0dfc8;
+  border-radius: 6px;
+  background: #fff;
+  color: #52774a;
+}
+
+.quick-complete svg {
+  width: 12px;
+  height: 12px;
+  stroke-width: 2.3;
+}
+
+.quick-complete:hover:not(:disabled) {
+  border-color: #7eab6e;
+  background: #e7f3df;
+  color: #2c652e;
+}
+
+.quick-complete:disabled {
+  opacity: 0.45;
+}
+
+.quick-complete[hidden] {
+  display: none;
+}
+
+.focus-row > .status-cell-controls > .badge {
+  padding: 4px 7px;
+  font-size: 11px;
+}
+
+.daily-context-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+  padding: 9px 18px;
+  border-bottom: 1px solid var(--line);
+  background: #f7faf3;
+  color: #687b5e;
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.daily-context-banner > span,
+.daily-context-banner > p {
+  min-width: 0;
+  margin: 0;
+}
+
+.daily-context-banner .btn,
+.daily-context-banner .text-btn {
+  flex: 0 0 auto;
+  min-height: 28px;
+  padding: 5px 8px;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+/* New dialogs keep their actions visible while their content scrolls. */
+.work-finish-modal,
+.work-journal-modal,
+.work-week-modal {
+  --work-dialog-max-height: min(680px, calc(100dvh - 40px));
+  max-height: var(--work-dialog-max-height);
+  overflow: hidden;
+  border-radius: 14px;
+}
+
+.work-finish-modal {
+  width: 540px;
+}
+
+.work-journal-modal {
+  width: 620px;
+}
+
+.work-week-modal {
+  width: 700px;
+  max-width: min(700px, calc(100vw - 30px));
+}
+
+#work-finish-form,
+.work-journal-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-height: calc(var(--work-dialog-max-height) - 2px);
+  margin: 0;
+}
+
+:is(.work-finish-modal, .work-journal-modal, .work-week-modal) .modal-header,
+:is(.work-finish-modal, .work-journal-modal, .work-week-modal) .modal-footer {
+  flex: 0 0 auto;
+  padding: 14px 20px;
+}
+
+:is(.work-finish-modal, .work-journal-modal, .work-week-modal)
+  .modal-header
+  h2 {
+  font-size: 16px;
+  letter-spacing: -0.2px;
+}
+
+:is(.work-finish-modal, .work-journal-modal, .work-week-modal) .close-modal {
+  width: 30px;
+  height: 30px;
+  min-width: 30px;
+  min-height: 30px;
+  border-radius: 6px;
+}
+
+:is(.work-finish-modal, .work-journal-modal, .work-week-modal)
+  .close-modal:hover {
+  background: #f1f5ec;
+}
+
+:is(.work-finish-modal, .work-journal-modal, .work-week-modal) .modal-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 18px 20px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scroll-padding-block: 14px;
+}
+
+:is(.work-finish-modal, .work-journal-modal, .work-week-modal)
+  .modal-footer
+  .btn {
+  min-height: 35px;
+  padding: 8px 13px;
+  font-size: 12px;
+}
+
+.work-finish-body {
+  display: grid;
+  gap: 16px;
+}
+
+.work-finish-title,
+.work-journal-subtitle {
+  margin: 0;
+  color: #2e513b;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.work-finish-summary,
+.work-journal-totals {
+  display: grid;
+  gap: 12px;
+  padding: 11px 13px;
+  border: 1px solid #e2e9dc;
+  border-radius: 8px;
+  background: #f7faf3;
+}
+
+.work-finish-summary {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.work-finish-summary > div,
+.work-journal-totals > div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.work-finish-summary span,
+.work-journal-totals span {
+  color: #728268;
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.work-finish-summary time,
+.work-finish-summary output,
+.work-journal-totals strong {
+  color: #35583e;
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.work-finish-body .field {
+  gap: 6px;
+  font-size: 12px;
+}
+
+.work-finish-body .field textarea {
+  min-height: 75px;
+  padding: 9px 10px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.work-finish-body .field-help {
+  color: #788870;
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+#work-finish-error {
+  margin: 0;
+}
+
+#work-log-edit-error[hidden] {
+  display: none !important;
+}
+
+.work-journal-totals {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 13px;
+}
+
+.work-journal-modal .work-journal-totals {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.work-journal-totals + .work-journal-empty {
+  margin-top: 16px;
+}
+
+.work-journal-hint {
+  margin: 10px 0 16px;
+  color: #77866d;
+  font-size: 11px;
+  line-height: 1.65;
+}
+
+.work-journal-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.work-journal-list > li + li {
+  margin-top: 16px;
+}
+
+.work-journal-entry {
+  padding: 1px 0 2px 13px;
+  border-left: 2px solid #d4e1cb;
+}
+
+.work-journal-entry-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  color: #42603f;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.55;
+}
+
+.work-journal-entry-heading time {
+  color: #64785d;
+}
+
+.work-journal-entry-heading strong {
+  color: #355c3c;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.work-journal-entry > .work-journal-hint {
+  margin: 6px 0 0;
+}
+
+.work-journal-field {
+  margin-top: 9px;
+}
+
+.work-journal-field h3 {
+  margin: 0 0 3px;
+  color: #7b896f;
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+.work-journal-field p {
+  margin: 0;
+  color: #465f42;
+  font-size: 12px;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.work-journal-empty {
+  padding: 20px 14px;
+  border: 1px dashed #dbe5d3;
+  border-radius: 8px;
+  background: #fbfcf8;
+  color: #65795a;
+  text-align: center;
+}
+
+.work-journal-empty strong {
+  color: #486541;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.work-journal-empty p {
+  max-width: 420px;
+  margin: 6px auto 0;
+  font-size: 11px;
+  line-height: 1.7;
+}
+
+.work-week-navigation {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.work-week-navigation button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  min-width: 30px;
+  min-height: 30px;
+  padding: 6px 9px;
+  border: 1px solid #dfe7d9;
+  border-radius: 6px;
+  background: #fff;
+  color: #526e4a;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.work-week-navigation button:hover:not(:disabled) {
+  border-color: #a8bfa2;
+  background: #f3f7ef;
+}
+
+.work-week-navigation button svg {
+  width: 13px;
+  height: 13px;
+}
+
+.work-week-period {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: #3a593d;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.work-week-record + .work-week-record {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid #e6edde;
+}
+
+.work-week-record > header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px 16px;
+  margin-bottom: 12px;
+}
+
+.work-week-record > header h3 {
+  min-width: 0;
+  margin: 0;
+  color: #355b3c;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.work-week-record > header > span {
+  flex: 0 0 auto;
+  color: #76876a;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.6;
+  white-space: nowrap;
+}
+
+.work-journal-entry-tools {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 5px;
+  max-width: 100%;
+}
+
+.work-log-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-height: 24px;
+  padding: 3px 5px;
+  border: 1px solid #dce5d5;
+  border-radius: 5px;
+  background: #fff;
+  color: #63785a;
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.work-log-action:first-of-type {
+  margin-left: 4px;
+}
+
+.work-log-action svg {
+  width: 11px;
+  height: 11px;
+}
+
+.work-log-action:hover {
+  border-color: #a9c29c;
+  background: #f2f7ed;
+  color: #315c3d;
+}
+
+.work-log-action.work-log-delete:hover {
+  border-color: #e8c4b9;
+  background: #fff5f1;
+  color: #a84b33;
+}
+
+.work-log-delete-confirm {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 5px;
+  max-width: 100%;
+  color: #976447;
+  font-size: 10px;
+}
+
+.work-log-delete-confirm button {
+  min-height: 24px;
+  padding: 3px 6px;
+  border: 1px solid #e1d2c5;
+  border-radius: 5px;
+  background: #fff;
+  color: #765d49;
+  font-size: 10px;
+}
+
+.work-log-delete-confirm [data-action="work-log-delete-confirm"] {
+  border-color: #e2bba9;
+  background: #fff1e9;
+  color: #a14226;
+}
+
+.work-log-delete-error {
+  flex-basis: 100%;
+  color: #a14226;
+}
+
+.work-log-edit-modal {
+  --work-edit-max-height: min(680px, calc(100dvh - 32px));
+  width: 580px;
+  max-width: calc(100vw - 24px);
+  max-height: var(--work-edit-max-height);
+  overflow: hidden;
+  border-radius: 14px;
+}
+
+#work-log-edit-form {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-height: calc(var(--work-edit-max-height) - 2px);
+  margin: 0;
+}
+
+.work-log-edit-modal .modal-header,
+.work-log-edit-modal .modal-footer {
+  flex: 0 0 auto;
+  padding: 14px 18px;
+}
+
+.work-log-edit-modal .modal-header h2 {
+  font-size: 16px;
+}
+
+.work-log-edit-modal .modal-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 16px 18px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.work-log-edit-fields {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+  margin: 16px 0 0;
+  padding: 0;
+  border: 0;
+}
+
+.work-log-edit-fields .field {
+  gap: 5px;
+  min-width: 0;
+  font-size: 12px;
+}
+
+.work-log-edit-fields .field input,
+.work-log-edit-fields .field textarea {
+  min-width: 0;
+  padding: 8px 9px;
+  font-size: 12px;
+}
+
+.work-log-edit-fields .field textarea {
+  min-height: 70px;
+}
+
+.work-log-duration > span {
+  display: block;
+  margin-bottom: 6px;
+  color: #687e5e;
+  font-size: 12px;
+}
+
+.work-log-duration > div {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.work-log-edit-fields .field-help {
+  margin: 0;
+  color: #819078;
+  font-size: 10px;
+  line-height: 1.6;
+}
+
+.work-log-edit-modal .modal-footer .btn {
+  min-height: 34px;
+  padding: 7px 10px;
+  font-size: 11px;
+}
+
+.work-log-action:focus-visible,
+.work-log-delete-confirm button:focus-visible {
+  outline: 2px solid #80b8a6;
+  outline-offset: 2px;
+}
+
+@media (max-width: 1100px) {
+  .task-meta-line {
+    flex-wrap: wrap;
+    gap: 1px 9px;
+  }
+
+  .task-meta-line > .task-sub {
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 560px) {
+  .work-finish-modal,
+  .work-journal-modal,
+  .work-week-modal {
+    --work-dialog-max-height: calc(100dvh - 24px);
+    max-width: calc(100vw - 24px);
+  }
+
+  :is(.work-finish-modal, .work-journal-modal, .work-week-modal) .modal-header,
+  :is(.work-finish-modal, .work-journal-modal, .work-week-modal) .modal-body,
+  :is(.work-finish-modal, .work-journal-modal, .work-week-modal) .modal-footer {
+    padding-right: 15px;
+    padding-left: 15px;
+  }
+
+  .work-week-navigation {
+    flex-wrap: wrap;
+  }
+
+  .work-week-period {
+    flex-basis: calc(100% - 78px);
+    order: -1;
+    text-align: left;
+  }
+
+  .work-week-record > header {
+    flex-wrap: wrap;
+    gap: 2px;
+  }
+}

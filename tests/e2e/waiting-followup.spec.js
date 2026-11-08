@@ -121,6 +121,22 @@ async function submitFollowUp(page) {
     .click();
 }
 
+async function openWaitingEditor(page, id = "waiting-primary") {
+  await row(page, id).locator(".task-name").click();
+  const preview = page.locator("#waiting-record-panel");
+  await expect(preview).toBeVisible();
+  await expect(preview).toHaveAttribute("data-record-id", id);
+  await expect(page.locator("#editor")).not.toBeVisible();
+  await preview
+    .getByRole("button", { name: "Kaydı düzenle", exact: true })
+    .click();
+  await expect(page.locator("#editor")).toBeVisible();
+  await expect(page.locator('#record-form [name="id"]')).toHaveValue(id);
+  await expect(page.locator('#record-form [name="type"]')).toHaveValue(
+    "waiting",
+  );
+}
+
 test("waiting import metadata becomes a real latest update while genuine notes and undo survive reload", async ({
   page,
 }) => {
@@ -165,7 +181,7 @@ test("waiting import metadata becomes a real latest update while genuine notes a
     await page.evaluate((key) => localStorage.getItem(key), CLEANUP_KEY),
   ).toBe("1");
   await list(page);
-  await row(page, generated.id).locator(".task-name").click();
+  await openWaitingEditor(page, generated.id);
   await expect(page.locator('#record-form [name="description"]')).toHaveValue(
     realNote,
   );
@@ -396,7 +412,7 @@ test("a dated follow-up saves one history entry and next plan while waiting age,
   const backup = JSON.parse(await readFile(await download.path(), "utf8"));
   expect(validateStore(backup).records).toEqual(edited);
   await page.locator('#settings-dialog [data-action="close"]').last().click();
-  await row(page).locator(".task-name").click();
+  await openWaitingEditor(page);
   await page.locator('#record-form [name="nextFollowUpDate"]').fill("geçersiz");
   await openCreationExtras(page);
   await page.locator('#record-form [name="type"]').selectOption("meeting");

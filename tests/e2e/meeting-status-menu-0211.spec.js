@@ -103,6 +103,7 @@ test("a linked meeting exposes independent job and follow-up badges and changes 
     "Aksiyon / Karar",
     "Bağlı iş",
     "Takip",
+    "İşlem",
   ]);
   await expect(row(page, "dual").locator(".meeting-status-kind")).toHaveCount(
     0,

@@ -1390,7 +1390,8 @@ test("multiple undo restores exact add, edit, status and weekly-unlink states an
   const afterEdit = await readRecords(page);
   expect(afterEdit.find((record) => record.id === "daily-task")).toMatchObject({
     description: "Güncellenen gerçek açıklama",
-    nextAction: original.find((record) => record.id === "daily-task").nextAction,
+    nextAction: original.find((record) => record.id === "daily-task")
+      .nextAction,
   });
   await chooseStatus(
     page,
@@ -1877,7 +1878,20 @@ test("clicking a record opens editing and quick statuses preserve imported legac
     meetingRow.locator(".inline-priority, .inline-date"),
   ).toHaveCount(0);
   await meetingRow.locator(".task-name").click();
+  const meetingPreview = page.locator("#meeting-record-panel");
+  await expect(meetingPreview).toBeVisible();
+  await expect(meetingPreview).toHaveAttribute("data-record-id", "row-meeting");
+  await expect(page.locator("#editor")).not.toBeVisible();
+  await meetingPreview
+    .getByRole("button", { name: "Kaydı düzenle", exact: true })
+    .click();
   await expect(page.locator("#editor")).toBeVisible();
+  await expect(page.locator('#record-form [name="id"]')).toHaveValue(
+    "row-meeting",
+  );
+  await expect(page.locator('#record-form [name="type"]')).toHaveValue(
+    "meeting",
+  );
   await expect(page.locator('#record-form [name="title"]')).toHaveValue(
     "Satıra tıklanabilen aksiyon",
   );

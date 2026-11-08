@@ -115,7 +115,16 @@ test("meeting contacts clear once without changing other records, exact Undo sur
   await page
     .locator(`[data-record-row][data-id="${meeting.id}"] .task-name`)
     .click();
+  const preview = page.locator("#meeting-record-panel");
+  await expect(preview).toBeVisible();
+  await expect(preview).toHaveAttribute("data-record-id", meeting.id);
+  expect(await saved(page)).toBe(initialRaw);
+  await preview
+    .getByRole("button", { name: "Kaydı düzenle", exact: true })
+    .click();
+  await expect(page.locator("#editor")).toBeVisible();
   const form = page.locator("#editor #record-form");
+  await expect(form.locator('[name="id"]')).toHaveValue(meeting.id);
   await form.locator('[name="title"]').fill("Düzeltilen teknik karar");
   await form
     .getByRole("button", { name: "Değişiklikleri kaydet", exact: true })

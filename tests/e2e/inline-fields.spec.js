@@ -256,6 +256,20 @@ test("lists expose context-appropriate quick controls without opening the full e
         page.locator("#priority-filter, #period-filter"),
       ).toHaveCount(0);
       await row.locator(".task-name").click();
+      const preview = page.locator("#meeting-record-panel");
+      await expect(preview).toBeVisible();
+      await expect(preview).toHaveAttribute("data-record-id", record.id);
+      await expect(page.locator("#editor")).not.toBeVisible();
+      await preview
+        .getByRole("button", { name: "Kaydı düzenle", exact: true })
+        .click();
+      await expect(page.locator("#editor")).toBeVisible();
+      await expect(page.locator('#record-form [name="id"]')).toHaveValue(
+        record.id,
+      );
+      await expect(page.locator('#record-form [name="type"]')).toHaveValue(
+        "meeting",
+      );
       await openCreationExtras(page);
       for (const name of ["priority", "dueDate", "nextAction"]) {
         await expect(

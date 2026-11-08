@@ -477,6 +477,15 @@ test("meeting creation optionally saves no route, one route or both routes atomi
     const afterSaved = await saved(page);
     await list(page, "meeting");
     await row(page, source.id).locator(".task-name").click();
+    const preview = page.locator("#meeting-record-panel");
+    await expect(preview).toBeVisible();
+    await expect(preview).toHaveAttribute("data-record-id", source.id);
+    expect(await saved(page)).toBe(afterSaved);
+    await preview
+      .getByRole("button", { name: "Kaydı düzenle", exact: true })
+      .click();
+    await expect(page.locator("#editor")).toBeVisible();
+    await expect(field(page, "id")).toHaveValue(source.id);
     await expect(form(page)).not.toHaveAttribute("data-creation", "true");
     if (types.length) {
       for (const type of types)

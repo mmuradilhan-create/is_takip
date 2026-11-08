@@ -401,6 +401,14 @@ test("a concurrent saved action is reused without overwriting either draft and a
     .locator('[name="waitingTitle"]')
     .fill("Silinse de korunacak taslak");
   await row(other).locator(".task-name").click();
+  const sourcePreview = other.locator("#meeting-record-panel");
+  await expect(sourcePreview).toBeVisible();
+  await expect(sourcePreview).toHaveAttribute("data-record-id", SOURCE_ID);
+  await sourcePreview
+    .getByRole("button", { name: "Kaydı düzenle", exact: true })
+    .click();
+  await expect(other.locator("#editor")).toBeVisible();
+  await expect(form(other).locator('[name="id"]')).toHaveValue(SOURCE_ID);
   other.once("dialog", (message) => message.accept());
   await other.locator('#editor [data-action="delete"]').click();
   await expect(

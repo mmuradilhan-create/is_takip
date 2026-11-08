@@ -27,6 +27,19 @@ const closeEditor = (page) =>
     .locator("#editor")
     .getByRole("button", { name: "Vazgeç", exact: true })
     .click();
+async function editMeetingThroughPreview(page, id) {
+  await row(page, id).locator(".task-name").click();
+  const preview = page.locator("#meeting-record-panel");
+  await expect(preview).toBeVisible();
+  await expect(preview).toHaveAttribute("data-record-id", id);
+  await expect(page.locator("#editor")).not.toBeVisible();
+  await preview
+    .getByRole("button", { name: "Kaydı düzenle", exact: true })
+    .click();
+  await expect(page.locator("#editor")).toBeVisible();
+  await expect(field(page, "id")).toHaveValue(id);
+}
+
 const source = (id, extra = {}) =>
   make({
     id,
@@ -238,7 +251,7 @@ test("existing meeting edits and new routes preserve remaining legacy source fie
   await seed(page, [legacy]);
   const before = await saved(page);
   const beforeHistory = (await stored(page)).odak.history.length;
-  await row(page, original.id).locator(".task-name").click();
+  await editMeetingThroughPreview(page, original.id);
   await expect(
     form(page).locator('[data-record-editor-basic] [name="decision"]'),
   ).toBeVisible();
@@ -282,7 +295,7 @@ test("existing meeting edits and new routes preserve remaining legacy source fie
   await undo(page);
   expect(await saved(page)).toBe(before);
   await list(page);
-  await row(page, original.id).locator(".task-name").click();
+  await editMeetingThroughPreview(page, original.id);
   await form(page).locator('[data-action="meeting-route-both"]').click();
   const both = page.locator("#meeting-both-dialog");
   await expect(both).toBeVisible();
@@ -366,6 +379,7 @@ test("meeting tables place status below its own route control, omit missing date
     "Aksiyon / Karar",
     "Bağlı iş",
     "Takip",
+    "İşlem",
   ]);
   await expect(page.locator("#priority-filter, #period-filter")).toHaveCount(0);
   await expect(row(page, "none").locator(".meeting-decision")).toHaveText(

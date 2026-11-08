@@ -171,12 +171,29 @@ test("daily and external waiting forms hide general next steps while preserving 
   ]) {
     await view(page, type);
     await page.getByRole("button", { name: "Yeni kayıt", exact: true }).click();
+    await expect(form(page)).toBeVisible();
+    await expect(form(page)).toHaveAttribute("data-creation", "true");
+    await expect(field(page, "type")).toHaveValue(type);
     await openCreationExtras(page);
     await expect(field(page, "nextAction")).not.toBeVisible();
     await closeEditor(page);
+    await expect(page.locator("#editor")).not.toBeVisible();
     expect(await saved(page)).toBe(before);
     const original = items.find((item) => item.id === id);
     await row(page, id).locator(".task-name").click();
+    if (type === "waiting") {
+      const preview = page.locator("#waiting-record-panel");
+      await expect(preview).toBeVisible();
+      await expect(preview).toHaveAttribute("data-record-id", id);
+      await expect(page.locator("#editor")).not.toBeVisible();
+      await preview
+        .getByRole("button", { name: "Kaydı düzenle", exact: true })
+        .click();
+    }
+    await expect(form(page)).toBeVisible();
+    await expect(form(page)).not.toHaveAttribute("data-creation", "true");
+    await expect(field(page, "id")).toHaveValue(id);
+    await expect(field(page, "type")).toHaveValue(type);
     await openCreationExtras(page);
     await expect(field(page, "nextAction")).not.toBeVisible();
     await expect(field(page, "nextAction")).toBeDisabled();
@@ -218,7 +235,14 @@ test("daily and external waiting forms hide general next steps while preserving 
   await expect(field(page, "description")).toHaveValue(
     "Kaydedilmeyen hedef notu taslağı.",
   );
-  await closeEditor(page);
+  const confirmation = page.waitForEvent("dialog");
+  const closing = closeEditor(page);
+  const prompt = await confirmation;
+  expect(prompt.type()).toBe("confirm");
+  expect(prompt.message()).toContain("Kaydedilmemiş değişiklikler");
+  await prompt.accept();
+  await closing;
+  await expect(page.locator("#editor")).not.toBeVisible();
   expect(await saved(page)).toBe(before);
 });
 

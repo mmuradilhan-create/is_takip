@@ -325,41 +325,53 @@ test("daily and waiting actions own their lifecycle while the meeting closes onl
   await expect(row(page, "authority").locator(".quick-complete")).toHaveCount(
     0,
   );
-  await expect(
-    row(page, "authority").locator(".completion-mark"),
-  ).toHaveAttribute("aria-label", /bağlı kayıtlardan hesaplanır/);
-  await row(page, "authority").locator(".status-trigger").click();
-  await expect(menu).toBeVisible();
-  await expect(
-    menu.getByRole("group", { name: "İşin durumu", exact: true }),
-  ).toBeVisible();
-  await expect(
-    menu.getByRole("group", { name: "Takibin durumu", exact: true }),
-  ).toBeVisible();
-  for (const id of [target.id, waitingTarget.id])
+  await expect(row(page, "authority").locator(".completion-mark")).toHaveCount(
+    0,
+  );
+  for (const [route, id, ownGroup, otherGroup] of [
+    ["daily", target.id, "İşin durumu", "Takibin durumu"],
+    ["waiting", waitingTarget.id, "Takibin durumu", "İşin durumu"],
+  ]) {
+    const status = row(page, "authority").locator(
+      `.meeting-linked-cell[data-route="${route}"] .status-trigger`,
+    );
+    await expect(status).toHaveAttribute("data-target-id", id);
+    await status.click();
+    await expect(menu).toBeVisible();
     await expect(
-      menu.locator(
-        `[data-action="set-status"][data-id="${id}"][data-status="completed"]`,
-      ),
-    ).toHaveCount(1);
-  await expect(page.locator("#editor")).not.toBeVisible();
-  await page.keyboard.press("Escape");
-  expect(await records(page)).toEqual(bothCreated);
+      menu.getByRole("group", { name: ownGroup, exact: true }),
+    ).toBeVisible();
+    await expect(
+      menu.getByRole("group", { name: otherGroup, exact: true }),
+    ).toHaveCount(0);
+    for (const targetId of [target.id, waitingTarget.id, "authority"])
+      await expect(
+        menu.locator(
+          `[data-action="set-status"][data-id="${targetId}"][data-status="completed"]`,
+        ),
+      ).toHaveCount(0);
+    await expect(page.locator("#editor")).not.toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(menu).not.toBeVisible();
+    expect(await records(page)).toEqual(bothCreated);
+  }
   await openSource(page, "authority");
   await expect(form(page).locator('[name="id"]')).toHaveValue("authority");
   await openCreationExtras(page);
   for (const name of ["status", "priority", "dueDate", "nextAction"])
     await expect(form(page).locator(`[name="${name}"]`)).toBeDisabled();
-  await expect(form(page).locator('[name="owner"]')).toBeEnabled();
+  for (const name of ["owner", "participants"]) {
+    const field = form(page).locator(`[name="${name}"]`);
+    await expect(field).toBeHidden();
+    await expect(field).toBeDisabled();
+    await expect(field).toHaveValue("");
+  }
   await form(page)
     .locator('[name="title"]')
     .fill("Güncellenen toplantı bağlamı");
   await form(page)
     .locator('[name="decision"]')
     .fill("Yeni toplantı açıklaması.");
-  await form(page)
-    .locator('[name="participants"]')
-    .fill("Yeni katılımcı ekibi");
   await saveDraft(page);
   const editedContext = await records(page);
   expect(editedContext.find((item) => item.id === target.id)).toEqual(target);
@@ -369,7 +381,8 @@ test("daily and waiting actions own their lifecycle while the meeting closes onl
   expect(editedContext.find((item) => item.id === "authority")).toMatchObject({
     title: "Güncellenen toplantı bağlamı",
     decision: "Yeni toplantı açıklaması.",
-    participants: "Yeni katılımcı ekibi",
+    owner: original[0].owner,
+    participants: original[0].participants,
   });
   await list(page, "daily");
   await row(page, target.id).locator(".quick-complete").click();

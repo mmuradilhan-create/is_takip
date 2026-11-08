@@ -146,3 +146,100 @@ test("connection bubbles reveal full escaped names quickly on hover and focus, p
   );
   expect(await saved(page)).toBe(before);
 });
+
+test("same-named daily, weekly and monthly records keep their full actual parent names in connection bubbles", async ({
+  page,
+}) => {
+  const title = "Ortak üretim ve doğrulama kapsamı";
+  const records = [
+    make({
+      id: "same-name-year",
+      type: "yearly",
+      title,
+      periodKey: "2026",
+    }),
+    make({
+      id: "same-name-month",
+      type: "monthly",
+      title,
+      periodKey: "2026-11",
+      goalParentId: "same-name-year",
+    }),
+    make({
+      id: "same-name-week",
+      type: "weekly",
+      title,
+      periodKey: "2026-W45",
+      goalParentId: "same-name-month",
+    }),
+    make({
+      id: "same-name-day",
+      title,
+      parentId: "same-name-week",
+      workContext: "",
+    }),
+  ];
+  const initialRaw = JSON.stringify({
+    version: 1,
+    records,
+    odak: {
+      version: 1,
+      preferences: { density: "compact" },
+      history: [],
+    },
+  });
+  await page.clock.setFixedTime(NOW);
+  await page.addInitScript(
+    ({ key, initialRaw }) => {
+      if (sessionStorage.getItem("same-name-connections-seeded")) return;
+      localStorage.setItem(key, initialRaw);
+      sessionStorage.setItem("same-name-connections-seeded", "1");
+    },
+    { key: KEY, initialRaw },
+  );
+  await page.goto("/");
+  expect(await saved(page)).toBe(initialRaw);
+  const bubble = page.locator("#record-link-tooltip");
+  const panel = page.locator("#goal-detail-panel");
+  for (const [view, childId, parentId, role] of [
+    ["daily", "same-name-day", "same-name-week", "Haftalık hedef"],
+    ["weekly", "same-name-week", "same-name-month", "Aylık hedef"],
+    ["monthly", "same-name-month", "same-name-year", "Senelik hedef"],
+  ]) {
+    await page.locator(`#nav [data-view="${view}"]`).click();
+    if (view !== "daily")
+      await page.locator('[data-action="period-all"]').click();
+    const row = page.locator(
+      `.full-table [data-record-row][data-id="${childId}"]`,
+    );
+    const parent = row.locator(".record-parent-link");
+    const caption = `${role}: ${title}`;
+    await expect(parent).toHaveAttribute("data-id", parentId);
+    await expect(parent).toHaveAttribute("data-action", "goal-details");
+    await expect(parent).toHaveAttribute("data-record-link-tooltip", caption);
+    await expect(parent).toHaveAttribute(
+      "aria-label",
+      `${caption}: üst hedefi aç`,
+    );
+    await expect(parent).not.toHaveAttribute("title");
+    await expect(parent).toHaveText("");
+    await expect(parent.locator("svg")).toHaveCount(1);
+    await parent.hover();
+    await expect(bubble).toBeVisible({ timeout: 400 });
+    await expect(bubble).toHaveText(caption);
+    await parent.focus();
+    await page.keyboard.press("Enter");
+    await expect(bubble).not.toBeVisible();
+    await expect(panel).toBeVisible();
+    await expect(panel).toHaveAttribute("data-goal-id", parentId);
+    await expect(panel.locator(".goal-panel-title")).toHaveText(title);
+    await expect(page.locator("#editor")).not.toBeVisible();
+    expect(await saved(page)).toBe(initialRaw);
+    await page.keyboard.press("Escape");
+    await expect(panel).not.toBeVisible();
+    await page.mouse.move(10, 10);
+    expect(await saved(page)).toBe(initialRaw);
+  }
+  await page.reload();
+  expect(await saved(page)).toBe(initialRaw);
+});

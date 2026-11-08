@@ -1305,9 +1305,16 @@ export async function startMainApp() {
     const parent = parts.find(
       (part) => part.kind === "parent" && part.targetId,
     );
-    return parent
-      ? `<button type="button" class="record-context-link record-parent-link" data-context-kind="parent" data-action="goal-details" data-id="${esc(parent.targetId)}" data-record-link-tooltip="${esc(parent.text)}" aria-label="${esc(parent.text)}: üst hedefi aç" aria-haspopup="dialog" aria-controls="goal-detail-panel">${icon("target")}</button>`
-      : "";
+    const target =
+      parent && state.records.find((item) => item.id === parent.targetId);
+    if (!target) return "";
+    const role = {
+      weekly: "Haftalık hedef",
+      monthly: "Aylık hedef",
+      yearly: "Senelik hedef",
+    }[target.type];
+    const caption = `${role}: ${target.title}`;
+    return `<button type="button" class="record-context-link record-parent-link" data-context-kind="parent" data-action="goal-details" data-id="${esc(target.id)}" data-record-link-tooltip="${esc(caption)}" aria-label="${esc(caption)}: üst hedefi aç" aria-haspopup="dialog" aria-controls="goal-detail-panel">${icon("target")}</button>`;
   }
   function focusTitleContent(record) {
     return `<div class="record-title-content"><button class="focus-title" data-action="edit" data-id="${esc(record.id)}" title="${esc(record.title)}">${esc(record.title)}</button>${parentTitleControl(record)}${sourceContextControl(record)}${recordNotes?.button(record) || ""}</div>`;

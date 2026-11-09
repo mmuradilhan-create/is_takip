@@ -240,6 +240,12 @@
   min-width: 0;
 }
 
+.dashboard-rows
+  .dashboard-bottom-row
+  .followup-fact[data-followup-fact="last"] {
+  text-align: right;
+}
+
 .dashboard-rows .dashboard-bottom-row .followup-fact-label {
   overflow: hidden;
   color: var(--theme-muted, #74836a);

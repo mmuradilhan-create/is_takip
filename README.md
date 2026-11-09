@@ -1,6 +1,6 @@
 # Odak
 
-PC kullanımına odaklanan, Türkçe kişisel iş ve hedef takibi. HTML/CSS/JavaScript tabanlıdır. Güncel sürüm: **0.21.24**.
+PC kullanımına odaklanan, Türkçe kişisel iş ve hedef takibi. HTML/CSS/JavaScript tabanlıdır. Güncel sürüm: **0.21.25**.
 
 ## Kullanım
 
@@ -306,3 +306,5 @@ Genel bakışın üç alt paneli önceki kompakt yüksekliğe döndü (masaüst�
 Takip kartlarındaki konu metni, durum ve tarih satırının üstündeki boşluğu kullanır. Kartın yüksekliği artmadan daha fazla satır okunabilir; Bekleme, Son takip ve Takip ettim alt bölümde kalır.
 
 Haftalık hedef kartındaki durum ve teslim tarihi de takip kartlarıyla aynı alt hizadadır. İlerleme ve düğmeler yerinde kalır; panel yüksekliği artmaz.
+
+Takip kartında Bekleme solda, Son takip başlığı ve tarihi sağ kenara hizalıdır.

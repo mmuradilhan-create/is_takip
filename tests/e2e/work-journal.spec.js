@@ -392,10 +392,14 @@ test("a journal backup survives reset and restores all records and journal field
   expect(validateStore(JSON.parse(bytes.toString("utf8"))).records).toEqual(
     records,
   );
-  page.once("dialog", (dialog) => dialog.accept());
   await page
     .getByRole("button", { name: "Çalışma alanını sıfırla", exact: true })
     .click();
+  const resetDialog = page.locator("#workspace-reset-dialog");
+  await expect(resetDialog).toBeVisible();
+  expect(await readRecords(page)).toEqual(records);
+  await resetDialog.locator('[data-action="confirm-reset-workspace"]').click();
+  await expect(resetDialog).not.toBeVisible();
   expect(await readRecords(page)).toEqual([]);
   await expect(page.locator("#settings-dialog")).not.toBeVisible();
   await openBackup(page);

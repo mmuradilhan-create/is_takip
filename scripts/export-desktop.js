@@ -47,7 +47,10 @@ bulundukları bağlama döner. Mevcut hedefi bağla alanı aday yokken de görü
 
 Genel bakışın altındaki takip ve hedef alanları ikişer kart gösterir.
 Yanlarındaki Notlar alanı bağımsız maddeler tutar; ekleme/düzenleme/silme
-tek Geri al adımıdır. Enter kaydeder, Shift+Enter alt satır ekler.
+tek Geri al adımıdır. Not silme onay istemez; Geri al ile geri getirilebilir.
+Enter kaydeder, Shift+Enter alt satır ekler.
+Çalışma alanını sıfırlama onayı Sıfırla düğmesine yakın küçük bir pencerede
+açılır. Vazgeç, çarpı, Escape veya dışına tıklamak kayıtları değiştirmez.
 Notlar JSON yedeğine dahildir; eski notsuz yedek mevcut notları korur.
 Takip kartlarında konu metni üstteki boş alanı kullanır; durum ve tarih
 alt bölüme yaklaşır. Panel yüksekliği artmadan daha fazla satır okunur.

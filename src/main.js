@@ -329,6 +329,8 @@ export async function startMainApp() {
     /* Appearance preferences are independent of task records. */
   }
   let workspaceStore = null;
+  let workspaceResetConfirmation = null;
+  let workspaceResetSaving = false;
   let summaryWidget = null;
   let inlineFields = null;
   let workSessions = null;
@@ -517,24 +519,85 @@ export async function startMainApp() {
   `;
     document.querySelector("#settings-dialog").showModal();
   }
-  function resetWorkspace() {
-    const notesCount = workspaceStore?.notes.length || 0;
-    if (!state.records.length && !notesCount) return;
-    if (
-      !confirm(
-        `Çalışma alanındaki ${state.records.length} kayıt${notesCount ? ` ve ${notesCount} not` : ""} silinecek. Bir kayıt yedeği aldıysan bunları geri yükleyebilirsin. Çalışma alanını sıfırlamak istiyor musun?`,
-      )
-    )
+  function workspaceResetSnapshot() {
+    return {
+      records: workspaceStore?.records || state.records,
+      notes: workspaceStore?.notes || [],
+      hasNotes: Boolean(workspaceStore?.hasNotes),
+    };
+  }
+  function positionWorkspaceReset() {
+    const dialog = document.querySelector("#workspace-reset-dialog");
+    if (!dialog?.open) return;
+    const trigger = workspaceResetConfirmation?.trigger;
+    if (!trigger?.isConnected) return;
+    const rect = trigger.getBoundingClientRect();
+    const bounds = dialog.getBoundingClientRect();
+    const viewport = window.visualViewport;
+    const left = (viewport?.offsetLeft || 0) + 8;
+    const top = (viewport?.offsetTop || 0) + 8;
+    const right = left + (viewport?.width || window.innerWidth) - 16;
+    const bottom = top + (viewport?.height || window.innerHeight) - 16;
+    const above = rect.top - bounds.height - 8;
+    const below = rect.bottom + 8;
+    const preferred = above >= top ? above : below;
+    dialog.style.left = `${Math.max(left, Math.min(rect.right - bounds.width, right - bounds.width))}px`;
+    dialog.style.top = `${Math.max(top, Math.min(preferred, bottom - bounds.height))}px`;
+  }
+  function renderWorkspaceReset(trigger, error = "") {
+    const snapshot = workspaceResetSnapshot();
+    workspaceResetConfirmation = {
+      token: JSON.stringify(snapshot),
+      trigger,
+    };
+    const dialog = document.querySelector("#workspace-reset-dialog");
+    const contents = `${snapshot.records.length} kayıt${snapshot.notes.length ? ` ve ${snapshot.notes.length} not` : ""}`;
+    dialog.innerHTML = `<div class="modal-header"><h2 id="workspace-reset-title">Çalışma alanını sıfırla?</h2><button type="button" class="close-modal" data-action="cancel-workspace-reset" aria-label="Pencereyi kapat">${icon("close")}</button></div><div class="modal-body"><p id="workspace-reset-description"><strong>${contents}</strong> silinecek. Yedeğin varsa daha sonra geri yükleyebilirsin.</p><p class="workspace-reset-help">Görünüm ve seçenek listelerin korunur.</p><p id="workspace-reset-error" class="error-message" role="alert" ${error ? "" : "hidden"}>${esc(error)}</p></div><div class="modal-footer"><button type="button" class="btn" data-action="cancel-workspace-reset" autofocus>Vazgeç</button><button type="button" class="btn danger" data-action="confirm-reset-workspace" ${!snapshot.records.length && !snapshot.notes.length ? "disabled" : ""}>Sıfırla</button></div>`;
+    if (!dialog.open) dialog.showModal();
+    positionWorkspaceReset();
+    dialog
+      .querySelector('[data-action="cancel-workspace-reset"][autofocus]')
+      ?.focus({ preventScroll: true });
+  }
+  function resetWorkspace(trigger) {
+    if (workspaceResetSaving) return;
+    const snapshot = workspaceResetSnapshot();
+    if (!snapshot.records.length && !snapshot.notes.length) return;
+    renderWorkspaceReset(trigger);
+  }
+  function confirmWorkspaceReset() {
+    const dialog = document.querySelector("#workspace-reset-dialog");
+    const expected = workspaceResetConfirmation;
+    if (!dialog.open || !expected || workspaceResetSaving) return;
+    const snapshot = workspaceResetSnapshot();
+    if (JSON.stringify(snapshot) !== expected.token) {
+      renderWorkspaceReset(
+        expected.trigger,
+        "Çalışma alanı bu pencere açıkken değişti. Güncel kayıt ve not sayısını kontrol edip yeniden onayla.",
+      );
       return;
+    }
+    if (!snapshot.records.length && !snapshot.notes.length) return;
+    workspaceResetSaving = true;
+    dialog.setAttribute("aria-busy", "true");
+    for (const button of dialog.querySelectorAll("button"))
+      button.disabled = true;
     // Persist an empty store instead of removing the key, so embedded initial
-    // records are not imported again on the next page load.
-    if (
-      saveWorkspaceSnapshot(
+    // records are not imported again on reload. The store also checks its latest
+    // persisted snapshot atomically, including changes not delivered by storage events.
+    let saved = false;
+    try {
+      saved = saveWorkspaceSnapshot(
         [],
-        workspaceStore.hasNotes ? { notes: [] } : {},
+        snapshot.hasNotes ? { notes: [] } : {},
         "Çalışma alanı sıfırlama",
-      )
-    ) {
+      );
+    } finally {
+      workspaceResetSaving = false;
+      dialog.removeAttribute("aria-busy");
+    }
+    if (saved) {
+      dialog.close();
       state.search = "";
       state.focusFilter = "open";
       document.querySelector("#global-search").value = "";
@@ -542,6 +605,15 @@ export async function startMainApp() {
       document.querySelector("#settings-dialog").close();
       toast(
         "Çalışma alanı sıfırlandı. Kayıt yedeğini Ayarlar → Yedekleme bölümünden geri yükleyebilirsin.",
+      );
+    } else {
+      const changed =
+        JSON.stringify(workspaceResetSnapshot()) !== expected.token;
+      renderWorkspaceReset(
+        expected.trigger,
+        changed
+          ? "Çalışma alanı bu pencere açıkken değişti. Güncel kayıt ve not sayısını kontrol edip yeniden onayla."
+          : "Sıfırlama kaydedilemedi. Tarayıcı depolamasını kontrol edip yeniden deneyebilirsin.",
       );
     }
   }
@@ -2416,10 +2488,36 @@ export async function startMainApp() {
     }
   }
 
-  app.innerHTML = `<div class="layout"><div class="mobile-backdrop" data-action="menu"></div><aside class="sidebar"><div class="brand-lockup"><div class="brand"><span class="brand-name" id="brand-name"><span class="brand-accessible-name">ODAK</span><svg class="brand-lettering" viewBox="0 0 200 48" aria-hidden="true"><path fill-rule="evenodd" d="M15 2H29Q42 2 42 15V31Q42 44 29 44H15Q2 44 2 31V15Q2 2 15 2ZM16 11Q12 11 12 16V30Q12 35 16 35H28Q32 35 32 30V16Q32 11 28 11Z"/><path fill-rule="evenodd" d="M51 2H72Q93 2 93 23Q93 44 72 44H51ZM61 11V35H71Q83 35 83 23Q83 11 71 11Z"/><path fill-rule="evenodd" d="M119 2H130L148 44H137L133 34H116L112 44H101ZM119 26H130L124.5 12Z"/><path d="M157 2H167V19L183 2H196L176 23L198 44H184L167 27V44H157Z"/></svg></span></div></div><p class="nav-label">ÇALIŞMA ALANI</p><nav id="nav" class="nav" aria-label="Ana menü"></nav></aside><main class="main"><header class="topbar"><div class="topbar-start"><button type="button" class="mobile-toggle" data-action="menu" aria-label="Menüyü aç" aria-expanded="false">${icon("menu")}</button><div class="page-heading"><h1 id="page-title">Genel bakış</h1></div></div><div class="topbar-right"><div class="search">${icon("search")}<input type="search" id="global-search" placeholder="Kayıtlarında ara…" aria-label="Kayıtlarında ara" autocomplete="off"></div><button type="button" class="btn primary new-record" data-action="new">${icon("plus")}<span>Yeni kayıt</span></button><button type="button" class="btn widget-trigger" data-action="open-widget" aria-label="Widget aç" title="Mini ajandayı aç">${icon("widget")}<span>Widget</span></button><button type="button" class="btn calendar-trigger" data-action="open-calendar" aria-label="Takvimi aç" title="Takvimi aç">${icon("calendar")}<span>Takvim</span></button><span class="today">${icon("calendar")}<span class="today-copy"><time id="topbar-date" class="today-date"></time><time id="topbar-clock" class="today-clock"></time></span></span><button type="button" id="undo-button" class="icon-btn undo-trigger" data-action="undo" aria-label="Geri al" aria-keyshortcuts="Control+Z Meta+Z" title="Geri alınacak işlem yok" disabled>${icon("undo")}</button><button type="button" class="icon-btn settings-trigger" data-action="settings" aria-label="Ayarlar" title="Ayarlar">${icon("settings")}</button></div></header>${storageError || bootstrapNotice ? `<div class="unsaved-warning" role="alert">${esc(storageError || bootstrapNotice)}</div>` : ""}<div class="content" id="content"></div></main></div><dialog class="modal" id="editor" aria-label="Kayıt formu"></dialog><dialog class="modal" id="settings-dialog" aria-label="Ayarlar"></dialog><dialog class="modal" id="planning-prompts-dialog" aria-label="Planını netleştir"></dialog><dialog class="modal goal-links-review-dialog" id="goal-links-review-dialog" aria-label="Hedef bağlantılarını gözden geçir"></dialog><div id="status-menu" class="status-menu" popover="auto" role="menu" aria-label="Durum seç"></div>`;
+  app.innerHTML = `<div class="layout"><div class="mobile-backdrop" data-action="menu"></div><aside class="sidebar"><div class="brand-lockup"><div class="brand"><span class="brand-name" id="brand-name"><span class="brand-accessible-name">ODAK</span><svg class="brand-lettering" viewBox="0 0 200 48" aria-hidden="true"><path fill-rule="evenodd" d="M15 2H29Q42 2 42 15V31Q42 44 29 44H15Q2 44 2 31V15Q2 2 15 2ZM16 11Q12 11 12 16V30Q12 35 16 35H28Q32 35 32 30V16Q32 11 28 11Z"/><path fill-rule="evenodd" d="M51 2H72Q93 2 93 23Q93 44 72 44H51ZM61 11V35H71Q83 35 83 23Q83 11 71 11Z"/><path fill-rule="evenodd" d="M119 2H130L148 44H137L133 34H116L112 44H101ZM119 26H130L124.5 12Z"/><path d="M157 2H167V19L183 2H196L176 23L198 44H184L167 27V44H157Z"/></svg></span></div></div><p class="nav-label">ÇALIŞMA ALANI</p><nav id="nav" class="nav" aria-label="Ana menü"></nav></aside><main class="main"><header class="topbar"><div class="topbar-start"><button type="button" class="mobile-toggle" data-action="menu" aria-label="Menüyü aç" aria-expanded="false">${icon("menu")}</button><div class="page-heading"><h1 id="page-title">Genel bakış</h1></div></div><div class="topbar-right"><div class="search">${icon("search")}<input type="search" id="global-search" placeholder="Kayıtlarında ara…" aria-label="Kayıtlarında ara" autocomplete="off"></div><button type="button" class="btn primary new-record" data-action="new">${icon("plus")}<span>Yeni kayıt</span></button><button type="button" class="btn widget-trigger" data-action="open-widget" aria-label="Widget aç" title="Mini ajandayı aç">${icon("widget")}<span>Widget</span></button><button type="button" class="btn calendar-trigger" data-action="open-calendar" aria-label="Takvimi aç" title="Takvimi aç">${icon("calendar")}<span>Takvim</span></button><span class="today">${icon("calendar")}<span class="today-copy"><time id="topbar-date" class="today-date"></time><time id="topbar-clock" class="today-clock"></time></span></span><button type="button" id="undo-button" class="icon-btn undo-trigger" data-action="undo" aria-label="Geri al" aria-keyshortcuts="Control+Z Meta+Z" title="Geri alınacak işlem yok" disabled>${icon("undo")}</button><button type="button" class="icon-btn settings-trigger" data-action="settings" aria-label="Ayarlar" title="Ayarlar">${icon("settings")}</button></div></header>${storageError || bootstrapNotice ? `<div class="unsaved-warning" role="alert">${esc(storageError || bootstrapNotice)}</div>` : ""}<div class="content" id="content"></div></main></div><dialog class="modal" id="editor" aria-label="Kayıt formu"></dialog><dialog class="modal" id="settings-dialog" aria-label="Ayarlar"></dialog><dialog class="modal" id="workspace-reset-dialog" aria-labelledby="workspace-reset-title" aria-describedby="workspace-reset-description"></dialog><dialog class="modal" id="planning-prompts-dialog" aria-label="Planını netleştir"></dialog><dialog class="modal goal-links-review-dialog" id="goal-links-review-dialog" aria-label="Hedef bağlantılarını gözden geçir"></dialog><div id="status-menu" class="status-menu" popover="auto" role="menu" aria-label="Durum seç"></div>`;
   document
     .querySelector("#editor")
     .addEventListener("close", restoreMeetingRoute);
+  const workspaceResetDialog = document.querySelector(
+    "#workspace-reset-dialog",
+  );
+  workspaceResetDialog.addEventListener("cancel", (event) => {
+    if (workspaceResetSaving) event.preventDefault();
+  });
+  workspaceResetDialog.addEventListener("close", () => {
+    if (workspaceResetDialog.open) return;
+    const trigger = workspaceResetConfirmation?.trigger;
+    workspaceResetConfirmation = null;
+    if (document.querySelector("#settings-dialog").open && trigger?.isConnected)
+      trigger.focus({ preventScroll: true });
+  });
+  window.addEventListener("resize", positionWorkspaceReset);
+  window.visualViewport?.addEventListener("resize", positionWorkspaceReset);
+  window.addEventListener(
+    "pagehide",
+    () => {
+      window.removeEventListener("resize", positionWorkspaceReset);
+      window.visualViewport?.removeEventListener(
+        "resize",
+        positionWorkspaceReset,
+      );
+    },
+    { once: true },
+  );
   document.querySelector("#editor").addEventListener("cancel", (event) => {
     const form = event.currentTarget.querySelector(
       '#record-form:not([data-creation="true"])',
@@ -3009,7 +3107,14 @@ export async function startMainApp() {
         openSettings();
         break;
       case "reset-workspace":
-        resetWorkspace();
+        resetWorkspace(button);
+        break;
+      case "confirm-reset-workspace":
+        confirmWorkspaceReset();
+        break;
+      case "cancel-workspace-reset":
+        if (!workspaceResetSaving)
+          document.querySelector("#workspace-reset-dialog").close();
         break;
       case "cleanup-import-notes":
         cleanupImportNotes();

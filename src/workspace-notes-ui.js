@@ -248,7 +248,6 @@ export function createWorkspaceNotesUI({
       const expected = readNotes();
       const index = expected.findIndex((note) => note.id === id);
       if (index < 0) throw new Error("Bu not artık bulunamıyor.");
-      if (!owner.confirm("Bu notu silmek istiyor musun?")) return;
       setPanelError();
       deleting = true;
       refresh();

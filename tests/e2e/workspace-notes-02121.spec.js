@@ -81,6 +81,11 @@ const field = (page) =>
 const submit = (page) =>
   dialog(page).getByRole("button", { name: "Kaydet", exact: true });
 const settings = (page) => page.locator("#settings-dialog");
+const resetDialog = (page) => page.locator("#workspace-reset-dialog");
+const resetTrigger = (page) =>
+  settings(page).locator('[data-action="reset-workspace"]');
+const resetConfirm = (page) =>
+  resetDialog(page).locator('[data-action="confirm-reset-workspace"]');
 const saved = (page) => page.evaluate((key) => localStorage.getItem(key), KEY);
 const stored = async (page) => JSON.parse(await saved(page));
 const undo = (page) =>
@@ -161,6 +166,36 @@ async function closeSettings(page) {
 async function openSettings(page) {
   if (!(await settings(page).isVisible()))
     await page.getByRole("button", { name: "Ayarlar", exact: true }).click();
+}
+
+async function openReset(page) {
+  await openSettings(page);
+  await resetTrigger(page).click();
+  await expect(resetDialog(page)).toBeVisible();
+  await expect(resetDialog(page)).toHaveAccessibleName(
+    "Çalışma alanını sıfırla?",
+  );
+}
+
+async function expectResetNearTrigger(page) {
+  const popup = await resetDialog(page).boundingBox();
+  const trigger = await resetTrigger(page).boundingBox();
+  const viewport = page.viewportSize();
+  expect(popup.x).toBeGreaterThanOrEqual(7.5);
+  expect(popup.y).toBeGreaterThanOrEqual(7.5);
+  expect(popup.x + popup.width).toBeLessThanOrEqual(viewport.width - 7.5);
+  expect(popup.y + popup.height).toBeLessThanOrEqual(viewport.height - 7.5);
+  expect(popup.x).toBeLessThanOrEqual(trigger.x + trigger.width);
+  expect(popup.x + popup.width).toBeGreaterThanOrEqual(trigger.x);
+  if (trigger.y - popup.height - 8 >= 8)
+    expect(
+      Math.abs(trigger.y - popup.y - popup.height - 8),
+    ).toBeLessThanOrEqual(1);
+  else if (trigger.y + trigger.height + popup.height + 16 <= viewport.height)
+    expect(
+      Math.abs(popup.y - trigger.y - trigger.height - 8),
+    ).toBeLessThanOrEqual(1);
+  await expect(resetConfirm(page)).toBeInViewport({ ratio: 1 });
 }
 
 async function upload(page, backup) {
@@ -286,7 +321,7 @@ test("two-card previews retain access to every record while independent escaped 
   await expect(items(page)).toHaveCount(0);
 });
 
-test("unchanged and cancelled note drafts never write while confirmed deletion is one reload-safe exact Undo", async ({
+test("unchanged and cancelled note drafts never write while one-click deletion opens no confirmation and has one reload-safe exact Undo", async ({
   page,
 }) => {
   const notes = existingNotes();
@@ -319,14 +354,27 @@ test("unchanged and cancelled note drafts never write while confirmed deletion i
         `[data-action="workspace-note-delete"][data-note-id="${notes[0].id}"]`,
       )
       .click();
-  expect(await confirmAction(page, remove, false)).toContain("notu silmek");
-  expect(await saved(page)).toBe(before);
-  await confirmAction(page, remove);
+  const deletionDialogs = [];
+  const dismissUnexpected = async (confirmation) => {
+    deletionDialogs.push(confirmation.message());
+    await confirmation.dismiss();
+  };
+  page.on("dialog", dismissUnexpected);
+  try {
+    await remove();
+    expect(deletionDialogs).toEqual([]);
+  } finally {
+    page.off("dialog", dismissUnexpected);
+  }
   await expect(items(page)).toHaveCount(1);
   expect((await stored(page)).odak.notes).toEqual([notes[1]]);
   expect((await stored(page)).records).toEqual(original.records);
+  expect((await stored(page)).odak.preferences).toEqual(original.preferences);
   expect((await stored(page)).odak.history).toHaveLength(1);
+  const deletedRaw = await saved(page);
   await page.reload();
+  expect(await saved(page)).toBe(deletedRaw);
+  await expect(items(page)).toHaveCount(1);
   await undo(page);
   expect(await saved(page)).toBe(before);
   await expect(panel(page).locator(".workspace-note-text")).toHaveText(
@@ -642,27 +690,54 @@ test("note, theme and record changes keep a single exact reload-safe Undo chain 
   expect((await stored(page)).odak.notes).toEqual(original.notes);
 });
 
-test("a notes-only workspace can be reset after confirmation and exact Undo restores every independent note", async ({
+test("a notes-only reset stays beside its trigger and every dismissal preserves notes before one exact reset Undo", async ({
   page,
 }) => {
   const notes = existingNotes();
   const original = await seed(page, { records: [], notes });
   const before = await saved(page);
   await openSettings(page);
-  const reset = () =>
-    settings(page)
-      .getByRole("button", { name: "Çalışma alanını sıfırla", exact: true })
-      .click();
-  await expect(
-    settings(page).getByRole("button", {
-      name: "Çalışma alanını sıfırla",
-      exact: true,
-    }),
-  ).toBeEnabled();
-  expect(await confirmAction(page, reset, false)).toContain("not");
-  expect(await saved(page)).toBe(before);
-  await confirmAction(page, reset);
+  await expect(resetTrigger(page)).toBeEnabled();
+  const nativeDialogs = [];
+  page.on("dialog", async (confirmation) => {
+    nativeDialogs.push(confirmation.message());
+    await confirmation.dismiss();
+  });
+  for (const [index, dismiss] of [
+    () =>
+      resetDialog(page)
+        .getByRole("button", { name: "Pencereyi kapat" })
+        .click(),
+    () => page.keyboard.press("Escape"),
+    () => page.mouse.click(4, 4),
+    () =>
+      resetDialog(page)
+        .getByRole("button", { name: "Vazgeç", exact: true })
+        .click(),
+  ].entries()) {
+    await page.setViewportSize(
+      index % 2 ? { width: 390, height: 844 } : { width: 1280, height: 720 },
+    );
+    await openReset(page);
+    await expectResetNearTrigger(page);
+    await expect(
+      resetDialog(page).locator("#workspace-reset-description"),
+    ).toContainText(`${notes.length} not`);
+    await expect(
+      resetDialog(page).getByRole("button", { name: "Vazgeç", exact: true }),
+    ).toBeFocused();
+    expect(await saved(page)).toBe(before);
+    await dismiss();
+    await expect(resetDialog(page)).not.toBeVisible();
+    await expect(settings(page)).toBeVisible();
+    await expect(resetTrigger(page)).toBeFocused();
+    expect(await saved(page)).toBe(before);
+  }
+  await openReset(page);
+  await resetConfirm(page).click();
+  await expect(resetDialog(page)).not.toBeVisible();
   await expect(settings(page)).not.toBeVisible();
+  expect(nativeDialogs).toEqual([]);
   expect((await stored(page)).records).toEqual([]);
   expect((await stored(page)).odak.notes).toEqual([]);
   expect((await stored(page)).odak.preferences).toEqual(original.preferences);
@@ -672,4 +747,79 @@ test("a notes-only workspace can be reset after confirmation and exact Undo rest
   await undo(page);
   expect(await saved(page)).toBe(before);
   await expect(items(page)).toHaveCount(notes.length);
+});
+
+test("a reset rechecks a changed workspace and storage failure stays retryable before one exact records-and-notes Undo", async ({
+  page,
+  context,
+}) => {
+  const original = await seed(page, { notes: existingNotes() });
+  const before = await saved(page);
+  await openReset(page);
+  await expect(
+    resetDialog(page).locator("#workspace-reset-description"),
+  ).toContainText(`${original.records.length} kayıt`);
+  expect(await saved(page)).toBe(before);
+  const peer = await context.newPage();
+  try {
+    await peer.clock.setFixedTime(NOW);
+    await peer.goto("/");
+    await add(peer);
+    await field(peer).fill("Onay penceresi açıkken eklenen gerçek not");
+    await field(peer).press("Enter");
+    await expect(dialog(peer)).not.toBeVisible();
+    const changed = await saved(peer);
+    const changedNotes = (await stored(peer)).odak.notes;
+    await expect.poll(() => saved(page)).toBe(changed);
+    await expect(items(page)).toHaveCount(changedNotes.length);
+    await resetConfirm(page).click();
+    await expect(resetDialog(page)).toBeVisible();
+    await expect(
+      resetDialog(page).locator("#workspace-reset-error"),
+    ).toContainText("bu pencere açıkken değişti");
+    await expect(
+      resetDialog(page).locator("#workspace-reset-description"),
+    ).toContainText(`${changedNotes.length} not`);
+    expect(await saved(page)).toBe(changed);
+    await resetDialog(page)
+      .getByRole("button", { name: "Vazgeç", exact: true })
+      .click();
+    await openReset(page);
+    await page.evaluate((key) => {
+      const originalSetItem = Storage.prototype.setItem;
+      window.restoreResetStorage = () => {
+        Storage.prototype.setItem = originalSetItem;
+      };
+      Storage.prototype.setItem = function (name, value) {
+        if (name === key)
+          throw new DOMException("Test depolaması dolu", "QuotaExceededError");
+        return originalSetItem.call(this, name, value);
+      };
+    }, KEY);
+    await resetConfirm(page).click();
+    await expect(resetDialog(page)).toBeVisible();
+    await expect(
+      resetDialog(page).locator("#workspace-reset-error"),
+    ).not.toBeEmpty();
+    await expect(resetConfirm(page)).toBeEnabled();
+    expect(await saved(page)).toBe(changed);
+    await page.evaluate(() => window.restoreResetStorage());
+    await resetConfirm(page).click();
+    await expect(resetDialog(page)).not.toBeVisible();
+    await expect(settings(page)).not.toBeVisible();
+    const reset = await stored(page);
+    expect(reset.records).toEqual([]);
+    expect(reset.odak.notes).toEqual([]);
+    expect(reset.odak.preferences).toEqual(original.preferences);
+    expect(reset.odak.history).toHaveLength(
+      JSON.parse(changed).odak.history.length + 1,
+    );
+    await page.reload();
+    await undo(page);
+    expect(await saved(page)).toBe(changed);
+    expect((await stored(page)).records).toEqual(original.records);
+    expect((await stored(page)).odak.notes).toEqual(changedNotes);
+  } finally {
+    await peer.close();
+  }
 });

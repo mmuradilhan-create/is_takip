@@ -539,10 +539,20 @@ test("closed and removed work is stopped without changing lifecycle status, and 
   ).toEqual(records);
   await start(page);
   await page.getByRole("button", { name: "Ayarlar", exact: true }).click();
-  page.once("dialog", (dialog) => dialog.accept());
+  const beforeReset = await primaryState(page);
   await page
     .getByRole("button", { name: "Çalışma alanını sıfırla", exact: true })
     .click();
+  const resetDialog = page.locator("#workspace-reset-dialog");
+  await expect(resetDialog).toBeVisible();
+  expect(await primaryState(page)).toEqual(beforeReset);
+  expect(
+    (await currentState(page)).entries.filter(
+      (entry) => entry.status === "running",
+    ),
+  ).toHaveLength(1);
+  await resetDialog.locator('[data-action="confirm-reset-workspace"]').click();
+  await expect(resetDialog).not.toBeVisible();
   await expect(panel(page)).not.toBeVisible();
   expect(
     (await currentState(page)).entries.filter(

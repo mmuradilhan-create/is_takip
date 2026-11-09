@@ -126,6 +126,15 @@ async function openBackupSettings(page) {
     await backup.locator(":scope > summary").click();
 }
 
+async function openWorkspaceReset(page) {
+  await page
+    .locator('#settings-dialog [data-action="reset-workspace"]')
+    .click();
+  const confirmation = page.locator("#workspace-reset-dialog");
+  await expect(confirmation).toBeVisible();
+  return confirmation;
+}
+
 function linkedRecords() {
   const weekly = createRecord({
     id: "weekly-plan",
@@ -767,26 +776,28 @@ test("workspace reset respects cancellation, keeps an empty saved store, and res
   const backup = JSON.parse(downloadedBytes.toString("utf8"));
   expect(validateStore(backup).records).toEqual(records);
 
-  let cancelledMessage = "";
-  page.once("dialog", async (dialog) => {
-    cancelledMessage = dialog.message();
-    await dialog.dismiss();
-  });
-  await resetButton.click();
-  expect(cancelledMessage).toContain("2 kayıt");
+  const cancelledReset = await openWorkspaceReset(page);
+  await expect(
+    cancelledReset.locator("#workspace-reset-description"),
+  ).toContainText("2 kayıt");
+  await cancelledReset
+    .getByRole("button", { name: "Vazgeç", exact: true })
+    .click();
+  await expect(cancelledReset).not.toBeVisible();
   await expect(page.locator("#settings-dialog")).toBeVisible();
   expect(await readRecords(page)).toEqual(records);
   await expect(page.getByRole("searchbox")).toHaveValue("Verileri");
   await expect(page.locator("#status-filter")).toHaveValue("in_progress");
   await expect(page.locator("#priority-filter")).toHaveValue("high");
 
-  let acceptedMessage = "";
-  page.once("dialog", async (dialog) => {
-    acceptedMessage = dialog.message();
-    await dialog.accept();
-  });
-  await resetButton.click();
-  expect(acceptedMessage).toContain("2 kayıt");
+  const acceptedReset = await openWorkspaceReset(page);
+  await expect(
+    acceptedReset.locator("#workspace-reset-description"),
+  ).toContainText("2 kayıt");
+  await acceptedReset
+    .locator('[data-action="confirm-reset-workspace"]')
+    .click();
+  await expect(acceptedReset).not.toBeVisible();
   await expect(page.locator("#settings-dialog")).not.toBeVisible();
   await expect(page.locator("#page-title")).toHaveText("Genel bakış");
   await expect(page.getByRole("searchbox")).toHaveValue("");
@@ -1521,19 +1532,17 @@ test("undo reverses reset, backup restoration and theme while preserving the ato
   await expect(page.locator("html")).toHaveAttribute("data-density", "compact");
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   await openSettings(page);
-  page.once("dialog", (dialog) => dialog.accept());
-  await page
-    .getByRole("button", { name: "Çalışma alanını sıfırla", exact: true })
-    .click();
+  const firstReset = await openWorkspaceReset(page);
+  await firstReset.locator('[data-action="confirm-reset-workspace"]').click();
+  await expect(firstReset).not.toBeVisible();
   expect(await readRecords(page)).toEqual([]);
   await undoToRecords(page, original);
   await expect(page.locator("html")).toHaveAttribute("data-density", "compact");
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   await openSettings(page);
-  page.once("dialog", (dialog) => dialog.accept());
-  await page
-    .getByRole("button", { name: "Çalışma alanını sıfırla", exact: true })
-    .click();
+  const secondReset = await openWorkspaceReset(page);
+  await secondReset.locator('[data-action="confirm-reset-workspace"]').click();
+  await expect(secondReset).not.toBeVisible();
   expect(await readRecords(page)).toEqual([]);
   await openBackupSettings(page);
   page.once("dialog", (dialog) => dialog.accept());

@@ -241,6 +241,82 @@
   outline-offset: -2px;
 }
 
+/* Confirm reset beside its trigger while keeping focus in the application. */
+#workspace-reset-dialog {
+  position: fixed;
+  inset: auto;
+  width: 380px;
+  max-width: calc(100vw - 16px);
+  max-height: calc(100dvh - 16px);
+  margin: 0;
+  border-radius: 12px;
+  color: var(--theme-ink, #405b49);
+  background: var(--theme-surface, #fff);
+}
+
+#workspace-reset-dialog[open] {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+#workspace-reset-dialog > :is(.modal-header, .modal-footer) {
+  flex: 0 0 auto;
+  padding: 11px 14px;
+}
+
+#workspace-reset-dialog .modal-header {
+  gap: 12px;
+}
+
+#workspace-reset-dialog .modal-header h2 {
+  font-size: 15px;
+  line-height: 1.4;
+  letter-spacing: -0.2px;
+}
+
+#workspace-reset-dialog .close-modal {
+  flex: 0 0 28px;
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  min-height: 28px;
+  color: var(--theme-muted, #617458);
+}
+
+#workspace-reset-dialog .modal-body {
+  min-height: 0;
+  padding: 13px 14px;
+  overflow-y: auto;
+}
+
+#workspace-reset-dialog p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.65;
+}
+
+#workspace-reset-dialog .workspace-reset-help {
+  margin-top: 7px;
+  color: var(--theme-muted, #617458);
+  font-size: 11px;
+}
+
+#workspace-reset-dialog #workspace-reset-error {
+  margin-top: 9px;
+}
+
+#workspace-reset-dialog .modal-footer {
+  gap: 8px;
+  background: var(--theme-soft, #f7f9f4);
+}
+
+#workspace-reset-dialog .modal-footer .btn {
+  min-height: 34px;
+  padding: 7px 12px;
+  font-size: 12px;
+}
+
 @media (max-width: 420px) {
   #settings-dialog > :is(.modal-header, .modal-footer),
   #settings-dialog > .settings-content {

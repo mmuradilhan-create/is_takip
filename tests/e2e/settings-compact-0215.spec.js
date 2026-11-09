@@ -307,7 +307,19 @@ test("direct backup buttons download the original records and open upload withou
   await settings(page)
     .getByRole("button", { name: "Çalışma alanını sıfırla", exact: true })
     .click();
-  expect(confirmations).toBe(1);
+  const resetConfirmation = page.locator("#workspace-reset-dialog");
+  await expect(resetConfirmation).toBeVisible();
+  await expect(
+    resetConfirmation.locator("#workspace-reset-description"),
+  ).toContainText("3 kayıt");
+  expect(confirmations).toBe(0);
+  expect(await saved(page)).toBe(before);
+  await resetConfirmation
+    .getByRole("button", { name: "Vazgeç", exact: true })
+    .click();
+  await expect(resetConfirmation).not.toBeVisible();
+  await expect(settings(page)).toBeVisible();
+  expect(confirmations).toBe(0);
   expect(await saved(page)).toBe(before);
   await close(page);
   await open(page);

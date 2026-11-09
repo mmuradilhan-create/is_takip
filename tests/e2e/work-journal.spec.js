@@ -92,22 +92,22 @@ const readSaved = (page) =>
 const row = (page, id) =>
   page.locator(`.full-table > tbody > tr[data-record-row][data-id="${id}"]`);
 const panel = (page) => page.locator("#work-session-panel");
-const finishDialog = (page) => page.locator("#work-finish-dialog");
+const finishForm = (page) => panel(page).locator("#work-finish-form");
+const sessionNote = (page) => panel(page).locator("#work-session-note");
 
 async function beginFinish(page, durationMs = 65_000) {
   await row(page, "journal-daily").locator(".work-start").click();
   await page.clock.fastForward(durationMs);
-  await panel(page)
-    .getByRole("button", { name: "Oturumu bitir", exact: true })
-    .click();
-  await expect(finishDialog(page)).toBeVisible();
+  await panel(page).locator('[data-action="work-finish"]').click();
+  await expect(finishForm(page)).toBeVisible();
+  await expect(panel(page)).toHaveAttribute("data-mode", "finish");
   await expect(panel(page)).toHaveAttribute("data-phase", "paused");
 }
 
-async function finish(page, { note = "" } = {}) {
-  await finishDialog(page).locator('[name="resultNote"]').fill(note);
-  await finishDialog(page).locator('[name="resultNote"]').press("Enter");
-  await expect(finishDialog(page)).not.toBeVisible();
+async function finish(page, { note = "Kaydedilen çalışma sonucu" } = {}) {
+  await sessionNote(page).fill(note);
+  await sessionNote(page).press("Enter");
+  await expect(finishForm(page)).not.toBeVisible();
   await expect(panel(page)).not.toBeVisible();
 }
 
@@ -118,21 +118,21 @@ async function openBackup(page) {
     await backup.locator(":scope > summary").click();
 }
 
-test("finishing with Enter freezes the session and saves only its result while preserving the task's next step and exact reload Undo", async ({
+test("inline finishing with Enter saves only its result without a timer while preserving the task's next step and exact reload Undo", async ({
   page,
 }) => {
   const originals = await seed(page);
   await beginFinish(page);
-  await expect(finishDialog(page).locator('[name="nextAction"]')).toHaveCount(
-    0,
-  );
-  await expect(
-    finishDialog(page).locator('[name="resultNote"]'),
-  ).toHaveAccessibleDescription(
+  await expect(finishForm(page).locator('[name="nextAction"]')).toHaveCount(0);
+  await expect(sessionNote(page)).toHaveAccessibleDescription(
     "Enter ile kaydet, Shift+Enter ile alt satıra geç.",
   );
   await page.clock.fastForward(120_000);
-  await expect(page.locator("#work-session-time")).toHaveText("00:01:05");
+  await expect(
+    page.locator(
+      "#work-finish-dialog, #work-session-time, #sidebar-saved-time",
+    ),
+  ).toHaveCount(0);
   expect(await readRecords(page)).toEqual(originals);
   await finish(page, { note: NOTE });
   const saved = await readRecords(page);
@@ -143,7 +143,7 @@ test("finishing with Enter freezes the session and saves only its result while p
     id: expect.any(String),
     date: "2026-11-07",
     endedAt: "2026-11-07T12:01:05.000Z",
-    durationMs: 65_000,
+    durationMs: 0,
     note: NOTE,
     nextAction: "",
   });
@@ -183,23 +183,35 @@ test("finishing with Enter freezes the session and saves only its result while p
   ).toBeDisabled();
 });
 
-test("results are optional and successive sessions have separate durable entries without completing the task", async ({
+test("an inline result is required and successive notes have separate durable entries without completing the task", async ({
   page,
 }) => {
   const originals = await seed(page);
+  const before = await readSaved(page);
   await beginFinish(page, 10_000);
-  await finish(page);
+  await sessionNote(page).fill("  \n ");
+  await finishForm(page).locator('[type="submit"]').click();
+  await expect(panel(page).locator("#work-finish-error")).toBeVisible();
+  await expect(panel(page).locator("#work-finish-error")).toContainText(
+    "bir sonuç yaz",
+  );
+  await expect(panel(page)).toHaveAttribute("data-mode", "finish");
+  expect(await readSaved(page)).toBe(before);
+  expect(JSON.parse(await readSaved(page)).odak.history).toHaveLength(0);
+  expect(await readRecords(page)).toEqual(originals);
+  await finish(page, { note: "İlk çalışma sonucu" });
   await beginFinish(page, 20_000);
-  await finish(page);
+  await finish(page, { note: "İkinci çalışma sonucu" });
   const daily = (await readRecords(page)).find(
     (record) => record.id === "journal-daily",
   );
   expect(daily.status).toBe(originals[1].status);
-  expect(daily.workLog.map((entry) => entry.durationMs)).toEqual([
-    10_000, 20_000,
-  ]);
+  expect(daily.workLog.map((entry) => entry.durationMs)).toEqual([0, 0]);
   expect(new Set(daily.workLog.map((entry) => entry.id)).size).toBe(2);
-  expect(daily.workLog.map((entry) => entry.note)).toEqual(["", ""]);
+  expect(daily.workLog.map((entry) => entry.note)).toEqual([
+    "İlk çalışma sonucu",
+    "İkinci çalışma sonucu",
+  ]);
   expect(daily.workLog.map((entry) => entry.nextAction)).toEqual(["", ""]);
   expect(daily.nextAction).toBe(originals[1].nextAction);
 });
@@ -209,9 +221,7 @@ test("a failed Enter journal write retains its multiline result and paused draft
 }) => {
   const originals = await seed(page);
   await beginFinish(page);
-  const field = finishDialog(page).getByRole("textbox", {
-    name: "Sonuç",
-  });
+  const field = sessionNote(page);
   await field.fill("Kaybolmayacak sonuç");
   await field.press("Shift+Enter");
   await field.pressSequentially("İkinci sonuç satırı.");
@@ -239,7 +249,7 @@ test("a failed Enter journal write retains its multiline result and paused draft
       field.dispatchEvent(event);
     }
   });
-  await expect(finishDialog(page)).toBeVisible();
+  await expect(finishForm(page)).toBeVisible();
   expect(await readRecords(page)).toEqual(originals);
   await page.evaluate((key) => {
     window.journalSetItem = Storage.prototype.setItem;
@@ -250,8 +260,8 @@ test("a failed Enter journal write retains its multiline result and paused draft
     };
   }, KEY);
   await field.press("Enter");
-  await expect(finishDialog(page)).toBeVisible();
-  await expect(finishDialog(page).locator('[role="alert"]')).toBeVisible();
+  await expect(finishForm(page)).toBeVisible();
+  await expect(panel(page).locator("#work-finish-error")).toBeVisible();
   await expect(field).toHaveValue(note);
   await expect(panel(page)).toHaveAttribute("data-phase", "paused");
   expect(await readRecords(page)).toEqual(originals);
@@ -259,13 +269,13 @@ test("a failed Enter journal write retains its multiline result and paused draft
     Storage.prototype.setItem = window.journalSetItem;
   });
   await field.press("Enter");
-  await expect(finishDialog(page)).not.toBeVisible();
+  await expect(finishForm(page)).not.toBeVisible();
   const daily = (await readRecords(page)).find(
     (record) => record.id === "journal-daily",
   );
   expect(daily.workLog).toHaveLength(1);
   expect(daily.workLog[0]).toMatchObject({
-    durationMs: 65_000,
+    durationMs: 0,
     note,
     nextAction: "",
   });
@@ -275,51 +285,69 @@ test("a failed Enter journal write retains its multiline result and paused draft
   expect(await readRecords(page)).toEqual(originals);
 });
 
-test("finishing the same session from two open windows records its duration only once", async ({
+test("a stale inline finish cannot erase a peer result or record the same working note twice", async ({
   page,
   context,
 }) => {
   await seed(page);
+  const before = await readSaved(page);
   await beginFinish(page, 45_000);
-  await finishDialog(page)
-    .locator('[name="resultNote"]')
-    .fill("İlk kaydedilen sonuç");
+  const localResult = "Yerel pencerede korunacak sonuç";
+  const peerResult = "İkinci pencereden kaydedilen güncel sonuç";
+  await sessionNote(page).fill(localResult);
   const other = await context.newPage();
-  await other.goto("/");
-  await panel(other)
-    .getByRole("button", { name: "Oturumu bitir", exact: true })
-    .click();
-  await expect(finishDialog(other)).toBeVisible();
-  await finishDialog(other)
-    .locator('[name="resultNote"]')
-    .fill("İkinci pencerenin sonucu");
-  await finishDialog(page)
-    .getByRole("button", { name: "Kaydet ve bitir", exact: true })
-    .click();
-  await expect(finishDialog(page)).not.toBeVisible();
-  await finishDialog(other)
-    .getByRole("button", { name: "Kaydet ve bitir", exact: true })
-    .click();
-  await expect(finishDialog(other)).not.toBeVisible();
-  const daily = (await readRecords(other)).find(
-    (record) => record.id === "journal-daily",
-  );
-  expect(daily.workLog).toHaveLength(1);
-  expect(daily.workLog[0]).toMatchObject({
-    durationMs: 45_000,
-    note: "İlk kaydedilen sonuç",
-  });
-  await other.reload();
-  expect(
-    (await readRecords(other)).find((record) => record.id === daily.id).workLog,
-  ).toEqual(daily.workLog);
+  try {
+    await other.clock.setFixedTime(new Date(START.getTime() + 45_000));
+    await other.goto("/");
+    await expect(sessionNote(other)).toHaveValue(localResult);
+    await panel(other).locator('[data-action="work-finish"]').click();
+    await expect(panel(other)).toHaveAttribute("data-mode", "finish");
+    await sessionNote(other).fill(peerResult);
+    await expect(panel(page).locator("#work-note-error")).toBeVisible();
+    await expect(sessionNote(page)).toHaveValue(localResult);
+    await expect(finishForm(page).locator('[type="submit"]')).toBeDisabled();
+    const staleEnter = () =>
+      sessionNote(page).evaluate((textarea) => {
+        textarea.dispatchEvent(
+          new KeyboardEvent("keydown", {
+            key: "Enter",
+            bubbles: true,
+            cancelable: true,
+          }),
+        );
+      });
+    await staleEnter();
+    expect(await readSaved(page)).toBe(before);
+    await finishForm(other)
+      .getByRole("button", { name: "Kaydet ve bitir", exact: true })
+      .click();
+    await expect(panel(other)).not.toBeVisible();
+    const saved = await readSaved(other);
+    const daily = (await readRecords(other)).find(
+      (record) => record.id === "journal-daily",
+    );
+    expect(daily.workLog).toHaveLength(1);
+    expect(daily.workLog[0]).toMatchObject({ durationMs: 0, note: peerResult });
+    expect(JSON.parse(saved).odak.history).toHaveLength(1);
+    await expect(sessionNote(page)).toHaveValue(localResult);
+    await staleEnter();
+    expect(await readSaved(page)).toBe(saved);
+    await other.reload();
+    expect(
+      (await readRecords(other)).find((record) => record.id === daily.id)
+        .workLog,
+    ).toEqual(daily.workLog);
+  } finally {
+    await other.close();
+  }
 });
 
-test("a saved journal whose timer finalization fails cannot resume and recovers without losing subsequent work", async ({
+test("a saved result whose working-note retirement fails cannot resume and recovers without duplicating subsequent work", async ({
   page,
 }) => {
   await seed(page);
   await beginFinish(page, 45_000);
+  await sessionNote(page).fill("Önce kaydedilen gerçek sonuç");
   const refuseSessionWrites = ({ sessionKey, flag }) => {
     const original = Storage.prototype.setItem;
     Storage.prototype.setItem = function (storageKey, value) {
@@ -338,18 +366,21 @@ test("a saved journal whose timer finalization fails cannot resume and recovers 
   );
   await page.addInitScript(refuseSessionWrites, config);
   await page.evaluate(refuseSessionWrites, config);
-  await finishDialog(page)
+  await finishForm(page)
     .getByRole("button", { name: "Kaydet ve bitir", exact: true })
     .click();
-  await expect(finishDialog(page).locator('[role="alert"]')).toBeVisible();
-  await finishDialog(page)
+  await expect(panel(page).locator("#work-finish-error")).toBeVisible();
+  await finishForm(page)
     .getByRole("button", { name: "Vazgeç", exact: true })
     .click();
   let daily = (await readRecords(page)).find(
     (record) => record.id === "journal-daily",
   );
   expect(daily.workLog).toHaveLength(1);
-  expect(daily.workLog[0].durationMs).toBe(45_000);
+  expect(daily.workLog[0]).toMatchObject({
+    durationMs: 0,
+    note: "Önce kaydedilen gerçek sonuç",
+  });
   await expect(row(page, daily.id).locator(".work-start")).toBeDisabled();
   await page.reload();
   await page.locator('#nav [data-view="daily"]').click();
@@ -361,9 +392,7 @@ test("a saved journal whose timer finalization fails cannot resume and recovers 
   await beginFinish(page, 10_000);
   await finish(page);
   daily = (await readRecords(page)).find((record) => record.id === daily.id);
-  expect(daily.workLog.map((entry) => entry.durationMs)).toEqual([
-    45_000, 10_000,
-  ]);
+  expect(daily.workLog.map((entry) => entry.durationMs)).toEqual([0, 0]);
   expect(new Set(daily.workLog.map((entry) => entry.id)).size).toBe(2);
 });
 
@@ -449,7 +478,7 @@ test("a backup with malformed journal data is rejected before replacement and do
   expect(confirmations).toBe(0);
 });
 
-test("weekly goals total saved daily time across statuses while keeping their numeric progress", async ({
+test("weekly goals retain numeric progress and exact historical work across statuses without displaying duration totals", async ({
   page,
 }) => {
   const records = recordsFixture();
@@ -477,8 +506,8 @@ test("weekly goals total saved daily time across statuses while keeping their nu
   await row(page, "journal-weekly")
     .locator('[data-action="goal-details"]')
     .click();
-  await expect(page.locator("#goal-detail-panel")).toContainText(
-    /2\s*(?:sa|saat)/,
+  await expect(page.locator("#goal-detail-panel")).not.toContainText(
+    "Kaydedilen süre",
   );
   await expect(row(page, "journal-weekly").locator(".work-start")).toHaveCount(
     0,
@@ -501,6 +530,15 @@ test("the weekly report uses saved entry dates from Monday through Sunday and es
   await page.locator('[data-action="work-session-history"]').click();
   const report = page.locator("#work-week-dialog");
   await expect(report).toBeVisible();
+  await expect(report.locator(".work-journal-totals")).toContainText(
+    "Çalışma kaydı",
+  );
+  await expect(report.locator(".work-journal-totals")).not.toContainText(
+    "Kaydedilen süre",
+  );
+  await expect(
+    report.locator(".work-journal-entry-tools > strong"),
+  ).toHaveCount(0);
   await expect(report.locator(".work-week-record")).toHaveCount(1);
   await expect(report).toContainText(NOTE);
   await expect(report).toContainText("Pazar sonucu");
@@ -720,7 +758,11 @@ test("current work keeps saved and empty journal controls beside Play across des
         );
         await expect(trigger).toHaveAttribute(
           "aria-label",
-          `${title}: iş günlüğünü gör · ${count} kayıtlı oturum`,
+          `${title}: çalışma geçmişini gör · ${count} kayıt`,
+        );
+        await expect(trigger).toHaveAttribute(
+          "title",
+          `Çalışma geçmişi: ${count} kayıt`,
         );
         if (count) await expect(trigger).toHaveClass(/has-entries/);
         else await expect(trigger).not.toHaveClass(/has-entries/);

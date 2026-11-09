@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   createWorkSessionStore,
   WORK_SESSION_KEY,
+  readWorkSessionSnapshot,
 } from "../src/work-session-store.js";
 
 class MemoryStorage {
@@ -438,4 +439,486 @@ test("failed discard preserves the paused session and supports an exact retry", 
   const discardedRaw = storage.getItem(WORK_SESSION_KEY);
   assert.equal(store.discard("task", pending.sessionId, pending), false);
   assert.equal(storage.getItem(WORK_SESSION_KEY), discardedRaw);
+});
+
+test("note-only sessions persist literal drafts without touching records, preferences or Undo and unchanged text is a no-op", () => {
+  const { store, storage, time } = setup();
+  const records = storage.getItem("is-takip-v1");
+  const preferences = storage.getItem("is-takip-v1-preferences");
+  assert.equal(store.start("note-task", { trackTime: false }), true);
+  const initial = store.current;
+  assert.equal(initial.status, "running");
+  assert.equal(initial.trackTime, false);
+  assert.equal(initial.elapsedMs, 0);
+  assert.equal(initial.startedAt, time.value);
+  assert.equal(initial.ownerId, "owner-a");
+  assert.equal(Object.hasOwn(initial, "draftNote"), false);
+  const blankRaw = storage.getItem(WORK_SESSION_KEY);
+  const count = storage.writes.length;
+  assert.equal(
+    store.saveDraft(initial.recordId, initial.sessionId, "", ""),
+    true,
+  );
+  assert.equal(storage.getItem(WORK_SESSION_KEY), blankRaw);
+  assert.equal(storage.writes.length, count);
+  time.value += 60000;
+  const text = "  <script>özel & düz metin</script>\nİkinci satır.  ";
+  assert.equal(
+    store.saveDraft(initial.recordId, initial.sessionId, text, ""),
+    true,
+  );
+  assert.equal(store.current.draftNote, text);
+  assert.equal(store.current.ownerId, initial.ownerId);
+  assert.equal(store.elapsed(), 0);
+  const typedRaw = storage.getItem(WORK_SESSION_KEY);
+  const typedCount = storage.writes.length;
+  time.value += 60000;
+  assert.equal(
+    store.saveDraft(initial.recordId, initial.sessionId, text, text),
+    true,
+  );
+  assert.equal(storage.getItem(WORK_SESSION_KEY), typedRaw);
+  assert.equal(storage.writes.length, typedCount);
+  assert.equal(storage.getItem("is-takip-v1"), records);
+  assert.equal(storage.getItem("is-takip-v1-preferences"), preferences);
+  assert.ok(storage.writes.every((write) => write.key === WORK_SESSION_KEY));
+  assert.equal(
+    store.saveDraft(initial.recordId, initial.sessionId, "", text),
+    true,
+  );
+  assert.equal(store.current.draftNote, "");
+});
+
+test("drafts survive pause, resume, task switching, pagehide, reconciliation and reload until their exact session is finished", () => {
+  const { store, storage, time } = setup();
+  store.start("first", { trackTime: false });
+  const firstId = store.current.sessionId;
+  store.saveDraft("first", firstId, "İlk işin taslağı", "");
+  time.value += 50000;
+  store.pause("first", firstId);
+  assert.equal(store.current.draftNote, "İlk işin taslağı");
+  assert.equal(store.current.elapsedMs, 0);
+  assert.equal(store.current.startedAt, null);
+  store.start("first");
+  assert.equal(store.current.trackTime, false);
+  assert.equal(store.current.sessionId, firstId);
+  store.start("second", { trackTime: false });
+  const secondId = store.current.sessionId;
+  store.saveDraft("second", secondId, "İkinci işin taslağı", "");
+  assert.equal(store.get("first").status, "paused");
+  assert.equal(store.get("first").draftNote, "İlk işin taslağı");
+  assert.equal(
+    store.saveDraft(
+      "first",
+      firstId,
+      "Duraklatılan iş güncellendi",
+      "İlk işin taslağı",
+    ),
+    true,
+  );
+  assert.equal(store.current.recordId, "second");
+  store.stopOwner();
+  const raw = storage.getItem(WORK_SESSION_KEY);
+  const writes = storage.writes.length;
+  const { store: reloaded } = setup({ storage, time, ownerId: "reloaded" });
+  assert.equal(storage.writes.length, writes);
+  assert.equal(storage.getItem(WORK_SESSION_KEY), raw);
+  assert.equal(reloaded.current.status, "paused");
+  assert.equal(reloaded.current.draftNote, "İkinci işin taslağı");
+  reloaded.start("first", { trackTime: false });
+  assert.equal(reloaded.current.draftNote, "Duraklatılan iş güncellendi");
+  reloaded.reconcile([]);
+  assert.equal(reloaded.current, null);
+  assert.equal(reloaded.get("first").draftNote, "Duraklatılan iş güncellendi");
+  assert.equal(reloaded.get("first").status, "paused");
+  reloaded.start("second");
+  reloaded.finish("first", firstId);
+  assert.equal(Object.hasOwn(reloaded.get("first"), "draftNote"), false);
+  assert.equal(reloaded.get("first").status, "finished");
+  assert.equal(reloaded.current.sessionId, secondId);
+  assert.equal(reloaded.current.draftNote, "İkinci işin taslağı");
+});
+
+test("opting out of timing freezes legacy milliseconds exactly while new sessions keep the default timed API compatible", () => {
+  const { store, time } = setup();
+  store.start("legacy");
+  const id = store.current.sessionId;
+  time.value += 35789;
+  assert.equal(store.elapsed(), 35789);
+  store.start("legacy", { trackTime: false });
+  assert.equal(store.current.sessionId, id);
+  assert.equal(store.current.elapsedMs, 35789);
+  assert.equal(store.current.trackTime, false);
+  time.value += 999999;
+  assert.equal(store.elapsed(), 35789);
+  store.pause();
+  assert.equal(store.current.elapsedMs, 35789);
+  store.start("legacy");
+  time.value += 40000;
+  assert.equal(store.elapsed(), 35789);
+  store.saveDraft("legacy", id, "Ölçülen geçmiş süre korunur", "");
+  store.finish("legacy", id);
+  assert.equal(store.get("legacy").elapsedMs, 35789);
+  assert.equal(Object.hasOwn(store.get("legacy"), "draftNote"), false);
+  store.start("legacy", { trackTime: false });
+  assert.notEqual(store.current.sessionId, id);
+  assert.equal(store.elapsed(), 0);
+  assert.equal(Object.hasOwn(store.current, "draftNote"), false);
+  store.finish();
+  store.start("legacy");
+  assert.equal(Object.hasOwn(store.current, "trackTime"), false);
+  time.value += 2500;
+  assert.equal(store.elapsed(), 2500);
+});
+
+test("draft compare-and-set adopts a peer's saved text without overwriting it and an explicit fresh retry remains possible", () => {
+  const first = setup();
+  first.store.start("task", { trackTime: false });
+  const id = first.store.current.sessionId;
+  first.store.saveDraft("task", id, "İlk ortak taslak", "");
+  const second = setup({
+    storage: first.storage,
+    time: first.time,
+    ownerId: "peer",
+  });
+  first.time.value += 1000;
+  first.store.saveDraft(
+    "task",
+    id,
+    "İlk penceredeki yeni metin",
+    "İlk ortak taslak",
+  );
+  const raw = first.storage.getItem(WORK_SESSION_KEY);
+  const writes = first.storage.writes.length;
+  assert.equal(
+    second.store.saveDraft(
+      "task",
+      id,
+      "Eski pencerenin metni",
+      "İlk ortak taslak",
+    ),
+    false,
+  );
+  assert.equal(first.storage.getItem(WORK_SESSION_KEY), raw);
+  assert.equal(first.storage.writes.length, writes);
+  assert.equal(second.store.current.draftNote, "İlk penceredeki yeni metin");
+  assert.equal(second.store.current.ownerId, "owner-a");
+  assert.equal(second.store.readOnly, false);
+  assert.match(second.errors.at(-1), /başka bir pencerede değişti/);
+  assert.equal(
+    second.store.saveDraft(
+      "task",
+      id,
+      "Açıkça yeniden seçilen metin",
+      "İlk penceredeki yeni metin",
+    ),
+    true,
+  );
+  first.store.synchronize();
+  assert.equal(first.store.current.draftNote, "Açıkça yeniden seçilen metin");
+});
+
+test("draft writes reject stale identities, finished contexts, invalid text and options while leaving all saved bytes intact", () => {
+  const { store, storage } = setup();
+  store.start("task", { trackTime: false });
+  const firstId = store.current.sessionId;
+  const raw = storage.getItem(WORK_SESSION_KEY);
+  const writes = storage.writes.length;
+  for (const [recordId, sessionId, note, expected] of [
+    ["missing", firstId, "Not", ""],
+    ["task", "stale-session", "Not", ""],
+    ["", firstId, "Not", ""],
+    ["task", firstId, null, ""],
+    ["task", firstId, "Not", undefined],
+    ["task", firstId, "x".repeat(10001), ""],
+  ])
+    assert.equal(store.saveDraft(recordId, sessionId, note, expected), false);
+  for (const options of [null, [], { trackTime: "false" }, { trackTime: 0 }])
+    assert.equal(store.start("other", options), false);
+  assert.equal(storage.getItem(WORK_SESSION_KEY), raw);
+  assert.equal(storage.writes.length, writes);
+  store.finish("task", firstId);
+  const finishedRaw = storage.getItem(WORK_SESSION_KEY);
+  assert.equal(store.saveDraft("task", firstId, "Bitmiş işe yazma", ""), false);
+  assert.equal(storage.getItem(WORK_SESSION_KEY), finishedRaw);
+  store.start("task", { trackTime: false });
+  const latest = storage.getItem(WORK_SESSION_KEY);
+  assert.equal(store.saveDraft("task", firstId, "Eski oturum", ""), false);
+  store.finish("task", firstId);
+  assert.equal(storage.getItem(WORK_SESSION_KEY), latest);
+});
+
+test("quota failure preserves committed drafts and exact finish retries clear only the journaled session", () => {
+  const { store, storage, time } = setup();
+  store.start("first", { trackTime: false });
+  const firstId = store.current.sessionId;
+  store.saveDraft("first", firstId, "Kalıcı taslak", "");
+  const raw = storage.getItem(WORK_SESSION_KEY);
+  storage.failWrite = true;
+  assert.equal(
+    store.saveDraft("first", firstId, "Kaydedilemeyen metin", "Kalıcı taslak"),
+    false,
+  );
+  assert.equal(storage.getItem(WORK_SESSION_KEY), raw);
+  assert.equal(store.current.draftNote, "Kalıcı taslak");
+  assert.equal(store.readOnly, true);
+  storage.failWrite = false;
+  assert.equal(
+    store.saveDraft("first", firstId, "Yeniden denenen metin", "Kalıcı taslak"),
+    true,
+  );
+  assert.equal(store.readOnly, false);
+  time.value += 50000;
+  store.pause();
+  store.start("second", { trackTime: false });
+  const secondId = store.current.sessionId;
+  store.saveDraft("second", secondId, "Başka işin notu", "");
+  const beforeFinish = storage.getItem(WORK_SESSION_KEY);
+  storage.failWrite = true;
+  assert.equal(store.finish("first", firstId), false);
+  assert.equal(storage.getItem(WORK_SESSION_KEY), beforeFinish);
+  assert.equal(store.get("first").draftNote, "Yeniden denenen metin");
+  storage.failWrite = false;
+  assert.equal(store.finish("first", firstId), true);
+  assert.equal(Object.hasOwn(store.get("first"), "draftNote"), false);
+  assert.equal(store.current.draftNote, "Başka işin notu");
+  assert.equal(store.current.sessionId, secondId);
+});
+
+test("guarded finish refuses a peer draft written after the result save and retries without clearing another session", () => {
+  const first = setup();
+  const { store, storage, time } = first;
+  store.start("journaled", { trackTime: false });
+  const id = store.current.sessionId;
+  const result = "  Kaydedilen sonuç\n";
+  store.saveDraft("journaled", id, result, "");
+  store.pause("journaled", id);
+  const peer = setup({ storage, time, ownerId: "peer" }).store;
+  peer.saveDraft("journaled", id, "Sonuçtan sonra yazılan yeni not", result);
+  peer.start("other", { trackTime: false });
+  const other = peer.current;
+  const primary = storage.getItem("is-takip-v1");
+  const raw = storage.getItem(WORK_SESSION_KEY);
+  const writes = storage.writes.length;
+  assert.equal(store.finish("journaled", id, { expectedDraft: result }), false);
+  assert.equal(storage.getItem(WORK_SESSION_KEY), raw);
+  assert.equal(storage.writes.length, writes);
+  assert.equal(
+    store.get("journaled").draftNote,
+    "Sonuçtan sonra yazılan yeni not",
+  );
+  assert.equal(store.readOnly, false);
+  assert.match(first.errors.at(-1), /başka bir pencerede değişti/);
+  assert.equal(
+    store.finish("journaled", "stale-session", {
+      expectedDraft: "Sonuçtan sonra yazılan yeni not",
+    }),
+    false,
+  );
+  assert.equal(store.finish("journaled", id, { expectedDraft: null }), false);
+  storage.failWrite = true;
+  assert.equal(
+    store.finish("journaled", id, {
+      expectedDraft: "Sonuçtan sonra yazılan yeni not",
+    }),
+    false,
+  );
+  assert.equal(storage.getItem(WORK_SESSION_KEY), raw);
+  storage.failWrite = false;
+  assert.equal(
+    store.finish("journaled", id, {
+      expectedDraft: "Sonuçtan sonra yazılan yeni not",
+    }),
+    true,
+  );
+  assert.equal(store.get("journaled").status, "finished");
+  assert.equal(Object.hasOwn(store.get("journaled"), "draftNote"), false);
+  assert.deepEqual(store.current, other);
+  assert.equal(storage.getItem("is-takip-v1"), primary);
+  assert.equal(store.finish("journaled", id, { expectedDraft: result }), false);
+  assert.equal(store.finish("journaled", id), true);
+});
+
+test("draft recovery forks one exact unfinished note atomically and leaves old history and another running task intact", () => {
+  const { store, storage, time } = setup();
+  store.start("journaled");
+  const oldId = store.current.sessionId;
+  time.value += 12345;
+  store.pause("journaled", oldId);
+  const text = "  Daha yeni çalışma notu\nİkinci satır  ";
+  store.saveDraft("journaled", oldId, text, "");
+  store.start("other", { trackTime: false });
+  const other = store.current;
+  const oldLogBytes = JSON.stringify({
+    version: 1,
+    records: [
+      {
+        id: "journaled",
+        workLog: [{ id: oldId, durationMs: 12345, note: "Önceki sonuç" }],
+      },
+    ],
+  });
+  storage.setItem("is-takip-v1", oldLogBytes);
+  const raw = storage.getItem(WORK_SESSION_KEY);
+  const writes = storage.writes.length;
+  for (const [recordId, sessionId, expected] of [
+    ["missing", oldId, text],
+    ["journaled", "stale-session", text],
+    ["journaled", oldId, "Önceki metin"],
+    ["journaled", oldId, ""],
+    ["journaled", oldId, null],
+  ])
+    assert.equal(store.forkDraft(recordId, sessionId, expected), false);
+  assert.equal(storage.getItem(WORK_SESSION_KEY), raw);
+  assert.equal(storage.writes.length, writes);
+  storage.failWrite = true;
+  assert.equal(store.forkDraft("journaled", oldId, text), false);
+  assert.equal(storage.getItem(WORK_SESSION_KEY), raw);
+  assert.equal(store.get("journaled").sessionId, oldId);
+  storage.failWrite = false;
+  time.value += 1;
+  assert.equal(store.forkDraft("journaled", oldId, text), true);
+  assert.equal(storage.writes.length, writes + 1);
+  const forked = store.get("journaled");
+  assert.notEqual(forked.sessionId, oldId);
+  assert.deepEqual(forked, {
+    recordId: "journaled",
+    sessionId: forked.sessionId,
+    status: "paused",
+    elapsedMs: 0,
+    startedAt: null,
+    ownerId: null,
+    updatedAt: time.value,
+    draftNote: text,
+    trackTime: false,
+  });
+  assert.deepEqual(store.current, other);
+  assert.equal(storage.getItem("is-takip-v1"), oldLogBytes);
+  assert.equal(store.forkDraft("journaled", oldId, text), false);
+  store.finish("journaled", oldId);
+  assert.deepEqual(store.get("journaled"), forked);
+  const reloaded = setup({ storage, time }).store;
+  assert.deepEqual(reloaded.get("journaled"), forked);
+  assert.deepEqual(reloaded.current, other);
+});
+
+test("optional note fields validate strictly, legacy snapshots keep their old shape and all returned data remains detached", () => {
+  const { store, storage, time, changes } = setup();
+  store.start("legacy");
+  const legacy = storage.getItem(WORK_SESSION_KEY);
+  const legacyEntry = readWorkSessionSnapshot(legacy).entries[0];
+  assert.equal(Object.hasOwn(legacyEntry, "draftNote"), false);
+  assert.equal(Object.hasOwn(legacyEntry, "trackTime"), false);
+  const valid = JSON.parse(legacy);
+  for (const patch of [
+    { draftNote: null },
+    { draftNote: false },
+    { draftNote: {} },
+    { draftNote: "a".repeat(10001) },
+    { trackTime: "false" },
+    { trackTime: 0 },
+    { trackTime: null },
+  ]) {
+    const raw = JSON.stringify({
+      ...valid,
+      entries: [{ ...valid.entries[0], ...patch }],
+    });
+    const brokenStorage = new MemoryStorage({ [WORK_SESSION_KEY]: raw });
+    const broken = setup({ storage: brokenStorage }).store;
+    assert.equal(broken.readOnly, true);
+    assert.equal(broken.start("replacement", { trackTime: false }), false);
+    assert.equal(brokenStorage.getItem(WORK_SESSION_KEY), raw);
+    assert.equal(brokenStorage.writes.length, 0);
+  }
+  store.start("legacy", { trackTime: false });
+  store.saveDraft("legacy", store.current.sessionId, "x".repeat(10000), "");
+  const snapshot = store.snapshot;
+  snapshot.entries[0].draftNote = "Tampered";
+  snapshot.entries[0].trackTime = true;
+  changes.at(-1).entries[0].draftNote = "Callback mutation";
+  assert.equal(store.current.draftNote.length, 10000);
+  assert.equal(store.current.trackTime, false);
+  const raw = storage.getItem(WORK_SESSION_KEY);
+  const before = storage.writes.length;
+  const reloaded = setup({ storage, time }).store;
+  assert.equal(reloaded.current.draftNote.length, 10000);
+  assert.equal(storage.getItem(WORK_SESSION_KEY), raw);
+  assert.equal(storage.writes.length, before);
+});
+
+test("capacity never prunes unfinished nonempty drafts and rejects a new session until a protected note is explicitly finished", () => {
+  const { store, storage, time, errors } = setup();
+  const sessions = new Map();
+  for (let index = 0; index < 50; index++) {
+    const id = `note-${index}`;
+    assert.equal(store.start(id, { trackTime: false }), true);
+    sessions.set(id, store.current.sessionId);
+    assert.equal(
+      store.saveDraft(id, store.current.sessionId, `Taslak ${index}`, ""),
+      true,
+    );
+    time.value += 1000;
+  }
+  const before = storage.getItem(WORK_SESSION_KEY);
+  const current = store.current;
+  assert.equal(store.start("too-many", { trackTime: false }), false);
+  assert.equal(storage.getItem(WORK_SESSION_KEY), before);
+  assert.deepEqual(store.current, current);
+  assert.equal(store.snapshot.entries.length, 50);
+  assert.equal(store.readOnly, false);
+  assert.match(errors.at(-1), /notları dolu/);
+  assert.equal(store.finish("note-0", sessions.get("note-0")), true);
+  assert.equal(store.start("new-note", { trackTime: false }), true);
+  assert.equal(store.get("note-0"), null);
+  for (let index = 1; index < 50; index++)
+    assert.equal(store.get(`note-${index}`).draftNote, `Taslak ${index}`);
+  assert.equal(store.current.recordId, "new-note");
+});
+
+test("blank context pruning preserves an old unfinished note and JSON size limits reject writes before a saved context becomes unreadable", () => {
+  const { store, storage, time } = setup();
+  store.start("old-note", { trackTime: false });
+  store.saveDraft(
+    "old-note",
+    store.current.sessionId,
+    "Eski ama kaydedilmemiş çalışma notu",
+    "",
+  );
+  for (let index = 0; index < 60; index++) {
+    time.value += 1000;
+    assert.equal(store.start(`blank-${index}`, { trackTime: false }), true);
+  }
+  assert.equal(store.snapshot.entries.length, 50);
+  assert.equal(
+    store.get("old-note").draftNote,
+    "Eski ama kaydedilmemiş çalışma notu",
+  );
+  assert.equal(store.get("blank-0"), null);
+  const large = setup();
+  let rejected = false;
+  for (let index = 0; index < 10; index++) {
+    const id = `large-${index}`;
+    large.store.start(id, { trackTime: false });
+    const before = large.storage.getItem(WORK_SESSION_KEY);
+    const result = large.store.saveDraft(
+      id,
+      large.store.current.sessionId,
+      "\u0000".repeat(10000),
+      "",
+    );
+    if (!result) {
+      rejected = true;
+      assert.equal(large.storage.getItem(WORK_SESSION_KEY), before);
+      assert.equal(Object.hasOwn(large.store.current, "draftNote"), false);
+      assert.ok(before.length <= 500000);
+      assert.doesNotThrow(() => readWorkSessionSnapshot(before));
+      break;
+    }
+  }
+  assert.equal(rejected, true);
+  assert.equal(large.store.readOnly, false);
+  assert.equal(
+    storage.getItem("is-takip-v1-preferences"),
+    '{"density":"compact"}',
+  );
 });

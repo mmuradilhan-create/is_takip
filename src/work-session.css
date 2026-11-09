@@ -87,6 +87,138 @@
 .work-session-panel[hidden] {
   display: none;
 }
+
+/* The same textarea remains mounted through pause, refresh and inline finish. */
+#work-session-panel .work-note-form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  min-height: 0;
+  max-height: none;
+  margin: 0;
+}
+
+.work-note-field {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 auto;
+  gap: 4px;
+  min-width: 0;
+  color: var(--theme-muted, #647b60);
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+#work-session-note {
+  display: block;
+  width: 100%;
+  height: 110px;
+  min-height: 100px;
+  max-height: 180px;
+  margin: 0;
+  padding: 7px;
+  resize: vertical;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 1px solid var(--theme-border, #cbdac5);
+  border-radius: 6px;
+  color: var(--theme-ink, #36513d);
+  background: var(--theme-surface, #fff);
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+#work-session-note:focus-visible {
+  outline: 2px solid var(--theme-accent, #80b8a6);
+  outline-offset: 1px;
+}
+
+.work-note-date {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 3px;
+  color: var(--theme-muted, #728267);
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+#work-session-panel .work-note-error,
+.work-note-help {
+  margin: 0;
+  padding: 0;
+  font-size: 10px;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+#work-session-panel .work-note-error {
+  color: var(--theme-danger, #ac4839);
+}
+
+.work-note-help {
+  color: var(--theme-muted, #728267);
+}
+
+.work-note-conflict {
+  min-width: 0;
+  color: var(--theme-muted, #728267);
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.work-note-conflict summary {
+  cursor: pointer;
+}
+
+#work-note-peer {
+  max-height: 70px;
+  margin: 5px 0;
+  padding: 5px;
+  overflow-y: auto;
+  border: 1px solid var(--theme-border, #cbdac5);
+  border-radius: 4px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.work-note-resolution {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 5px;
+}
+
+.work-note-resolution button,
+.work-note-retry {
+  min-width: 0;
+  padding: 4px;
+  border: 1px solid var(--theme-border, #cbdac5);
+  border-radius: 4px;
+  color: var(--theme-accent, #3b6b53);
+  background: var(--theme-surface, #fff);
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.work-note-retry {
+  align-self: flex-start;
+}
+
+.work-note-save {
+  color: #fff;
+  border-color: #174d43;
+  background: #174d43;
+}
+
+@media (max-height: 520px) {
+  #work-session-note {
+    height: 100px;
+  }
+}
 .work-session-summary {
   display: flex;
   align-items: center;

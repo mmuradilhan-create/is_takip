@@ -445,7 +445,7 @@ test("goal-link review proposes replacements but only an explicit selected batch
   await other.close();
 });
 
-test("the overview labels distinguish an idle journal, a running session and manually chosen focus", async ({
+test("the overview distinguishes idle work notes, an active untimed draft and manually chosen focus", async ({
   page,
 }) => {
   const fixture = dailyFixture();
@@ -458,11 +458,11 @@ test("the overview labels distinguish an idle journal, a running session and man
     "Toplantı aksiyonları",
   );
   await expect(page.locator(".sidebar-journal-idle")).toHaveCount(0);
-  await expect(page.locator(".sidebar-journal-saved")).toHaveText(
-    "Bugün · 0 dk · 0 oturum",
-  );
-  await expect(page.locator("#sidebar-saved-time")).toHaveText("0 dk");
-  await expect(page.locator("#sidebar-saved-count")).toHaveText("0 oturum");
+  await expect(page.locator(".sidebar-journal-saved")).toContainText("Bugün");
+  await expect(
+    page.locator("#sidebar-saved-time, #work-session-time"),
+  ).toHaveCount(0);
+  await expect(page.locator("#sidebar-saved-count")).toHaveText("0 kayıt");
   await expect(page.locator("#work-session-panel")).not.toBeVisible();
   await expect(page.locator(".sidebar-journal-phase")).not.toBeVisible();
   await expect(focusFilter(page, "focus")).toContainText("Bugünün odağı");
@@ -471,6 +471,10 @@ test("the overview labels distinguish an idle journal, a running session and man
     "data-phase",
     "running",
   );
+  await expect(page.locator("#work-session-note")).toBeFocused();
+  await page
+    .locator("#work-session-note")
+    .fill("Görünüm değişse de korunacak çalışma notu");
   await expect(page.locator(".sidebar-journal-idle")).not.toBeVisible();
   await expect(page.locator(".sidebar-journal-phase")).toHaveAttribute(
     "data-phase",
@@ -480,9 +484,16 @@ test("the overview labels distinguish an idle journal, a running session and man
   await focusFilter(page, "focus").click();
   await expect(page.locator(".focus-row[data-id]")).toHaveCount(0);
   await expect(page.locator("#work-session-panel")).toBeVisible();
+  await expect(page.locator("#work-session-note")).toHaveValue(
+    "Görünüm değişse de korunacak çalışma notu",
+  );
   await page.locator('#work-session-panel [data-action="work-pause"]').click();
   await expect(page.locator(".sidebar-journal-phase")).toHaveText(
     "Duraklatıldı",
+  );
+  await expect(page.locator("#work-session-panel")).toHaveAttribute(
+    "data-mode",
+    "note",
   );
   expect(await saved(page)).toBe(original);
   await view(page, "meeting");

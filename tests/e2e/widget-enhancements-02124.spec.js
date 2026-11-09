@@ -239,7 +239,7 @@ test("pin capability is explicit and pinning changes only the title while select
   await unchanged(page, raw);
 });
 
-test("the session strip follows another window without owning its timer and hides missing, finished or closed work", async ({
+test("the session strip follows timed and untimed work without showing a clock or owning another window's context", async ({
   page,
   context,
 }) => {
@@ -265,10 +265,11 @@ test("the session strip follows another window without owning its timer and hide
     "title",
     records[0].title,
   );
-  await expect(time(page)).toHaveAttribute("aria-live", "off");
-  await expect(time(page)).toHaveText("00:01:00");
+  await expect(time(page)).toBeHidden();
+  await expect(time(page)).toHaveAttribute("aria-hidden", "true");
+  await expect(strip(page).getByRole("timer")).toHaveCount(0);
   await context.clock.runFor(1000);
-  await expect(time(page)).toHaveText("00:01:01");
+  await expect(time(page)).toBeHidden();
   expect(await read(other, SESSION)).toBe(session);
   const paused = current("paused", { elapsedMs: 90_000 });
   await write(other, SESSION, paused);
@@ -276,10 +277,21 @@ test("the session strip follows another window without owning its timer and hide
   await expect(page.locator("#widget-session-phase")).toHaveText(
     "Duraklatıldı",
   );
-  await expect(time(page)).toHaveText("00:01:30");
+  await expect(time(page)).toBeHidden();
   await context.clock.runFor(5000);
-  await expect(time(page)).toHaveText("00:01:30");
+  await expect(time(page)).toBeHidden();
   expect(await read(other, SESSION)).toBe(paused);
+  const untimed = current("running", {
+    trackTime: false,
+    elapsedMs: 0,
+    draftNote: "Yalnız çalışma notunda kalacak özel taslak",
+  });
+  await write(other, SESSION, untimed);
+  await expect(strip(page)).toHaveAttribute("data-phase", "running");
+  await expect(time(page)).toBeHidden();
+  await expect(strip(page)).not.toContainText("özel taslak");
+  await context.clock.runFor(2000);
+  expect(await read(other, SESSION)).toBe(untimed);
   await write(
     other,
     KEY,
@@ -336,7 +348,7 @@ test("malformed or denied optional session storage never hides agenda work or re
   await unchanged(page, raw);
 });
 
-test("three tabs and a live session fit 380 by 420 in both themes while ticks preserve agenda scroll and keyboard focus", async ({
+test("three tabs and untimed work fit 380 by 420 in both themes while refresh preserves agenda scroll and keyboard focus", async ({
   browser,
   baseURL,
 }) => {
@@ -357,7 +369,7 @@ test("three tabs and a live session fit 380 by 420 in both themes while ticks pr
           }),
         ),
       ];
-      const session = current();
+      const session = current("running", { trackTime: false, elapsedMs: 0 });
       const raw = await seed(context, records, { theme, session });
       const page = await context.newPage();
       await open(page, "widget?windowSizing=native&windowPin=native");
@@ -385,7 +397,9 @@ test("three tabs and a live session fit 380 by 420 in both themes while ticks pr
       await page.keyboard.press("Escape");
       await expect(last).toBeFocused();
       await context.clock.runFor(1000);
-      await expect(time(page)).toHaveText("00:01:01");
+      await expect(time(page)).toBeHidden();
+      await expect(time(page)).toHaveAttribute("aria-hidden", "true");
+      await expect(strip(page).getByRole("timer")).toHaveCount(0);
       await expect(last).toBeFocused();
       expect(await list.evaluate((element) => element.scrollTop)).toBeCloseTo(
         scroll,

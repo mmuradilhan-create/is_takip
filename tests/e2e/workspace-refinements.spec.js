@@ -316,7 +316,7 @@ test("simplified copy keeps real notes and list filters reset without touching r
   expect(await saved(page)).toBe(before);
 });
 
-test("sidebar journal keeps idle compact and active controls bounded without covering navigation on short PC windows", async ({
+test("sidebar working notes keep idle compact and inline finish controls bounded without covering navigation on short PC windows", async ({
   page,
 }) => {
   const original = await seed(page);
@@ -338,34 +338,126 @@ test("sidebar journal keeps idle compact and active controls bounded without cov
     const active = await journal.boundingBox();
     expect(active.height).toBeGreaterThan(idle.height + 30);
     expect(active.y + active.height).toBeCloseTo(idle.y + idle.height, 1);
-    await expect(journal.locator("#work-session-time")).toHaveText("00:00:00");
+    await expect(journal).toBeInViewport({ ratio: 1 });
+    const workingNote = journal.locator("#work-session-note");
+    await expect(workingNote).toBeFocused();
+    expect((await workingNote.boundingBox()).height).toBeGreaterThanOrEqual(
+      100,
+    );
+    await expect(
+      journal.locator("#work-session-time, #sidebar-saved-time"),
+    ).toHaveCount(0);
     const nav = await page.locator("#nav").boundingBox();
     expect(nav.y + nav.height).toBeLessThanOrEqual(active.y + 1);
     expect(active.y + active.height).toBeLessThanOrEqual(viewport.height);
-    for (const link of await page.locator("#nav [data-view]").all())
-      await expect(link).toBeInViewport({ ratio: 1 });
+    const sidebar = await page.locator(".sidebar").boundingBox();
+    expect(sidebar.y).toBeGreaterThanOrEqual(0);
+    expect(sidebar.y + sidebar.height).toBeLessThanOrEqual(viewport.height);
+    const navScroll = await page.locator("#nav").evaluate((element) => ({
+      clientHeight: element.clientHeight,
+      scrollHeight: element.scrollHeight,
+      overflowY: getComputedStyle(element).overflowY,
+    }));
+    if (navScroll.scrollHeight > navScroll.clientHeight)
+      expect(["auto", "scroll"]).toContain(navScroll.overflowY);
+    for (const link of await page.locator("#nav [data-view]").all()) {
+      await link.scrollIntoViewIfNeeded();
+      const geometry = await link.evaluate((element) => {
+        const nav = element.closest("#nav").getBoundingClientRect();
+        const box = element.getBoundingClientRect();
+        const clip = {
+          left: Math.max(0, nav.left),
+          top: Math.max(0, nav.top),
+          right: Math.min(innerWidth, nav.right),
+          bottom: Math.min(innerHeight, nav.bottom),
+        };
+        const texts = [];
+        const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+        let text;
+        while ((text = walker.nextNode())) {
+          if (!text.textContent.trim()) continue;
+          const range = document.createRange();
+          range.selectNodeContents(text);
+          const bounds = range.getBoundingClientRect();
+          if (bounds.width && bounds.height)
+            texts.push({
+              left: bounds.left,
+              top: bounds.top,
+              right: bounds.right,
+              bottom: bounds.bottom,
+            });
+        }
+        return {
+          clip,
+          button: {
+            left: box.left,
+            top: box.top,
+            right: box.right,
+            bottom: box.bottom,
+          },
+          texts,
+        };
+      });
+      expect(geometry.button.left).toBeGreaterThanOrEqual(
+        geometry.clip.left - 1,
+      );
+      expect(geometry.button.top).toBeGreaterThanOrEqual(geometry.clip.top - 1);
+      expect(geometry.button.right).toBeLessThanOrEqual(
+        geometry.clip.right + 1,
+      );
+      expect(geometry.button.bottom).toBeLessThanOrEqual(
+        geometry.clip.bottom + 1,
+      );
+      expect(geometry.texts.length).toBeGreaterThan(0);
+      for (const text of geometry.texts) {
+        expect(text.left).toBeGreaterThanOrEqual(geometry.clip.left);
+        expect(text.top).toBeGreaterThanOrEqual(geometry.clip.top);
+        expect(text.right).toBeLessThanOrEqual(geometry.clip.right);
+        expect(text.bottom).toBeLessThanOrEqual(geometry.clip.bottom);
+      }
+      await expect(workingNote).toBeInViewport({ ratio: 1 });
+      await expect(
+        journal.locator('[aria-label="Oturumu bitir"]'),
+      ).toBeInViewport({ ratio: 1 });
+      const pad = await journal.boundingBox();
+      const navBox = await page.locator("#nav").boundingBox();
+      expect(navBox.y + navBox.height).toBeLessThanOrEqual(pad.y + 1);
+    }
     await expect(journal.locator("#work-session-panel")).toBeVisible();
     await expect(
       journal.locator('[aria-label="Oturumu bitir"]'),
     ).toBeInViewport({ ratio: 1 });
-    expect(
-      await page
-        .locator(".sidebar")
-        .evaluate((element) => element.scrollHeight === element.clientHeight),
-    ).toBe(true);
+    await expect(journal.locator('[data-action="work-pause"]')).toBeInViewport({
+      ratio: 1,
+    });
+    const result = `Dar pencerede kaydedilen gerçek sonuç ${viewport.width}×${viewport.height}`;
+    await workingNote.fill(result);
     await page.clock.fastForward(5000);
+    expect(await saved(page)).toBe(originalBytes);
     await journal
       .getByRole("button", { name: "Oturumu bitir", exact: true })
       .click();
-    await page
-      .locator("#work-finish-dialog")
-      .getByRole("button", { name: "Kaydet ve bitir", exact: true })
-      .click();
-    await expect(page.locator("#work-finish-dialog")).not.toBeVisible();
+    await expect(page.locator("#work-finish-dialog")).toHaveCount(0);
+    await expect(journal.locator("#work-session-panel")).toHaveAttribute(
+      "data-mode",
+      "finish",
+    );
+    await expect(workingNote).toHaveValue(result);
+    await expect(
+      journal.getByRole("button", { name: "Kaydet ve bitir", exact: true }),
+    ).toBeInViewport({ ratio: 1 });
+    await expect(
+      journal.locator('[data-action="work-finish-cancel"]'),
+    ).toBeInViewport({ ratio: 1 });
+    await workingNote.press("Enter");
+    await expect(journal.locator("#work-session-panel")).not.toBeVisible();
     const changed = (await records(page)).find(
       (record) => record.id === "refine-primary",
     );
-    expect(changed.workLog.at(-1).durationMs).toBe(5000);
+    expect(changed.workLog.at(-1)).toMatchObject({
+      durationMs: 0,
+      note: result,
+    });
     expect(changed.workLog.slice(0, -1)).toEqual(
       original.find((record) => record.id === "refine-primary").workLog,
     );

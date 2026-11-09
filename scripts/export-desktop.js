@@ -207,7 +207,7 @@ bağlı günlük işlerden; aylık, haftalık hedef yüzdelerinin; senelik, ayl�
 hedef yüzdelerinin eşit ağırlıklı ortalamasından hesaplanır. İptal ve arşiv
 alt kayıtları sayılmaz. Uygun alt kayıt ve ölçüm yoksa açık hedef %0 kalır.
 Hesaplanan ilerleme durumları kendiliğinden tamamlamaz. Haftalık günlük iş
-özeti ve kaydedilen süre ayrıca görünür. Aylık/senelik hedefte sayaç yoktur.
+özeti ayrıca görünür. Çalışma süreleri gösterilmez.
 
 Açık ve kendi pozitif sayısal hedefi bulunan kayıtta -1 / +1 / Hedefe getir
 mevcut değeri hızlı günceller. Mevcut değer alanına yazıp Değeri kaydet de
@@ -504,7 +504,7 @@ işi olmayan açık hedefleri.
 Beklemeyi netleştir: Bekleme nedeni boş olan Beklemede günlük işler ve
 kimden beklendiği veya son gelişmesi eksik bekleyen konular. Alanlar isteğe bağlıdır.
 İşleri gözden geçir: En az yedi takvim günüdür güncellenmeyen açık günlük
-işler. Çalışan sayaçtaki iş sayılmaz.
+işler. Üzerinde çalışılan iş sayılmaz.
 Kalan hedefleri planla: Önceki hafta ve ayların açık hedefleri; türü ve
 dönemi gösterilir. Haftalıklar bu haftaya, aylıklar bu aya taşınabilir.
 Her düğme ilgili kayıtları açar; arama bu önerileri de süzer. Sayılar
@@ -529,58 +529,35 @@ teslim tarihi ve çalışma geçmişi korunur.
 
 CALISMAYA BASLA
 
-Sayaç yalnızca günlük işlerde kullanılır. Sağdaki oynat düğmesi çalışma
-oturumunu başlatır. Kontroller sol menünün altındaki İş günlüğü alanındadır:
-saat:dakika:saniye sayacı, Duraklat / Devam et ve Bitir. İş adına tıklamak kaydı açar.
-Notlar ve sonraki adım düğmesi mevcut bilgileri ayrı bir pencerede gösterir.
+Günlük işin Çalışmaya başla düğmesi sol altta o işe ait Çalışma notu alanını
+açar. Çalışırken yazabilirsin; süre sayacı veya saat/dakika girişi yoktur.
+Duraklat sonuç istemez, yazılanları taslakta tutar. Devam et aynı nottan
+sürdürür. Başka işe geçmek öncekini duraklatır; geri dönünce notu açılır.
+Kaydedilen taslak yenileme ve pencere kapanışında korunur. Kaydetme hatası
+veya başka pencereyle çakışma metni sessizce silmez; hata gösterilir.
 
-Oturum yokken kart tek satır Bugün/süre/oturum özeti ve geçmiş bağlantısıdır.
-Özetteki kayıtlı süre en yakın tam dakikaya yuvarlanır; ham süre değişmez.
-Kaydedilmemiş sayaç bu toplama dahil değildir. Çalışma geçmişi, bulunduğun
-bölümden haftalık özeti açar. Köşe ve sol menü kaydırmadan sabit kalır.
-Aktif kart iş adını, çalışma durumunu ve yan yana kontrolleri gösterir;
-menüyü örtmez. Dar pencerelerde daha kompakt bir yerleşim kullanılır.
+Bitir, aynı not alanında Sonuç adımını açar. Notun hazır gelir; boş olmayan
+sonucu Kaydet ve bitir ile tarih/saat bilgisiyle geçmişe ekle. Vazgeçmek
+taslağı korur. Kaydetme hatasında yeniden deneyebilirsin; kayıt çoğalmaz.
+Bitirmek işin durumunu değiştirmez. Kaydedilmiş çalışma tek Geri al adımıdır.
+
+Çalışma geçmişi kayıtları tarih ve sonuçla gösterir. İşin sağındaki geçmiş
+simgesi o işin kayıtlarını, sol alttaki bağlantı haftalık geçmişi açar.
+Tarih ve sonuç düzenlenebilir; eski hassas süreler, sonraki adımlar ve boş
+sonuçlar kayıtta/yedekte aynen korunur. Düzenleme ve silme geri alınabilir.
+Bağımsız Notlar kartı çalışma taslaklarından ayrıdır. Taslaklar bu tarayıcıda
+kalır; JSON yedeğine ancak sonuç bitirilip kaydedildikten sonra dahil olur.
+
 Güncel işler başlığının yanında Açık işler / Bugün teslim / Geciken /
 Bugünün odağı düğmeleri vardır.
 Genel bakışta Sırala yoktur; sıra çalışan iş, geciken, bugün teslim, ileri
 tarihli ve tarihsiz şeklindedir. Aynı grupta öncelik ve yakın teslim tarihi
 belirler. Gerçekten çalışan satır hafif yeşildir; duraklatınca vurgu kalkar.
-Devam ediyor durumu tek başına çalışan sayaç anlamına gelmez. Arama ve
+Devam ediyor durumu tek başına çalışmaya başlandığı anlamına gelmez. Arama ve
 filtre çalışan işi de süzer. Bütün eşleşen işler doğrudan listelenir;
 altı iş sınırı ve genişletme düğmesi yoktur, liste kendi içinde kayar. Tam liste
 ekranlarındaki sıralama ve 50 kayıtlık sayfalama korunur.
 
-Aynı anda tek sayaç çalışır; başka işe geçmek öncekini duraklatır.
-Bölümler arasında gezinirken süre devam eder. Başlatan pencere kapanır
-veya yenilenirse oturum duraklar; yeniden açınca devam edebilirsin.
-Oturumu bitir sayacı duraklatır. Açılan pencerede tarih ve süre otomatik
-gelir; istersen Sonuç yazabilirsin. Enter kaydeder, Shift+Enter alt satıra
-geçer. Kaydet ve bitir, iş günlüğünü tek işlemde kaydeder. Geri al oturumu
-geri alır. Vazgeç veya Escape
-kayıt oluşturmaz; sayaç duraklatılmış kalır. Not yazma süresi eklenmez.
-Kaydı sil, onaydan sonra yalnız kaydedilmemiş oturumu temizler; günlük iş
-ve önceki iş günlüğü kayıtları korunur.
-Oturumu bitirmek kayıt durumunu tamamlandı yapmaz.
-
-Günlük iş satırının sağındaki iş günlüğü simgesi, tarih/süre/sonuç/sonraki adım
-geçmişini ve toplam süreyi açar. Sol alttaki Çalışma geçmişi haftalık özeti
-açar; o hafta bitirilip kaydedilen çalışmaları toplar ve diğer haftalara
-geçilebilir. Liste filtrelerinde ayrı bir Haftalık özet düğmesi yoktur.
-Haftalık hedefin sağ panelindeki Kaydedilen süre bağlı işlerden hesaplanır.
-Süre, hedefin yüzdesini değiştirmez. Aylık/senelik hedeflerde sayaç yoktur.
-
-Kaydedilmiş oturumu olan işin günlük simgesi açık mor/lila görünür;
-açıklaması oturum sayısını ve toplam süreyi verir. Kayıt yoksa nötrdür.
-Yalnız çalışan veya duraklatılmış sayaç bu işareti doldurmaz.
-
-İş günlüğündeki ve haftalık özetteki kaydedilmiş oturumlar Düzenle / Sil
-ile yönetilir. Tarih, süre (saat/dakika; değişmeyen ham süre korunur),
-ve Sonuç düzeltilebilir. Sonuç alanında Enter kaydeder, Shift+Enter alt
-satıra geçer. Eski oturumların sonraki adım metinleri geçmişte korunur;
-işin güncel sonraki adımı değişmez. Sil önce aynı satırda onay ister
-ve yalnız o oturumu kaldırır. İkisi de tek Geri al adımıdır, toplam süreler
-yenilenir ve çalışmakta olan sayaç etkilenmez. Düzenleme formundaki hata
-alanı yalnızca gerçek bir hata mesajı varken görünür.
 
 TOPLANTI KARARINDAN ISE VEYA TAKIBE
 
@@ -631,8 +608,8 @@ açılabilir. Bu işi bitirmek dış yanıtı almak değildir; bekleyen konuyu
 kapatmaz. Konunun takibi, kendi durumu ve tarihleriyle devam eder ve takip
 kuyruğunda kalabilir. Outlook bağlantısı bu sürümde bulunmaz.
 
-Kaydedilen iş günlüğü JSON kayıt yedeğine dahildir. Kaydedilmemiş geçici
-sayaç bağlamı bu tarayıcıda kalır ve JSON yedeğine dahil edilmez.
+Kaydedilen iş günlüğü JSON kayıt yedeğine dahildir. Kaydedilmemiş çalışma notu
+taslağı bu tarayıcıda kalır ve JSON yedeğine dahil edilmez.
 
 BU SURUMDEKI KAYIT DUZENLEMESI
 
@@ -704,9 +681,8 @@ boyutuna müdahale edilmez.
 Windows paketinde başlıktaki Üstte tut düğmesi widget'ı diğer pencerelerin
 üstünde tutar; tekrar basmak normal sıraya döndürür. Seçim açık widget
 içindir. Normal tarayıcı açılışında bu düğme kullanılamaz.
-Çalışılan günlük iş varsa altta iş adı, Çalışıyor / Duraklatıldı ve canlı
-saat:dakika:saniye süresi görünür. Widget oturumu yalnız okur; başlatma,
-devralma veya kaydetme yapmaz. Duraklatılmış süre ilerlemez.
+Çalışılan günlük iş varsa altta iş adı ve Çalışıyor / Duraklatıldı durumu
+görünür. Widget oturumu yalnız okur; başlatma, devralma veya kaydetme yapmaz.
 
 ODAK-Pencere.ps1, başlatıcı tarafından gizli çalıştırılan pencere yardımcısıdır.
 Araç çubuğundaki Widget ve widget'taki ODAK'ı aç dahil yeni ODAK pencerelerini

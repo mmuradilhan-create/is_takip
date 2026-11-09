@@ -359,18 +359,20 @@ test("compact focus rows align separate priority and delivery columns while head
   expect(await readSaved(page)).toBe(saved);
 });
 
-test("sidebar journal keeps idle history available and saves only finished work while its timer stays inside navigation", async ({
+test("sidebar work notes keep history available and save only finished results while staying inside navigation", async ({
   page,
 }, testInfo) => {
   const originals = await seed(page);
   const sidebar = page.locator(".sidebar");
   const control = sidebar.locator("#sidebar-work-journal");
   const panel = control.locator("#work-session-panel");
-  const today = control.locator("#sidebar-saved-time");
+  const draft = panel.locator("#work-session-note");
   await expect(control).toBeVisible();
   await expect(panel).not.toBeVisible();
-  await expect(today).toHaveText("5 dk");
-  await expect(control.locator("#sidebar-saved-count")).toHaveText("2 oturum");
+  await expect(
+    control.locator("#sidebar-saved-time, #work-session-time"),
+  ).toHaveCount(0);
+  await expect(control.locator("#sidebar-saved-count")).toHaveText("2 kayıt");
   await expect(control.locator(".sidebar-journal-idle")).toHaveCount(0);
   const idleBounds = await control.boundingBox();
   expect(idleBounds.height).toBeLessThanOrEqual(110);
@@ -393,8 +395,10 @@ test("sidebar journal keeps idle history available and saves only finished work 
     .click();
   await page.clock.fastForward(35_000);
   await expect(panel).toHaveAttribute("data-phase", "running");
-  await expect(panel.locator("#work-session-time")).toHaveText("00:00:35");
-  await expect(today).toHaveText("5 dk");
+  await expect(
+    control.locator("#sidebar-saved-time, #work-session-time"),
+  ).toHaveCount(0);
+  await draft.fill("Kompakt panelden inceleme tamamlandı.");
   await expect(control.locator(".sidebar-journal-phase")).toHaveText(
     "Çalışıyor",
   );
@@ -438,32 +442,39 @@ test("sidebar journal keeps idle history available and saves only finished work 
   await page.locator('#editor [data-action="close"]').last().click();
   await panel.getByRole("button", { name: "Duraklat", exact: true }).click();
   await page.clock.fastForward(120_000);
-  await expect(panel.locator("#work-session-time")).toHaveText("00:00:35");
+  await expect(draft).toHaveValue("Kompakt panelden inceleme tamamlandı.");
   const paused = await page.evaluate(
     (key) => JSON.parse(localStorage.getItem(key)),
     `${KEY}-work-session`,
   );
   expect(
     paused.entries.find((entry) => entry.recordId === "compact-urgent"),
-  ).toMatchObject({ status: "paused", elapsedMs: 35_000, startedAt: null });
+  ).toMatchObject({
+    status: "paused",
+    elapsedMs: 0,
+    startedAt: null,
+    trackTime: false,
+    draftNote: "Kompakt panelden inceleme tamamlandı.",
+  });
   await navigate(page, "monthly");
   await expect(panel).toBeVisible();
-  await expect(today).toHaveText("5 dk");
+  await expect(draft).toHaveValue("Kompakt panelden inceleme tamamlandı.");
   expect(await readSaved(page)).toBe(before);
-  await panel
-    .getByRole("button", { name: "Oturumu bitir", exact: true })
-    .click();
+  await panel.locator('[data-action="work-finish"]').click();
+  await expect(panel).toHaveAttribute("data-mode", "finish");
+  await expect(panel.locator("#work-finish-form")).toBeVisible();
+  await expect(page.locator("#work-finish-dialog")).toHaveCount(0);
   await expect(
     page.locator('#work-finish-form [name="nextAction"]'),
   ).toHaveCount(0);
-  await page
-    .locator('#work-finish-form [name="resultNote"]')
-    .fill("Kompakt panelden inceleme tamamlandı.");
+  await expect(draft).toHaveValue("Kompakt panelden inceleme tamamlandı.");
   await page.locator('#work-finish-form [name="resultNote"]').press("Enter");
   await expect(panel).not.toBeVisible();
   await expect(control).toBeVisible();
-  await expect(today).toHaveText("6 dk");
-  await expect(control.locator("#sidebar-saved-count")).toHaveText("3 oturum");
+  await expect(
+    control.locator("#sidebar-saved-time, #work-session-time"),
+  ).toHaveCount(0);
+  await expect(control.locator("#sidebar-saved-count")).toHaveText("3 kayıt");
   const records = await readRecords(page);
   const changed = records.find((record) => record.id === "compact-urgent");
   expect(changed.status).toBe("in_progress");
@@ -473,7 +484,7 @@ test("sidebar journal keeps idle history available and saves only finished work 
   expect(changed.workLog[0]).toEqual(original.workLog[0]);
   expect(changed.workLog[1]).toMatchObject({
     date: "2026-11-07",
-    durationMs: 35_000,
+    durationMs: 0,
     note: "Kompakt panelden inceleme tamamlandı.",
     nextAction: "",
   });
@@ -484,5 +495,5 @@ test("sidebar journal keeps idle history available and saves only finished work 
   await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "Geri al", exact: true }).click();
   expect(await readRecords(page)).toEqual(originals);
-  await expect(today).toHaveText("5 dk");
+  expect(await readSaved(page)).toBe(before);
 });

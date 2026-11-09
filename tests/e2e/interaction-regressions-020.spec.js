@@ -313,9 +313,9 @@ test("journal icons fill lilac only for saved entries and follow session save, d
   await expect(populated).toHaveAttribute("data-session-count", "1");
   await expect(populated).toHaveAttribute(
     "aria-label",
-    /iş günlüğünü gör.*1 kayıtlı oturum/,
+    /çalışma geçmişini gör.*1 kayıt/,
   );
-  await expect(populated).toHaveAttribute("title", /1 oturum.*1 dk 5 sn/);
+  await expect(populated).toHaveAttribute("title", "Çalışma geçmişi: 1 kayıt");
   expect(
     await empty.evaluate((button) => button.getBoundingClientRect().width),
   ).toBe(30);
@@ -340,9 +340,23 @@ test("journal icons fill lilac only for saved entries and follow session save, d
   await expect(empty).toHaveAttribute("data-session-count", "0");
   await page.locator('[data-action="work-pause"]').click();
   await expect(empty).not.toHaveClass(/has-entries/);
+  await expect(page.locator("#work-session-panel")).toHaveAttribute(
+    "data-mode",
+    "note",
+  );
+  expect(await saved(page)).toBe(beforeView);
   await page.locator('[data-action="work-finish"]').click();
-  const finish = page.locator("#work-finish-dialog");
-  await finish.locator('[name="resultNote"]').fill("Yeni kaydedilen sonuç.");
+  const finish = page.locator("#work-session-panel #work-finish-form");
+  await expect(page.locator("#work-session-panel")).toHaveAttribute(
+    "data-mode",
+    "finish",
+  );
+  await expect(
+    page.locator(
+      "#work-finish-dialog, #work-session-time, #sidebar-saved-time",
+    ),
+  ).toHaveCount(0);
+  await page.locator("#work-session-note").fill("Yeni kaydedilen sonuç.");
   await finish
     .getByRole("button", { name: "Kaydet ve bitir", exact: true })
     .click();
@@ -353,6 +367,9 @@ test("journal icons fill lilac only for saved entries and follow session save, d
   expect(
     afterFinish.find((record) => record.id === "regression-daily").workLog,
   ).toHaveLength(1);
+  expect(
+    afterFinish.find((record) => record.id === "regression-daily").workLog[0],
+  ).toMatchObject({ durationMs: 0, note: "Yeni kaydedilen sonuç." });
   await empty.click();
   const entry = journal.locator(".work-journal-entry");
   await expect(entry).toHaveCount(1);

@@ -1,6 +1,6 @@
 import { localDate } from "./model.js";
 import { makePlanningPeriod, shiftPlanningPeriod } from "./planning-periods.js";
-import { totalWorkMs, weekWorkSummary } from "./work-journal.js";
+import { weekWorkSummary } from "./work-journal.js";
 import { dateInput, dateValue } from "./date-picker.js";
 
 const escapeHtml = (value) =>
@@ -62,8 +62,21 @@ function latestFirst(entries) {
   );
 }
 
+function recentRecords(records) {
+  return [...records].sort((first, second) => {
+    const firstEntry = latestFirst(first.entries)[0];
+    const secondEntry = latestFirst(second.entries)[0];
+    return (
+      String(secondEntry?.date).localeCompare(String(firstEntry?.date)) ||
+      String(secondEntry?.endedAt).localeCompare(String(firstEntry?.endedAt)) ||
+      first.title.localeCompare(second.title, "tr") ||
+      first.recordId.localeCompare(second.recordId)
+    );
+  });
+}
+
 function entryMarkup(entry, actions = "") {
-  return `<li><article class="work-journal-entry" data-log-id="${escapeHtml(entry.id)}"><div class="work-journal-entry-heading"><time datetime="${escapeHtml(entry.date)}">${escapeHtml(dateLabel(entry.date))}</time><div class="work-journal-entry-tools"><strong>${escapeHtml(formatWorkDuration(entry.durationMs))}</strong>${actions}</div></div>${entry.note ? `<section class="work-journal-field"><h3>Sonuç</h3><p>${escapeHtml(entry.note)}</p></section>` : '<p class="work-journal-hint">Sonuç notu eklenmemiş.</p>'}${entry.nextAction ? `<section class="work-journal-field"><h3>Sonraki adım</h3><p>${escapeHtml(entry.nextAction)}</p></section>` : ""}</article></li>`;
+  return `<li><article class="work-journal-entry" data-log-id="${escapeHtml(entry.id)}"><div class="work-journal-entry-heading"><time datetime="${escapeHtml(entry.date)}">${escapeHtml(dateLabel(entry.date))}</time><div class="work-journal-entry-tools">${actions}</div></div>${entry.note ? `<section class="work-journal-field"><h3>Sonuç</h3><p>${escapeHtml(entry.note)}</p></section>` : '<p class="work-journal-hint">Sonuç notu eklenmemiş.</p>'}${entry.nextAction ? `<section class="work-journal-field"><h3>Sonraki adım</h3><p>${escapeHtml(entry.nextAction)}</p></section>` : ""}</article></li>`;
 }
 
 function totalsMarkup(items) {
@@ -89,7 +102,7 @@ export function createWorkJournalUI({
   const journalDialog = document.createElement("dialog");
   journalDialog.id = "work-journal-dialog";
   journalDialog.className = "modal work-journal-modal";
-  journalDialog.setAttribute("aria-label", "İş günlüğü");
+  journalDialog.setAttribute("aria-label", "Çalışma geçmişi");
   const weekDialog = document.createElement("dialog");
   weekDialog.id = "work-week-dialog";
   weekDialog.className = "modal work-week-modal";
@@ -97,7 +110,7 @@ export function createWorkJournalUI({
   const editDialog = document.createElement("dialog");
   editDialog.id = "work-log-edit-dialog";
   editDialog.className = "modal work-log-edit-modal";
-  editDialog.setAttribute("aria-label", "Çalışma oturumunu düzenle");
+  editDialog.setAttribute("aria-label", "Çalışma kaydını düzenle");
   root.append(journalDialog, weekDialog, editDialog);
   let recordId = null;
   let selectedWeek = makePlanningPeriod("weekly", localDate());
@@ -129,15 +142,15 @@ export function createWorkJournalUI({
 
   function buttonContent(record) {
     const count = savedEntries(record).length;
-    return `${journalIcon}<span>İş günlüğü</span><small>${count} oturum${count ? ` · ${escapeHtml(formatWorkDuration(totalWorkMs(record)))}` : ""}</small>`;
+    return `${journalIcon}<span>Çalışma geçmişi</span><small>${count} kayıt</small>`;
   }
 
   function buttonLabel(record, count) {
-    return `${record.title}: iş günlüğünü gör · ${count} kayıtlı oturum`;
+    return `${record.title}: çalışma geçmişini gör · ${count} kayıt`;
   }
 
   function buttonTitle(record, count) {
-    return `İş günlüğü: ${count} oturum${count ? ` · ${formatWorkDuration(totalWorkMs(record))}` : ""}`;
+    return `Çalışma geçmişi: ${count} kayıt`;
   }
 
   function button(record, { compact = false } = {}) {
@@ -184,29 +197,22 @@ export function createWorkJournalUI({
         "Kayıt silinmiş veya başka bir listeye taşınmış olabilir.",
       );
     } else {
-      body = `<p class="work-journal-subtitle">${escapeHtml(record.title)}</p>${totalsMarkup(
-        [
-          ["Kaydedilen süre", formatWorkDuration(totalWorkMs(record))],
-          ["Oturum", entries.length],
-        ],
-      )}${
+      body = `<p class="work-journal-subtitle">${escapeHtml(record.title)}</p>${totalsMarkup([["Çalışma kaydı", entries.length]])}${
         entries.length
-          ? `<p class="work-journal-hint">Kaydedilen oturumlar; en yenisi üstte.</p><ol class="work-journal-list">${latestFirst(
-              entries,
-            )
+          ? `<ol class="work-journal-list">${latestFirst(entries)
               .map((entry) =>
                 entryMarkup(entry, entryActions(record.id, entry)),
               )
               .join("")}</ol>`
           : emptyMarkup(
               "Henüz çalışma kaydı yok",
-              "Bu günlük işte bir çalışma oturumu başlatıp bitirdiğinde tarih ve süre burada görünür.",
+              "Bu işte çalışmayı bitirip sonucu kaydettiğinde burada görünür.",
             )
       }`;
     }
     replaceContent(
       journalDialog,
-      shell("İş günlüğü", body, "work-journal-close"),
+      shell("Çalışma geçmişi", body, "work-journal-close"),
     );
     journalKey = nextKey;
   }
@@ -219,10 +225,10 @@ export function createWorkJournalUI({
       selectedWeek.key === makePlanningPeriod("weekly", localDate()).key;
     const navigation = `<div class="work-week-navigation"><button type="button" class="btn secondary small" data-action="work-week-prev" aria-label="Önceki hafta">${previousIcon}</button><strong class="work-week-period">${escapeHtml(selectedWeek.label)}</strong><button type="button" class="btn secondary small" data-action="work-week-next" aria-label="Sonraki hafta">${nextIcon}</button><button type="button" class="btn secondary small" data-action="work-week-current" ${isCurrent ? "disabled" : ""}>Bu hafta</button></div>`;
     const content = summary.sessionCount
-      ? `<div class="work-week-records">${summary.byRecord
+      ? `<div class="work-week-records">${recentRecords(summary.byRecord)
           .map(
             (record) =>
-              `<section class="work-week-record" data-record-id="${escapeHtml(record.recordId)}"><header><h3>${escapeHtml(record.title)}</h3><span>${record.sessionCount} oturum · ${escapeHtml(formatWorkDuration(record.totalMs))}</span></header><ol class="work-journal-list">${latestFirst(
+              `<section class="work-week-record" data-record-id="${escapeHtml(record.recordId)}"><header><h3>${escapeHtml(record.title)}</h3><span>${record.sessionCount} kayıt</span></header><ol class="work-journal-list">${latestFirst(
                 record.entries,
               )
                 .map((entry) =>
@@ -233,13 +239,12 @@ export function createWorkJournalUI({
           .join("")}</div>`
       : emptyMarkup(
           "Bu hafta çalışma kaydı yok",
-          "Günlük işlerde bitirip kaydettiğin oturumlar burada toplanır. Önceki haftaları da inceleyebilirsin.",
+          "Günlük işlerde bitirip kaydettiğin sonuçlar burada toplanır. Önceki haftaları da inceleyebilirsin.",
         );
     const body = `${navigation}${totalsMarkup([
-      ["Kaydedilen süre", formatWorkDuration(summary.totalMs)],
       ["Üzerinde çalışılan iş", summary.recordCount],
-      ["Oturum", summary.sessionCount],
-    ])}<p class="work-journal-hint">Yalnızca bitirip kaydettiğin oturumlar gösterilir. İşler toplam çalışma süresine göre sıralanır.</p>${content}`;
+      ["Çalışma kaydı", summary.sessionCount],
+    ])}${content}`;
     replaceContent(
       weekDialog,
       shell("Haftalık yapılanlar", body, "work-week-close"),
@@ -293,17 +298,13 @@ export function createWorkJournalUI({
     deleting = null;
     deletionError = "";
     refreshReports();
-    const hours = Math.floor(entry.durationMs / 3_600_000);
-    const minutes = Math.floor((entry.durationMs % 3_600_000) / 60_000);
     editing = {
       recordId: id,
       entryId,
       baseline: JSON.stringify(entry),
-      hours,
-      minutes,
     };
     releaseCalendar();
-    editDialog.innerHTML = `<form id="work-log-edit-form"><div class="modal-header"><h2>Çalışma oturumunu düzenle</h2><button type="button" class="close-modal" data-action="work-log-edit-close" aria-label="Pencereyi kapat">${closeIcon}</button></div><div class="modal-body work-log-edit-body"><p class="work-journal-subtitle">${escapeHtml(record.title)}</p><fieldset class="work-log-edit-fields"><label class="field">Oturum tarihi${dateInput({ name: "workLogDate", id: "work-log-edit-date", value: entry.date, label: "Oturum tarihi", max: localDate() })}</label><div class="work-log-duration"><span>Süre</span><div><label class="field">Saat<input name="workLogHours" type="number" min="0" step="1" required value="${hours}"></label><label class="field">Dakika<input name="workLogMinutes" type="number" min="0" max="59" step="1" required value="${minutes}"></label></div></div><label class="field">Sonuç<textarea name="workLogNote" maxlength="10000" rows="3" aria-describedby="work-log-edit-shortcuts">${escapeHtml(entry.note)}</textarea></label><p id="work-log-edit-shortcuts" class="field-help">Enter ile kaydet, Shift+Enter ile alt satıra geç.</p></fieldset><p id="work-log-edit-error" class="error-message" role="alert" hidden></p></div><div class="modal-footer"><button type="button" class="btn secondary" data-action="work-log-edit-close">Vazgeç</button><button type="submit" class="btn primary work-log-edit-save">Değişiklikleri kaydet</button></div></form>`;
+    editDialog.innerHTML = `<form id="work-log-edit-form"><div class="modal-header"><h2>Çalışma kaydını düzenle</h2><button type="button" class="close-modal" data-action="work-log-edit-close" aria-label="Pencereyi kapat">${closeIcon}</button></div><div class="modal-body work-log-edit-body"><p class="work-journal-subtitle">${escapeHtml(record.title)}</p><fieldset class="work-log-edit-fields"><label class="field">Kayıt tarihi${dateInput({ name: "workLogDate", id: "work-log-edit-date", value: entry.date, label: "Kayıt tarihi", max: localDate() })}</label><label class="field">Sonuç<textarea name="workLogNote" maxlength="10000" rows="3" aria-describedby="work-log-edit-shortcuts">${escapeHtml(entry.note)}</textarea></label><p id="work-log-edit-shortcuts" class="field-help">Enter ile kaydet, Shift+Enter ile alt satıra geç.</p></fieldset><p id="work-log-edit-error" class="error-message" role="alert" hidden></p></div><div class="modal-footer"><button type="button" class="btn secondary" data-action="work-log-edit-close">Vazgeç</button><button type="submit" class="btn primary work-log-edit-save">Değişiklikleri kaydet</button></div></form>`;
     editDialog.showModal();
     editDialog
       .querySelector('[name="workLogNote"]')
@@ -322,28 +323,10 @@ export function createWorkJournalUI({
         );
       const form = event.target;
       const date = dateValue(form.elements.workLogDate);
-      if (!date) throw new Error("Oturum tarihini seç.");
+      if (!date) throw new Error("Kayıt tarihini seç.");
       if (!form.reportValidity()) return;
-      const hours = Number(form.elements.workLogHours.value);
-      const minutes = Number(form.elements.workLogMinutes.value);
-      // Text/date edits retain the saved precision hidden by the minute fields.
-      const durationMs =
-        hours === editing.hours && minutes === editing.minutes
-          ? current.durationMs
-          : hours * 3_600_000 + minutes * 60_000;
-      if (
-        !Number.isInteger(hours) ||
-        hours < 0 ||
-        !Number.isInteger(minutes) ||
-        minutes < 0 ||
-        minutes > 59 ||
-        !Number.isSafeInteger(durationMs) ||
-        durationMs < 0
-      )
-        throw new Error("Geçerli bir saat ve dakika süresi gir.");
       const patch = {
         date,
-        durationMs,
         note: form.elements.workLogNote.value,
       };
       editError("");

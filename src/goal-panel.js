@@ -1,6 +1,4 @@
 import { TYPES, getWeeklyProgress, goalProgress } from "./model.js";
-import { weeklyGoalWorkMs } from "./work-journal.js";
-import { formatWorkDuration } from "./work-journal-ui.js";
 import { renderDeadlineChip } from "./deadline-presentation.js";
 import { goalChildren, parentGoalType } from "./goal-hierarchy.js";
 import { makePlanningPeriod, shiftPlanningPeriod } from "./planning-periods.js";
@@ -363,7 +361,7 @@ export function createGoalPanel({
     ).length;
     const summary = weekly ? getWeeklyProgress(record.id, records) : null;
     const secondary = summary
-      ? `<div class="goal-panel-summary goal-panel-secondary" aria-label="Haftalık özet"><div><span>Günlük iş ilerlemesi</span><strong>${summary.completed}/${summary.total} tamamlandı</strong></div><div><span>Kaydedilen süre</span><strong>${esc(formatWorkDuration(weeklyGoalWorkMs(record.id, records)))}</strong></div></div>`
+      ? `<div class="goal-panel-summary goal-panel-secondary" aria-label="Haftalık özet"><div><span>Günlük iş ilerlemesi</span><strong>${summary.completed}/${summary.total} tamamlandı</strong></div></div>`
       : "";
     return `<section class="goal-panel-section goal-panel-children goal-hierarchy-section" data-goal-section="children"><div class="goal-panel-section-heading"><h3 tabindex="-1" data-goal-section-heading="children">Bağlı ${childName} <small>${children.length}</small></h3><button type="button" class="text-btn goal-new-step" data-action="goal-new-step" data-id="${esc(record.id)}">${plusIcon}${action}</button></div>${children.length ? `${excluded ? `<p class="field-help goal-child-order">${excluded} iptal veya arşiv kaydı ilerlemeye dahil değil.</p>` : ""}<ul class="goal-child-list">${children.map((child) => childMarkup(child, records)).join("")}</ul>` : '<p class="goal-panel-empty">Bu hedef için ilk bağlı adımı ekleyebilirsin.</p>'}${typeof onUnlinkChild === "function" ? errorMarkup(record, "#goal-unlink-child-error") : ""}${linkChildMarkup(record, records)}${secondary}</section>`;
   }

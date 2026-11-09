@@ -86,6 +86,21 @@ test("the widget observes running time and the current title without taking sess
   }
 });
 
+test("note-only work retains legacy milliseconds without accumulating new time", () => {
+  const records = freeze([record()]);
+  const raw = encoded(context({ trackTime: false, draftNote: "İlk inceleme" }));
+  const first = widgetSessionSummary(records, raw, 5000);
+  const later = widgetSessionSummary(records, raw, 70000);
+  assert.equal(first.elapsedMs, 1250);
+  assert.equal(later.elapsedMs, 1250);
+  assert.equal(first.phase, "Çalışıyor");
+  assert.equal(first.title, "Teklifi incele");
+  assert.equal(
+    readWorkSessionSnapshot(raw).entries[0].draftNote,
+    "İlk inceleme",
+  );
+});
+
 test("paused time stays fixed while a future running start is clamped and safe totals cannot overflow", () => {
   const records = freeze([record()]);
   const duration = (99 * 3600 + 5 * 60 + 6) * 1000 + 999;

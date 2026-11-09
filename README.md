@@ -1,6 +1,6 @@
 # Odak
 
-PC kullanımına odaklanan, Türkçe kişisel iş ve hedef takibi. HTML/CSS/JavaScript tabanlıdır. Güncel sürüm: **0.21.27**.
+PC kullanımına odaklanan, Türkçe kişisel iş ve hedef takibi. HTML/CSS/JavaScript tabanlıdır. Güncel sürüm: **0.21.28**.
 
 ## Kullanım
 
@@ -35,7 +35,7 @@ Günlük işler, haftalık plan, aylık ve senelik hedefler aynı kompakt tablo,
 
 Senelik hedeflerde yıl/dönem yeterlidir; teslim tarihi sütunu, **Termin** filtresi, teslim sıralaması ve form alanı kullanılmaz. Takvimde senelik hedefin kendi tarih kaydı gösterilmez; aylık alt hedef ve günlük iş tarihleri korunur. Eski senelik tarihler kayıtlarda ve JSON yedeklerinde aynen saklanır; yeni senelik hedefler teslim tarihi olmadan oluşturulur.
 
-Satır işlemleri sağ uçta aynı küçük simge düğmeleriyle gösterilir; üzerlerine gelince büyük harfle başlayan açıklamaları okunur ve klavyeyle kullanılabilirler. Hedeflerde satır veya başlık ayrıntı panelini, sağdaki **kalem** kayıt formunu ve **+** bir alt düzeyin yeni kayıt formunu açar: haftalık → günlük iş, aylık → haftalık hedef, senelik → aylık hedef. Günlük işlerde iş günlüğü ve çalışma düğmeleri aynı alandadır. Kaydı satıra veya başlığa tıklayarak açabilirsiniz; bunu tekrarlayan ayrı açma düğmesi bulunmaz. Başlığın altında işlem düğmeleri veya bağlı iş sayısı tekrarlanmaz.
+Satır işlemleri sağ uçta aynı küçük simge düğmeleriyle gösterilir; üzerlerine gelince büyük harfle başlayan açıklamaları okunur ve klavyeyle kullanılabilirler. Hedeflerde satır veya başlık ayrıntı panelini, sağdaki **kalem** kayıt formunu ve **+** bir alt düzeyin yeni kayıt formunu açar: haftalık → günlük iş, aylık → haftalık hedef, senelik → aylık hedef. Günlük işlerde çalışma geçmişi ve başlatma düğmeleri aynı alandadır. Kaydı satıra veya başlığa tıklayarak açabilirsiniz; bunu tekrarlayan ayrı açma düğmesi bulunmaz. Başlığın altında işlem düğmeleri veya bağlı iş sayısı tekrarlanmaz.
 
 Satır altında yalnız işe yarayan bağlam gösterilir. Günlük işlerde, haftalık ve aylık hedef listelerinde ve Genel bakış kartlarında bağlı üst hedef, başlık yanındaki küçük hedef simgesinden açılır; üzerine gelince tam adı hızlı açılan, beyaz zeminli ve yeşil kenarlıklı uygulama balonunda okunur. Kaynak kayıt ve not simgeleri de aynı gruptadır; kaynak simgesi toplantı veya bekleyen konu ayrıntısını sağda açar. Not simgesi üzerine gelince gerçek notu önizler; tıklamak doğrudan Notu düzenle penceresini açar. Hedef bağlantısı altta tekrarlanmaz ve boş alt satır bırakılmaz. Anlık iş, iş türü ve proje kodu etiketleri gösterilmez. Bağlantı metni alt satırda tekrarlanmaz; dönem bilgisi ayrı kalır. **Tüm haftalar / aylar / yıllar** görünümünde dönem **16–22 Kasım 2026 / Kasım 2026 / 2026** gibi okunur; seçili dönem üstte yazıyorsa satırda tekrarlanmaz. Toplantı satırında karar ve varsa toplantı tarihi görünür. Bölüm adları veya boş alt satırlar eklenmez; bu görünüm kayıtları değiştirmez.
 
@@ -49,13 +49,11 @@ Genel **Sonraki adım** kayıt formlarında, hedef panelinde ve bekleme penceres
 
 Günlük iş formundaki **Bağlı haftalık hedef** yeni seçimlerde yalnızca açık hedefleri sunar; **Tamamlananları göster** düğmesi kaldırıldı. Mevcut seçili kapalı bağlantı, açıkça verilen kapalı hedef ve türe ait taslak korunur; kayıt açmak bağlantıyı kendiliğinden değiştirmez.
 
-Tamamlandı durumundaki hedefin ilerlemesi **%100** olur. Diğer hedeflerde pozitif sayısal hedef varsa **7/10 rapor** gibi ölçüm önceliklidir; mevcut değer boşsa sıfır kabul edilir. Sayısal hedef yoksa haftalık ilerleme uygun günlük işlerin tamamlanma oranıdır; aylık ilerleme bağlı haftalık hedef yüzdelerinin, senelik ilerleme bağlı aylık hedef yüzdelerinin eşit ağırlıklı ortalamasıdır. İptal veya arşivlenmiş alt kayıtlar hesaplanmaz. Bağlı kayıt ve sayısal hedef yoksa açık hedef **%0** kalır. Hesaplanan ilerleme hiçbir kaydı kendiliğinden tamamlamaz; haftalık günlük iş özeti ve kaydedilen süre ayrıca görünür.
+Tamamlandı durumundaki hedefin ilerlemesi **%100** olur. Diğer hedeflerde pozitif sayısal hedef varsa **7/10 rapor** gibi ölçüm önceliklidir; mevcut değer boşsa sıfır kabul edilir. Sayısal hedef yoksa haftalık ilerleme uygun günlük işlerin tamamlanma oranıdır; aylık ilerleme bağlı haftalık hedef yüzdelerinin, senelik ilerleme bağlı aylık hedef yüzdelerinin eşit ağırlıklı ortalamasıdır. İptal veya arşivlenmiş alt kayıtlar hesaplanmaz. Bağlı kayıt ve sayısal hedef yoksa açık hedef **%0** kalır. Hesaplanan ilerleme hiçbir kaydı kendiliğinden tamamlamaz; haftalık günlük iş özeti ayrıca görünür.
 
 Tablodaki ilerleme kısa gösterilir: **5 / 100**, **1 / 2**, **3 alt hedef**, **Tamamlandı** veya **Ölçüm yok**. Özetin üzerine gelince ölçümün tamamı okunur; satır veya başlık hedef panelini açar. Uzun ve çok satırlı ölçüm metni panelde satırlara bölünerek okunur. Bu görünüm hesaplama yöntemini, hedef değerlerini veya kayıtları değiştirmez.
 
 Açık ve kendi pozitif sayısal hedefi bulunan kayıtta **−1 / +1 / Hedefe getir** ile mevcut değer hızlı güncellenir. **Mevcut değer** alanına doğrudan sayı yazıp **Değeri kaydet** de kullanılabilir. Bu işlemler durumu kendiliğinden tamamlamaz; her değişiklik **Geri al** ile geri alınabilir. Bağlı iş veya alt hedeflerden hesaplanan ilerleme o kayıtlardan yönetilir; boş hedefe ölçüm uydurulmaz. Kapalı hedeflerde hızlı ölçüm kontrolleri salt okunurdur. Mevcut değer taslağı kaydedilene veya **Güncel değeri al** ile sıfırlanana kadar tutulur.
-
-Haftalık hedefin sağ panelindeki **Kaydedilen süre**, bağlı günlük işlerin iş günlüğündeki toplam süresidir. Tamamlanan, iptal edilen veya aktarılan işlerde daha önce çalışılmış süre de bu toplama dahildir; devam eden veya henüz kaydedilmemiş oturumlar dahil değildir. Çalışma süresi hedefin yüzdesini değiştirmez. Aylık ve senelik hedeflerde sayaç kullanılmaz.
 
 Listeler **Açık** görünümüyle başlar. Üstteki **Açık / Tamamlanan / Tümü** düğmeleri kayıt kapsamını seçer. Ayrıntılı **Durum** filtresi yalnızca çalışma durumlarını daraltır; açık ve tamamlanan seçimini tekrarlamaz. **Tamamlanan** görünümünde bu filtre gizlenir. **Tümü**, iptal ve eski aktarım kayıtları dahil bütün kayıtları gösterir; **Durum → Arşivlenenler** seçimi yalnızca eski haftalık aktarımları daraltır. Her bölümün kendi durum seçenekleri korunur.
 
@@ -123,23 +121,15 @@ Eski aktarımın **Kaç Gün Bekledi** satırı yalnız kaynak değeriyle doğru
 
 ## Çalışmaya başla
 
-Sayaç yalnızca **günlük işlerde** kullanılır. Güncel işler veya günlük iş satırının en sağındaki **▶** düğmesi sayacı başlatır. Kontroller sol menünün altındaki kompakt **İş günlüğü** alanındadır; ana listenin altında geniş bir şerit bulunmaz. **Duraklat**, **Devam et** ve **Bitir** bu alandadır. Sağdaki satır düğmesi çalışan işte duraklatır, duraklatılmış işte devam eder. Köşedeki iş adına tıklamak ilgili kaydı açar. **Notlar ve sonraki adım** küçük düğmesi ayrı bir pencerede mevcut aksiyonu, notları ve varsa bekleme nedenini gösterir; menüyü uzatmaz.
+Günlük işin **▶ Çalışmaya başla** düğmesi sol altta o işe ait **Çalışma notu** alanını açar. Çalışırken bu alana yazabilirsiniz. Süre sayacı ve saat/dakika girişi yoktur. Notlar bağımsız **Notlar** kartından ayrıdır; her çalışma notu kendi işine ve çalışma kaydına aittir.
 
-İş günlüğü boştayken başlık, tek satırlık **Bugün · süre · oturum** özeti ve **Çalışma geçmişi** bağlantısıyla kompakt kalır. Çalışırken iş adı, **Çalışıyor / Duraklatıldı**, **saat:dakika:saniye** sayacı ve yan yana kontroller görünür. Özetteki kayıtlı süre en yakın tam dakikaya yuvarlanır; ham süre hassasiyeti değiştirilmez. Henüz bitirilip kaydedilmemiş sayaç bu toplama dahil değildir. Çalışma geçmişi, hangi bölümde olursanız olun haftalık yapılanlar penceresini açar. Sol menü ve bu bölüm sabittir; ana sayfa kaydırılırken yerinde kalır. Kısa ekranlarda kart ve aralıklar daralır; menü kendi içinde kaydırılmaz.
+**Duraklat** sonuç istemez; yazılanları taslak olarak korur. **Devam et** aynı nottan sürdürür. Başka işe başlandığında önceki iş duraklatılır; geri dönüldüğünde taslağı açılır. Sayfa yenilendiğinde veya pencere kapandığında da kaydedilmiş taslak korunur. Kaydedilemeyen metin açık alanda tutulur ve hata gösterilir; yeniden denenebilir. Başka penceredeki notun üzerine sessizce yazılmaz.
 
-Aynı anda tek kayıt üzerinde sayaç çalışır. Başka bir işe başlanınca önceki oturum duraklatılır; tekrar seçilirse kaldığı süreden devam eder. Bölümler arasında gezinirken sayaç sürer. Oturumu başlatan pencere yenilenir veya kapanırsa oturum duraklar; yeniden açıldığında **Devam et** kullanılabilir. Diğer bir pencerenin devraldığı sayaç eski pencere kapanınca durdurulmaz. Birden fazla ana pencere aynı çalışma oturumunu izler; süre iki kez eklenmez.
+**Bitir**, aynı alanda **Sonuç** adımını açar; notunuz hazır gelir. Boş olmayan sonucu **Kaydet ve bitir** ile tarih ve saat bilgisiyle çalışma geçmişine ekleyebilirsiniz. Vazgeçmek taslağı korur. Kaydetme başarısız olursa metin korunur; yeniden denemek aynı kaydı çoğaltmaz. Bitirmek günlük işin durumunu değiştirmez. Kaydedilmiş çalışma tek **Geri al** adımıyla geri alınabilir.
 
-Oturum işlemleri kayıt durumunu, tarihini, önceliğini veya hedef ilerlemesini değiştirmez. **Bitir**, işi tamamlamak değildir; durum etiketten ve soldaki tamamlama kutusundan yönetilir. Tamamlanan, iptal edilen veya aktarılan günlük işlerde çalışma başlatılamaz. Çalışılan kayıt kapatılır, silinir veya çalışma alanı sıfırlanırsa sayaç duraklatılır ve köşe boş oturum özetine döner.
+Sol alttaki **Çalışma geçmişi** haftalık geçmişi, günlük işin sağındaki geçmiş simgesi o işe ait kayıtları açar. Kayıtlar tarih ve sonuçla gösterilir; tarih ve sonuç düzenlenebilir, kayıt silinebilir. Eski boş sonuçlar, sonraki adımlar ve hassas süre değerleri kayıtta ve JSON yedeğinde korunur. Düzenleme ve silme tek **Geri al** adımıdır.
 
-**Oturumu bitir** sayacı duraklatır ve tarih/süreyi otomatik dolduran küçük bir pencere açar. İsteğe bağlı **Sonuç** yazabilirsiniz. **Kaydet ve bitir**, oturumu günlük işin `workLog` geçmişine tek işlemde kaydeder; **Enter** aynı işlemi yapar, **Shift+Enter** alt satıra geçer. **Geri al** oturum kaydını geri alır. **Vazgeç** veya Escape kayıt oluşturmaz; oturum duraklatılmış kalır. **Kaydı sil**, onaydan sonra yalnız o kaydedilmemiş çalışma oturumunu temizler; günlük iş ve önceki iş günlüğü kayıtları korunur. Not yazarken geçen süre çalışmaya eklenmez. Kaydetme başarısız olursa pencere ve duraklatılmış oturum korunur.
-
-Günlük iş satırının sağındaki **iş günlüğü simgesi** oturumların tarihini, süresini, sonucunu, o andaki sonraki adımını ve işin toplam süresini gösterir; en yeni kayıt üsttedir. Sol alttaki **Çalışma geçmişi**, seçilen hafta bitirip kaydedilen oturumları işler bazında toplayan haftalık özeti açar. Liste filtrelerinde ayrıca bir Haftalık özet düğmesi bulunmaz. Önceki/sonraki haftalara geçilebilir; işler toplam süreye göre sıralanır. Bu özet tamamlanan görev sayısı raporu değil, kayıtlı çalışma geçmişidir. İş günlüğü kayıt JSON yedeğine dahil edilir ve geri yüklenir.
-
-Kaydedilmiş oturumu olan işin günlüğü simgesi açık mor/lila görünür; açıklamasında oturum sayısı ve toplam süre bulunur. Kayıt yoksa simge nötrdür; yalnız çalışan veya duraklatılmış sayaç bu işareti doldurmaz.
-
-Kaydedilmiş oturumlar hem işin günlüğünde hem haftalık özette **Düzenle / Sil** ile yönetilebilir. Düzenlemede tarih, saat/dakika olarak süre ve **Sonuç** değiştirilebilir. Sonuç alanında **Enter** kaydeder, **Shift+Enter** alt satıra geçer. Eski oturumların sonraki adım metinleri geçmişte ve yedekte korunur; işin güncel sonraki adımı değiştirilmez. **Sil** önce aynı satırda onay ister ve yalnız o oturumu kaldırır. Düzenleme ve silme birer atomik **Geri al** adımıdır; süre toplamları güncellenir. Çalışmakta olan sayaç bu işlemlerden etkilenmez. Düzenleme formundaki hata alanı yalnızca gerçek bir hata mesajı varken görünür.
-
-Bitirilip kaydedilen bir oturumdan sonra aynı iş tekrar başlatılırsa yeni sayaç sıfırdan başlar. Kararlı oturum kimliği, yeniden denemede veya iki pencere aynı oturumu bitirdiğinde geçmişin iki kez eklenmesini önler. En fazla 50 kaydın geçici oturum bağlamı tarayıcıdaki ayrı `is-takip-v1-work-session` alanında saklanır; kaydedilmemiş sayaç bağlamı JSON yedeğine dahil edilmez. Başlatma/duraklatma/devam etme kayıt geçmişinde adım oluşturmaz. Süre, başlangıç zamanı üzerinden hesaplanır. Eski sürümde hedef veya takip kaydı üzerinde açılmış bir sayaç güvenle duraklatılır; günlük iş olarak yeniden sınıflandırılmaz.
+Tamamlanmış, iptal edilmiş veya aktarılmış işte yeni çalışma başlatılamaz. Kaydedilmemiş taslaklar bu tarayıcıdaki çalışma alanında kalır; JSON yedeğine, sonuç bitirilip kaydedildikten sonra dahil olur.
 
 ## Toplantı kararından işe ve takibe
 
@@ -159,7 +149,7 @@ Bekleyen konu için e-posta veya telefon gibi bir **günlük temas adımı** aç
 
 - **Hedeflere adım planla**: Bu haftanın açık hedeflerinden sayısal hedefi ve uygun bağlı günlük işi olmayanlar.
 - **Beklemeyi netleştir**: Beklemede olan günlük işlerden bekleme nedeni boş olanlar. Bu alan isteğe bağlıdır. Bekleyen konularda kimden beklendiği ve son gelişme eksikleri de burada görünür.
-- **İşleri gözden geçir**: En az yedi takvim günüdür güncellenmeyen açık günlük işler. Çalışan sayaçtaki iş dahil edilmez.
+- **İşleri gözden geçir**: En az yedi takvim günüdür güncellenmeyen açık günlük işler. Üzerinde çalışılan iş dahil edilmez.
 - **Kalan hedefleri planla**: Önceki hafta ve aylardan kalan açık hedefler; türü ve dönemi gösterilir. Haftalık hedefi bu haftaya, aylık hedefi bu aya taşıyabilirsiniz.
 
 Her düğme ilgili kayıtları gösterir; buradan kaydı açıp karar verirsiniz. Arama bu önerileri de süzer. Sayılar birleştirilmez; şeridi açmak kayıt veya durum değiştirmez ve zorunlu bir işlem başlatmaz. Öneri yoksa şerit görünmez. Eski dört büyük gündem kartı kaldırılmıştır.
@@ -170,7 +160,7 @@ Her düğme ilgili kayıtları gösterir; buradan kaydı açıp karar verirsiniz
 
 **Bağlantıları gözden geçir**, kapalı veya artık bulunamayan haftalık hedefe bağlı açık planlı günlük işleri gösterir. Aynı adlı tek bir açık hedef varsa önerilir; her satırdaki hedefi kontrol edip uygulanacak işleri işaretleyin ve **Bağlantıları uygula** düğmesini kullanın. Pencereyi açmak veya öneriyi görmek bağlantı kurmaz. Yalnız işaretlenen kayıtların bağlantıları değişir; işlem tek adımda geri alınır. Durum, teslim tarihi ve çalışma geçmişi korunur.
 
-Genel bakışta **Sırala** kontrolü yoktur. Sabit sıra **çalışan iş → geciken → bugün teslim → ileri tarihli → tarihsiz** şeklindedir. Aynı grupta öncelik, sonra yakın teslim tarihi belirler. Gerçekten çalışmakta olan satır hafif yeşille belirginleşir; duraklatınca bu vurgu kalkar. Yalnız **Devam ediyor** durumunda olmak çalışan sayaç anlamına gelmez. Arama ve seçili filtre, çalışan işi de süzer. Eşleşen bütün işler doğrudan listelenir; altı iş sınırı ve genişletme düğmesi yoktur. Uzun liste kendi içinde kaydırılır. Altı tam liste ekranındaki sıralama ve 50 kayıtlık sayfalama korunur.
+Genel bakışta **Sırala** kontrolü yoktur. Sabit sıra **çalışan iş → geciken → bugün teslim → ileri tarihli → tarihsiz** şeklindedir. Aynı grupta öncelik, sonra yakın teslim tarihi belirler. Gerçekten çalışmakta olan satır hafif yeşille belirginleşir; duraklatınca bu vurgu kalkar. Yalnız **Devam ediyor** durumunda olmak çalışmanın başlatıldığı anlamına gelmez. Arama ve seçili filtre, çalışan işi de süzer. Eşleşen bütün işler doğrudan listelenir; altı iş sınırı ve genişletme düğmesi yoktur. Uzun liste kendi içinde kaydırılır. Altı tam liste ekranındaki sıralama ve 50 kayıtlık sayfalama korunur.
 
 İş adı, durum, öncelik ve teslim tarihi masaüstünde ayrı sütunlardır; tamamlama solda, başlatma en sağdadır. Öncelik ve tarihe tıklamak hızlı düzenleyiciyi açar; kayıt formunu açmak gerekmez. Beklemede durumunun menüsünden bekleme nedeni ayrıca düzenlenebilir. Gerçek değişiklikler **Geri al** ile geri alınabilir.
 
@@ -194,7 +184,7 @@ Takip kartlarında bekleyen konuların sonraki takip tarihleri esas alınır: **
 
 Genel bakış, uygulama içinde kompakt özet ekranıdır. Sağ üstteki **Widget** düğmesi, ana ekranı koruyarak **ayrı ve küçük bir Mini ajanda** açar. **Bugün / Yarın** sekmeleri, takvimde ilgili güne ait açık teslim ve sonraki takip kayıtlarını gösterir. **Gecikenler**, teslim veya takip tarihi bugünden önce olan açık kayıtları en eski tarihten başlayarak gösterir; her kaydın gerçek tarihi görünür. Seçili listenin bütün kayıtlarına içeride kaydırarak ulaşılır; başlık ve sekmeler yerinde kalır. Ajanda salt okunurdur: sekme değiştirmek kayıtları değiştirmez; bir başlığa tıklamak ana uygulamadaki kaydını açar, **ODAK’ı aç** ana pencereye döner. Ana uygulamadaki değişiklikler ve geri alma widget'a anında yansır.
 
-Çalışılan günlük iş varsa widget'ın altında iş adı, **Çalışıyor / Duraklatıldı** ve **saat:dakika:saniye** süresi görünür. Çalışan süre saniyede bir güncellenir; duraklatılmış süre sabit kalır. Widget bu oturumu başlatmaz, devralmaz veya kaydetmez. Geçersiz, kapanmış veya iş günlüğüne kaydedilmiş oturum gösterilmez.
+Çalışılan günlük iş varsa widget'ın altında iş adı ve **Çalışıyor / Duraklatıldı** durumu görünür. Widget bu oturumu başlatmaz, devralmaz veya kaydetmez. Geçersiz, kapanmış veya iş günlüğüne kaydedilmiş oturum gösterilmez.
 
 Windows paketinde başlığın yanındaki **Üstte tut** düğmesi widget'ı diğer pencerelerin üstünde tutar; tekrar basmak normal sıraya döndürür. Bu seçim yalnız açık widget içindir. Normal tarayıcı açılışında düğme kullanılamaz; açıklaması Windows paketini belirtir.
 
@@ -275,7 +265,7 @@ Kayıt formundaki metin alanında **Enter** kaydeder; **Shift+Enter** alt satır
 
 Genel bakışta takip panelinin altında kapsamı açıklayan kısa bir metin bulunur. Kartlar listedeki durum renklerini kullanır. Bekleme süresi “115 gündür bekliyor”, son gerçekleşen takip “Son takip: 3 Ağu” gibi okunur. Hedef kartının tarihi ve hedef panelindeki açık bağlı işin tarihi mevcut tarih penceresiyle değiştirilebilir; yalnız ilgili kaydın tarihi güncellenir ve tek adımda geri alınır. Bağlam parçaları görünür ayraçlarla ayrılır.
 
-Kayıt düzenlemede hafta ve ay, yeni kayıttaki gibi yıl + hafta aralığı / ay adı seçimiyle belirlenir. Dönem seçilmedikçe eski veya boş dönem metni korunur. Günlük işin bağlı hedef simgesi listede ve Genel bakışta başlık yanındadır. Duraklatılmış işin sağ düğmesi amber daire içinde oynat simgesiyle ayırt edilir. Oturum düzenlemede saniye girişi yoktur; not/tarih düzeltmek mevcut ham süreyi değiştirmez. Kart listesine tıklamak tüm paneli yeşil çerçeveyle çizmez.
+Kayıt düzenlemede hafta ve ay, yeni kayıttaki gibi yıl + hafta aralığı / ay adı seçimiyle belirlenir. Dönem seçilmedikçe eski veya boş dönem metni korunur. Günlük işin bağlı hedef simgesi listede ve Genel bakışta başlık yanındadır. Duraklatılmış işin sağ düğmesi amber daire içinde oynat simgesiyle ayırt edilir. Çalışma kaydında tarih ve sonuç düzeltilebilir; eski ham süre değiştirilmez. Kart listesine tıklamak tüm paneli yeşil çerçeveyle çizmez.
 
 Genel bakıştaki takip ve hedef kartlarının gövdesi ayrıntıyı açar. Takip ayrıntısı kimden beklendiğini, son gelişmeyi, tarihleri ve geçmişi salt okunur gösterir; Kaydı düzenle mevcut formu açar. Hedef gövdesi paneli üstten, İlerleme / Bağlı işler düğmeleri ilgili bölümden açar. Tarih ve Takip ettim düğmeleri kendi işlemlerini yapar. Kartı açmak veya metin seçmek kayıt oluşturmaz/değiştirmez; klavyede kart odağındayken Enter/Space desteklenir.
 

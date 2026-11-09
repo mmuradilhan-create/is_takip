@@ -73,7 +73,7 @@ export const widgetDocumentHtml = `<!doctype html>
     .widget-session-identity { display:flex; flex-direction:column; gap:2px; min-width:0; }
     #widget-session-phase { color:#64775f; font-size:9px; line-height:1.2; }
     #widget-session-title { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#304d37; font-size:11px; line-height:1.3; }
-    #widget-session-time { flex:0 0 auto; color:#174d43; font-size:12px; font-weight:650; font-variant-numeric:tabular-nums; }
+    #widget-session-time { display:none; }
     .widget-session[data-phase="paused"] { background:#f4f3e9; }
     #widget-open-main { display:flex; align-items:center; justify-content:center; gap:8px; width:100%; min-height:36px; padding:8px 12px; border:1px solid #174d43; border-radius:8px; background:#174d43; color:#fff; font-size:12px; font-weight:600; }
     #widget-open-main:hover { background:#256354; }
@@ -112,7 +112,7 @@ export const widgetDocumentHtml = `<!doctype html>
       <header class="widget-work-header"><time id="widget-date"></time><span id="widget-task-count"></span></header>
       <ul id="widget-tasks" tabindex="0" aria-label="Seçili günün teslimleri ve takipleri"></ul>
     </section>
-    <section class="widget-session" id="widget-session" aria-label="Çalışma oturumu" hidden><div class="widget-session-identity"><span id="widget-session-phase"></span><span id="widget-session-title"></span></div><span id="widget-session-time" role="timer" aria-label="Bu oturumda geçen süre, saat, dakika ve saniye" aria-live="off"></span></section>
+    <section class="widget-session" id="widget-session" aria-label="Üzerinde çalışılan iş" hidden><div class="widget-session-identity"><span id="widget-session-phase"></span><span id="widget-session-title"></span></div><span id="widget-session-time" hidden aria-hidden="true"></span></section>
     <footer class="widget-footer"><button type="button" id="widget-open-main">ODAK’ı aç <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h16m-5-5 5 5-5 5"/></svg></button><p id="widget-status" role="status" aria-live="polite"></p></footer>
   </main>
 </body>

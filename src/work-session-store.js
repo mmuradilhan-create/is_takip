@@ -1,12 +1,16 @@
 export const WORK_SESSION_KEY = "is-takip-v1-work-session";
 
 const MAX_ENTRIES = 50;
+const MAX_RAW_LENGTH = 500000;
+const MAX_DRAFT_LENGTH = 10000;
 const STATES = new Set(["running", "paused", "finished"]);
 const clone = (value) => JSON.parse(JSON.stringify(value));
 const empty = () => ({ version: 1, currentId: null, entries: [] });
 const validId = (value) =>
   typeof value === "string" && value.trim().length > 0 && value.length <= 2000;
 const validTime = (value) => Number.isSafeInteger(value) && value >= 0;
+const validDraft = (value) =>
+  typeof value === "string" && value.length <= MAX_DRAFT_LENGTH;
 
 const newSessionId = () =>
   globalThis.crypto?.randomUUID?.() ||
@@ -32,7 +36,7 @@ function legacySessionId(entry) {
 
 function parse(raw) {
   if (raw === null) return empty();
-  if (typeof raw !== "string" || raw.length > 500000)
+  if (typeof raw !== "string" || raw.length > MAX_RAW_LENGTH)
     throw new Error("Geçersiz çalışma oturumu.");
   const decoded = JSON.parse(raw);
   if (
@@ -53,6 +57,9 @@ function parse(raw) {
       !STATES.has(entry.status) ||
       !validTime(entry.elapsedMs) ||
       !validTime(entry.updatedAt) ||
+      (Object.hasOwn(entry, "draftNote") && !validDraft(entry.draftNote)) ||
+      (Object.hasOwn(entry, "trackTime") &&
+        typeof entry.trackTime !== "boolean") ||
       (entry.status === "running"
         ? !validTime(entry.startedAt) || !validId(entry.ownerId)
         : entry.startedAt !== null || entry.ownerId !== null)
@@ -67,6 +74,12 @@ function parse(raw) {
       startedAt: entry.startedAt,
       ownerId: entry.ownerId,
       updatedAt: entry.updatedAt,
+      ...(Object.hasOwn(entry, "draftNote")
+        ? { draftNote: entry.draftNote }
+        : {}),
+      ...(Object.hasOwn(entry, "trackTime")
+        ? { trackTime: entry.trackTime }
+        : {}),
     };
   });
   const running = entries.filter((entry) => entry.status === "running");
@@ -91,7 +104,9 @@ export function readWorkSessionSnapshot(raw) {
 function elapsedAt(entry, at) {
   if (!entry) return 0;
   const added =
-    entry.status === "running" && Number.isFinite(at)
+    entry.status === "running" &&
+    entry.trackTime !== false &&
+    Number.isFinite(at)
       ? Math.max(0, at - entry.startedAt)
       : 0;
   return Math.min(Number.MAX_SAFE_INTEGER, entry.elapsedMs + added);
@@ -187,6 +202,22 @@ export function createWorkSessionStore({
       const next = clone(current);
       if (!change(next, clock())) return true;
       if (next.entries.length > MAX_ENTRIES) {
+        const retained = new Set(
+          next.entries
+            .filter(
+              (entry) =>
+                entry.recordId === next.currentId ||
+                (entry.status !== "finished" && entry.draftNote?.length),
+            )
+            .map((entry) => entry.recordId),
+        );
+        if (retained.size > MAX_ENTRIES) {
+          const error = new Error(
+            "Çalışma notları dolu. Yeni bir işe başlamadan önce bekleyen notlardan birini bitir veya sil.",
+          );
+          error.name = "WorkSessionCapacityError";
+          throw error;
+        }
         const ordered = [...next.entries].sort(
           (a, b) =>
             Number(b.recordId === next.currentId) -
@@ -194,14 +225,22 @@ export function createWorkSessionStore({
             b.updatedAt - a.updatedAt ||
             a.recordId.localeCompare(b.recordId),
         );
-        const retained = new Set(
-          ordered.slice(0, MAX_ENTRIES).map((entry) => entry.recordId),
-        );
+        for (const entry of ordered) {
+          if (retained.size >= MAX_ENTRIES) break;
+          retained.add(entry.recordId);
+        }
         next.entries = next.entries.filter((entry) =>
           retained.has(entry.recordId),
         );
       }
       const encoded = JSON.stringify(next);
+      if (encoded.length > MAX_RAW_LENGTH) {
+        const error = new Error(
+          "Çalışma notları için ayrılan alan dolu. Mevcut notlarını bitirip yeniden deneyebilirsin.",
+        );
+        error.name = "WorkSessionCapacityError";
+        throw error;
+      }
       // The only persistent mutation in this module is one write to its own key.
       storage.setItem(key, encoded);
       current = next;
@@ -211,6 +250,18 @@ export function createWorkSessionStore({
       notify();
       return true;
     } catch (error) {
+      if (
+        ["WorkDraftConflictError", "WorkSessionCapacityError"].includes(
+          error.name,
+        )
+      ) {
+        try {
+          onError(error.message);
+        } catch {
+          /* Keep the committed context usable. */
+        }
+        return false;
+      }
       report(
         "Çalışma oturumu kaydedilemedi. Tarayıcı depolamasını kontrol et.",
         `${error.name}:${error.message}`,
@@ -220,8 +271,15 @@ export function createWorkSessionStore({
     }
   }
 
-  function start(recordId) {
-    if (!validId(recordId)) {
+  function start(recordId, options = {}) {
+    if (
+      !validId(recordId) ||
+      !options ||
+      typeof options !== "object" ||
+      Array.isArray(options) ||
+      (Object.hasOwn(options, "trackTime") &&
+        typeof options.trackTime !== "boolean")
+    ) {
       try {
         onError("Çalışmaya başlamak için geçerli bir kayıt seç.");
       } catch {
@@ -233,9 +291,21 @@ export function createWorkSessionStore({
       const old = next.entries.find(
         (entry) => entry.recordId === next.currentId,
       );
-      if (old?.recordId === recordId && old.status === "running") return false;
-      if (old?.status === "running") pauseEntry(old, at);
       let entry = next.entries.find((item) => item.recordId === recordId);
+      const fresh = !entry || entry.status === "finished";
+      const hasMode = Object.hasOwn(options, "trackTime");
+      const mode = hasMode
+        ? options.trackTime
+        : fresh
+          ? undefined
+          : entry.trackTime;
+      if (
+        old?.recordId === recordId &&
+        old.status === "running" &&
+        entry.trackTime === mode
+      )
+        return false;
+      if (old?.status === "running") pauseEntry(old, at);
       if (!entry) {
         entry = {
           recordId,
@@ -251,7 +321,10 @@ export function createWorkSessionStore({
       if (entry.status === "finished") {
         entry.elapsedMs = 0;
         entry.sessionId = newSessionId();
+        delete entry.draftNote;
       }
+      if (mode === undefined) delete entry.trackTime;
+      else entry.trackTime = mode;
       entry.status = "running";
       entry.startedAt = at;
       entry.ownerId = ownerId;
@@ -259,6 +332,47 @@ export function createWorkSessionStore({
       next.currentId = recordId;
       return true;
     });
+  }
+  function saveDraft(recordId, sessionId, text, expectedDraft) {
+    if (
+      !validId(recordId) ||
+      !validId(sessionId) ||
+      !validDraft(text) ||
+      !validDraft(expectedDraft)
+    ) {
+      try {
+        onError(
+          "Çalışma notu geçerli bir oturuma ait olmalı ve en fazla 10000 karakter içermelidir.",
+        );
+      } catch {
+        /* No mutation. */
+      }
+      return false;
+    }
+    let accepted = false;
+    const saved = commit((next, at) => {
+      const entry = next.entries.find((item) => item.recordId === recordId);
+      if (
+        !entry ||
+        entry.sessionId !== sessionId ||
+        entry.status === "finished"
+      )
+        return false;
+      const previous = entry.draftNote ?? "";
+      if (previous !== expectedDraft) {
+        const error = new Error(
+          "Çalışma notu başka bir pencerede değişti. Yazdıkların korunuyor; güncel notu kontrol et.",
+        );
+        error.name = "WorkDraftConflictError";
+        throw error;
+      }
+      accepted = true;
+      if (previous === text) return false;
+      entry.draftNote = text;
+      entry.updatedAt = at;
+      return true;
+    });
+    return saved && accepted;
   }
   function pause(expectedId, expectedSessionId) {
     return commit((next, at) => {
@@ -277,8 +391,20 @@ export function createWorkSessionStore({
       return true;
     });
   }
-  function finish(expectedId, expectedSessionId) {
-    return commit((next, at) => {
+  function finish(expectedId, expectedSessionId, options = {}) {
+    if (
+      !options ||
+      typeof options !== "object" ||
+      Array.isArray(options) ||
+      (Object.hasOwn(options, "expectedDraft") &&
+        (!validId(expectedId) ||
+          !validId(expectedSessionId) ||
+          !validDraft(options.expectedDraft)))
+    )
+      return false;
+    const guarded = Object.hasOwn(options, "expectedDraft");
+    let accepted = false;
+    const saved = commit((next, at) => {
       if (
         expectedSessionId === undefined &&
         expectedId !== undefined &&
@@ -296,11 +422,58 @@ export function createWorkSessionStore({
       )
         return false;
       if (!entry || entry.status === "finished") return false;
+      if (guarded && (entry.draftNote ?? "") !== options.expectedDraft) {
+        const error = new Error(
+          "Çalışma notu başka bir pencerede değişti. Yeni not korunuyor; güncel notu kontrol et.",
+        );
+        error.name = "WorkDraftConflictError";
+        throw error;
+      }
+      accepted = true;
       pauseEntry(entry, at);
       entry.status = "finished";
+      delete entry.draftNote;
       if (next.currentId === entry.recordId) next.currentId = null;
       return true;
     });
+    return saved && (!guarded || accepted);
+  }
+  function forkDraft(recordId, sessionId, expectedDraft) {
+    if (
+      !validId(recordId) ||
+      !validId(sessionId) ||
+      !validDraft(expectedDraft) ||
+      !expectedDraft.trim()
+    )
+      return false;
+    let accepted = false;
+    const saved = commit((next, at) => {
+      const entry = next.entries.find((item) => item.recordId === recordId);
+      if (
+        !entry ||
+        entry.sessionId !== sessionId ||
+        entry.status === "finished"
+      )
+        return false;
+      if ((entry.draftNote ?? "") !== expectedDraft) {
+        const error = new Error(
+          "Çalışma notu başka bir pencerede değişti. Yeni not korunuyor; güncel notu kontrol et.",
+        );
+        error.name = "WorkDraftConflictError";
+        throw error;
+      }
+      entry.sessionId = newSessionId();
+      entry.status = "paused";
+      entry.elapsedMs = 0;
+      entry.startedAt = null;
+      entry.ownerId = null;
+      entry.updatedAt = at;
+      entry.trackTime = false;
+      // Keep the exact saved draft and any other task's selected session.
+      accepted = true;
+      return true;
+    });
+    return saved && accepted;
   }
   function discard(expectedId, expectedSessionId, expectedPaused) {
     if (
@@ -388,8 +561,10 @@ export function createWorkSessionStore({
       );
     },
     start,
+    saveDraft,
     pause,
     finish,
+    forkDraft,
     discard,
     synchronize,
     reconcile,

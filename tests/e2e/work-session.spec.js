@@ -104,7 +104,16 @@ const row = (page, id) =>
   page.locator(`.full-table > tbody > tr[data-record-row][data-id="${id}"]`);
 const workButton = (page, id) => row(page, id).locator(".work-start");
 const panel = (page) => page.locator("#work-session-panel");
-const elapsed = (page) => page.locator("#work-session-time");
+const draft = (page) => page.locator("#work-session-note");
+const finish = (page) => page.locator("#work-finish-form");
+const currentEntry = async (page, id = "work-first") =>
+  (await currentState(page)).entries.find((entry) => entry.recordId === id);
+const noClocks = (page) =>
+  expect(
+    page.locator(
+      "#work-session-time, #sidebar-saved-time, #work-finish-duration",
+    ),
+  ).toHaveCount(0);
 const currentState = (page) =>
   page.evaluate((key) => JSON.parse(localStorage.getItem(key)), SESSION_KEY);
 const primaryState = (page) =>
@@ -136,20 +145,15 @@ async function chooseStatus(page, id, status) {
   await expect(page.locator("#status-menu")).not.toBeVisible();
 }
 
-test("live work seconds tick, pause and resume while minute summaries, raw timing and exact journal Undo remain intact", async ({
+test("inline work notes pause and resume without timing while finishing saves one result and exact journal Undo", async ({
   page,
 }) => {
   const records = await seed(page);
   const saved = await primaryState(page);
-  await expect(page.locator("#sidebar-saved-time")).toHaveText("0 dk");
-  await expect(page.locator(".sidebar-journal-idle")).toHaveCount(0);
-  await expect(
-    workButton(page, "work-first").locator('[data-work-symbol="play"]'),
-  ).toHaveCount(1);
+  await noClocks(page);
   await start(page);
-  await expect(
-    workButton(page, "work-first").locator('[data-work-symbol="pause"]'),
-  ).toHaveCount(1);
+  await expect(draft(page)).toBeFocused();
+  await expect(panel(page)).toHaveAttribute("data-mode", "note");
   await expect(page.locator("#work-session-title")).toHaveText(
     records[1].title,
   );
@@ -157,161 +161,126 @@ test("live work seconds tick, pause and resume while minute summaries, raw timin
     "aria-pressed",
     "true",
   );
-  await expect(elapsed(page)).toHaveText("00:00:00");
-  await expect(elapsed(page)).toHaveAttribute(
-    "aria-label",
-    "Bu oturumda geçen süre, saat, dakika ve saniye",
-  );
-  await expect(page.locator(".sidebar-journal-phase")).toHaveText("Çalışıyor");
-  await page.clock.fastForward(1_000);
-  await expect(elapsed(page)).toHaveText("00:00:01");
-  await expect(page.locator("#sidebar-saved-time")).toHaveText("0 dk");
+  await draft(page).fill("İlk çalışmanın kaybolmayacak taslağı");
+  await expect
+    .poll(async () => (await currentEntry(page)).draftNote)
+    .toBe("İlk çalışmanın kaybolmayacak taslağı");
+  await page.clock.fastForward(65_000);
+  await noClocks(page);
+  expect(await currentEntry(page)).toMatchObject({
+    trackTime: false,
+    elapsedMs: 0,
+  });
   expect(await primaryState(page)).toEqual(saved);
-  await page.clock.fastForward(64_000);
-  await expect(elapsed(page)).toHaveText("00:01:05");
-  const toggle = panel(page).locator(".work-session-toggle");
+  const toggle = panel(page).getByRole("button", {
+    name: /^(Duraklat|Devam et)$/,
+  });
   await toggle.focus();
   await page.keyboard.press("Enter");
   await expect(panel(page)).toHaveAttribute("data-phase", "paused");
-  await expect(toggle).toHaveAttribute("data-action", "work-resume");
+  await expect(panel(page)).toHaveAttribute("data-mode", "note");
   await expect(toggle).toBeFocused();
-  expect(
-    (await currentState(page)).entries.find(
-      (entry) => entry.recordId === "work-first",
-    ),
-  ).toMatchObject({ status: "paused", elapsedMs: 65_000, startedAt: null });
-  await expect(workButton(page, "work-first")).toHaveAttribute(
-    "data-phase",
-    "paused",
-  );
-  await expect(workButton(page, "work-first")).toHaveClass(/is-paused/);
-  await expect(workButton(page, "work-first")).toHaveAttribute(
-    "title",
-    /^Duraklatıldı · Devam et/,
-  );
-  await expect(
-    workButton(page, "work-first").locator(
-      '[data-work-symbol="resume"] circle',
-    ),
-  ).toHaveCount(1);
+  await expect(finish(page)).not.toBeVisible();
+  expect(await currentEntry(page)).toMatchObject({
+    status: "paused",
+    elapsedMs: 0,
+    startedAt: null,
+    draftNote: "İlk çalışmanın kaybolmayacak taslağı",
+  });
   await page.clock.fastForward(120_000);
-  await expect(elapsed(page)).toHaveText("00:01:05");
-  await expect(toggle).toBeFocused();
   await page.keyboard.press("Space");
-  await expect(toggle).toHaveAttribute("data-action", "work-pause");
-  await expect(toggle).toBeFocused();
-  await expect(workButton(page, "work-first")).not.toHaveClass(/is-paused/);
-  await expect(
-    workButton(page, "work-first").locator('[data-work-symbol="pause"]'),
-  ).toHaveCount(1);
-  await page.clock.fastForward(5_000);
-  await expect(elapsed(page)).toHaveText("00:01:10");
-  expect(await primaryState(page)).toEqual(saved);
-  await expect(
-    page.getByRole("button", { name: "Geri al", exact: true }),
-  ).toBeDisabled();
-  await panel(page)
-    .getByRole("button", { name: "Oturumu bitir", exact: true })
-    .click();
-  const finish = page.locator("#work-finish-dialog");
-  await expect(finish).toBeVisible();
+  await expect(panel(page)).toHaveAttribute("data-phase", "running");
+  await expect(draft(page)).toBeFocused();
+  await panel(page).locator('[data-action="work-finish"]').click();
+  await expect(finish(page)).toBeVisible();
+  await expect(panel(page)).toHaveAttribute("data-mode", "finish");
   await expect(panel(page)).toHaveAttribute("data-phase", "paused");
-  await page.clock.fastForward(60_000);
-  await expect(elapsed(page)).toHaveText("00:01:10");
-  await expect(finish.locator("#work-finish-duration")).toHaveText("00:01:10");
-  await finish.getByRole("button", { name: "Vazgeç", exact: true }).click();
-  await expect(finish).not.toBeVisible();
-  await expect(panel(page)).toBeVisible();
-  const state = await currentState(page);
-  expect(state.currentId).toBe("work-first");
-  expect(
-    state.entries.find((entry) => entry.recordId === "work-first"),
-  ).toMatchObject({ status: "paused", elapsedMs: 70_000, startedAt: null });
+  await expect(draft(page)).toHaveValue("İlk çalışmanın kaybolmayacak taslağı");
+  await expect(page.locator("#work-finish-dialog")).toHaveCount(0);
+  await panel(page).locator('[data-action="work-finish-cancel"]').click();
+  await expect(panel(page)).toHaveAttribute("data-mode", "note");
   expect(await primaryState(page)).toEqual(saved);
   await page.reload();
   await page.locator('#nav [data-view="daily"]').click();
-  await expect(workButton(page, "work-first")).toHaveAttribute(
-    "data-phase",
-    "paused",
-  );
-  await expect(
-    workButton(page, "work-first").locator(
-      '[data-work-symbol="resume"] circle',
-    ),
-  ).toHaveCount(1);
+  await expect(panel(page)).toHaveAttribute("data-phase", "paused");
+  await expect(draft(page)).toHaveValue("İlk çalışmanın kaybolmayacak taslağı");
   expect(await primaryState(page)).toEqual(saved);
   await start(page, "work-second");
-  await page.clock.fastForward(35_789);
-  await expect(elapsed(page)).toHaveText("00:00:35");
-  await panel(page)
-    .getByRole("button", { name: "Oturumu bitir", exact: true })
-    .click();
-  await page
-    .locator("#work-finish-form")
+  await draft(page).fill("İkinci işin kaydedilecek sonucu");
+  await panel(page).locator('[data-action="work-finish"]').click();
+  await finish(page)
     .getByRole("button", { name: "Kaydet ve bitir", exact: true })
     .click();
   await expect(panel(page)).not.toBeVisible();
-  await expect(page.locator("#sidebar-saved-time")).toHaveText("1 dk");
-  await expect(page.locator("#sidebar-saved-count")).toHaveText("1 oturum");
+  await noClocks(page);
   const stored = JSON.parse((await primaryState(page)).records);
   const shortSession = stored.records.find(
     (record) => record.id === "work-second",
   ).workLog;
   expect(shortSession).toHaveLength(1);
-  expect(shortSession[0].durationMs).toBe(35_789);
+  expect(shortSession[0]).toMatchObject({
+    durationMs: 0,
+    note: "İkinci işin kaydedilecek sonucu",
+  });
+  expect(stored.records).toEqual(
+    records.map((record) =>
+      record.id === "work-second"
+        ? {
+            ...record,
+            workLog: shortSession,
+            updatedAt: shortSession[0].endedAt,
+          }
+        : record,
+    ),
+  );
+  expect(stored.odak.history).toHaveLength(1);
   await page.getByRole("button", { name: "Geri al", exact: true }).click();
   expect(await primaryState(page)).toEqual(saved);
-  await expect(page.locator("#sidebar-saved-time")).toHaveText("0 dk");
 });
 
-test("switching work keeps only one running session and resumes each unfinished task", async ({
+test("switching work keeps only one running session and resumes each unfinished draft", async ({
   page,
 }) => {
   await seed(page);
   const saved = await primaryState(page);
   await start(page);
-  await page.clock.fastForward(12_000);
+  await draft(page).fill("Birinci işe ait ayrı çalışma notu");
   await start(page, "work-second");
   await expect(page.locator("#work-session-title")).toHaveText(
     "İkinci çalışma",
   );
-  await expect(elapsed(page)).toHaveText("00:00:00");
-  await page.clock.fastForward(7_000);
+  await expect(draft(page)).toHaveValue("");
+  await draft(page).fill("İkinci işe ait ayrı çalışma notu");
   let state = await currentState(page);
   expect(
     state.entries.filter((entry) => entry.status === "running"),
   ).toHaveLength(1);
-  expect(
-    state.entries.find((entry) => entry.recordId === "work-first"),
-  ).toMatchObject({ status: "paused", elapsedMs: 12_000 });
+  expect(await currentEntry(page)).toMatchObject({
+    status: "paused",
+    elapsedMs: 0,
+    draftNote: "Birinci işe ait ayrı çalışma notu",
+  });
   await start(page);
-  await expect(elapsed(page)).toHaveText("00:00:12");
-  await page.clock.fastForward(3_000);
-  await expect(elapsed(page)).toHaveText("00:00:15");
+  await expect(draft(page)).toHaveValue("Birinci işe ait ayrı çalışma notu");
   state = await currentState(page);
   expect(
     state.entries.filter((entry) => entry.status === "running"),
   ).toHaveLength(1);
-  expect(
-    state.entries.find((entry) => entry.recordId === "work-second"),
-  ).toMatchObject({ status: "paused", elapsedMs: 7_000 });
+  expect(await currentEntry(page, "work-second")).toMatchObject({
+    status: "paused",
+    elapsedMs: 0,
+    draftNote: "İkinci işe ait ayrı çalışma notu",
+  });
   expect(await primaryState(page)).toEqual(saved);
-  await panel(page)
-    .getByRole("button", { name: "Oturumu bitir", exact: true })
-    .click();
-  await page
-    .locator("#work-finish-dialog")
-    .getByRole("button", {
-      name: "Vazgeç",
-      exact: true,
-    })
-    .click();
+  await panel(page).locator('[data-action="work-finish"]').click();
+  await panel(page).locator('[data-action="work-finish-cancel"]').click();
   await start(page);
-  await expect(elapsed(page)).toHaveText("00:00:15");
+  await expect(draft(page)).toHaveValue("Birinci işe ait ayrı çalışma notu");
+  await noClocks(page);
   expect(await primaryState(page)).toEqual(saved);
 });
 
-test("only daily work has a timer, including goal panel steps, and a forged goal action is ignored", async ({
+test("only daily work opens a working notepad, including goal panel steps, and a forged goal action is ignored", async ({
   page,
 }) => {
   const records = [
@@ -395,63 +364,70 @@ test("a legacy running goal session is paused without creating or changing recor
   ).toBeDisabled();
 });
 
-test("main windows share one session without double counting and only its owner pauses on page closure", async ({
+test("main windows share one untimed note session and only its owner pauses on page closure", async ({
   page,
   context,
 }) => {
   await seed(page);
   const saved = await primaryState(page);
   await start(page);
+  await draft(page).fill("Pencereler arasında korunan çalışma notu");
   const other = await context.newPage();
   await other.goto("/");
   await expect(panel(other)).toHaveAttribute("data-phase", "running");
-  await page.clock.fastForward(5_000);
-  await expect(elapsed(page)).toHaveText("00:00:05");
-  await expect(elapsed(other)).toHaveText("00:00:05");
+  await expect(draft(other)).toHaveValue(
+    "Pencereler arasında korunan çalışma notu",
+  );
   await panel(other)
     .getByRole("button", { name: "Duraklat", exact: true })
     .click();
   await expect(panel(page)).toHaveAttribute("data-phase", "paused");
-  await page.clock.fastForward(10_000);
-  await expect(elapsed(other)).toHaveText("00:00:05");
   await panel(other)
     .getByRole("button", { name: "Devam et", exact: true })
     .click();
-  await page.clock.fastForward(3_000);
-  await expect(elapsed(page)).toHaveText("00:00:08");
-  await expect(elapsed(other)).toHaveText("00:00:08");
+  await expect(panel(page)).toHaveAttribute("data-phase", "running");
   await page.close();
   await expect(panel(other)).toHaveAttribute("data-phase", "running");
-  await other.clock.fastForward(2_000);
-  await expect(elapsed(other)).toHaveText("00:00:10");
   await other.reload();
   await expect(panel(other)).toHaveAttribute("data-phase", "paused");
-  await expect(elapsed(other)).toHaveText("00:00:10");
-  await other.clock.fastForward(60_000);
-  await expect(elapsed(other)).toHaveText("00:00:10");
+  await expect(draft(other)).toHaveValue(
+    "Pencereler arasında korunan çalışma notu",
+  );
+  await noClocks(other);
+  expect(await currentEntry(other)).toMatchObject({
+    elapsedMs: 0,
+    trackTime: false,
+  });
   expect(await primaryState(other)).toEqual(saved);
 });
 
-test("the sidebar session keeps notes in a separate bounded modal without moving the task list", async ({
+test("the sidebar work notepad stays bounded and escapes real text without moving the task list", async ({
   page,
 }, testInfo) => {
   const records = await seed(page);
   const saved = await primaryState(page);
+  const before = await row(page, "work-first").boundingBox();
   await start(page);
-  await expect(page.locator("#work-session-time")).toHaveText("00:00:00");
-  await expect(page.locator(".sidebar-journal-phase")).toHaveText("Çalışıyor");
-  await panel(page)
-    .getByRole("button", { name: "Notlar ve sonraki adım", exact: true })
-    .click();
-  const context = page.locator("#work-session-context");
-  await expect(context).toBeVisible();
-  await expect(context).toContainText(records[1].nextAction);
-  await expect(context).toContainText(records[1].description);
-  await expect(context).toContainText(records[1].waitingReason);
-  await expect(context.locator("img, script")).toHaveCount(0);
-  expect(await context.evaluate((element) => element.matches(":modal"))).toBe(
-    true,
+  const after = await row(page, "work-first").boundingBox();
+  expect(after.x).toBeCloseTo(before.x, 0);
+  expect(after.y).toBeCloseTo(before.y, 0);
+  await expect(page.locator("#sidebar-work-journal h2")).toHaveText(
+    "Çalışma notu",
   );
+  await expect(page.locator("#work-session-title")).toHaveText(
+    records[1].title,
+  );
+  const text =
+    '<img src=x onerror="window.workSessionInjected=1">\nKaybolmayan gerçek çalışma notu';
+  await draft(page).fill(text);
+  await expect(draft(page)).toHaveValue(text);
+  await expect(panel(page).locator("img, script")).toHaveCount(0);
+  await expect(
+    panel(page).getByRole("button", {
+      name: "Notlar ve sonraki adım",
+      exact: true,
+    }),
+  ).toHaveCount(0);
   expect(await page.evaluate(() => window.workSessionInjected)).toBeUndefined();
   for (const viewport of [
     { width: 1280, height: 720 },
@@ -476,21 +452,17 @@ test("the sidebar session keeps notes in a separate bounded modal without moving
     await expect(
       page.locator(".sidebar #sidebar-work-journal #work-session-panel"),
     ).toBeVisible();
-    await expect(context).toBeInViewport({ ratio: 1 });
-    await expect(context.locator(".modal-footer")).toBeInViewport({
-      ratio: 1,
-    });
+    await expect(draft(page)).toBeInViewport({ ratio: 1 });
     for (const action of ["work-pause", "work-finish"])
       await expect(
         panel(page).locator(`[data-action="${action}"]`),
       ).toBeInViewport({ ratio: 1 });
   }
   await page.screenshot({
-    path: testInfo.outputPath("work-session-context.png"),
+    path: testInfo.outputPath("work-session-notepad.png"),
     fullPage: false,
   });
-  await page.keyboard.press("Escape");
-  await expect(context).not.toBeVisible();
+  await noClocks(page);
   await expect(panel(page)).toHaveAttribute("data-phase", "running");
   expect(await primaryState(page)).toEqual(saved);
 });
@@ -503,6 +475,11 @@ test("closed and removed work is stopped without changing lifecycle status, and 
   for (const status of ["completed", "cancelled", "transferred"])
     await expect(workButton(page, `work-${status}`)).toBeDisabled();
   await start(page);
+  const workingDraft = "Tamamlandıktan sonra geri alınabilen çalışma notu";
+  await draft(page).fill(workingDraft);
+  await expect
+    .poll(async () => (await currentEntry(page)).draftNote)
+    .toBe(workingDraft);
   await page.clock.fastForward(9_000);
   await chooseStatus(page, "work-first", "completed");
   await expect(panel(page)).not.toBeVisible();
@@ -518,6 +495,7 @@ test("closed and removed work is stopped without changing lifecycle status, and 
   );
   expect(saved).toEqual(records);
   await start(page);
+  await expect(draft(page)).toHaveValue(workingDraft);
   await row(page, "work-first").locator(".task-name").click();
   page.once("dialog", (dialog) => dialog.accept());
   await page
@@ -584,7 +562,7 @@ test("corrupt work-session storage does not overwrite session data or prevent th
   expect(await primaryState(page)).toEqual(saved);
 });
 
-test("finish dialog discards only its unsaved session after confirmation and preserves saved history through refusal, storage failure and reload", async ({
+test("cancelling inline finish keeps its draft and every saved historical session through reload without offering discard", async ({
   page,
 }) => {
   const records = fixture();
@@ -613,98 +591,29 @@ test("finish dialog discards only its unsaved session after confirmation and pre
     JSON.stringify({ version: 1, currentId: null, entries: [otherContext] }),
   );
   const saved = await primaryState(page);
-  await expect(page.locator("#sidebar-saved-time")).toHaveText("2 dk");
-  await expect(page.locator("#sidebar-saved-count")).toHaveText("1 oturum");
   await start(page);
-  await page.clock.fastForward(35_789);
-  await panel(page)
-    .getByRole("button", { name: "Oturumu bitir", exact: true })
-    .click();
-  const finish = page.locator("#work-finish-dialog");
-  const discard = finish.getByRole("button", {
-    name: "Kaydı sil",
-    exact: true,
-  });
-  const result = finish.locator('[name="resultNote"]');
-  await result.fill("Henüz kaydedilmeyen taslak sonuç");
-  const pending = await currentState(page);
-  const pendingRaw = await page.evaluate(
-    (key) => localStorage.getItem(key),
-    SESSION_KEY,
-  );
-  const deleteBounds = await discard.boundingBox();
-  const cancelBounds = await finish
-    .getByRole("button", { name: "Vazgeç", exact: true })
-    .boundingBox();
-  expect(deleteBounds.x).toBeLessThan(cancelBounds.x);
-  page.once("dialog", async (dialog) => {
-    expect(dialog.type()).toBe("confirm");
-    expect(dialog.message()).toBe(
-      "Bu çalışma oturumu kaydedilmeden silinsin mi?",
-    );
-    await dialog.dismiss();
-  });
-  await discard.click();
-  await expect(finish).toBeVisible();
-  await expect(result).toHaveValue("Henüz kaydedilmeyen taslak sonuç");
-  expect(await currentState(page)).toEqual(pending);
+  await draft(page).fill("Henüz kaydedilmeyen taslak sonuç");
+  await panel(page).locator('[data-action="work-finish"]').click();
+  await expect(finish(page)).toBeVisible();
+  await expect(draft(page)).toHaveValue("Henüz kaydedilmeyen taslak sonuç");
+  await expect(
+    finish(page).getByRole("button", { name: "Kaydı sil", exact: true }),
+  ).toHaveCount(0);
+  await expect(page.locator("#work-finish-dialog")).toHaveCount(0);
+  await noClocks(page);
+  expect(await currentEntry(page, "work-second")).toEqual(otherContext);
   expect(await primaryState(page)).toEqual(saved);
-
-  await page.evaluate((key) => {
-    const original = Storage.prototype.setItem;
-    window.failSessionDiscard = true;
-    Storage.prototype.setItem = function (name, value) {
-      if (name === key && window.failSessionDiscard)
-        throw new DOMException(
-          "Sentetik depolama hatası",
-          "QuotaExceededError",
-        );
-      return original.call(this, name, value);
-    };
-  }, SESSION_KEY);
-  page.once("dialog", (dialog) => dialog.accept());
-  await discard.click();
-  await expect(finish.locator("#work-finish-error")).toContainText(
-    "silinemedi",
-  );
-  await expect(finish).toBeVisible();
-  await expect(result).toHaveValue("Henüz kaydedilmeyen taslak sonuç");
-  expect(
-    await page.evaluate((key) => localStorage.getItem(key), SESSION_KEY),
-  ).toBe(pendingRaw);
+  await panel(page).locator('[data-action="work-finish-cancel"]').click();
+  await expect(panel(page)).toHaveAttribute("data-mode", "note");
+  await expect(panel(page)).toHaveAttribute("data-phase", "paused");
+  await expect(draft(page)).toHaveValue("Henüz kaydedilmeyen taslak sonuç");
   expect(await primaryState(page)).toEqual(saved);
-
-  await page.evaluate(() => {
-    window.failSessionDiscard = false;
-  });
-  await page.setViewportSize({ width: 390, height: 700 });
-  expect(
-    await finish.evaluate(
-      (element) => element.scrollWidth <= element.clientWidth,
-    ),
-  ).toBe(true);
-  for (const name of ["Kaydı sil", "Vazgeç", "Kaydet ve bitir"])
-    await expect(
-      finish.getByRole("button", { name, exact: true }),
-    ).toBeInViewport({ ratio: 1 });
-  page.once("dialog", (dialog) => dialog.accept());
-  await discard.click();
-  await expect(finish).not.toBeVisible();
-  await expect(panel(page)).not.toBeVisible();
-  expect(await currentState(page)).toEqual({
-    version: 1,
-    currentId: null,
-    entries: [otherContext],
-  });
-  expect(await primaryState(page)).toEqual(saved);
-  await expect(page.locator("#sidebar-saved-time")).toHaveText("2 dk");
-  await expect(page.locator("#sidebar-saved-count")).toHaveText("1 oturum");
   await page.reload();
-  await expect(panel(page)).not.toBeVisible();
+  await expect(panel(page)).toHaveAttribute("data-phase", "paused");
+  await expect(draft(page)).toHaveValue("Henüz kaydedilmeyen taslak sonuç");
+  expect(await currentEntry(page, "work-second")).toEqual(otherContext);
   expect(await primaryState(page)).toEqual(saved);
-  expect(await currentState(page)).toEqual({
-    version: 1,
-    currentId: null,
-    entries: [otherContext],
-  });
+  expect(JSON.parse((await primaryState(page)).records).records).toEqual(
+    records,
+  );
 });

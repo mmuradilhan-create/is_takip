@@ -18,30 +18,19 @@ const pauseIcon =
   '<svg viewBox="0 0 24 24" aria-hidden="true" data-work-symbol="pause"><path d="M8 5v14M16 5v14"/></svg>';
 const resumeIcon =
   '<svg viewBox="0 0 24 24" aria-hidden="true" data-work-symbol="resume"><circle cx="12" cy="12" r="9"/><path d="m10 8 6 4-6 4z" fill="currentColor" stroke="none"/></svg>';
-const workIcons = { play: playIcon, pause: pauseIcon, resume: resumeIcon };
 const stopIcon =
   '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6h12v12H6z"/></svg>';
 const notesIcon =
-  '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5H6a2 2 0 0 0-2 2v13h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M8 3h8v4H8zM8 12h8M8 16h5"/></svg>';
+  '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5H6a2 2 0 0 0-2 2v13h14V5h-2M8 3h8v4H8zM8 12h8M8 16h5"/></svg>';
 const closeIcon =
   '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>';
+const workIcons = { play: playIcon, pause: pauseIcon, resume: resumeIcon };
+const draftText = (entry) => entry?.draftNote ?? "";
+const draftKey = (entry) => JSON.stringify([entry.recordId, entry.sessionId]);
+const peerMessage =
+  "Çalışma notu başka bir pencerede değişti. Yazdıkların burada korunuyor.";
 
-function duration(milliseconds) {
-  const seconds = Math.max(0, Math.floor(milliseconds / 1000));
-  return `${String(Math.floor(seconds / 3600)).padStart(2, "0")}:${String(Math.floor(seconds / 60) % 60).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
-}
-
-function savedDuration(milliseconds) {
-  const value = Math.max(0, Number(milliseconds) || 0);
-  const totalMinutes = Math.round(value / 60000);
-  const hours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
-  return hours
-    ? `${hours} sa${minutes ? ` ${minutes} dk` : ""}`
-    : `${minutes} dk`;
-}
-
-/** A task's execution controls stay separate from status and planning fields. */
+/** Working notes stay separate from the record status and the dated result log. */
 export function createWorkSessionUI({
   root = document.querySelector("#app"),
   getRecords,
@@ -52,45 +41,51 @@ export function createWorkSessionUI({
   onMessage = () => {},
 } = {}) {
   if (!root || typeof getRecords !== "function")
-    throw new TypeError("Çalışma oturumu için kayıt listesi gereklidir.");
+    throw new TypeError("Çalışma notu için kayıt listesi gereklidir.");
   const document = root.ownerDocument;
   const owner = document.defaultView;
   const sidebar = root.querySelector(".sidebar") || root;
+  const nav = sidebar.querySelector(".nav");
   const journal = document.createElement("section");
   journal.id = "sidebar-work-journal";
   journal.className = "sidebar-work-journal";
-  journal.setAttribute("aria-label", "İş günlüğü kontrolü");
-  journal.innerHTML = `<div class="sidebar-journal-heading"><h2>${notesIcon}İş günlüğü</h2><span class="sidebar-journal-phase" hidden></span></div><div class="sidebar-journal-saved" title="Bugün iş günlüğüne kaydedilen süre"><span>Bugün</span> <span class="sidebar-journal-separator" aria-hidden="true">·</span> <strong id="sidebar-saved-time">0 dk</strong> <span class="sidebar-journal-separator" aria-hidden="true">·</span> <small id="sidebar-saved-count">0 oturum</small></div><button type="button" class="sidebar-journal-history" data-action="work-session-history">Çalışma geçmişi <span aria-hidden="true">→</span></button>`;
+  journal.setAttribute("aria-label", "Çalışma notu ve geçmişi");
+  journal.innerHTML = `<div class="sidebar-journal-heading"><h2>${notesIcon}Çalışma notu</h2><span class="sidebar-journal-phase" hidden></span></div><section id="work-session-panel" class="work-session-panel" aria-label="Çalışma notu" hidden><form id="work-note-form" class="work-note-form" novalidate><button type="button" class="work-session-task-link" id="work-session-title" data-action="edit"></button><div id="work-finish-summary" class="work-note-date" hidden><span>Sonuç kaydı</span><time id="work-finish-date"></time></div><label class="work-note-field"><span id="work-session-note-label">Çalışma notu</span><textarea id="work-session-note" name="resultNote" rows="5" maxlength="10000" aria-describedby="work-note-error work-finish-shortcuts work-finish-error" placeholder="Çalışırken notlarını buraya yaz…"></textarea></label><p id="work-note-error" class="work-note-error" role="alert" hidden></p><div id="work-note-conflict" class="work-note-conflict" hidden><details><summary>Diğer penceredeki not</summary><p id="work-note-peer"></p></details><div class="work-note-resolution"><button type="button" data-action="work-draft-use-current">Güncel notu yükle</button><button type="button" data-action="work-draft-save-local">Bu notu kaydet</button></div></div><button type="button" class="work-note-retry" data-action="work-draft-retry" hidden>Yeniden dene</button><p id="work-finish-shortcuts" class="work-note-help" hidden>Enter ile kaydet, Shift+Enter ile alt satıra geç.</p><p id="work-finish-error" class="work-note-error" role="alert" hidden></p><div id="work-note-controls" class="work-session-controls"><button type="button" class="work-session-toggle" data-action="work-pause">${pauseIcon}<span>Duraklat</span></button><button type="button" class="work-session-finish" data-action="work-finish" aria-label="Oturumu bitir">${stopIcon}<span>Bitir</span></button></div><div id="work-finish-controls" class="work-session-controls work-finish-controls" hidden><button type="button" data-action="work-finish-cancel">Vazgeç</button><button type="submit" class="work-note-save">Kaydet ve bitir</button></div></form></section><div class="sidebar-journal-saved"><span>Bugün</span><span aria-hidden="true">·</span><small id="sidebar-saved-count">0 kayıt</small></div><button type="button" class="sidebar-journal-history" data-action="work-session-history">Çalışma geçmişi <span aria-hidden="true">→</span></button>`;
   sidebar.append(journal);
   sidebar.classList.add("has-work-journal");
+  const panel = journal.querySelector("#work-session-panel");
+  const form = panel.querySelector("form");
+  const note = panel.querySelector("#work-session-note");
+  const contextHint = document.createElement("p");
+  contextHint.id = "work-note-context";
+  contextHint.className = "work-note-help";
+  contextHint.hidden = true;
+  panel.querySelector("#work-note-controls").before(contextHint);
+  const forkButton = document.createElement("button");
+  forkButton.type = "button";
+  forkButton.className = "work-note-retry";
+  forkButton.dataset.action = "work-draft-fork";
+  forkButton.textContent = "Yeni çalışma notu olarak devam et";
+  forkButton.hidden = true;
+  panel.querySelector("#work-note-conflict").append(forkButton);
   const phase = journal.querySelector(".sidebar-journal-phase");
-  const saved = journal.querySelector(".sidebar-journal-saved");
-  const panel = document.createElement("section");
-  panel.id = "work-session-panel";
-  panel.className = "work-session-panel";
-  panel.setAttribute("aria-label", "Çalışma oturumu");
-  panel.hidden = true;
-  journal.insertBefore(panel, saved);
   const contextDialog = document.createElement("dialog");
   contextDialog.id = "work-session-context";
   contextDialog.className = "modal work-context-modal";
-  contextDialog.setAttribute("aria-label", "Notlar ve sonraki adım");
+  contextDialog.setAttribute("aria-label", "Kayıt notları");
   root.append(contextDialog);
-  const finishDialog = document.createElement("dialog");
-  finishDialog.id = "work-finish-dialog";
-  finishDialog.className = "modal work-finish-modal";
-  finishDialog.setAttribute("aria-label", "Çalışma oturumunu bitir");
-  root.append(finishDialog);
-  let expanded = false;
+  const drafts = new Map();
+  let editorState = null;
+  let editorKey = null;
+  let editorPinned = false;
+  let finishDraft = null;
+  let finishMessage = "";
+  let finishing = false;
   let destroyed = false;
   let refreshing = false;
-  let renderKey = "";
-  let contextKey = "";
+  let errorMessage = "";
   let summaryRecords = null;
   let summaryDate = "";
-  let errorMessage = "";
-  let finishDraft = null;
-  let finishing = false;
   let observedRunningId;
   let runningNotificationQueued = false;
   let store;
@@ -99,14 +94,23 @@ export function createWorkSessionUI({
     storage = owner.localStorage;
   } catch {
     storage = {
-      getItem: () => {
+      getItem() {
         throw new Error("Tarayıcı depolamasına erişilemiyor.");
       },
-      setItem: () => {
+      setItem() {
         throw new Error("Tarayıcı depolamasına erişilemiyor.");
       },
     };
   }
+  const find = (id) => getRecords().find((record) => record.id === id);
+  const isOpen = (record) =>
+    record?.type === "daily" && !CLOSED.has(record.status);
+  const recorded = (record, sessionId) =>
+    record?.workLog?.find((entry) => entry.id === sessionId);
+  const isJournaled = (record, entry) =>
+    Boolean(
+      entry && entry.status !== "finished" && recorded(record, entry.sessionId),
+    );
 
   function reportError(message) {
     const text = message instanceof Error ? message.message : String(message);
@@ -114,176 +118,168 @@ export function createWorkSessionUI({
       try {
         onError(text);
       } catch {
-        /* Feedback must not interrupt a paused or saved session. */
+        /* Feedback cannot undo a saved note. */
       }
     }
     errorMessage = text;
   }
-
-  function isOpen(record) {
-    return record?.type === "daily" && !CLOSED.has(record.status);
+  function acknowledge(state, entry) {
+    if (
+      !entry ||
+      entry.sessionId !== state.sessionId ||
+      entry.status === "finished"
+    )
+      return;
+    const saved = draftText(entry);
+    // onChange runs inside saveDraft; acknowledge our own write before return.
+    if (saved === state.text) {
+      state.expected = saved;
+      state.dirty = false;
+      state.conflict = false;
+      state.remote = null;
+      state.error = "";
+      return;
+    }
+    if (saved !== state.expected) {
+      if (
+        state.dirty ||
+        finishDraft?.sessionId === state.sessionId ||
+        (editorState === state && document.activeElement === note)
+      ) {
+        state.dirty = true;
+        state.conflict = true;
+        state.remote = saved;
+        state.error = peerMessage;
+      } else {
+        state.text = saved;
+        state.expected = saved;
+        state.error = "";
+        state.conflict = false;
+        state.remote = null;
+      }
+    }
   }
-  function find(id) {
-    return getRecords().find((record) => record.id === id);
+  function stateFor(entry) {
+    const key = draftKey(entry);
+    if (!drafts.has(key))
+      drafts.set(key, {
+        recordId: entry.recordId,
+        sessionId: entry.sessionId,
+        text: draftText(entry),
+        expected: draftText(entry),
+        dirty: false,
+        conflict: false,
+        remote: null,
+        error: "",
+        selectionStart: null,
+        selectionEnd: null,
+      });
+    const state = drafts.get(key);
+    acknowledge(state, entry);
+    return state;
   }
-
-  function isJournaled(record, entry) {
-    return (
-      entry &&
-      entry.status !== "finished" &&
-      Array.isArray(record?.workLog) &&
-      record.workLog.some((log) => log.id === entry.sessionId)
-    );
+  function rememberCaret() {
+    if (!editorState || editorKey !== draftKey(editorState)) return;
+    editorState.selectionStart = note.selectionStart;
+    editorState.selectionEnd = note.selectionEnd;
+    editorState.scrollTop = note.scrollTop;
   }
-
+  function focusNote() {
+    if (owner.matchMedia?.("(max-width: 760px)").matches) {
+      sidebar.classList.add("open");
+      root.querySelector(".mobile-backdrop")?.classList.add("open");
+      root
+        .querySelector(".mobile-toggle")
+        ?.setAttribute("aria-expanded", "true");
+    }
+    note.focus({ preventScroll: true });
+    if (
+      editorState?.selectionStart !== null &&
+      editorState?.selectionStart !== undefined
+    )
+      note.setSelectionRange(
+        editorState.selectionStart,
+        editorState.selectionEnd,
+      );
+  }
   function settleJournaled(record) {
     const entry = store.get(record.id);
     if (!isJournaled(record, entry)) return true;
-    // A primary save can succeed before the separate context write fails.
-    // Retire that exact session before allowing any more time to accumulate.
-    if (!store.finish(record.id, entry.sessionId)) return false;
-    return !isJournaled(record, store.get(record.id));
+    const log = recorded(record, entry.sessionId);
+    if (
+      draftText(entry).trim() &&
+      draftText(entry).trim() !== String(log.note || "").trim()
+    ) {
+      editorState = stateFor(entry);
+      editorPinned = true;
+      editorState.dirty = true;
+      editorState.conflict = true;
+      editorState.remote = log.note || "";
+      editorState.error =
+        "Bu çalışma kaydedilmiş; farklı çalışma notun burada korunuyor.";
+      render();
+      return false;
+    }
+    return store.finish(record.id, entry.sessionId, {
+      expectedDraft: draftText(entry),
+    });
   }
-
   function buttonState(record) {
     const entry = store?.get(record.id);
     const journaled = isJournaled(record, entry);
     const running = entry?.status === "running" && !journaled;
     const paused = entry?.status === "paused" && !journaled;
-    const disabled = !isOpen(record) || store?.readOnly || journaled;
-    const label = running
-      ? "çalışmayı duraklat"
-      : paused
-        ? "çalışmaya devam et"
-        : "çalışmaya başla";
-    const hint = journaled
-      ? "İş günlüğü kaydedildi. Oturumun kapanması için tarayıcı depolamasını kontrol et."
-      : !isOpen(record)
-        ? "Bu kayıt kapalı. Çalışmak için önce durumunu güncelle."
-        : store?.readOnly
-          ? "Çalışma oturumu kaydedilemiyor."
-          : running
-            ? "Çalışmayı duraklat"
-            : paused
-              ? "Duraklatıldı · Devam et"
-              : "Çalışmaya başla";
     return {
       entry,
       running,
       paused,
+      disabled: !isOpen(record) || store?.readOnly || journaled || finishing,
       symbol: running ? "pause" : paused ? "resume" : "play",
-      disabled,
-      label,
-      hint:
-        entry && entry.status !== "finished"
-          ? `${hint} · ${duration(store.elapsed(record.id))}`
-          : hint,
+      label: running
+        ? "çalışmayı duraklat"
+        : paused
+          ? "çalışmaya devam et"
+          : "çalışmaya başla",
+      hint: journaled
+        ? "Sonuç kaydedildi. Çalışmayı kapatmak için yeniden dene."
+        : !isOpen(record)
+          ? "Bu kayıt kapalı. Çalışmak için önce durumunu güncelle."
+          : store?.readOnly
+            ? "Çalışma notu kaydedilemiyor."
+            : running
+              ? "Çalışmayı duraklat"
+              : paused
+                ? "Duraklatıldı · Devam et"
+                : "Çalışmaya başla",
     };
   }
-
   function button(record) {
     if (record.type !== "daily") return "";
     const state = buttonState(record);
     return `<button type="button" class="work-start${state.running ? " is-running" : ""}${state.paused ? " is-paused" : ""}" data-action="work-start" data-id="${escapeHtml(record.id)}" data-phase="${escapeHtml(state.entry?.status || "idle")}" aria-label="${escapeHtml(record.title)}: ${state.label}" aria-pressed="${state.running}" title="${escapeHtml(state.hint)}" ${state.disabled ? "disabled" : ""}>${workIcons[state.symbol]}</button>`;
   }
-
   function getRunningRecordId() {
     if (destroyed || !store) return null;
     const current = store.current;
-    if (!current || current.status !== "running") return null;
-    const record = find(current.recordId);
-    return isOpen(record) && !isJournaled(record, current) ? record.id : null;
+    const record = current ? find(current.recordId) : null;
+    return current?.status === "running" &&
+      isOpen(record) &&
+      !isJournaled(record, current)
+      ? record.id
+      : null;
   }
-
-  function updateRunningRows() {
-    const runningId = getRunningRecordId();
-    for (const row of root.querySelectorAll(".focus-row[data-id]")) {
-      const running = row.dataset.id === runningId;
-      row.classList.toggle("is-working", running);
-      if (running) row.dataset.workState = "running";
-      else row.removeAttribute("data-work-state");
-    }
-    // The initial view reads the getter when it renders. Later changes can
-    // reorder the Dashboard after the current refresh has fully completed.
-    if (observedRunningId === undefined) {
-      observedRunningId = runningId;
-      return;
-    }
-    if (observedRunningId === runningId) return;
-    observedRunningId = runningId;
-    if (runningNotificationQueued) return;
-    runningNotificationQueued = true;
-    owner.queueMicrotask(() => {
-      runningNotificationQueued = false;
-      if (destroyed) return;
-      try {
-        onRunningChange(getRunningRecordId());
-      } catch {
-        // Refreshing a view must not interrupt the saved timer state.
-      }
-    });
-  }
-
-  function reserveSpace() {
-    // Session controls now live inside the fixed navigation; the work area
-    // and goal panel no longer need bottom padding or a floating-card gap.
-    document.body.removeAttribute("data-work-session");
-    document.documentElement.style.removeProperty("--work-session-height");
-    journal.dataset.phase = panel.hidden ? "idle" : panel.dataset.phase;
-  }
-
-  function updateDailySummary() {
-    const records = getRecords();
-    const date = localDate();
-    if (records === summaryRecords && date === summaryDate) return;
-    const summary = weekWorkSummary(records, { start: date, end: date });
-    journal.querySelector("#sidebar-saved-time").textContent = savedDuration(
-      summary.totalMs,
-    );
-    journal.querySelector("#sidebar-saved-count").textContent =
-      `${summary.sessionCount} oturum`;
-    summaryRecords = records;
-    summaryDate = date;
-  }
-
-  function closeContext() {
-    expanded = false;
-    if (contextDialog.open) contextDialog.close();
-  }
-
-  function renderContext(record, force = false) {
-    if ((!contextDialog.open && !force) || !record) return;
-    const nextKey = JSON.stringify([
-      record.id,
-      record.title,
-      record.nextAction,
-      record.description,
-      record.status,
-      record.waitingReason,
-      record.blockReason,
-    ]);
-    if (nextKey === contextKey) return;
-    const scrollTop =
-      contextDialog.querySelector(".modal-body")?.scrollTop || 0;
-    contextDialog.innerHTML = `<div class="work-context-shell"><div class="modal-header"><h2>Notlar ve sonraki adım</h2><button type="button" class="close-modal" data-action="work-context-close" aria-label="Pencereyi kapat">${closeIcon}</button></div><div class="modal-body work-context-body"><p class="work-context-title">${escapeHtml(record.title)}</p>${record.status === "waiting" && (record.waitingReason ?? record.blockReason) ? `<section class="work-session-waiting-reason"><h3>Bekleme nedeni</h3><p>${escapeHtml(record.waitingReason ?? record.blockReason)}</p></section>` : ""}<div class="work-session-context-grid"><section><h3>Sonraki adım</h3><p class="${record.nextAction ? "" : "work-session-empty"}">${escapeHtml(record.nextAction || "Bu iş için sonraki adım eklenmemiş.")}</p></section><section><h3>Notlar</h3><p class="${record.description ? "" : "work-session-empty"}">${escapeHtml(record.description || "Bu iş için not eklenmemiş.")}</p></section></div></div><div class="modal-footer"><button type="button" class="btn primary" data-action="work-context-close">Tamam</button></div></div>`;
-    contextDialog.querySelector(".modal-body").scrollTop = scrollTop;
-    contextKey = nextKey;
-  }
-
   function updateButtons() {
     for (const control of root.querySelectorAll(".work-start[data-id]")) {
       const record = find(control.dataset.id);
       if (!record) continue;
-      control.hidden = record.type !== "daily";
       const state = buttonState(record);
-      const phase = state.entry?.status || "idle";
+      control.hidden = record.type !== "daily";
       if (
-        control.dataset.phase !== phase ||
+        control.dataset.phase !== (state.entry?.status || "idle") ||
         control.firstElementChild?.dataset.workSymbol !== state.symbol
-      ) {
+      )
         control.innerHTML = workIcons[state.symbol];
-        control.dataset.phase = phase;
-      }
+      control.dataset.phase = state.entry?.status || "idle";
       control.classList.toggle("is-running", state.running);
       control.classList.toggle("is-paused", state.paused);
       control.setAttribute("aria-label", `${record.title}: ${state.label}`);
@@ -291,74 +287,375 @@ export function createWorkSessionUI({
       control.title = state.hint;
       control.disabled = Boolean(state.disabled);
     }
-    updateRunningRows();
+    const runningId = getRunningRecordId();
+    for (const row of root.querySelectorAll(".focus-row[data-id]")) {
+      row.classList.toggle("is-working", row.dataset.id === runningId);
+      if (row.dataset.id === runningId) row.dataset.workState = "running";
+      else row.removeAttribute("data-work-state");
+    }
+    if (observedRunningId === undefined) observedRunningId = runningId;
+    else if (observedRunningId !== runningId) {
+      observedRunningId = runningId;
+      if (!runningNotificationQueued) {
+        runningNotificationQueued = true;
+        owner.queueMicrotask(() => {
+          runningNotificationQueued = false;
+          if (!destroyed) {
+            try {
+              onRunningChange(getRunningRecordId());
+            } catch {
+              /* Keep saved state. */
+            }
+          }
+        });
+      }
+    }
   }
-
+  function reserveSpace() {
+    document.body.removeAttribute("data-work-session");
+    document.documentElement.style.removeProperty("--work-session-height");
+    journal.dataset.phase = panel.hidden ? "idle" : panel.dataset.phase;
+  }
+  function updateDailySummary() {
+    const records = getRecords();
+    const date = localDate();
+    if (records === summaryRecords && date === summaryDate) return;
+    journal.querySelector("#sidebar-saved-count").textContent =
+      `${weekWorkSummary(records, { start: date, end: date }).sessionCount} kayıt`;
+    summaryRecords = records;
+    summaryDate = date;
+  }
   function render() {
     if (destroyed || !store) return;
     updateDailySummary();
-    const current = store.current;
-    const record = current ? find(current.recordId) : null;
-    if (!current || !isOpen(record) || isJournaled(record, current)) {
+    if (
+      editorState &&
+      document.activeElement === note &&
+      store.current?.sessionId !== editorState.sessionId
+    )
+      editorPinned = true;
+    let entry;
+    if (finishDraft) entry = store.get(finishDraft.recordId);
+    else if (editorState?.dirty || editorPinned)
+      entry = store.get(editorState.recordId);
+    else entry = store.current;
+    if (finishDraft || editorState?.dirty || editorPinned) {
+      if (entry?.sessionId === editorState?.sessionId)
+        acknowledge(editorState, entry);
+      else if (editorState) {
+        editorState.conflict = true;
+        editorState.dirty = true;
+        editorState.remote = draftText(entry);
+        editorState.error =
+          "Bu çalışma başka bir pencerede değişti. Yazdıkların burada korunuyor.";
+      }
+    } else if (entry) editorState = stateFor(entry);
+    else editorState = null;
+    const state = editorState;
+    const record = state ? find(state.recordId) : null;
+    const savedLog = state ? recorded(record, state.sessionId) : null;
+    const sameSession = entry?.sessionId === state?.sessionId;
+    const retired = savedLog && (!sameSession || entry?.status === "finished");
+    if (
+      savedLog &&
+      state.text.trim() &&
+      state.text.trim() !== String(savedLog.note || "").trim()
+    ) {
+      state.dirty = true;
+      state.conflict = true;
+      state.remote = savedLog.note || "";
+      state.error =
+        "Bu çalışma başka bir pencerede kaydedildi. Yazdıkların burada korunuyor.";
+    }
+    if (retired && state && !finishing) {
+      if (
+        !state.dirty &&
+        state.text.trim() === String(savedLog.note || "").trim()
+      ) {
+        drafts.delete(draftKey(state));
+        finishDraft = null;
+        editorState = null;
+        editorPinned = false;
+        render();
+        return;
+      }
+      state.dirty = true;
+      state.conflict = true;
+      state.remote = savedLog.note || "";
+      state.error =
+        "Bu çalışma başka bir pencerede kaydedildi. Yazdıkların burada korunuyor.";
+    }
+    if (
+      !state ||
+      (!isOpen(record) && !state.dirty) ||
+      (savedLog && !finishDraft && !state.dirty)
+    ) {
       panel.hidden = true;
-      panel.innerHTML = "";
-      panel.removeAttribute("data-phase");
       phase.hidden = true;
-      renderKey = "";
-      closeContext();
+      editorKey = null;
       reserveSpace();
       updateButtons();
       return;
     }
+    panel.hidden = false;
+    const status =
+      sameSession && entry.status === "running" ? "running" : "paused";
+    panel.dataset.phase = status;
+    panel.dataset.mode = finishDraft ? "finish" : "note";
     phase.hidden = false;
-    phase.textContent =
-      current.status === "running" ? "Çalışıyor" : "Duraklatıldı";
-    phase.dataset.phase = current.status;
-    const nextKey = JSON.stringify([
-      current.recordId,
-      current.sessionId,
-      current.status,
-      current.elapsedMs,
-      current.startedAt,
-      current.updatedAt,
-      record.title,
-      expanded,
-    ]);
-    if (nextKey !== renderKey) {
-      const active = document.activeElement;
-      const focusedAction = panel.contains(active)
-        ? active?.dataset?.action
-        : null;
-      panel.hidden = false;
-      panel.dataset.phase = current.status;
-      panel.innerHTML = `<div class="work-session-summary"><button type="button" class="work-session-task-link" id="work-session-title" data-action="edit" data-id="${escapeHtml(record.id)}" title="${escapeHtml(record.title)}">${escapeHtml(record.title)}</button><div class="work-session-duration"><span id="work-session-time" role="timer" aria-label="Bu oturumda geçen süre, saat, dakika ve saniye" aria-live="off">${duration(store.elapsed(current.recordId))}</span><button type="button" class="work-session-details" data-action="work-details" aria-label="Notlar ve sonraki adım" aria-controls="work-session-context" aria-expanded="${expanded}" title="Notlar ve sonraki adım">${notesIcon}</button></div><div class="work-session-controls"><button type="button" class="work-session-toggle" data-action="${current.status === "running" ? "work-pause" : "work-resume"}" data-id="${escapeHtml(record.id)}">${current.status === "running" ? pauseIcon : playIcon}<span>${current.status === "running" ? "Duraklat" : "Devam et"}</span></button><button type="button" class="work-session-finish" data-action="work-finish" data-id="${escapeHtml(record.id)}" aria-label="Oturumu bitir">${stopIcon}<span>Bitir</span></button></div></div>`;
-      renderKey = nextKey;
-      if (focusedAction) {
-        const control =
-          [...panel.querySelectorAll("[data-action]")].find(
-            (element) => element.dataset.action === focusedAction,
-          ) ||
-          (["work-pause", "work-resume"].includes(focusedAction)
-            ? panel.querySelector(".work-session-toggle")
-            : null);
-        control?.focus({ preventScroll: true });
-      }
-      reserveSpace();
+    phase.dataset.phase = status;
+    phase.textContent = status === "running" ? "Çalışıyor" : "Duraklatıldı";
+    form.id = finishDraft ? "work-finish-form" : "work-note-form";
+    const title = panel.querySelector("#work-session-title");
+    title.textContent = record?.title || "Çalışma notu";
+    title.title = record?.title || "Çalışma notu";
+    title.dataset.id = state.recordId;
+    panel.querySelector("#work-session-note-label").textContent = finishDraft
+      ? "Sonuç"
+      : "Çalışma notu";
+    note.required = Boolean(finishDraft);
+    const nextKey = draftKey(state);
+    if (editorKey !== nextKey || note.value !== state.text) {
+      const focused = document.activeElement === note;
+      const start =
+        editorKey === nextKey && focused
+          ? note.selectionStart
+          : state.selectionStart;
+      const end =
+        editorKey === nextKey && focused
+          ? note.selectionEnd
+          : state.selectionEnd;
+      const scrollTop =
+        editorKey === nextKey ? note.scrollTop : state.scrollTop || 0;
+      note.value = state.text;
+      if (start !== null && start !== undefined)
+        note.setSelectionRange(
+          Math.min(start, note.value.length),
+          Math.min(end ?? start, note.value.length),
+        );
+      note.scrollTop = scrollTop;
+      editorKey = nextKey;
     }
-    const counter = panel.querySelector("#work-session-time");
-    if (counter)
-      counter.textContent = duration(store.elapsed(current.recordId));
-    renderContext(record);
+    note.disabled = finishing;
+    note.readOnly = Boolean(savedLog);
+    const draftError = panel.querySelector("#work-note-error");
+    draftError.textContent = state.error;
+    draftError.hidden = !state.error;
+    panel.querySelector("#work-note-conflict").hidden = !state.conflict;
+    panel.querySelector("#work-note-peer").textContent =
+      state.remote || "Not boş.";
+    panel.querySelector(".work-note-resolution").hidden = Boolean(
+      savedLog &&
+        sameSession &&
+        entry?.status !== "finished" &&
+        draftText(entry) === state.text,
+    );
+    forkButton.hidden =
+      !savedLog || !sameSession || entry?.status === "finished";
+    forkButton.disabled = finishing;
+    panel.querySelector('[data-action="work-draft-save-local"]').hidden =
+      Boolean(savedLog);
+    panel.querySelector('[data-action="work-draft-save-local"]').disabled =
+      finishing ||
+      !sameSession ||
+      entry?.status === "finished" ||
+      Boolean(savedLog);
+    panel.querySelector('[data-action="work-draft-use-current"]').disabled =
+      finishing;
+    panel.querySelector('[data-action="work-draft-retry"]').hidden =
+      !state.dirty || state.conflict;
+    panel.querySelector('[data-action="work-draft-retry"]').disabled =
+      finishing;
+    panel.querySelector("#work-note-controls").hidden = Boolean(finishDraft);
+    panel.querySelector("#work-finish-controls").hidden = !finishDraft;
+    panel.querySelector("#work-finish-summary").hidden = !finishDraft;
+    panel.querySelector("#work-finish-shortcuts").hidden = !finishDraft;
+    const finishError = panel.querySelector("#work-finish-error");
+    finishError.textContent = finishMessage;
+    finishError.hidden = !finishMessage;
+    const toggle = panel.querySelector(".work-session-toggle");
+    toggle.dataset.action = status === "running" ? "work-pause" : "work-resume";
+    toggle.dataset.id = state.recordId;
+    toggle.innerHTML = `${status === "running" ? pauseIcon : resumeIcon}<span>${status === "running" ? "Duraklat" : "Devam et"}</span>`;
+    toggle.disabled =
+      finishing || !sameSession || !isOpen(record) || Boolean(savedLog);
+    const finish = panel.querySelector('[data-action="work-finish"]');
+    finish.dataset.id = state.recordId;
+    finish.disabled =
+      finishing ||
+      !sameSession ||
+      !isOpen(record) ||
+      Boolean(savedLog) ||
+      store.current?.recordId !== state.recordId;
+    contextHint.hidden =
+      Boolean(finishDraft) ||
+      !sameSession ||
+      store.current?.recordId === state.recordId;
+    contextHint.textContent = contextHint.hidden
+      ? ""
+      : "Bu iş duraklatıldı. Devam et ile yeniden açabilirsin.";
+    panel.querySelector('[data-action="work-finish-cancel"]').disabled =
+      finishing;
+    const submit = form.querySelector('[type="submit"]');
+    submit.disabled =
+      finishing ||
+      state.conflict ||
+      (!savedLog && (!sameSession || entry?.status !== "paused"));
+    submit.textContent = finishing ? "Kaydediliyor…" : "Kaydet ve bitir";
+    form.setAttribute("aria-busy", String(finishing));
+    if (finishDraft) {
+      const date = panel.querySelector("#work-finish-date");
+      date.dateTime = finishDraft.date;
+      date.textContent = new Date(
+        `${finishDraft.date}T12:00:00`,
+      ).toLocaleDateString("tr-TR", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      });
+    }
+    reserveSpace();
     updateButtons();
   }
-
   store = createWorkSessionStore({
     storage,
     key: KEY,
     onChange: render,
     onError: reportError,
   });
-
+  function flushState(state, { force = false } = {}) {
+    if (!state?.dirty) return true;
+    store.synchronize();
+    const latest = store.get(state.recordId);
+    if (
+      !latest ||
+      latest.sessionId !== state.sessionId ||
+      latest.status === "finished" ||
+      recorded(find(state.recordId), state.sessionId)
+    ) {
+      state.conflict = true;
+      state.remote = draftText(latest);
+      state.error =
+        "Bu çalışma artık değiştirilemiyor. Yazdıkların burada korunuyor.";
+      render();
+      return false;
+    }
+    if (force) {
+      state.expected = draftText(latest);
+      state.conflict = false;
+      state.remote = null;
+    }
+    if (state.conflict) {
+      render();
+      return false;
+    }
+    const saved = store.saveDraft(
+      state.recordId,
+      state.sessionId,
+      state.text,
+      state.expected,
+    );
+    const current = store.get(state.recordId);
+    if (
+      saved &&
+      current?.sessionId === state.sessionId &&
+      draftText(current) === state.text
+    ) {
+      state.expected = state.text;
+      state.dirty = false;
+      state.conflict = false;
+      state.remote = null;
+      state.error = "";
+      errorMessage = "";
+    } else {
+      acknowledge(state, current);
+      if (!state.conflict)
+        state.error =
+          "Not kaydedilemedi. Yazdıkların burada korunuyor; yeniden dene.";
+    }
+    render();
+    return saved;
+  }
+  function flushDrafts() {
+    for (const state of drafts.values())
+      if (state.dirty && !flushState(state)) {
+        editorState = state;
+        render();
+        focusNote();
+        return false;
+      }
+    return true;
+  }
+  function onNoteInput(event) {
+    if (event.target !== note || !editorState || finishing) return;
+    const state = editorState;
+    state.text = note.value;
+    state.dirty = state.text !== state.expected;
+    rememberCaret();
+    finishMessage = "";
+    note.setCustomValidity("");
+    if (!state.dirty) {
+      state.error = "";
+      render();
+    } else flushState(state);
+  }
+  function useCurrentDraft() {
+    const state = editorState;
+    if (!state || finishing) return;
+    store.synchronize();
+    const latest = store.get(state.recordId);
+    if (recorded(find(state.recordId), state.sessionId)) {
+      const log = recorded(find(state.recordId), state.sessionId);
+      if (
+        latest?.sessionId === state.sessionId &&
+        latest.status !== "finished" &&
+        draftText(latest).trim() !== String(log.note || "").trim()
+      ) {
+        state.text = draftText(latest);
+        state.expected = state.text;
+        finishDraft = null;
+        finishMessage = "";
+        note.setCustomValidity("");
+        render();
+        focusNote();
+        return;
+      }
+      if (
+        latest?.sessionId === state.sessionId &&
+        latest.status !== "finished" &&
+        !store.finish(state.recordId, state.sessionId, {
+          expectedDraft: draftText(latest),
+        })
+      ) {
+        state.error =
+          "Kaydedilmiş sonuç yüklenemedi. Notun korunuyor; yeniden dene.";
+        render();
+        return;
+      }
+      drafts.delete(draftKey(state));
+      editorState = null;
+      editorPinned = false;
+      finishDraft = null;
+      finishMessage = "";
+      render();
+      return;
+    }
+    state.dirty = false;
+    state.conflict = false;
+    state.error = "";
+    state.remote = null;
+    if (latest?.sessionId === state.sessionId && latest.status !== "finished") {
+      state.text = draftText(latest);
+      state.expected = state.text;
+    } else {
+      finishDraft = null;
+      finishMessage = "";
+      editorState = null;
+      editorPinned = false;
+    }
+    render();
+    if (!panel.hidden) focusNote();
+  }
   function refresh() {
     if (destroyed || refreshing) return;
     refreshing = true;
@@ -366,7 +663,13 @@ export function createWorkSessionUI({
       store.synchronize();
       for (const entry of store.snapshot.entries) {
         const record = find(entry.recordId);
-        if (record?.type === "daily" && isJournaled(record, entry))
+        const protectedDraft = drafts.get(draftKey(entry));
+        if (
+          record?.type === "daily" &&
+          isJournaled(record, entry) &&
+          finishDraft?.sessionId !== entry.sessionId &&
+          !protectedDraft?.dirty
+        )
           settleJournaled(record);
       }
       store.reconcile(
@@ -379,39 +682,68 @@ export function createWorkSessionUI({
       refreshing = false;
     }
   }
-
-  function finishError(message) {
-    const output = finishDialog.querySelector("#work-finish-error");
-    if (output) {
-      output.textContent = message;
-      output.hidden = false;
+  function forkWorkingNote() {
+    const state = editorState;
+    if (!state || finishing) return;
+    store.synchronize();
+    const latest = store.get(state.recordId);
+    if (
+      !latest ||
+      latest.sessionId !== state.sessionId ||
+      latest.status === "finished" ||
+      !recorded(find(state.recordId), state.sessionId)
+    ) {
+      finishError(
+        "Bu çalışma değişti. Notun korunuyor; güncel kaydı kontrol et.",
+      );
+      return;
     }
+    if (
+      draftText(latest) !== state.text &&
+      !store.saveDraft(
+        state.recordId,
+        state.sessionId,
+        state.text,
+        state.expected,
+      )
+    ) {
+      finishError("Not kaydedilemedi. Yazdıkların korunuyor; yeniden dene.");
+      return;
+    }
+    if (!store.forkDraft(state.recordId, state.sessionId, state.text)) {
+      finishError(
+        "Yeni çalışma notu açılamadı. Notun korunuyor; yeniden dene.",
+      );
+      return;
+    }
+    drafts.delete(draftKey(state));
+    finishDraft = null;
+    finishMessage = "";
+    editorState = stateFor(store.get(state.recordId));
+    editorPinned = true;
+    render();
+    focusNote();
+  }
+  function finishError(message) {
+    finishMessage = message;
     reportError(message);
+    render();
   }
-
-  function setFinishing(value) {
-    finishing = value;
-    finishDialog.setAttribute("aria-busy", String(value));
-    for (const control of finishDialog.querySelectorAll("button, textarea"))
-      control.disabled = value;
-    const submit = finishDialog.querySelector('[type="submit"]');
-    if (submit)
-      submit.textContent = value ? "Kaydediliyor…" : "Kaydet ve bitir";
-  }
-
   function cancelFinish() {
     if (finishing) return;
     finishDraft = null;
-    finishDialog.close();
+    finishMessage = "";
+    note.setCustomValidity("");
+    render();
+    if (!panel.hidden) focusNote();
   }
-
   function beginFinish(id) {
-    if (finishing || finishDialog.open || !isOpen(find(id))) return;
+    if (finishing || finishDraft || !isOpen(find(id)) || !flushDrafts()) return;
     store.synchronize();
     if (!settleJournaled(find(id))) return;
     const selected = store.current;
-    if (selected?.recordId !== id) return;
-    if (!store.pause(id, selected.sessionId)) return;
+    if (selected?.recordId !== id || !store.pause(id, selected.sessionId))
+      return;
     const paused = store.current;
     if (
       paused?.recordId !== id ||
@@ -419,154 +751,107 @@ export function createWorkSessionUI({
       paused.status !== "paused"
     )
       return;
+    editorState = stateFor(paused);
     const ended = new Date();
-    const date = `${ended.getFullYear()}-${String(ended.getMonth() + 1).padStart(2, "0")}-${String(ended.getDate()).padStart(2, "0")}`;
-    const record = find(id);
-    closeContext();
     finishDraft = {
       recordId: id,
       sessionId: paused.sessionId,
       endedAt: ended.toISOString(),
-      date,
+      date: localDate(ended),
       durationMs: paused.elapsedMs,
-      contextUpdatedAt: paused.updatedAt,
     };
-    finishDialog.innerHTML = `<form id="work-finish-form"><div class="modal-header"><h2>Çalışma oturumunu bitir</h2><button type="button" class="close-modal" data-action="work-finish-cancel" aria-label="Pencereyi kapat">${closeIcon}</button></div><div class="modal-body work-finish-body"><p class="work-finish-title">${escapeHtml(record.title)}</p><div class="work-finish-summary"><div><span>Tarih</span><time id="work-finish-date" datetime="${date}">${escapeHtml(ended.toLocaleDateString("tr-TR", { day: "numeric", month: "long", year: "numeric" }))}</time></div><div><span>Çalışma süresi</span><output id="work-finish-duration">${duration(paused.elapsedMs)}</output></div></div><label class="field">Sonuç <span class="field-help">İsteğe bağlı · Kısa bir sonuç yazabilirsin.</span><textarea name="resultNote" rows="3" maxlength="10000" aria-describedby="work-finish-shortcuts" placeholder="Örn. Üç madde incelendi, ikisi tasarım yanıtını bekliyor."></textarea></label><p id="work-finish-shortcuts" class="field-help">Enter ile kaydet, Shift+Enter ile alt satıra geç.</p><p id="work-finish-error" class="error-message" role="alert" hidden></p></div><div class="modal-footer"><button type="button" class="btn danger delete-record" data-action="work-finish-discard" title="Bu çalışma oturumunu kaydetmeden sil">Kaydı sil</button><button type="button" class="btn" data-action="work-finish-cancel">Vazgeç</button><button type="submit" class="btn primary">Kaydet ve bitir</button></div></form>`;
-    finishDialog.showModal();
+    finishMessage = "";
+    render();
+    focusNote();
   }
-
-  function discardFinish() {
-    if (finishing || !finishDraft) return;
-    const pending = { ...finishDraft };
-    if (!owner.confirm("Bu çalışma oturumu kaydedilmeden silinsin mi?")) return;
-    store.synchronize();
-    if (store.readOnly) {
-      finishError(
-        "Çalışma oturumu okunamıyor. Tarayıcı depolamasını kontrol edip yeniden dene.",
-      );
-      return;
-    }
-    const record = find(pending.recordId);
-    if (record?.workLog?.some((entry) => entry.id === pending.sessionId)) {
-      finishError(
-        "Bu oturum iş günlüğüne kaydedilmiş. Güncel kayıtları kontrol et.",
-      );
-      return;
-    }
-    setFinishing(true);
-    try {
-      if (
-        !store.discard(pending.recordId, pending.sessionId, {
-          elapsedMs: pending.durationMs,
-          updatedAt: pending.contextUpdatedAt,
-        })
-      ) {
-        finishError(
-          store.readOnly
-            ? "Çalışma oturumu silinemedi. Yazdığın bilgiler korunuyor; yeniden deneyebilirsin."
-            : "Bu oturum başka bir pencerede değişti. Vazgeçip güncel oturumu yeniden aç.",
-        );
-        return;
-      }
-      finishDraft = null;
-      finishDialog.close();
-      render();
-      try {
-        onMessage("Çalışma oturumu kaydedilmeden silindi.");
-      } catch {
-        /* Feedback must not turn a successful discard into an error. */
-      }
-    } finally {
-      setFinishing(false);
-    }
-  }
-
   async function completeFinish(event) {
-    if (!event.target.matches("#work-finish-form")) return;
+    if (event.target !== form) return;
     event.preventDefault();
-    if (finishing || !finishDraft) return;
+    if (finishing || !finishDraft || !editorState) return;
     const pending = { ...finishDraft };
-    const form = event.target;
-    const note = form.elements.resultNote.value.trim();
-    const error = finishDialog.querySelector("#work-finish-error");
-    error.hidden = true;
-    store.synchronize();
-    if (store.readOnly) {
-      finishError(
-        "Çalışma oturumu okunamıyor. Tarayıcı depolamasını kontrol edip yeniden dene.",
-      );
+    const state = editorState;
+    const rawNote = state.text;
+    const result = rawNote.trim();
+    if (!result) {
+      note.setCustomValidity("Çalışmayı bitirmek için bir sonuç yaz.");
+      finishError("Çalışmayı bitirmek için bir sonuç yaz.");
+      focusNote();
       return;
     }
+    if (!flushState(state)) return;
+    store.synchronize();
+    const record = find(pending.recordId);
+    const existingLog = recorded(record, pending.sessionId);
     const latest = store.get(pending.recordId);
     if (
-      !isOpen(find(pending.recordId)) ||
-      latest?.sessionId !== pending.sessionId ||
-      latest.status === "running" ||
-      latest.elapsedMs !== pending.durationMs
+      !existingLog &&
+      (!isOpen(record) ||
+        latest?.sessionId !== pending.sessionId ||
+        latest.status !== "paused" ||
+        latest.elapsedMs !== pending.durationMs ||
+        draftText(latest) !== rawNote ||
+        store.current?.recordId !== pending.recordId)
     ) {
       finishError(
-        "Bu oturum başka bir pencerede değişti. Vazgeçip güncel oturumu yeniden bitir.",
+        "Bu çalışma başka bir pencerede değişti. Notun korunuyor; güncel çalışmayı kontrol et.",
       );
       return;
     }
-    setFinishing(true);
+    finishing = true;
+    finishMessage = "";
+    render();
     try {
       const saved =
-        typeof onCompleteSession === "function" &&
-        (await onCompleteSession(pending.recordId, {
-          sessionId: pending.sessionId,
-          endedAt: pending.endedAt,
-          date: pending.date,
-          durationMs: pending.durationMs,
-          note,
-        }));
-      if (saved !== true) {
+        Boolean(existingLog) ||
+        (typeof onCompleteSession === "function" &&
+          (await onCompleteSession(pending.recordId, {
+            ...pending,
+            note: result,
+          })) === true);
+      if (!saved) {
         finishError(
-          "İş günlüğü kaydedilemedi. Oturum duraklatıldı; yeniden deneyebilirsin.",
+          "Sonuç kaydedilemedi. Notun korunuyor; yeniden deneyebilirsin.",
         );
         return;
       }
-      if (!store.finish(pending.recordId, pending.sessionId)) {
-        finishError(
-          "İş günlüğü kaydedildi; oturum kapatılamadı. Yeniden dene.",
-        );
+      if (
+        !store.finish(pending.recordId, pending.sessionId, {
+          expectedDraft: rawNote,
+        })
+      ) {
+        finishError("Sonuç kaydedildi; çalışma kapatılamadı. Yeniden dene.");
         return;
       }
-      closeContext();
+      drafts.delete(draftKey(state));
+      editorState = null;
+      editorPinned = false;
       finishDraft = null;
-      finishDialog.close();
-      render();
-      if (!destroyed) {
-        try {
-          onMessage(
-            `İş günlüğüne kaydedildi: ${duration(pending.durationMs)}.`,
-          );
-        } catch {
-          /* A feedback error must not report a successful save as failed. */
-        }
+      finishMessage = "";
+      try {
+        onMessage("Sonuç çalışma geçmişine kaydedildi.");
+      } catch {
+        /* Already committed. */
       }
-    } catch {
+    } catch (error) {
       finishError(
-        "İş günlüğü kaydedilemedi. Oturum duraklatıldı; yeniden deneyebilirsin.",
+        error instanceof Error
+          ? error.message
+          : "Sonuç kaydedilemedi. Notun korunuyor; yeniden dene.",
       );
     } finally {
-      setFinishing(false);
+      finishing = false;
+      render();
     }
   }
-
-  function onFinishCancel(event) {
-    event.preventDefault();
-    cancelFinish();
+  function openContext() {
+    const entry = store.current;
+    const record = entry ? find(entry.recordId) : null;
+    if (!record) return;
+    contextDialog.innerHTML = `<div class="work-context-shell"><div class="modal-header"><h2>Kayıt notları</h2><button type="button" class="close-modal" data-action="work-context-close" aria-label="Pencereyi kapat">${closeIcon}</button></div><div class="modal-body work-context-body"><p class="work-context-title">${escapeHtml(record.title)}</p><p class="work-record-notes">${escapeHtml(record.description || "Bu iş için kayıt notu eklenmemiş.")}</p></div><div class="modal-footer"><button type="button" class="btn primary" data-action="work-context-close">Tamam</button></div></div>`;
+    if (!contextDialog.open) contextDialog.showModal();
   }
-  const onFinishClose = () => {
-    if (!finishing) finishDraft = null;
-  };
-  finishDialog.addEventListener("submit", completeFinish);
-  finishDialog.addEventListener("cancel", onFinishCancel);
-  finishDialog.addEventListener("close", onFinishClose);
-
   function onClick(event) {
-    const control = event.target.closest("[data-action]");
+    const control = event.target.closest?.("[data-action]");
     if (!control || !root.contains(control)) return;
     const { action, id } = control.dataset;
     if (
@@ -575,11 +860,14 @@ export function createWorkSessionUI({
         "work-pause",
         "work-resume",
         "work-finish",
-        "work-details",
         "work-finish-cancel",
-        "work-finish-discard",
+        "work-details",
         "work-context-close",
         "work-session-history",
+        "work-draft-retry",
+        "work-draft-use-current",
+        "work-draft-save-local",
+        "work-draft-fork",
       ].includes(action)
     )
       return;
@@ -588,13 +876,21 @@ export function createWorkSessionUI({
       cancelFinish();
       return;
     }
-    if (action === "work-finish-discard") {
-      discardFinish();
+    if (action === "work-draft-use-current") {
+      useCurrentDraft();
+      return;
+    }
+    if (action === "work-draft-fork") {
+      forkWorkingNote();
+      return;
+    }
+    if (action === "work-draft-retry" || action === "work-draft-save-local") {
+      if (editorState)
+        flushState(editorState, { force: action === "work-draft-save-local" });
       return;
     }
     if (action === "work-context-close") {
-      closeContext();
-      render();
+      contextDialog.close();
       return;
     }
     if (action === "work-session-history") {
@@ -606,77 +902,108 @@ export function createWorkSessionUI({
       return;
     }
     if (action === "work-details") {
-      const current = store.current;
-      const record = current ? find(current.recordId) : null;
-      if (!isOpen(record)) return;
-      if (contextDialog.open) closeContext();
-      else {
-        expanded = true;
-        renderContext(record, true);
-        contextDialog.showModal();
-      }
-      render();
+      openContext();
       return;
     }
     if (action === "work-finish") {
       beginFinish(id);
       return;
     }
-    if (action === "work-pause") {
-      if (isOpen(find(id))) store.pause(id);
+    if (finishing || finishDraft || !isOpen(find(id)) || !flushDrafts()) return;
+    store.synchronize();
+    if (!settleJournaled(find(id))) return;
+    if (
+      action === "work-pause" ||
+      (action === "work-start" &&
+        store.current?.recordId === id &&
+        store.current.status === "running")
+    ) {
+      store.pause(id, store.current?.sessionId);
+      render();
       return;
     }
-    const record = find(id);
-    if (!isOpen(record)) return;
-    store.synchronize();
-    if (!settleJournaled(record)) return;
-    if (
-      action === "work-start" &&
-      store.current?.recordId === id &&
-      store.current.status === "running"
-    )
-      store.pause(id);
-    else store.start(id);
+    editorPinned = false;
+    if (store.start(id, { trackTime: false })) {
+      editorState = stateFor(store.current);
+      editorPinned = true;
+      render();
+      focusNote();
+    }
   }
-
-  const onStorage = (event) => {
+  function onStorage(event) {
     if (event.key === KEY || event.key === null) refresh();
-  };
-  const onContextClose = () => {
-    expanded = false;
-    render();
-  };
-  contextDialog.addEventListener("close", onContextClose);
-  root.addEventListener("click", onClick);
-  owner.addEventListener("storage", onStorage);
-  owner.addEventListener("focus", refresh);
-  owner.addEventListener("resize", reserveSpace);
-  const timer = owner.setInterval(refresh, 1000);
+  }
+  function onNoteKeydown(event) {
+    if (
+      finishDraft &&
+      !finishing &&
+      !event.defaultPrevented &&
+      event.key === "Escape"
+    ) {
+      event.preventDefault();
+      event.stopPropagation();
+      cancelFinish();
+    }
+  }
+  function onWheel(event) {
+    event.stopPropagation();
+  }
+  function onNavWheel(event) {
+    if (nav.scrollHeight > nav.clientHeight) event.stopPropagation();
+  }
+  function onBeforeUnload(event) {
+    if (
+      [...drafts.values()].some((state) => {
+        const saved = store.get(state.recordId);
+        return (
+          state.dirty &&
+          (saved?.sessionId !== state.sessionId ||
+            draftText(saved) !== state.text)
+        );
+      })
+    ) {
+      event.preventDefault();
+      event.returnValue = "";
+    }
+  }
   function destroy() {
     if (destroyed) return;
+    for (const state of drafts.values())
+      if (state.dirty && !state.conflict) flushState(state);
     store.stopOwner();
     destroyed = true;
     for (const row of root.querySelectorAll(".focus-row.is-working")) {
       row.classList.remove("is-working");
       row.removeAttribute("data-work-state");
     }
-    owner.clearInterval(timer);
     root.removeEventListener("click", onClick);
+    form.removeEventListener("submit", completeFinish);
+    form.removeEventListener("keydown", onNoteKeydown);
+    note.removeEventListener("input", onNoteInput);
+    note.removeEventListener("select", rememberCaret);
+    note.removeEventListener("wheel", onWheel);
+    nav?.removeEventListener("wheel", onNavWheel);
     owner.removeEventListener("storage", onStorage);
     owner.removeEventListener("focus", refresh);
     owner.removeEventListener("resize", reserveSpace);
+    owner.removeEventListener("beforeunload", onBeforeUnload);
     owner.removeEventListener("pagehide", destroy);
-    finishDialog.removeEventListener("submit", completeFinish);
-    finishDialog.removeEventListener("cancel", onFinishCancel);
-    finishDialog.removeEventListener("close", onFinishClose);
-    contextDialog.removeEventListener("close", onContextClose);
     contextDialog.remove();
-    finishDialog.remove();
     journal.remove();
     sidebar.classList.remove("has-work-journal");
-    document.body.removeAttribute("data-work-session");
-    document.documentElement.style.removeProperty("--work-session-height");
+    reserveSpace();
   }
+  root.addEventListener("click", onClick);
+  form.addEventListener("submit", completeFinish);
+  form.addEventListener("keydown", onNoteKeydown);
+  note.addEventListener("input", onNoteInput);
+  note.addEventListener("select", rememberCaret);
+  note.addEventListener("wheel", onWheel, { passive: true });
+  nav?.addEventListener("wheel", onNavWheel, { passive: true });
+  owner.addEventListener("storage", onStorage);
+  owner.addEventListener("focus", refresh);
+  owner.addEventListener("resize", reserveSpace);
+  owner.addEventListener("beforeunload", onBeforeUnload);
   owner.addEventListener("pagehide", destroy, { once: true });
   refresh();
   return { button, refresh, getRunningRecordId, destroy };

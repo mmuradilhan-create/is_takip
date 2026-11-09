@@ -2,7 +2,7 @@ import { readWorkSessionSnapshot } from "./work-session-store.js";
 
 const CLOSED = new Set(["completed", "cancelled", "transferred"]);
 
-/** Observe an existing session; the widget never owns or changes its timer. */
+/** Observe existing work; the widget never owns or changes the session. */
 export function widgetSessionSummary(records, raw, at = Date.now()) {
   if (!Array.isArray(records) || !Number.isSafeInteger(at) || at < 0)
     return null;
@@ -29,7 +29,9 @@ export function widgetSessionSummary(records, raw, at = Date.now()) {
   const elapsedMs = Math.min(
     Number.MAX_SAFE_INTEGER,
     current.elapsedMs +
-      (current.status === "running" ? Math.max(0, at - current.startedAt) : 0),
+      (current.status === "running" && current.trackTime !== false
+        ? Math.max(0, at - current.startedAt)
+        : 0),
   );
   const seconds = Math.floor(elapsedMs / 1000);
   return {

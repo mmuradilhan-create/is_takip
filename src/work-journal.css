@@ -393,12 +393,13 @@
 }
 
 .work-journal-totals {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   margin-top: 13px;
+  margin-bottom: 16px;
 }
 
 .work-journal-modal .work-journal-totals {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .work-journal-totals + .work-journal-empty {
@@ -708,19 +709,6 @@
 
 .work-log-edit-fields .field textarea {
   min-height: 70px;
-}
-
-.work-log-duration > span {
-  display: block;
-  margin-bottom: 6px;
-  color: #687e5e;
-  font-size: 12px;
-}
-
-.work-log-duration > div {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 9px;
 }
 
 .work-log-edit-fields .field-help {

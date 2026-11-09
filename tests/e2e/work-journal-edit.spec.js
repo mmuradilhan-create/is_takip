@@ -84,7 +84,7 @@ async function openJournal(page) {
   await expect(page.locator("#work-journal-dialog")).toBeVisible();
 }
 
-test("weekly saved sessions can be edited across weeks without changing the task's current next step, and undone exactly", async ({
+test("weekly saved records can be edited across weeks while exact legacy duration and the task's current next step survive one Undo", async ({
   page,
 }) => {
   const original = await seed(page);
@@ -106,9 +106,11 @@ test("weekly saved sessions can be edited across weeks without changing the task
       .evaluate((element) => element.getBoundingClientRect().height),
   ).toBe(0);
   await dialog.locator('[name="workLogDate"]').fill("31.10.2026");
-  await dialog.locator('[name="workLogHours"]').fill("1");
-  await dialog.locator('[name="workLogMinutes"]').fill("2");
-  await expect(dialog.locator('[name="workLogSeconds"]')).toHaveCount(0);
+  await expect(
+    dialog.locator(
+      '[name="workLogHours"], [name="workLogMinutes"], [name="workLogSeconds"]',
+    ),
+  ).toHaveCount(0);
   await note.fill(RESULT);
   await note.press("Shift+Enter");
   await note.pressSequentially("İkinci sonuç satırı.");
@@ -127,7 +129,6 @@ test("weekly saved sessions can be edited across weeks without changing the task
   expect(updated[0].workLog[0]).toEqual({
     ...original[0].workLog[0],
     date: "2026-10-31",
-    durationMs: 3_720_000,
     note: result,
   });
   expect(updated[0].nextAction).toBe(original[0].nextAction);
@@ -151,7 +152,7 @@ test("weekly saved sessions can be edited across weeks without changing the task
   expect(await readRecords(page)).toEqual(original);
 });
 
-test("per-task history preserves millisecond duration during text edits and can cancel or delete one session without touching a running timer", async ({
+test("per-task history preserves millisecond duration during text edits and can cancel or delete one record without touching an active working note", async ({
   page,
 }) => {
   const original = await seed(page);
@@ -170,15 +171,11 @@ test("per-task history preserves millisecond duration during text edits and can 
   await expect(editDialog(page)).not.toBeVisible();
   expect(await readSaved(page)).toBe(saved);
   await entry(page).locator('[data-action="work-log-edit"]').click();
-  await expect(editDialog(page).locator('[name="workLogSeconds"]')).toHaveCount(
-    0,
-  );
-  await expect(editDialog(page).locator('[name="workLogHours"]')).toHaveValue(
-    "0",
-  );
-  await expect(editDialog(page).locator('[name="workLogMinutes"]')).toHaveValue(
-    "1",
-  );
+  await expect(
+    editDialog(page).locator(
+      '[name="workLogHours"], [name="workLogMinutes"], [name="workLogSeconds"]',
+    ),
+  ).toHaveCount(0);
   await editDialog(page).locator('[name="workLogNote"]').fill(RESULT);
   await editDialog(page).locator('[name="workLogDate"]').fill("06.11.2026");
   await editDialog(page).locator('[name="workLogNote"]').press("Enter");
@@ -231,12 +228,9 @@ test("per-task history preserves millisecond duration during text edits and can 
   await entry(page, "journal-edit-two")
     .locator('[data-action="work-log-edit"]')
     .click();
-  await expect(editDialog(page).locator('[name="workLogHours"]')).toHaveValue(
-    "0",
-  );
-  await expect(editDialog(page).locator('[name="workLogMinutes"]')).toHaveValue(
-    "0",
-  );
+  await expect(
+    editDialog(page).locator('[name="workLogHours"], [name="workLogMinutes"]'),
+  ).toHaveCount(0);
   await editDialog(page)
     .locator('[name="workLogNote"]')
     .fill("Bir dakikadan kısa oturumun notu");
@@ -251,7 +245,7 @@ test("per-task history preserves millisecond duration during text edits and can 
   expect(await readSaved(page)).toBe(saved);
 });
 
-test("invalid duration, cancelled drafts and failed storage writes preserve the original history and allow one safe retry", async ({
+test("missing dates, cancelled drafts and failed storage writes preserve the original history and allow one safe retry", async ({
   page,
 }) => {
   await seed(page);
@@ -265,15 +259,14 @@ test("invalid duration, cancelled drafts and failed storage writes preserve the 
   expect(await readSaved(page)).toBe(saved);
   await entry(page).locator('[data-action="work-log-edit"]').click();
   const dialog = editDialog(page);
-  await dialog.locator('[name="workLogMinutes"]').fill("60");
+  await dialog.locator('[name="workLogDate"]').fill("");
   await dialog.locator('[name="workLogNote"]').press("Enter");
-  expect(
-    await dialog
-      .locator('[name="workLogMinutes"]')
-      .evaluate((input) => input.checkValidity()),
-  ).toBe(false);
+  await expect(dialog).toBeVisible();
+  await expect(dialog.locator("#work-log-edit-error")).toContainText(
+    "tarihini seç",
+  );
   expect(await readSaved(page)).toBe(saved);
-  await dialog.locator('[name="workLogMinutes"]').fill("1");
+  await dialog.locator('[name="workLogDate"]').fill("07.11.2026");
   await dialog
     .locator('[name="workLogNote"]')
     .fill("Yazma hatasından korunan taslak");

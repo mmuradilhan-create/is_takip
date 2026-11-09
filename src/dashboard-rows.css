@@ -206,7 +206,7 @@
 @media (min-width: 1280px) and (min-height: 640px) {
   .main.is-dashboard .dashboard-content .dashboard-workspace.dashboard-rows {
     flex: 1 1 0;
-    grid-template-rows: minmax(0, 1fr) 240px;
+    grid-template-rows: minmax(0, 1fr) 220px;
     min-height: 0;
     overflow: hidden;
   }
@@ -279,7 +279,7 @@
 
   .main.is-dashboard .dashboard-content .dashboard-workspace.dashboard-rows {
     gap: 10px;
-    grid-template-rows: minmax(0, 1fr) 220px;
+    grid-template-rows: minmax(0, 1fr) 210px;
   }
 
   .dashboard-rows > :is(.dashboard-top-row, .dashboard-bottom-row) {
@@ -339,15 +339,16 @@
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  min-height: 52px;
-  gap: 6px 8px;
-  padding: 9px 12px;
+  min-height: 42px;
+  height: 42px;
+  gap: 6px;
+  padding: 9px 10px;
 }
 
 .dashboard-rows .dashboard-panel-heading {
   flex: 1 1 auto;
   min-width: 0;
-  min-height: 32px;
+  min-height: 22px;
 }
 
 .dashboard-rows .dashboard-panel-heading h2 {
@@ -358,7 +359,8 @@
   color: var(--theme-ink, #344c3e);
   font-size: 13px;
   font-weight: 600;
-  line-height: 18px;
+  height: 22px;
+  line-height: 22px;
 }
 
 .dashboard-rows
@@ -404,7 +406,7 @@
 
 @media (min-width: 1280px) and (min-height: 640px) and (max-height: 740px) {
   .dashboard-rows .dashboard-bottom-row .dashboard-panel-header {
-    min-height: 44px;
+    min-height: 42px;
     padding: 6px 10px;
   }
 }
@@ -455,52 +457,46 @@
 
   .dashboard-rows .dashboard-bottom-row > .dashboard-notes-panel {
     grid-column: 1 / -1;
-    height: 240px;
+    height: 220px;
   }
 }
 
-/* Narrow cards use a shared two-row header so paging and links remain readable. */
+/* Titles and actions share one compact header line. */
+.dashboard-rows .dashboard-bottom-row .dashboard-panel-header {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+}
+
+.dashboard-rows
+  .dashboard-panel-header
+  > :is(.dashboard-panel-link, .workspace-note-add) {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  min-height: 22px;
+  padding: 0;
+  line-height: 22px;
+}
+
 @media (min-width: 761px) and (max-width: 1599px) {
-  .dashboard-rows .dashboard-bottom-row .dashboard-panel-header {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-rows: 32px 22px;
-    align-content: center;
-    min-height: 76px;
-    padding: 8px 10px;
-    gap: 3px 6px;
+  .dashboard-rows .dashboard-panel-header .attention-pagination button {
+    flex: 0 0 18px;
+    width: 18px;
+    height: 18px;
+    min-height: 18px;
+    padding: 2px;
   }
 
-  .dashboard-rows .dashboard-panel-header > .dashboard-panel-heading {
-    grid-column: 1 / -1;
-    grid-row: 1;
-  }
-
-  .dashboard-rows .dashboard-panel-header > .attention-pagination {
-    grid-column: 1;
-    grid-row: 2;
-    justify-self: start;
-  }
-
-  .dashboard-rows
-    .dashboard-panel-header
-    > :is(.dashboard-panel-link, .workspace-note-add) {
-    grid-column: 2;
-    grid-row: 2;
-    justify-self: end;
-    margin-left: 0;
-  }
-}
-
-@media (min-width: 1280px) and (max-width: 1599px) and (min-height: 640px) {
-  .main.is-dashboard .dashboard-content .dashboard-workspace.dashboard-rows {
-    grid-template-rows: minmax(0, 1fr) 280px;
-  }
-}
-
-@media (min-width: 1280px) and (max-width: 1599px) and (min-height: 640px) and (max-height: 740px) {
-  .main.is-dashboard .dashboard-content .dashboard-workspace.dashboard-rows {
-    grid-template-rows: minmax(0, 1fr) 270px;
+  .dashboard-rows .dashboard-panel-header .attention-page-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
 }
 
@@ -510,7 +506,8 @@
     .dashboard-bottom-row
     :is(.dashboard-goal-meta-controls, .followup-meta) {
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: 28px 28px;
+    grid-template-rows: 20px 20px;
+    gap: 2px;
   }
 
   .dashboard-workspace.dashboard-rows
@@ -518,6 +515,18 @@
     :is(.dashboard-goal-meta-controls, .followup-meta)
     > :is(.badge, .deadline-tag, .dashboard-goal-date, .attention-date) {
     justify-self: start;
+  }
+  .dashboard-workspace.dashboard-rows
+    .dashboard-bottom-row
+    :is(.dashboard-goal-meta-controls, .followup-meta)
+    > .badge,
+  .dashboard-workspace.dashboard-rows
+    .dashboard-bottom-row
+    :is(.dashboard-goal-meta-controls, .followup-meta)
+    .deadline-tag {
+    height: 20px;
+    min-height: 20px;
+    padding: 2px 4px;
   }
 }
 
@@ -529,6 +538,6 @@
   }
 
   .dashboard-rows .dashboard-bottom-row > .dashboard-notes-panel {
-    height: 240px;
+    height: 220px;
   }
 }

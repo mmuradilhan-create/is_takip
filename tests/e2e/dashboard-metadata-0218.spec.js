@@ -240,8 +240,7 @@ test("Dashboard metadata explains follow-up age, offers reversible type-specific
   const items = await seed(page);
   const before = await saved(page);
   const subtitle = page.locator(".attention-panel .dashboard-panel-subtitle");
-  await expect(subtitle).toBeVisible();
-  await expect(subtitle).toHaveText("Gecikenler, bugün ve önümüzdeki 3 gün");
+  await expect(subtitle).toHaveCount(0);
   await expect(waiting(page).locator(".waiting-age")).toHaveText("115 gün");
   await expect(waiting(page).locator(".followup-last")).toHaveText("3 Ağu");
   await expect(waiting(page).locator(".followup-fact-label")).toHaveText([

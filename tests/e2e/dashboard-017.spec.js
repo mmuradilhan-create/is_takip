@@ -166,9 +166,14 @@ test("an empty current week previews only the nearest upcoming week and keeps it
       .locator(".dashboard-goal-row")
       .evaluateAll((rows) => rows.map((row) => row.dataset.goalId).sort()),
   ).toEqual(["upcoming-first", "upcoming-second"]);
-  await expect(weekly(page)).toContainText(/9\s*[–-]\s*15 Kasım 2026/);
-  await expect(weekly(page).locator(".dashboard-week-label")).toContainText(
-    "Gelecek hafta",
+  await expect(weekly(page).locator(".dashboard-week-label")).toHaveCount(0);
+  await expect(weekly(page).locator(".dashboard-panel-link")).toHaveAttribute(
+    "data-week",
+    "2026-W46",
+  );
+  await expect(weekly(page).locator(".dashboard-panel-link")).toHaveAttribute(
+    "title",
+    /Gelecek hafta.*9\s*[–-]\s*15 Kasım 2026/,
   );
   const nav = page.locator('#nav [data-view="weekly"]');
   await expect(nav.locator(".count")).toHaveText("4");
@@ -194,7 +199,14 @@ test("an empty current week previews only the nearest upcoming week and keeps it
   await expect(
     weekly(page).locator('[data-goal-id="upcoming-later"]'),
   ).toBeVisible();
-  await expect(weekly(page)).toContainText(/16\s*[–-]\s*22 Kasım 2026/);
+  await expect(weekly(page).locator(".dashboard-panel-link")).toHaveAttribute(
+    "data-week",
+    "2026-W47",
+  );
+  await expect(weekly(page).locator(".dashboard-panel-link")).toHaveAttribute(
+    "title",
+    /Sıradaki hafta.*16\s*[–-]\s*22 Kasım 2026/,
+  );
   await page.locator("#global-search").fill("eşleşmeyen arama");
   await expect(weekly(page).locator(".dashboard-goal-row")).toHaveCount(0);
   await page.locator("#global-search").fill("");

@@ -138,6 +138,11 @@ async function desktopGeometry(page) {
       attention: box(".dashboard-bottom-row > .attention-panel"),
       weekly: box(".dashboard-bottom-row > .weekly-dashboard-panel"),
       notes: box(".dashboard-bottom-row > .dashboard-notes-panel"),
+      headers: [
+        ...document.querySelectorAll(
+          ".dashboard-bottom-row .dashboard-panel-header",
+        ),
+      ].map((header) => header.getBoundingClientRect().height),
       documentWidth: document.documentElement.scrollWidth,
       documentHeight: document.documentElement.scrollHeight,
       width: innerWidth,
@@ -160,6 +165,11 @@ async function desktopGeometry(page) {
   expect(bounds.attention.y).toBeGreaterThanOrEqual(bounds.focus.bottom);
   expect(bounds.documentWidth).toBeLessThanOrEqual(bounds.width + 1);
   if (bounds.width >= 1280) {
+    const compactHeight = bounds.height <= 740 ? 210 : 220;
+    for (const panel of [bounds.attention, bounds.weekly, bounds.notes])
+      expect(panel.height).toBeCloseTo(compactHeight, 0);
+    expect(bounds.headers).toHaveLength(3);
+    for (const height of bounds.headers) expect(height).toBeCloseTo(42, 0);
     expect(bounds.weekly.bottom).toBeLessThanOrEqual(bounds.height + 1);
     expect(Math.abs(bounds.notes.y - bounds.weekly.y)).toBeLessThanOrEqual(1);
     expect(
@@ -192,6 +202,8 @@ test("dashboard keeps three compact desktop panels and moves notes below the two
   for (const viewport of [
     { width: 1920, height: 1080 },
     { width: 1536, height: 864 },
+    { width: 1280, height: 800 },
+    { width: 1280, height: 720 },
     { width: 1100, height: 640 },
   ]) {
     await page.setViewportSize(viewport);
@@ -478,7 +490,13 @@ test("one upcoming goal and one waiting card show their full content without a r
     await expect(weekly(page).locator(".dashboard-panel-count")).toHaveText(
       "1",
     );
-    await expect(weekly(page).locator(".dashboard-week-label")).toContainText(
+    await expect(weekly(page).locator(".dashboard-week-label")).toHaveCount(0);
+    await expect(weekly(page).locator(".dashboard-panel-link")).toHaveAttribute(
+      "data-week",
+      "2026-W46",
+    );
+    await expect(weekly(page).locator(".dashboard-panel-link")).toHaveAttribute(
+      "title",
       "Gelecek hafta · 9 – 15 Kasım 2026",
     );
     await expect(weekly(page).locator(".dashboard-week-note")).toHaveCount(0);

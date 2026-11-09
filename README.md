@@ -1,6 +1,6 @@
 # Odak
 
-PC kullanımına odaklanan, Türkçe kişisel iş ve hedef takibi. HTML/CSS/JavaScript tabanlıdır. Güncel sürüm: **0.21.21**.
+PC kullanımına odaklanan, Türkçe kişisel iş ve hedef takibi. HTML/CSS/JavaScript tabanlıdır. Güncel sürüm: **0.21.22**.
 
 ## Kullanım
 
@@ -294,3 +294,5 @@ Takip kartlarında yalnız tarih, takip sonucu ve sonraki takip tarihi gösteril
 Ayarlar’daki eski Listeler bölümü ve buna ait yardım metni kaldırıldı. Tarihsel proje kodu, iş türü ve liste tercihleri yedeklerde korunur. Bekleme bilgisi penceresinde de Enter kaydeder, Shift+Enter alt satır ekler.
 
 Genel bakışın alt satırında Takip gerekenler ve haftanın hedefleri ikişer kart gösterir. Takip sayfaları diğer konulara, Haftalık plan bağlantısı tüm hedeflere açılır. Yanlarındaki Notlar alanı iş ve hedeflerden bağımsız maddeler tutar; not ekleme, düzenleme ve silme tek Geri al adımıdır. Enter kaydeder, Shift+Enter alt satır ekler. Notlar JSON yedeğine dahildir; not içermeyen eski kayıt yedeği mevcut notları korur.
+
+Genel bakışın üç alt paneli önceki kompakt yüksekliğe döndü (masaüstünde 220 px, kısa pencerede 210 px). İş listesi ilk sütunu İş / Hedef olarak adlandırılır.

@@ -167,6 +167,11 @@ async function sharedHeaders(page, expectedWaitingCount = "1") {
         fontSize: style.fontSize,
         lineHeight: style.lineHeight,
         fontWeight: style.fontWeight,
+        controls: [
+          ...header.querySelectorAll(
+            ".dashboard-panel-link, .workspace-note-add",
+          ),
+        ].map((control) => control.getBoundingClientRect().toJSON()),
       };
     }),
   );
@@ -180,11 +185,26 @@ async function sharedHeaders(page, expectedWaitingCount = "1") {
   expect(headers[0].fontSize).toBe(headers[1].fontSize);
   expect(headers[0].lineHeight).toBe(headers[1].lineHeight);
   expect(headers[0].fontWeight).toBe(headers[1].fontWeight);
-  await expect(attention(page).locator(".dashboard-panel-subtitle")).toHaveText(
-    "Gecikenler, bugün ve önümüzdeki 3 gün",
+  for (const header of headers)
+    for (const control of header.controls)
+      expect(
+        Math.abs(
+          control.y +
+            control.height / 2 -
+            (header.title.y + header.title.height / 2),
+        ),
+      ).toBeLessThanOrEqual(1);
+  await expect(
+    attention(page).locator(".dashboard-panel-subtitle"),
+  ).toHaveCount(0);
+  await expect(weekly(page).locator(".dashboard-week-label")).toHaveCount(0);
+  await expect(weekly(page).locator(".dashboard-panel-link")).toHaveAttribute(
+    "data-week",
+    "2026-W46",
   );
-  await expect(weekly(page).locator(".dashboard-week-label")).toContainText(
-    "9 – 15 Kasım 2026",
+  await expect(weekly(page).locator(".dashboard-panel-link")).toHaveAttribute(
+    "title",
+    /9 – 15 Kasım 2026/,
   );
   for (const panel of [attention(page), weekly(page)]) {
     await panel.locator(".dashboard-panel-link").scrollIntoViewIfNeeded();

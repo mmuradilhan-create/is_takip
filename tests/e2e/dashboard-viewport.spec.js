@@ -122,6 +122,21 @@ for (const viewport of [
       .boundingBox();
     const weekly = await page.locator(".weekly-dashboard-panel").boundingBox();
     const notes = await page.locator(".dashboard-notes-panel").boundingBox();
+    const compactHeight = viewport.height <= 740 ? 210 : 220;
+    for (const panel of [attention, weekly, notes])
+      expect(panel.height).toBeCloseTo(compactHeight, 0);
+    const headerHeights = await page
+      .locator(".dashboard-bottom-row .dashboard-panel-header")
+      .evaluateAll((headers) =>
+        headers.map((header) => header.getBoundingClientRect().height),
+      );
+    expect(headerHeights).toHaveLength(3);
+    for (const height of headerHeights) expect(height).toBeCloseTo(42, 0);
+    await expect(
+      page.locator(
+        ".dashboard-bottom-row :is(.dashboard-week-label, .dashboard-panel-subtitle)",
+      ),
+    ).toHaveCount(0);
     const left = await page.locator(".dashboard-main-column").boundingBox();
     const right = await page.locator(".dashboard-followups").boundingBox();
     expect(attention.x).toBeCloseTo(focus.x, 0);

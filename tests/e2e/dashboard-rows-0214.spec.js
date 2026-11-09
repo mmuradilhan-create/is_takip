@@ -32,15 +32,14 @@ async function cardColumns(page) {
       .locator(".dashboard-workspace")
       .getAttribute("data-card-columns"),
   );
-  expect(columns).toBeGreaterThanOrEqual(1);
-  expect(columns).toBeLessThanOrEqual(3);
+  expect(columns).toBe(2);
   expect(
     await attention(page)
       .locator(".attention-list")
       .evaluate(
         (list) => getComputedStyle(list).gridTemplateColumns.split(" ").length,
       ),
-  ).toBe(columns);
+  ).toBe(page.viewportSize().width > 760 ? 2 : 1);
   return columns;
 }
 
@@ -138,6 +137,7 @@ async function desktopGeometry(page) {
       calendar: box(".dashboard-top-row .dashboard-calendar"),
       attention: box(".dashboard-bottom-row > .attention-panel"),
       weekly: box(".dashboard-bottom-row > .weekly-dashboard-panel"),
+      notes: box(".dashboard-bottom-row > .dashboard-notes-panel"),
       documentWidth: document.documentElement.scrollWidth,
       documentHeight: document.documentElement.scrollHeight,
       width: innerWidth,
@@ -146,9 +146,10 @@ async function desktopGeometry(page) {
     };
   });
   expect(Math.abs(bounds.focus.y - bounds.calendar.y)).toBeLessThanOrEqual(1);
-  expect(
-    Math.abs(bounds.focus.height - bounds.calendar.height),
-  ).toBeLessThanOrEqual(1);
+  if (bounds.width >= 1280)
+    expect(
+      Math.abs(bounds.focus.height - bounds.calendar.height),
+    ).toBeLessThanOrEqual(1);
   expect(Math.abs(bounds.attention.y - bounds.weekly.y)).toBeLessThanOrEqual(1);
   expect(
     Math.abs(bounds.attention.height - bounds.weekly.height),
@@ -157,13 +158,33 @@ async function desktopGeometry(page) {
     Math.abs(bounds.attention.width - bounds.weekly.width),
   ).toBeLessThanOrEqual(1);
   expect(bounds.attention.y).toBeGreaterThanOrEqual(bounds.focus.bottom);
-  expect(bounds.weekly.bottom).toBeLessThanOrEqual(bounds.height + 1);
   expect(bounds.documentWidth).toBeLessThanOrEqual(bounds.width + 1);
-  expect(bounds.documentHeight).toBeLessThanOrEqual(bounds.height + 1);
-  expect(bounds.scroll).toBe(0);
+  if (bounds.width >= 1280) {
+    expect(bounds.weekly.bottom).toBeLessThanOrEqual(bounds.height + 1);
+    expect(Math.abs(bounds.notes.y - bounds.weekly.y)).toBeLessThanOrEqual(1);
+    expect(
+      Math.abs(bounds.notes.height - bounds.weekly.height),
+    ).toBeLessThanOrEqual(1);
+    expect(
+      Math.abs(bounds.notes.width - bounds.weekly.width),
+    ).toBeLessThanOrEqual(1);
+    expect(bounds.notes.x).toBeGreaterThanOrEqual(bounds.weekly.right);
+    expect(bounds.documentHeight).toBeLessThanOrEqual(bounds.height + 1);
+    expect(bounds.scroll).toBe(0);
+  } else {
+    expect(bounds.notes.y).toBeGreaterThanOrEqual(bounds.weekly.bottom);
+    expect(bounds.notes.x).toBeCloseTo(bounds.attention.x, 0);
+    expect(bounds.notes.right).toBeCloseTo(bounds.weekly.right, 0);
+    await page
+      .locator(".dashboard-notes-panel .workspace-note-add")
+      .scrollIntoViewIfNeeded();
+    await expect(
+      page.locator(".dashboard-notes-panel .workspace-note-add"),
+    ).toBeInViewport({ ratio: 1 });
+  }
 }
 
-test("desktop dashboard has equal-height top panels and two equal lower panels even with a planning prompt", async ({
+test("dashboard keeps three compact desktop panels and moves notes below the two card panels in narrower windows", async ({
   page,
 }) => {
   await seed(page);
@@ -187,6 +208,7 @@ test("desktop dashboard has equal-height top panels and two equal lower panels e
     const goals = weekly(page).locator(".dashboard-goal-row");
     await expect(goals).toHaveCount(2);
     for (const goal of await goals.all()) {
+      await goal.scrollIntoViewIfNeeded();
       await expect(goal.locator(".dashboard-goal-actions button")).toHaveCount(
         2,
       );
@@ -388,8 +410,8 @@ test("responsive follow-up pages remain keyboard accessible and one saved follow
   await expect(attentionRows(page)).toHaveCount(Math.min(columns, 4));
   await desktopGeometry(page);
   await page.setViewportSize({ width: 390, height: 700 });
-  expect(await cardColumns(page)).toBe(1);
-  await expect(attentionRows(page)).toHaveCount(1);
+  expect(await cardColumns(page)).toBe(2);
+  await expect(attentionRows(page)).toHaveCount(2);
   await attentionRows(page).first().scrollIntoViewIfNeeded();
   await expect(
     attentionRows(page).first().locator('[data-action="waiting-followup"]'),
@@ -431,6 +453,7 @@ test("one upcoming goal and one waiting card show their full content without a r
   await seed(page, { inputRecords: records });
   const original = await saved(page);
   const contained = async (child, parent) => {
+    await child.scrollIntoViewIfNeeded();
     const inside = await child.boundingBox();
     const outside = await parent.boundingBox();
     expect(inside.x).toBeGreaterThanOrEqual(outside.x - 1);

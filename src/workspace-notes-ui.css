@@ -1,0 +1,208 @@
+.dashboard-notes-panel {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+.dashboard-notes-panel .workspace-note-add {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 4px;
+  min-height: 22px;
+  margin-left: auto;
+  padding: 3px 0;
+  color: var(--theme-accent, #52734d);
+  white-space: nowrap;
+}
+
+.workspace-note-add > svg {
+  width: 13px;
+  height: 13px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+}
+
+.workspace-notes-content {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  padding: 9px 12px;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  scroll-padding-block: 9px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--theme-border, #cbd5c3) transparent;
+}
+
+#app .workspace-notes-content:focus {
+  outline: none;
+  box-shadow: none;
+}
+
+.workspace-notes-content:focus-visible {
+  background: var(--theme-hover, #fafcf7);
+}
+
+.workspace-notes-list {
+  display: block;
+  margin: 0;
+  padding: 0 0 0 14px;
+  list-style: disc;
+}
+
+.workspace-notes-list > li {
+  min-width: 0;
+  padding-left: 1px;
+  color: var(--theme-accent, #52734d);
+}
+
+.workspace-notes-list > li + li {
+  margin-top: 8px;
+}
+
+.workspace-note-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 6px;
+  min-width: 0;
+}
+
+.workspace-note-text {
+  min-width: 0;
+  margin: 2px 0 0;
+  color: var(--theme-ink, #405b49);
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.workspace-note-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.workspace-note-control {
+  display: inline-flex;
+  flex: 0 0 22px;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  min-width: 22px;
+  height: 22px;
+  min-height: 22px;
+  margin: 0;
+  padding: 4px;
+  border: 1px solid var(--theme-border, #dce5d5);
+  border-radius: 5px;
+  background: var(--theme-surface, #fff);
+  color: var(--theme-muted, #73856a);
+}
+
+.workspace-note-control:hover,
+.workspace-note-control:focus-visible {
+  border-color: var(--theme-accent, #a5bc96);
+  background: var(--theme-hover, #eaf2e3);
+  color: var(--theme-accent, #4c7047);
+}
+
+.workspace-note-control > svg {
+  width: 12px;
+  height: 12px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.workspace-notes-empty {
+  margin: 3px 0;
+  color: var(--theme-muted, #74836a);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+#workspace-notes-panel-error {
+  margin: 10px 0 0;
+  font-size: 11px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+#workspace-note-editor {
+  --workspace-note-height: min(90dvh, calc(100dvh - 24px));
+  width: min(520px, calc(100vw - 24px));
+  max-height: var(--workspace-note-height);
+  overflow: hidden;
+  border-color: var(--theme-border, #dce5d5);
+  background: var(--theme-surface, #fff);
+  color: var(--theme-ink, #405b49);
+}
+
+#workspace-note-form {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-height: calc(var(--workspace-note-height) - 2px);
+  margin: 0;
+}
+
+#workspace-note-editor :is(.modal-header, .modal-footer) {
+  flex: 0 0 auto;
+  background: var(--theme-surface, #fff);
+}
+
+#workspace-note-editor .modal-header h2 {
+  font-size: 17px;
+}
+
+.workspace-note-editor-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+#workspace-note-editor textarea {
+  min-height: 130px;
+  max-height: 50dvh;
+  border: 1px solid var(--theme-border, #dce5d5);
+  background: var(--theme-surface, #fff);
+  color: var(--theme-ink, #405b49);
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.workspace-note-availability,
+#workspace-note-shortcuts {
+  color: var(--theme-muted, #74836a);
+  font-size: 11px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.workspace-note-availability {
+  margin: 0 0 12px;
+}
+
+#workspace-note-error {
+  margin: 12px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+#workspace-note-editor [hidden],
+.dashboard-notes-panel [hidden] {
+  display: none !important;
+}

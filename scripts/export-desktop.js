@@ -34,6 +34,11 @@ geçişinde ve pencereye dönünce güncellenir. Kayıtları veya açık formlar
 
 LISTE DUZENI
 
+Genel bakışın altındaki takip ve hedef alanları ikişer kart gösterir.
+Yanlarındaki Notlar alanı bağımsız maddeler tutar; ekleme/düzenleme/silme
+tek Geri al adımıdır. Enter kaydeder, Shift+Enter alt satır ekler.
+Notlar JSON yedeğine dahildir; eski notsuz yedek mevcut notları korur.
+
 Ayarlar içindeki eski Listeler menüsü kaldırıldı; eski kayıt değerleri
 ve yedek uyumluluğu korunur. Bekleme bilgisi penceresinde Enter kaydeder,
 Shift+Enter alt satır ekler.

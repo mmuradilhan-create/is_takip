@@ -1,4 +1,4 @@
-/* Current work and calendar share a row; the two supporting panels share another. */
+/* Current work and calendar share a row; supporting cards and notes share another. */
 .dashboard-workspace.dashboard-rows {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -20,7 +20,7 @@
 }
 
 .dashboard-rows > .dashboard-bottom-row {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .dashboard-rows
@@ -66,7 +66,7 @@
 
 .dashboard-rows
   .dashboard-bottom-row
-  > :is(.attention-panel, .weekly-dashboard-panel) {
+  > :is(.attention-panel, .weekly-dashboard-panel, .dashboard-notes-panel) {
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -105,10 +105,7 @@
   :is(.attention-list.followup-list, .dashboard-goals) {
   display: grid;
   flex: 1 1 auto;
-  grid-template-columns: repeat(
-    var(--dashboard-card-columns, 2),
-    minmax(0, 1fr)
-  );
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   grid-auto-rows: 150px;
   align-content: start;
   align-items: stretch;
@@ -206,10 +203,10 @@
 }
 
 /* Bounded desktop rows retain their headers while only record lists scroll. */
-@media (min-width: 1100px) and (min-height: 640px) {
+@media (min-width: 1280px) and (min-height: 640px) {
   .main.is-dashboard .dashboard-content .dashboard-workspace.dashboard-rows {
     flex: 1 1 0;
-    grid-template-rows: minmax(0, 1fr) 220px;
+    grid-template-rows: minmax(0, 1fr) 240px;
     min-height: 0;
     overflow: hidden;
   }
@@ -247,7 +244,7 @@
   .main.is-dashboard
     .dashboard-rows
     .dashboard-bottom-row
-    > :is(.attention-panel, .weekly-dashboard-panel) {
+    > :is(.attention-panel, .weekly-dashboard-panel, .dashboard-notes-panel) {
     flex: none;
     min-height: 0;
   }
@@ -274,7 +271,7 @@
   }
 }
 
-@media (min-width: 1100px) and (min-height: 640px) and (max-height: 740px) {
+@media (min-width: 1280px) and (min-height: 640px) and (max-height: 740px) {
   .main.is-dashboard > .dashboard-content {
     padding-top: 12px;
     padding-bottom: 12px;
@@ -282,7 +279,7 @@
 
   .main.is-dashboard .dashboard-content .dashboard-workspace.dashboard-rows {
     gap: 10px;
-    grid-template-rows: minmax(0, 1fr) 210px;
+    grid-template-rows: minmax(0, 1fr) 220px;
   }
 
   .dashboard-rows > :is(.dashboard-top-row, .dashboard-bottom-row) {
@@ -317,7 +314,9 @@
   .dashboard-rows > .dashboard-top-row {
     grid-template-columns: minmax(0, 1fr);
   }
+}
 
+@media (max-width: 1279px) {
   .dashboard-rows .dashboard-calendar {
     height: 356px;
     min-height: 0;
@@ -330,7 +329,7 @@
   }
 }
 
-@media (min-width: 1100px) and (min-height: 640px) and (max-height: 740px) {
+@media (min-width: 1280px) and (min-height: 640px) and (max-height: 740px) {
   .main.is-dashboard .dashboard-rows .dashboard-calendar {
     grid-template-rows: auto auto auto minmax(0, 1fr);
   }
@@ -403,7 +402,7 @@
   height: 14px;
 }
 
-@media (min-width: 1100px) and (min-height: 640px) and (max-height: 740px) {
+@media (min-width: 1280px) and (min-height: 640px) and (max-height: 740px) {
   .dashboard-rows .dashboard-bottom-row .dashboard-panel-header {
     min-height: 44px;
     padding: 6px 10px;
@@ -411,7 +410,7 @@
 }
 
 /* Pagination stays beside the common two-line heading on bounded desktops. */
-@media (min-width: 1100px) and (min-height: 640px) {
+@media (min-width: 1280px) and (min-height: 640px) {
   .dashboard-rows .dashboard-bottom-row .dashboard-panel-header {
     flex-wrap: nowrap;
   }
@@ -448,25 +447,88 @@
   }
 }
 
-/* Three narrower cards retain their labels by using a taller shared row. */
-@media (min-width: 761px) and (max-width: 1439px) {
-  .dashboard-rows[data-card-columns="3"]
-    .dashboard-bottom-row
-    :is(.attention-list.followup-list, .dashboard-goals) {
-    grid-auto-rows: 180px;
+/* Intermediate windows keep both card panels together and put notes below. */
+@media (min-width: 761px) and (max-width: 1279px) {
+  .dashboard-rows > .dashboard-bottom-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .dashboard-rows .dashboard-bottom-row > .dashboard-notes-panel {
+    grid-column: 1 / -1;
+    height: 240px;
   }
 }
 
-@media (min-width: 1100px) and (max-width: 1439px) and (min-height: 640px) {
-  .main.is-dashboard
-    .dashboard-content
-    .dashboard-workspace.dashboard-rows[data-card-columns="3"] {
-    grid-template-rows: minmax(0, 1fr) 250px;
+/* Narrow cards use a shared two-row header so paging and links remain readable. */
+@media (min-width: 761px) and (max-width: 1599px) {
+  .dashboard-rows .dashboard-bottom-row .dashboard-panel-header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: 32px 22px;
+    align-content: center;
+    min-height: 76px;
+    padding: 8px 10px;
+    gap: 3px 6px;
   }
 
-  .dashboard-rows[data-card-columns="3"]
+  .dashboard-rows .dashboard-panel-header > .dashboard-panel-heading {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+
+  .dashboard-rows .dashboard-panel-header > .attention-pagination {
+    grid-column: 1;
+    grid-row: 2;
+    justify-self: start;
+  }
+
+  .dashboard-rows
+    .dashboard-panel-header
+    > :is(.dashboard-panel-link, .workspace-note-add) {
+    grid-column: 2;
+    grid-row: 2;
+    justify-self: end;
+    margin-left: 0;
+  }
+}
+
+@media (min-width: 1280px) and (max-width: 1599px) and (min-height: 640px) {
+  .main.is-dashboard .dashboard-content .dashboard-workspace.dashboard-rows {
+    grid-template-rows: minmax(0, 1fr) 280px;
+  }
+}
+
+@media (min-width: 1280px) and (max-width: 1599px) and (min-height: 640px) and (max-height: 740px) {
+  .main.is-dashboard .dashboard-content .dashboard-workspace.dashboard-rows {
+    grid-template-rows: minmax(0, 1fr) 270px;
+  }
+}
+
+/* Status captions keep their full width beside the third panel. */
+@media (min-width: 1280px) and (max-width: 1535px) {
+  .dashboard-workspace.dashboard-rows
+    .dashboard-bottom-row
+    :is(.dashboard-goal-meta-controls, .followup-meta) {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: 28px 28px;
+  }
+
+  .dashboard-workspace.dashboard-rows
+    .dashboard-bottom-row
+    :is(.dashboard-goal-meta-controls, .followup-meta)
+    > :is(.badge, .deadline-tag, .dashboard-goal-date, .attention-date) {
+    justify-self: start;
+  }
+}
+
+@media (max-width: 760px) {
+  .dashboard-rows
     .dashboard-bottom-row
     :is(.attention-list.followup-list, .dashboard-goals) {
-    grid-auto-rows: 100%;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .dashboard-rows .dashboard-bottom-row > .dashboard-notes-panel {
+    height: 240px;
   }
 }

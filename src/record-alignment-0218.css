@@ -15,6 +15,10 @@
   width: 148px;
 }
 
+.full-table.record-table > thead > tr > th.row-action-col {
+  width: 88px;
+}
+
 .full-table.record-table
   > thead
   > tr

@@ -109,7 +109,7 @@ for (const viewport of [
   { width: 1536, height: 864, theme: "light" },
   { width: 1280, height: 720, theme: "dark" },
 ]) {
-  test(`dashboard panels stay in ${viewport.width} by ${viewport.height} and expose all work through their own scroll areas`, async ({
+  test(`dashboard panels stay in ${viewport.width} by ${viewport.height} with two-card previews, a separate notes panel and access to every full-list record`, async ({
     page,
   }, testInfo) => {
     const original = await seed(page, viewport);
@@ -121,24 +121,33 @@ for (const viewport of [
       .locator(".dashboard-calendar")
       .boundingBox();
     const weekly = await page.locator(".weekly-dashboard-panel").boundingBox();
+    const notes = await page.locator(".dashboard-notes-panel").boundingBox();
     const left = await page.locator(".dashboard-main-column").boundingBox();
     const right = await page.locator(".dashboard-followups").boundingBox();
     expect(attention.x).toBeCloseTo(focus.x, 0);
     expect(attention.width).toBeCloseTo(weekly.width, 0);
     expect(attention.y).toBeCloseTo(weekly.y, 0);
     expect(attention.height).toBeCloseTo(weekly.height, 0);
+    expect(notes.width).toBeCloseTo(weekly.width, 0);
+    expect(notes.y).toBeCloseTo(weekly.y, 0);
+    expect(notes.height).toBeCloseTo(weekly.height, 0);
+    expect(notes.x).toBeGreaterThanOrEqual(weekly.x + weekly.width);
     expect(focus.y).toBeCloseTo(compactCalendar.y, 0);
     expect(focus.height).toBeCloseTo(compactCalendar.height, 0);
     expect(attention.y).toBeGreaterThanOrEqual(focus.y + focus.height - 1);
     expect(right.x).toBeGreaterThanOrEqual(focus.x + focus.width);
     expect(weekly.x).toBeGreaterThanOrEqual(attention.x + attention.width);
-    for (const box of [left, right, attention, weekly]) {
+    for (const box of [left, right, attention, weekly, notes]) {
       expect(box.y).toBeGreaterThanOrEqual(content.y);
       expect(box.y + box.height).toBeLessThanOrEqual(viewport.height + 1);
     }
     const goals = page.locator(".dashboard-goals");
-    await expect(goals.locator(".dashboard-goal-row")).toHaveCount(5);
-    for (const index of [1, 4]) {
+    await expect(goals.locator(".dashboard-goal-row")).toHaveCount(2);
+    await expect(
+      page.locator(".weekly-dashboard-panel .dashboard-panel-count"),
+    ).toHaveText("5");
+    await expect(page.locator(".dashboard-goals-more")).toHaveCount(0);
+    for (const index of [0, 1]) {
       const title = goals.locator(
         `[data-goal-id="viewport-goal-${index}"] .dashboard-goal-title`,
       );
@@ -155,7 +164,23 @@ for (const viewport of [
       expect(await saved(page)).toBe(original);
       await fitsViewport(page);
     }
-    expect(await goals.evaluate((list) => list.scrollTop)).toBeGreaterThan(0);
+    await page
+      .locator('.weekly-dashboard-panel [data-action="dashboard-weekly"]')
+      .click();
+    await expect(page.locator("#page-title")).toHaveText("Haftalık plan");
+    await expect(page.locator(".full-table tr[data-record-row]")).toHaveCount(
+      5,
+    );
+    await page
+      .locator('tr[data-record-row][data-id="viewport-goal-4"] .task-name')
+      .click();
+    await expect(
+      page.locator("#goal-detail-panel .goal-panel-title"),
+    ).toContainText("Yaklaşan haftanın 05 hedefi");
+    await page.keyboard.press("Escape");
+    await page.locator('#nav [data-view="dashboard"]').click();
+    expect(await saved(page)).toBe(original);
+    await fitsViewport(page);
     await expect(page.locator(".focus-more")).toHaveCount(0);
     await expect(page.locator(".focus-list > .focus-row")).toHaveCount(18);
     const focusScroll = await page.locator(".focus-list").evaluate((list) => ({
@@ -183,8 +208,7 @@ for (const viewport of [
         .locator(".dashboard-workspace")
         .getAttribute("data-card-columns"),
     );
-    expect(columns).toBeGreaterThanOrEqual(1);
-    expect(columns).toBeLessThanOrEqual(3);
+    expect(columns).toBe(2);
     expect(
       await page
         .locator(".attention-list")
@@ -193,9 +217,7 @@ for (const viewport of [
             getComputedStyle(list).gridTemplateColumns.split(" ").length,
         ),
     ).toBe(columns);
-    await expect(page.locator(".attention-list > [data-id]")).toHaveCount(
-      Math.min(columns, 8),
-    );
+    await expect(page.locator(".attention-list > [data-id]")).toHaveCount(2);
     expect((await readAttentionCards(page)).map((card) => card.id)).toEqual(
       Array.from({ length: 8 }, (_, index) => `viewport-attention-${index}`),
     );
@@ -281,8 +303,11 @@ test("the header calendar works from dashboards and lists without navigation, re
     calendar(page).locator(".calendar-selected-label time"),
   ).toHaveAttribute("datetime", "2026-11-11");
   await page.keyboard.press("Escape");
+  await expect(calendar(page)).not.toBeVisible();
+  await expect(headerCalendar(page)).toBeFocused();
   expect(await saved(page)).toBe(original);
   await page.getByRole("searchbox").fill("");
+  await expect(page.getByRole("searchbox")).toHaveValue("");
   for (const type of [
     "daily",
     "weekly",
@@ -308,8 +333,16 @@ test("the header calendar works from dashboards and lists without navigation, re
       () => document.documentElement.scrollWidth <= innerWidth,
     ),
   ).toBe(true);
+  const notes = page.locator(".dashboard-notes-panel");
+  await expect(notes).toBeVisible();
+  await notes.scrollIntoViewIfNeeded();
+  await expect(page.locator(".dashboard-goal-row")).toHaveCount(2);
+  await page
+    .locator('.weekly-dashboard-panel [data-action="dashboard-weekly"]')
+    .click();
+  await expect(page.locator(".full-table tr[data-record-row]")).toHaveCount(5);
   const lastGoal = page.locator(
-    '.dashboard-goal-row[data-goal-id="viewport-goal-4"] .dashboard-goal-title',
+    'tr[data-record-row][data-id="viewport-goal-4"] .task-name',
   );
   await lastGoal.scrollIntoViewIfNeeded();
   await lastGoal.click();
@@ -317,6 +350,7 @@ test("the header calendar works from dashboards and lists without navigation, re
     page.locator("#goal-detail-panel .goal-panel-title"),
   ).toContainText("Yaklaşan haftanın 05 hedefi");
   await page.keyboard.press("Escape");
+  await page.locator('#nav [data-view="dashboard"]').click();
   await headerCalendar(page).click();
   await expect(calendar(page)).toBeVisible();
   await page.keyboard.press("Escape");

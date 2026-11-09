@@ -318,7 +318,14 @@ test("Dashboard metadata explains follow-up age, offers reversible type-specific
   const expectedNote = items.find(
     (item) => item.id === "metadata-child",
   ).description;
-  for (const reveal of [() => focusNote.hover(), () => focusNote.focus()]) {
+  for (const reveal of [
+    () => focusNote.hover(),
+    async () => {
+      await focusSource.focus();
+      await page.keyboard.press("Tab");
+      await expect(focusNote).toBeFocused();
+    },
+  ]) {
     await reveal();
     await expect(notePreview).toBeVisible();
     await expect(notePreview.locator(".record-note-body")).toHaveText(
@@ -707,7 +714,7 @@ test("a child deadline edits inside the goal panel without losing drafts or over
   expect(await saved(page)).toBe(external);
 });
 
-test("dense goal cards use three shared slots when wide and keep every status, date and action reachable as the panels narrow", async ({
+test("dense previews keep two shared cards beside independent notes and every goal remains reachable as the panels narrow", async ({
   page,
 }, testInfo) => {
   await seed(page, { dense: true });
@@ -736,7 +743,7 @@ test("dense goal cards use three shared slots when wide and keep every status, d
     { width: 375, height: 700 },
   ]) {
     await page.setViewportSize(viewport);
-    const columns = viewport.width >= 1200 ? 3 : viewport.width >= 1100 ? 2 : 1;
+    const columns = viewport.width > 760 ? 2 : 1;
     const goals = page.locator(".weekly-dashboard-panel .dashboard-goals");
     const followups = page.locator(".attention-panel .attention-list");
     await goals.evaluate((element) => {
@@ -753,12 +760,41 @@ test("dense goal cards use three shared slots when wide and keep every status, d
         .toBe(columns);
     await expect(page.locator(".dashboard-rows")).toHaveAttribute(
       "data-card-columns",
-      String(columns),
+      "2",
     );
-    await expect(page.locator(".dashboard-goal-row")).toHaveCount(4);
-    await expect(followups.locator(".followup-row")).toHaveCount(
-      Math.min(3, columns),
-    );
+    await expect(page.locator(".dashboard-goal-row")).toHaveCount(2);
+    await expect(followups.locator(".followup-row")).toHaveCount(2);
+    await expect(
+      page.locator(".weekly-dashboard-panel .dashboard-panel-count"),
+    ).toHaveText("4");
+    const notes = page.locator(".dashboard-notes-panel");
+    await expect(notes).toBeVisible();
+    await expect(page.locator(".dashboard-bottom-row > .panel")).toHaveCount(3);
+    const attentionPanelBounds = await page
+      .locator(".attention-panel")
+      .boundingBox();
+    const goalPanelBounds = await page
+      .locator(".weekly-dashboard-panel")
+      .boundingBox();
+    const notesBounds = await notes.boundingBox();
+    if (viewport.width >= 1280) {
+      expect(Math.abs(notesBounds.y - goalPanelBounds.y)).toBeLessThanOrEqual(
+        1,
+      );
+      expect(
+        Math.abs(notesBounds.width - goalPanelBounds.width),
+      ).toBeLessThanOrEqual(1);
+      expect(notesBounds.x).toBeGreaterThanOrEqual(
+        goalPanelBounds.x + goalPanelBounds.width,
+      );
+    } else {
+      expect(notesBounds.y).toBeGreaterThanOrEqual(
+        Math.max(
+          attentionPanelBounds.y + attentionPanelBounds.height,
+          goalPanelBounds.y + goalPanelBounds.height,
+        ) - 1,
+      );
+    }
     const firstGoal = goals.locator(".dashboard-goal-row").first();
     const goalBounds = await firstGoal.boundingBox();
     const goalStatus = await firstGoal.locator(".status-trigger").boundingBox();
@@ -818,18 +854,12 @@ test("dense goal cards use three shared slots when wide and keep every status, d
       await page.screenshot({
         path: testInfo.outputPath(
           viewport.width === 1536
-            ? "dashboard-three-cards-light.png"
-            : `dashboard-three-cards-${viewport.width}x${viewport.height}-light.png`,
+            ? "dashboard-two-cards-notes-light.png"
+            : `dashboard-two-cards-notes-${viewport.width}x${viewport.height}-light.png`,
         ),
         fullPage: false,
       });
     }
-    if (viewport.width >= 1100)
-      expect(
-        await goals.evaluate(
-          (element) => element.scrollHeight > element.clientHeight,
-        ),
-      ).toBe(true);
     for (const item of await page.locator(".dashboard-goal-row").all()) {
       await item.scrollIntoViewIfNeeded();
       const bounds = await item.boundingBox();
@@ -920,6 +950,24 @@ test("dense goal cards use three shared slots when wide and keep every status, d
     expect(await saved(page)).toBe(before);
   }
   await page.setViewportSize({ width: 1536, height: 864 });
+  await page
+    .locator('.weekly-dashboard-panel [data-action="dashboard-weekly"]')
+    .click();
+  expect(
+    (
+      await page
+        .locator(".full-table tr[data-record-row]")
+        .evaluateAll((rows) => rows.map((item) => item.dataset.id))
+    ).sort(),
+  ).toEqual(
+    [
+      "metadata-goal",
+      "metadata-goal-two",
+      "metadata-goal-3",
+      "metadata-goal-4",
+    ].sort(),
+  );
+  expect(await saved(page)).toBe(before);
   await view(page, "daily");
   const daily = row(page, "metadata-child");
   const status = daily.locator('[data-action="status-menu"]');

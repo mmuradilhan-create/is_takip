@@ -292,7 +292,7 @@ function attentionFixture() {
   ];
 }
 
-test("the current weekly plan shows every current goal with numeric progress and keeps older work separate without changing records", async ({
+test("the dashboard previews two current goals with numeric progress while the full weekly plan retains every goal and older work stays separate", async ({
   page,
 }) => {
   const fixture = goalsFixture();
@@ -300,17 +300,13 @@ test("the current weekly plan shows every current goal with numeric progress and
   const before = await saved(page);
   expect(JSON.parse(before).records).toEqual(fixture);
   await expect(goals(page)).toBeVisible();
-  await expect(goalRows(page)).toHaveCount(4);
+  await expect(goalRows(page)).toHaveCount(2);
+  await expect(goals(page).locator(".dashboard-panel-count")).toHaveText("4");
   expect(
     await goalRows(page).evaluateAll((rows) =>
       rows.map((row) => row.dataset.goalId),
     ),
-  ).toEqual([
-    "plan-current-primary",
-    "plan-current-second",
-    "plan-current-third",
-    "plan-current-fallback",
-  ]);
+  ).toEqual(["plan-current-primary", "plan-current-second"]);
   await expect(goals(page).locator(".dashboard-goals-more")).toHaveCount(0);
   const weeklyBox = await goals(page).boundingBox();
   const calendarBox = await page.locator(".dashboard-calendar").boundingBox();
@@ -321,12 +317,12 @@ test("the current weekly plan shows every current goal with numeric progress and
     );
   // Row decoration can round at the scroll edge; the action remains fully visible.
   await expect(goalRows(page).last()).toBeInViewport({ ratio: 0.99 });
-  const lastTitle = goal(page, "plan-current-fallback").locator(
+  const lastTitle = goal(page, "plan-current-second").locator(
     ".dashboard-goal-title",
   );
   await expect(lastTitle).toBeInViewport({ ratio: 1 });
   await expect(lastTitle).not.toHaveAttribute("data-action");
-  const lastProgress = goal(page, "plan-current-fallback").locator(
+  const lastProgress = goal(page, "plan-current-second").locator(
     '[data-action="goal-progress-open"]',
   );
   await expect(lastProgress).toHaveText("İlerleme");
@@ -334,11 +330,11 @@ test("the current weekly plan shows every current goal with numeric progress and
   const lastPanel = page.locator("#goal-detail-panel");
   await expect(lastPanel).toBeVisible();
   await expect(lastPanel.locator(".goal-panel-title")).toHaveText(
-    fixture.find((record) => record.id === "plan-current-fallback").title,
+    fixture.find((record) => record.id === "plan-current-second").title,
   );
   await expect(
     lastPanel.locator('[data-action="goal-edit-record"]'),
-  ).toHaveAttribute("data-id", "plan-current-fallback");
+  ).toHaveAttribute("data-id", "plan-current-second");
   await page.keyboard.press("Escape");
   await expect(lastPanel).not.toBeVisible();
   expect(await saved(page)).toBe(before);
@@ -414,7 +410,19 @@ test("the current weekly plan shows every current goal with numeric progress and
     "plan-current-second",
     "plan-current-third",
   ]);
+  await page
+    .locator('tr[data-record-row][data-id="plan-current-fallback"] .task-name')
+    .click();
+  await expect(panel.locator(".goal-panel-title")).toHaveText(
+    fixture.find((record) => record.id === "plan-current-fallback").title,
+  );
+  await expect(
+    panel.locator('[data-action="goal-edit-record"]'),
+  ).toHaveAttribute("data-id", "plan-current-fallback");
+  await page.keyboard.press("Escape");
+  expect(await saved(page)).toBe(before);
   await dashboard(page);
+  await expect(goalRows(page)).toHaveCount(2);
   await expect(
     goals(page).locator('[data-action="dashboard-previous"]'),
   ).toHaveCount(0);
@@ -460,8 +468,7 @@ test("one paged attention panel reaches all dated overdue and near records, keep
       .locator(".dashboard-workspace")
       .getAttribute("data-card-columns"),
   );
-  expect(columns).toBeGreaterThanOrEqual(1);
-  expect(columns).toBeLessThanOrEqual(3);
+  expect(columns).toBe(2);
   expect(
     await page
       .locator(".attention-list")
@@ -469,7 +476,7 @@ test("one paged attention panel reaches all dated overdue and near records, keep
         (list) => getComputedStyle(list).gridTemplateColumns.split(" ").length,
       ),
   ).toBe(columns);
-  await expect(attentionRows(page)).toHaveCount(Math.min(columns, 8));
+  await expect(attentionRows(page)).toHaveCount(2);
   expect((await readAttentionCards(page)).map((card) => card.id)).toEqual([
     "attention-linked-topic",
     "attention-followup-overdue",
@@ -492,13 +499,11 @@ test("one paged attention panel reaches all dated overdue and near records, keep
     page.locator(".dashboard-followups .attention-panel"),
   ).toHaveCount(0);
   await expect(attentionRows(page).locator(".quick-complete")).toHaveCount(0);
-  await expect(attentionRows(page).locator(".status-trigger")).toHaveCount(
-    Math.min(columns, 8),
-  );
+  await expect(attentionRows(page).locator(".status-trigger")).toHaveCount(2);
   const followupDates = attentionRows(page).locator(
     '[data-action="edit-next-followup"]',
   );
-  await expect(followupDates).toHaveCount(Math.min(columns, 8));
+  await expect(followupDates).toHaveCount(2);
   for (const date of await followupDates.all())
     await expect(date).toBeEnabled();
   for (const id of [

@@ -1166,10 +1166,11 @@ test("dashboard exposes active daily work with fixed order, filters, scrolling a
 
   const weeklyPanel = page.locator(".weekly-dashboard-panel");
   const attentionPanel = page.locator(".attention-panel");
+  const notesPanel = page.locator(".dashboard-notes-panel");
   const expectAttentionPageSize = async (total) => {
     const workspace = page.locator(".dashboard-workspace");
-    await expect(workspace).toHaveAttribute("data-card-columns", /^[123]$/);
-    const columns = Number(await workspace.getAttribute("data-card-columns"));
+    await expect(workspace).toHaveAttribute("data-card-columns", "2");
+    const columns = page.viewportSize().width > 760 ? 2 : 1;
     expect(
       await attentionPanel
         .locator(".attention-list")
@@ -1180,9 +1181,11 @@ test("dashboard exposes active daily work with fixed order, filters, scrolling a
         ),
     ).toBe(columns);
     await expect(attentionPanel.locator(".attention-list > li")).toHaveCount(
-      Math.min(columns, total),
+      Math.min(2, total),
     );
   };
+  await expect(notesPanel).toBeVisible();
+  await expect(page.locator(".dashboard-bottom-row > .panel")).toHaveCount(3);
   await expect(weeklyPanel.locator(".dashboard-goal-row")).toHaveCount(1);
   await expect(weeklyPanel.locator(".dashboard-goal-title")).toHaveText(
     weekly.title,
@@ -1316,7 +1319,7 @@ test("dashboard exposes active daily work with fixed order, filters, scrolling a
     "Kapanan bekleyen konu",
   );
 
-  // Current work and the calendar share the top row; attention and goals share the bottom row.
+  // Current work and the calendar share the top row; the three supporting panels share the bottom row.
   await seedRecords(page, [
     weekly,
     ...activeDaily.slice(0, 6),
@@ -1361,6 +1364,7 @@ test("dashboard exposes active daily work with fixed order, filters, scrolling a
     const attentionBox = await attentionPanel.boundingBox();
     const calendarBox = await page.locator(".dashboard-calendar").boundingBox();
     const weeklyBox = await weeklyPanel.boundingBox();
+    const notesBox = await notesPanel.boundingBox();
     expect(Math.abs(focusBox.height - calendarBox.height)).toBeLessThanOrEqual(
       1,
     );
@@ -1377,6 +1381,9 @@ test("dashboard exposes active daily work with fixed order, filters, scrolling a
     expect(weeklyBox.x).toBeGreaterThanOrEqual(
       attentionBox.x + attentionBox.width,
     );
+    expect(Math.abs(notesBox.y - weeklyBox.y)).toBeLessThanOrEqual(1);
+    expect(Math.abs(notesBox.width - weeklyBox.width)).toBeLessThanOrEqual(1);
+    expect(notesBox.x).toBeGreaterThanOrEqual(weeklyBox.x + weeklyBox.width);
     await weeklyPanel.evaluate((element) =>
       element.scrollIntoView({ block: "center", inline: "nearest" }),
     );

@@ -41,6 +41,11 @@ async function expectBottomCardControls(page, sideBySide) {
     return {
       goal: rect(card),
       waiting: rect(waiting),
+      panels: [
+        ".attention-panel",
+        ".weekly-dashboard-panel",
+        ".dashboard-notes-panel",
+      ].map((selector) => rect(document.querySelector(selector))),
       progress: rect(card.querySelector(".dashboard-goal-progress")),
       facts: rect(waiting.querySelector(".followup-wait-info")),
       goalButtons: [
@@ -72,6 +77,15 @@ async function expectBottomCardControls(page, sideBySide) {
   expect(goalInset).toBeLessThanOrEqual(10);
   expect(Math.abs(goalInset - waitingInset)).toBeLessThanOrEqual(1);
   if (sideBySide) {
+    const [attentionPanel, weeklyPanel, notesPanel] = boxes.panels;
+    expect(weeklyPanel.left).toBeGreaterThanOrEqual(attentionPanel.right);
+    expect(notesPanel.left).toBeGreaterThanOrEqual(weeklyPanel.right);
+    expect(Math.abs(attentionPanel.top - notesPanel.top)).toBeLessThanOrEqual(
+      1,
+    );
+    expect(
+      Math.abs(attentionPanel.bottom - notesPanel.bottom),
+    ).toBeLessThanOrEqual(1);
     expect(
       Math.abs(actionBottom - boxes.waitingButton.bottom),
     ).toBeLessThanOrEqual(1);

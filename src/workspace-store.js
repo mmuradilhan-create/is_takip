@@ -1,5 +1,6 @@
 import { validateStore } from "./model.js";
 import { normalizePreferences, validPreferences } from "./preferences.js";
+import { normalizeNotes, notesFromBackup } from "./workspace-notes.js";
 import {
   workspaceSignature,
   makeHistoryEntry,
@@ -37,6 +38,7 @@ export function createWorkspaceStore({
   preferencesKey = `${key}-preferences`,
   initialRecords = [],
   initialPreferences = { density: "comfortable" },
+  initialNotes,
   readOnly = false,
 }) {
   if (
@@ -83,7 +85,12 @@ export function createWorkspaceStore({
       preferences = legacy.preferences;
       legacyRaw = legacy.raw;
     }
-    const snapshot = { records, preferences };
+    const savedNotes = notesFromBackup(decoded);
+    const snapshot = {
+      records,
+      preferences,
+      ...(savedNotes.present ? { notes: savedNotes.notes } : {}),
+    };
     const history =
       metadata?.version === 1 ? readHistory(metadata.history, snapshot) : [];
     return { snapshot, history, primaryPreferences, legacyRaw };
@@ -106,6 +113,9 @@ export function createWorkspaceStore({
     current = {
       records: canonicalRecords(initialRecords),
       preferences: normalizePreferences(initialPreferences),
+      ...(initialNotes === undefined
+        ? {}
+        : { notes: normalizeNotes(initialNotes) }),
     };
     entries = [];
     blocked = true;
@@ -148,6 +158,9 @@ export function createWorkspaceStore({
         odak: {
           version: 1,
           preferences: snapshot.preferences,
+          ...(Object.hasOwn(snapshot, "notes")
+            ? { notes: snapshot.notes }
+            : {}),
           history: retained,
         },
       });
@@ -190,6 +203,12 @@ export function createWorkspaceStore({
     get preferences() {
       return clone(current.preferences);
     },
+    get notes() {
+      return clone(current.notes || []);
+    },
+    get hasNotes() {
+      return Object.hasOwn(current, "notes");
+    },
     get history() {
       return clone(entries);
     },
@@ -207,6 +226,9 @@ export function createWorkspaceStore({
         {
           records: canonicalRecords(records),
           preferences: clone(current.preferences),
+          ...(Object.hasOwn(current, "notes")
+            ? { notes: clone(current.notes) }
+            : {}),
         },
         label,
       );
@@ -218,6 +240,20 @@ export function createWorkspaceStore({
         {
           records: clone(current.records),
           preferences: normalizePreferences(value),
+          ...(Object.hasOwn(current, "notes")
+            ? { notes: clone(current.notes) }
+            : {}),
+        },
+        label,
+      );
+    },
+    saveNotes(value, label = "Not değişikliği") {
+      const notes = normalizeNotes(value);
+      return commit(
+        {
+          records: clone(current.records),
+          preferences: clone(current.preferences),
+          ...(notes.length || Object.hasOwn(current, "notes") ? { notes } : {}),
         },
         label,
       );
@@ -234,6 +270,11 @@ export function createWorkspaceStore({
           preferences: hasPreferences
             ? normalizePreferences(value.preferences)
             : clone(current.preferences),
+          ...(Object.hasOwn(value, "notes")
+            ? { notes: normalizeNotes(value.notes) }
+            : Object.hasOwn(current, "notes")
+              ? { notes: clone(current.notes) }
+              : {}),
         },
         label,
       );

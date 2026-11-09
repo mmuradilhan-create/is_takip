@@ -66,7 +66,7 @@ function fixture({ paged = false } = {}) {
       ],
     }),
     ...(paged
-      ? [1, 2, 3].map((index) =>
+      ? [1, 2, 3, 4].map((index) =>
           record({
             id: `adjustment-waiting-${index}`,
             type: "waiting",
@@ -127,7 +127,7 @@ async function slotWidth(list, card, expectedColumns) {
     await list.evaluate(
       (element) => element.closest(".dashboard-rows").dataset.cardColumns,
     ),
-  ).toBe(String(expectedColumns));
+  ).toBe("2");
   await card.scrollIntoViewIfNeeded();
   const sizes = await list.evaluate((element) => {
     const style = getComputedStyle(element);
@@ -170,7 +170,7 @@ async function sharedHeaders(page, expectedWaitingCount = "1") {
       };
     }),
   );
-  expect(headers).toHaveLength(2);
+  expect(headers).toHaveLength(3);
   expect(
     Math.abs(headers[0].box.height - headers[1].box.height),
   ).toBeLessThanOrEqual(1);
@@ -187,6 +187,7 @@ async function sharedHeaders(page, expectedWaitingCount = "1") {
     "9 – 15 Kasım 2026",
   );
   for (const panel of [attention(page), weekly(page)]) {
+    await panel.locator(".dashboard-panel-link").scrollIntoViewIfNeeded();
     await expect(panel.locator(".dashboard-panel-link")).toBeInViewport({
       ratio: 1,
     });
@@ -196,7 +197,23 @@ async function sharedHeaders(page, expectedWaitingCount = "1") {
       x: document.documentElement.scrollWidth > innerWidth + 1,
       y: document.documentElement.scrollHeight > innerHeight + 1,
     })),
-  ).toEqual({ x: false, y: false });
+  ).toEqual({ x: false, y: page.viewportSize().width < 1280 });
+  const notes = page.locator(".dashboard-bottom-row > .dashboard-notes-panel");
+  const notesHeader = headers[2];
+  expect(notesHeader.fontSize).toBe(headers[0].fontSize);
+  expect(notesHeader.lineHeight).toBe(headers[0].lineHeight);
+  if (page.viewportSize().width >= 1280) {
+    expect(Math.abs(notesHeader.box.y - headers[0].box.y)).toBeLessThanOrEqual(
+      1,
+    );
+    expect(
+      Math.abs(notesHeader.box.height - headers[0].box.height),
+    ).toBeLessThanOrEqual(1);
+  }
+  await notes.locator(".workspace-note-add").scrollIntoViewIfNeeded();
+  await expect(notes.locator(".workspace-note-add")).toBeInViewport({
+    ratio: 1,
+  });
 }
 
 test("a card follow-up date cancels without writes and saves only its plan with exact reload and one Undo", async ({
@@ -266,7 +283,7 @@ test("single waiting and goal cards retain one shared grid slot and common heade
   ]) {
     await page.setViewportSize(viewport);
     await sharedHeaders(page);
-    const columns = viewport.width >= 1200 ? 3 : 2;
+    const columns = 2;
     await slotWidth(
       attention(page).locator(".attention-list"),
       waitingCard(page),
@@ -308,7 +325,7 @@ test("single waiting and goal cards retain one shared grid slot and common heade
   }
 });
 
-test("paged cards keep every record reachable across three, two and one slots and a last single card never stretches", async ({
+test("two-card pages keep every record reachable in both two-column and one-column layouts without stretching the last card", async ({
   page,
 }) => {
   const { original } = await seed(page, {
@@ -316,9 +333,9 @@ test("paged cards keep every record reachable across three, two and one slots an
     width: 1536,
     height: 864,
   });
-  await sharedHeaders(page, "4");
+  await sharedHeaders(page, "5");
   await expect(attention(page).locator(".attention-page-label")).toHaveText(
-    "Sayfa 1 / 2",
+    "Sayfa 1 / 3",
   );
   const first = await attention(page)
     .locator(".followup-row")
@@ -330,21 +347,26 @@ test("paged cards keep every record reachable across three, two and one slots an
   await expect(next).toBeInViewport({ ratio: 1 });
   await next.focus();
   await page.keyboard.press("Enter");
+  const middle = await attention(page)
+    .locator(".followup-row")
+    .evaluateAll((cards) => cards.map((card) => card.dataset.id));
+  await next.focus();
+  await page.keyboard.press("Enter");
   await expect(attention(page).locator(".attention-page-label")).toHaveText(
-    "Sayfa 2 / 2",
+    "Sayfa 3 / 3",
   );
   const last = attention(page).locator(".followup-row");
   await expect(last).toHaveCount(1);
   const lastId = await last.getAttribute("data-id");
-  expect(new Set([...first, lastId]).size).toBe(4);
-  await slotWidth(attention(page).locator(".attention-list"), last, 3);
-  await sharedHeaders(page, "4");
+  expect(new Set([...first, ...middle, lastId]).size).toBe(5);
+  await slotWidth(attention(page).locator(".attention-list"), last, 2);
+  await sharedHeaders(page, "5");
   await expect(next).toBeDisabled();
 
   for (const [viewport, columns] of [
-    [{ width: 1280, height: 800 }, 3],
-    [{ width: 1280, height: 720 }, 3],
-    [{ width: 1200, height: 800 }, 3],
+    [{ width: 1280, height: 800 }, 2],
+    [{ width: 1280, height: 720 }, 2],
+    [{ width: 1200, height: 800 }, 2],
     [{ width: 1100, height: 640 }, 2],
     [{ width: 390, height: 700 }, 1],
   ]) {
@@ -368,13 +390,13 @@ test("paged cards keep every record reachable across three, two and one slots an
     const seen = new Set();
     for (let step = 0; step < 4; step++) {
       await expect(attention(page).locator(".attention-page-label")).toHaveText(
-        `Sayfa ${step + 1} / ${Math.ceil(4 / columns)}`,
+        `Sayfa ${step + 1} / 3`,
       );
       const cards = attention(page).locator(".followup-row");
       const ids = await cards.evaluateAll((items) =>
         items.map((item) => item.dataset.id),
       );
-      expect(ids.length).toBeLessThanOrEqual(columns);
+      expect(ids.length).toBeLessThanOrEqual(2);
       for (const id of ids) seen.add(id);
       for (const card of await cards.all())
         await slotWidth(list, card, columns);
@@ -387,9 +409,10 @@ test("paged cards keep every record reachable across three, two and one slots an
       "adjustment-waiting-1",
       "adjustment-waiting-2",
       "adjustment-waiting-3",
+      "adjustment-waiting-4",
     ]);
     await expect(next).toBeDisabled();
-    if (viewport.width >= 1100) await sharedHeaders(page, "4");
+    if (viewport.width >= 1100) await sharedHeaders(page, "5");
     expect(await saved(page)).toBe(original);
   }
 

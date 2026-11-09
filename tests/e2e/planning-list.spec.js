@@ -108,6 +108,7 @@ function linkedFixture() {
 test("planning screens share compact rows and weekly details open separately without editing or saving", async ({
   page,
 }, testInfo) => {
+  await page.clock.setFixedTime(new Date("2026-11-09T12:00:00.000Z"));
   const records = [
     ...linkedFixture(),
     createRecord({
@@ -152,6 +153,76 @@ test("planning screens share compact rows and weekly details open separately wit
           ? ["Durum", "Öncelik", "İlerleme"]
           : ["Durum", "Öncelik", "Teslim tarihi", "İlerleme"],
     );
+    const dimensions = await page.locator(".full-table").evaluate((table) => {
+      const row = table.querySelector("tbody > tr");
+      const controls = [
+        ["status-col", ".status-trigger"],
+        ["priority-col", ".priority"],
+        ["date-col", ".deadline-tag"],
+      ].flatMap(([column, selector]) => {
+        const header = table.querySelector(`thead .${column}`);
+        if (!header) return [];
+        return [
+          {
+            column,
+            header: header.getBoundingClientRect().width,
+            cell: row.querySelector(`td.${column}`).getBoundingClientRect()
+              .width,
+            control: row
+              .querySelector(`td.${column} > ${selector}`)
+              .getBoundingClientRect().width,
+          },
+        ];
+      });
+      const actions = row.querySelector("td.row-action-col");
+      const progress = table.querySelector("thead .progress-col");
+      return {
+        controls,
+        actions: actions.getBoundingClientRect().width,
+        actionHeader: table
+          .querySelector("thead .row-action-col")
+          .getBoundingClientRect().width,
+        actionAlignment: getComputedStyle(
+          actions.querySelector(".row-end-actions"),
+        ).justifyContent,
+        actionGroups: [
+          ...table.querySelectorAll("tbody > tr .row-end-actions"),
+        ].map((group) =>
+          [...group.children].map((control) => control.dataset.action),
+        ),
+        progress: progress?.getBoundingClientRect().width,
+      };
+    });
+    expect(dimensions.controls.map(({ column }) => column)).toEqual(
+      type === "yearly"
+        ? ["status-col", "priority-col"]
+        : ["status-col", "priority-col", "date-col"],
+    );
+    for (const control of dimensions.controls) {
+      expect(control.header).toBeCloseTo(112, 1);
+      expect(control.cell).toBeCloseTo(112, 1);
+      expect(control.control).toBeCloseTo(96, 1);
+    }
+    const actionCount = Math.max(
+      ...dimensions.actionGroups.map((group) => group.length),
+    );
+    expect([2, 3]).toContain(actionCount);
+    if (actionCount === 3) {
+      expect(["weekly", "monthly"]).toContain(type);
+      for (const group of dimensions.actionGroups.filter(
+        (group) => group.length === 3,
+      ))
+        expect(group).toEqual([
+          "edit",
+          type === "weekly" ? "carry-weekly" : "carry-monthly",
+          "new-linked",
+        ]);
+    }
+    const actionWidth = actionCount === 3 ? 122 : 88;
+    expect(dimensions.actions).toBeCloseTo(actionWidth, 1);
+    expect(dimensions.actionHeader).toBeCloseTo(actionWidth, 1);
+    expect(dimensions.actionAlignment).toBe("flex-start");
+    if (type !== "daily") expect(dimensions.progress).toBeCloseTo(148, 1);
     await expect(page.locator("#period-filter")).toHaveCount(
       type === "yearly" ? 0 : 1,
     );
@@ -184,6 +255,25 @@ test("planning screens share compact rows and weekly details open separately wit
     }
   }
   await page.locator('#nav [data-view="weekly"]').click();
+  await expect(
+    row(page, "weekly-plan").locator('[data-action="carry-weekly"]'),
+  ).toBeVisible();
+  await page.locator('[data-action="period-prev"]').click();
+  await expect(row(page, "weekly-plan")).toBeVisible();
+  await expect(
+    row(page, "weekly-plan").locator('[data-action="carry-weekly"]'),
+  ).toHaveCount(0);
+  await expect(
+    row(page, "weekly-plan").locator(".row-end-actions > button"),
+  ).toHaveCount(2);
+  expect(
+    (await row(page, "weekly-plan").locator("td.row-action-col").boundingBox())
+      .width,
+  ).toBeCloseTo(88, 1);
+  expect(
+    (await page.locator(".full-table thead th.row-action-col").boundingBox())
+      .width,
+  ).toBeCloseTo(88, 1);
   const saved = await readSaved(page);
   const beforeHeight = (await row(page, "weekly-plan").boundingBox()).height;
   await expect(page.locator(".linked-detail-row")).toHaveCount(0);

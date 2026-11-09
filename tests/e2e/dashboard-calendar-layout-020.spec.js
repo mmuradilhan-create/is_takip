@@ -25,8 +25,7 @@ async function cardColumns(page) {
       .locator(".dashboard-workspace")
       .getAttribute("data-card-columns"),
   );
-  expect(columns).toBeGreaterThanOrEqual(1);
-  expect(columns).toBeLessThanOrEqual(3);
+  expect(columns).toBe(2);
   expect(
     await page
       .locator(".attention-list")
@@ -123,8 +122,10 @@ async function fitsViewport(page) {
     windowScroll: scrollY,
   }));
   expect(metrics.width).toBeLessThanOrEqual(metrics.viewportWidth + 1);
-  expect(metrics.height).toBeLessThanOrEqual(metrics.viewportHeight + 1);
-  expect(metrics.windowScroll).toBe(0);
+  if (metrics.viewportWidth >= 1280 && metrics.viewportHeight >= 640) {
+    expect(metrics.height).toBeLessThanOrEqual(metrics.viewportHeight + 1);
+    expect(metrics.windowScroll).toBe(0);
+  }
 }
 
 async function panelBottomsAlign(page) {
@@ -136,28 +137,49 @@ async function panelBottomsAlign(page) {
           ".dashboard-top-row .dashboard-calendar",
           ".dashboard-bottom-row > .attention-panel",
           ".dashboard-bottom-row > .weekly-dashboard-panel",
+          ".dashboard-bottom-row > .dashboard-notes-panel",
         ].map((selector) => workspace.querySelector(selector));
         if (!workspace.isConnected || elements.some((element) => !element))
           return Infinity;
-        const [focus, calendar, attention, weekly] = elements.map((element) =>
-          element.getBoundingClientRect(),
+        const [focus, calendar, attention, weekly, notes] = elements.map(
+          (element) => element.getBoundingClientRect(),
         );
-        if ([focus, calendar, attention, weekly].some((box) => !box.height))
+        if (
+          [focus, calendar, attention, weekly, notes].some((box) => !box.height)
+        )
           return Infinity;
-        return Math.max(
-          Math.abs(focus.y - calendar.y),
-          Math.abs(focus.height - calendar.height),
+        const differences = [
           Math.abs(attention.y - weekly.y),
           Math.abs(attention.width - weekly.width),
           Math.abs(attention.height - weekly.height),
           Math.abs(attention.bottom - weekly.bottom),
-        );
+        ];
+        if (innerWidth >= 1280) {
+          differences.push(
+            Math.abs(focus.y - calendar.y),
+            Math.abs(focus.height - calendar.height),
+            Math.abs(notes.y - weekly.y),
+            Math.abs(notes.width - weekly.width),
+            Math.abs(notes.height - weekly.height),
+            Math.max(0, weekly.right - notes.left),
+          );
+        } else {
+          differences.push(
+            Math.abs(notes.left - attention.left),
+            Math.abs(notes.right - weekly.right),
+            Math.max(0, weekly.bottom - notes.top),
+          );
+        }
+        return Math.max(...differences);
       }),
     )
     .toBeLessThanOrEqual(1);
 }
 
 async function fixedCalendarBoxes(page) {
+  await compact(page).scrollIntoViewIfNeeded();
+  const anchor = await compact(page).boundingBox();
+  const flowing = page.viewportSize().width < 1280;
   const result = {};
   for (const selector of [
     ".calendar-navigation",
@@ -168,7 +190,10 @@ async function fixedCalendarBoxes(page) {
   ]) {
     const control = compact(page).locator(selector);
     await expect(control).toBeInViewport({ ratio: 1 });
-    result[selector] = await control.boundingBox();
+    const box = await control.boundingBox();
+    result[selector] = flowing
+      ? { ...box, x: box.x - anchor.x, y: box.y - anchor.y }
+      : box;
   }
   return result;
 }
@@ -286,14 +311,18 @@ for (const viewport of [
         compact(page).locator('[data-calendar-action="new-record"]'),
       ).toHaveText("Ekle");
       const goals = page.locator(".dashboard-goals");
-      await expect(goals.locator(".dashboard-goal-row")).toHaveCount(5);
+      await expect(goals.locator(".dashboard-goal-row")).toHaveCount(2);
+      await expect(
+        page.locator(".weekly-dashboard-panel .dashboard-panel-count"),
+      ).toHaveText("5");
+      await expect(page.locator(".dashboard-goals-more")).toHaveCount(0);
       const lastGoal = goals.locator(".dashboard-goal-title").last();
       await lastGoal.scrollIntoViewIfNeeded();
       await expect(lastGoal).toBeInViewport({ ratio: 1 });
       await lastGoal.click();
       await expect(
         page.locator("#goal-detail-panel .goal-panel-title"),
-      ).toHaveText("Haftanın 5. doğrulama hedefi");
+      ).toHaveText("Haftanın 2. doğrulama hedefi");
       await page.keyboard.press("Escape");
       await expect(attentionRows(page)).toHaveCount(
         Math.min(await cardColumns(page), 8),
@@ -387,6 +416,26 @@ for (const viewport of [
       await page.keyboard.press("Escape");
       await expect(expanded(page)).not.toBeVisible();
       await expect(expandButton).toBeFocused();
+      await fitsViewport(page);
+      expect(await saved(page)).toBe(original);
+      await page
+        .locator('.weekly-dashboard-panel [data-action="dashboard-weekly"]')
+        .click();
+      await expect(page.locator("#page-title")).toHaveText("Haftalık plan");
+      await expect(page.locator(".full-table tr[data-record-row]")).toHaveCount(
+        5,
+      );
+      await page
+        .locator(
+          'tr[data-record-row][data-id="calendar-020-goal-4"] .task-name',
+        )
+        .click();
+      await expect(
+        page.locator("#goal-detail-panel .goal-panel-title"),
+      ).toHaveText("Haftanın 5. doğrulama hedefi");
+      await page.keyboard.press("Escape");
+      await page.locator('#nav [data-view="dashboard"]').click();
+      await expect(page.locator(".dashboard-goal-row")).toHaveCount(2);
       await fitsViewport(page);
       expect(await saved(page)).toBe(original);
     });

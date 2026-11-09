@@ -1,5 +1,6 @@
 import { createRecord, validateStore } from "./model.js";
 import { normalizePreferences, validPreferences } from "./preferences.js";
+import { normalizeNotes } from "./workspace-notes.js";
 
 const DEFAULT_MAX_ENTRIES = 30;
 const DEFAULT_MAX_BYTES = 1_500_000;
@@ -89,7 +90,13 @@ function snapshot(input) {
   if (!same(records, checked)) {
     throw new Error("Geçmiş kaydı değişmeden doğrulanamadı.");
   }
-  return { records, preferences: preferences(input.preferences) };
+  return {
+    records,
+    preferences: preferences(input.preferences),
+    ...(Object.hasOwn(input, "notes")
+      ? { notes: normalizeNotes(input.notes) }
+      : {}),
+  };
 }
 
 function signatureOfJSON(serialized) {
@@ -148,6 +155,8 @@ export function makeHistoryEntry(beforeInput, afterInput, label) {
     afterOrder: after.records.map((record) => record.id),
     beforePreferences: before.preferences,
     afterPreferences: after.preferences,
+    ...(Object.hasOwn(before, "notes") ? { beforeNotes: before.notes } : {}),
+    ...(Object.hasOwn(after, "notes") ? { afterNotes: after.notes } : {}),
     changes,
   };
 }
@@ -221,10 +230,16 @@ function parseEntry(input) {
   }
   const beforePreferences = preferences(input.beforePreferences);
   const afterPreferences = preferences(input.afterPreferences);
+  const hasBeforeNotes = Object.hasOwn(input, "beforeNotes");
+  const hasAfterNotes = Object.hasOwn(input, "afterNotes");
+  const beforeNotes = hasBeforeNotes ? normalizeNotes(input.beforeNotes) : null;
+  const afterNotes = hasAfterNotes ? normalizeNotes(input.afterNotes) : null;
   if (
     !changes.length &&
     same(beforeOrder, afterOrder) &&
-    same(beforePreferences, afterPreferences)
+    same(beforePreferences, afterPreferences) &&
+    hasBeforeNotes === hasAfterNotes &&
+    same(beforeNotes, afterNotes)
   ) {
     throw new Error("Geri alma kaydı herhangi bir değişiklik içermiyor.");
   }
@@ -237,6 +252,8 @@ function parseEntry(input) {
     afterOrder,
     beforePreferences,
     afterPreferences,
+    ...(hasBeforeNotes ? { beforeNotes } : {}),
+    ...(hasAfterNotes ? { afterNotes } : {}),
     changes,
   };
 }
@@ -252,7 +269,9 @@ export function undoEntry(currentInput, rawEntry) {
       current.records.map((record) => record.id),
       entry.afterOrder,
     ) ||
-    !same(current.preferences, entry.afterPreferences)
+    !same(current.preferences, entry.afterPreferences) ||
+    Object.hasOwn(current, "notes") !== Object.hasOwn(entry, "afterNotes") ||
+    (Object.hasOwn(current, "notes") && !same(current.notes, entry.afterNotes))
   ) {
     throw new Error("Geri alma kaydı mevcut çalışma alanıyla eşleşmiyor.");
   }
@@ -270,6 +289,9 @@ export function undoEntry(currentInput, rawEntry) {
   const restored = snapshot({
     records: entry.beforeOrder.map((id) => byId.get(id)),
     preferences: entry.beforePreferences,
+    ...(Object.hasOwn(entry, "beforeNotes")
+      ? { notes: entry.beforeNotes }
+      : {}),
   });
   if (signatureOfJSON(stableJSON(restored)) !== entry.beforeSignature) {
     throw new Error("Geri alma kaydındaki önceki durum doğrulanamadı.");

@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { resolve } from "node:path";
 import { validateStore, emptyStore } from "../src/model.js";
 import { cleanupMeetingContacts } from "../src/meeting-contact-cleanup.js";
+import { notesFromBackup, normalizeNotes } from "../src/workspace-notes.js";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 const directory = resolve(root, ".local");
@@ -16,7 +17,12 @@ const snapshotFiles = requestedDataFile
 for (const file of snapshotFiles) {
   try {
     const saved = JSON.parse(await readFile(resolve(directory, file), "utf8"));
-    data = { ...validateStore(saved), migration: saved.migration || null };
+    const notes = notesFromBackup(saved);
+    data = {
+      ...validateStore(saved),
+      migration: saved.migration || null,
+      ...(notes.present ? { notes: notes.notes } : {}),
+    };
     snapshotFile = file;
     break;
   } catch (error) {
@@ -62,7 +68,16 @@ await writeFile(
       ? "ODAK-guncel-kayit-yedegi.json"
       : "ODAK-kayit-yedegi.json",
   ),
-  JSON.stringify(validateStore(data), null, 2),
+  JSON.stringify(
+    {
+      ...validateStore(data),
+      ...(Object.hasOwn(data, "notes")
+        ? { notes: normalizeNotes(data.notes) }
+        : {}),
+    },
+    null,
+    2,
+  ),
   { mode: 0o600 },
 );
 console.log(

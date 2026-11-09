@@ -27,16 +27,3 @@
   max-height: 30px;
   line-height: 15px;
 }
-
-/* Keep both lower panels tall enough for their title and action controls. */
-@media (min-width: 1100px) and (min-height: 640px) {
-  .main.is-dashboard .dashboard-workspace.dashboard-rows {
-    grid-template-rows: minmax(0, 1fr) clamp(216px, 27dvh, 280px);
-  }
-}
-
-@media (min-width: 1100px) and (min-height: 640px) and (max-height: 740px) {
-  .main.is-dashboard .dashboard-workspace.dashboard-rows {
-    grid-template-rows: minmax(0, 1fr) 210px;
-  }
-}

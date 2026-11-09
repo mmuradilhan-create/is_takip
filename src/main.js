@@ -55,6 +55,9 @@ import "./meeting-record-panel.css";
 import "./dashboard-card-details.css";
 import "./action-focus.css";
 import "./goal-transfer-ui.css";
+import "./workspace-notes-ui.css";
+import { createWorkspaceNotesUI } from "./workspace-notes-ui.js";
+import { normalizeNotes, notesFromBackup } from "./workspace-notes.js";
 import { createGoalTransferUI } from "./goal-transfer-ui.js";
 import { createWaitingRecordPanel } from "./waiting-record-panel.js";
 import { createMeetingRecordPanel } from "./meeting-record-panel.js";
@@ -251,8 +254,11 @@ export async function startMainApp() {
   let bootstrapNotice = "";
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) initial = validateStore(JSON.parse(saved));
-    else {
+    if (saved) {
+      const decoded = JSON.parse(saved);
+      initial = validateStore(decoded);
+      notesFromBackup(decoded);
+    } else {
       try {
         const embedded = document.querySelector("#initial-data");
         const response = embedded
@@ -267,7 +273,11 @@ export async function startMainApp() {
         ) {
           const imported = await response.json();
           const checked = validateStore(imported);
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(checked));
+          const importedNotes = notesFromBackup(imported);
+          const seeded = importedNotes.present
+            ? { ...checked, odak: { version: 1, notes: importedNotes.notes } }
+            : checked;
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(seeded));
           initial = checked;
         } else if (![200, 204, 404].includes(response.status)) {
           bootstrapNotice =
@@ -294,7 +304,7 @@ export async function startMainApp() {
     period: "all",
     focusFilter: "open",
     attentionPage: 1,
-    attentionPageSize: 3,
+    attentionPageSize: 2,
     onlyUnlinked: false,
     workContext: "all",
     weeklyBacklogOpen: false,
@@ -328,6 +338,7 @@ export async function startMainApp() {
   let waitingDetails = null;
   let waitingInfo = null;
   let recordNotes = null;
+  let workspaceNotes = null;
   let meetingBoth = null;
   let meetingLinkedReturn = null;
   let recordCreation = null;
@@ -491,27 +502,34 @@ export async function startMainApp() {
         )
         .join("")}</div><div id="settings-error" role="alert"></div></section>
       <details class="settings-backup" open><summary><span class="settings-summary-icon">${icon("download")}</span><span>Yedekleme</span><span class="settings-chevron">${icon("chevron")}</span></summary><div class="settings-backup-body"><div class="settings-backup-actions"><button type="button" class="btn" data-action="backup-records" aria-label="Kayıt yedeğini indir">${icon("download")}Yedeği indir</button><button type="button" class="btn" data-action="select-backup" aria-label="Kayıt yedeğini geri yükle">${icon("upload")}Yedeği yükle</button></div><input type="file" id="restore-file" accept=".json,application/json" aria-label="Kayıt yedeği seç" hidden><div id="settings-backup-error" role="alert"></div></div></details>
-      <details class="settings-help"><summary><span>Yardım</span><span class="settings-chevron">${icon("chevron")}</span></summary><div class="settings-help-body"><section class="settings-goal-rules" aria-label="Hedef ilerlemesi"><h3>Hedef ilerlemesi</h3><p>Günlük iş → Haftalık → Aylık → Senelik</p><p>Bağlantılar isteğe bağlıdır. Sayısal hedef varsa kendi ölçümü kullanılır; yoksa bağlı işlerin ilerlemesi hesaplanır. Hedefi tamamlamak ayrıca senin kararındır.</p></section><section><h3>Kayıtlar ve yedekleme</h3><p>Kayıtlar ve tercihler bu tarayıcıda otomatik saklanır; HTML dosyasının içine yazılmaz. Yedeği indir, kayıtlarını JSON dosyası olarak saklar. Yedeği yükle, seçtiğin yedeği onayından sonra geri getirir.</p></section></div></details>
+      <details class="settings-help"><summary><span>Yardım</span><span class="settings-chevron">${icon("chevron")}</span></summary><div class="settings-help-body"><section class="settings-goal-rules" aria-label="Hedef ilerlemesi"><h3>Hedef ilerlemesi</h3><p>Günlük iş → Haftalık → Aylık → Senelik</p><p>Bağlantılar isteğe bağlıdır. Sayısal hedef varsa kendi ölçümü kullanılır; yoksa bağlı işlerin ilerlemesi hesaplanır. Hedefi tamamlamak ayrıca senin kararındır.</p></section><section><h3>Kayıtlar ve yedekleme</h3><p>Kayıtlar ve tercihler bu tarayıcıda otomatik saklanır; HTML dosyasının içine yazılmaz. Yedeği indir, kayıtlarını ve bağımsız notlarını JSON dosyası olarak saklar. Yedeği yükle, seçtiğin yedeği onayından sonra geri getirir.</p></section></div></details>
       ${cleanupInfo.recordsChanged ? `<section class="settings-note-cleanup"><p>${cleanupInfo.recordsChanged} kayıtta eski Gün / Gecikme / Odak Sıra aktarım satırları var.</p><button type="button" class="btn" data-action="cleanup-import-notes">Aktarım notlarını temizle</button></section>` : ""}
       ${waitingCleanupInfo.recordsChanged ? `<section class="settings-note-cleanup"><p>${waitingCleanupInfo.recordsChanged} bekleyen konuda eski Son Durum / Kaç Gün Bekledi aktarım satırları var.</p><button type="button" class="btn" data-action="cleanup-waiting-notes">Bekleyen konu notlarını düzenle</button></section>` : ""}
       ${waitingStateInfo.recordsChanged ? `<section class="settings-note-cleanup"><p>Eski engel bilgilerini Beklemede durumuyla birleştirebilirsin. Nedenler ve geçmiş korunur.</p><button type="button" class="btn" data-action="migrate-waiting-state">Bekleme düzenine taşı</button></section>` : ""}
-      <section class="settings-reset" aria-label="Çalışma alanını sıfırlama"><div class="settings-reset-copy"><h3>Çalışma alanı</h3><p><strong>${state.records.length} kayıt</strong> temizlenir. Önce yedek al.</p></div><button type="button" class="btn danger" data-action="reset-workspace" aria-label="Çalışma alanını sıfırla" ${!state.records.length ? "disabled" : ""}>${icon("trash")}Sıfırla</button></section>
+      <section class="settings-reset" aria-label="Çalışma alanını sıfırlama"><div class="settings-reset-copy"><h3>Çalışma alanı</h3><p><strong>${state.records.length} kayıt${workspaceStore?.notes.length ? ` ve ${workspaceStore.notes.length} not` : ""}</strong> temizlenir. Önce yedek al.</p></div><button type="button" class="btn danger" data-action="reset-workspace" aria-label="Çalışma alanını sıfırla" ${!state.records.length && !workspaceStore?.notes.length ? "disabled" : ""}>${icon("trash")}Sıfırla</button></section>
     </div>
     <div class="modal-footer"><small class="settings-version">ODAK ${APP_VERSION} · Bu tarayıcıda saklanır</small><button type="button" class="btn primary" data-action="close">Tamam</button></div>
   `;
     document.querySelector("#settings-dialog").showModal();
   }
   function resetWorkspace() {
-    if (!state.records.length) return;
+    const notesCount = workspaceStore?.notes.length || 0;
+    if (!state.records.length && !notesCount) return;
     if (
       !confirm(
-        `Çalışma alanındaki ${state.records.length} kayıt silinecek. Bir kayıt yedeği aldıysan bunları geri yükleyebilirsin. Çalışma alanını sıfırlamak istiyor musun?`,
+        `Çalışma alanındaki ${state.records.length} kayıt${notesCount ? ` ve ${notesCount} not` : ""} silinecek. Bir kayıt yedeği aldıysan bunları geri yükleyebilirsin. Çalışma alanını sıfırlamak istiyor musun?`,
       )
     )
       return;
     // Persist an empty store instead of removing the key, so embedded initial
     // records are not imported again on the next page load.
-    if (saveRecords([], "Çalışma alanı sıfırlama", { syncLinks: false })) {
+    if (
+      saveWorkspaceSnapshot(
+        [],
+        workspaceStore.hasNotes ? { notes: [] } : {},
+        "Çalışma alanı sıfırlama",
+      )
+    ) {
       state.search = "";
       state.focusFilter = "open";
       document.querySelector("#global-search").value = "";
@@ -529,6 +547,7 @@ export async function startMainApp() {
         ...(Object.hasOwn(preferences, "choiceLists")
           ? { choiceLists: normalizeChoiceLists(preferences.choiceLists) }
           : {}),
+        ...(workspaceStore?.hasNotes ? { notes: workspaceStore.notes } : {}),
       },
       null,
       2,
@@ -555,6 +574,7 @@ export async function startMainApp() {
         throw new Error("Kayıt yedeği en fazla 20 MB olabilir.");
       const parsed = JSON.parse(await file.text());
       const store = validateStore(parsed);
+      const restoredNotes = notesFromBackup(parsed);
       const hasChoiceLists = Object.hasOwn(parsed, "choiceLists");
       if (hasChoiceLists && !validChoiceLists(parsed.choiceLists))
         throw new Error(
@@ -564,17 +584,21 @@ export async function startMainApp() {
         ? normalizeChoiceLists(parsed.choiceLists)
         : undefined;
       if (!input.isConnected || !dialog.open) return;
+      const contents = `${store.records.length} kayıt${restoredNotes.present ? ` ve ${restoredNotes.notes.length} not` : ""}${hasChoiceLists ? " ve seçenek listeleri" : ""}`;
       if (
         !confirm(
-          hasChoiceLists
-            ? `Yedekte ${store.records.length} kayıt ve seçenek listeleri var. Mevcut ${state.records.length} kayıt ve seçenek listeleri bu yedekle değiştirilsin mi?`
-            : `Yedekte ${store.records.length} kayıt var. Mevcut ${state.records.length} kayıt bu yedekle değiştirilsin mi?`,
+          `Yedekte ${contents} var. Mevcut ${state.records.length} kayıt${restoredNotes.present ? ` ve ${workspaceStore.notes.length} not` : ""}${hasChoiceLists ? " ve seçenek listeleri" : ""} bu yedekle değiştirilsin mi?${!restoredNotes.present && workspaceStore.notes.length ? " Bağımsız notların korunacak." : ""}`,
         )
       )
         return;
-      const restored = hasChoiceLists
-        ? saveWorkspaceWithLists(store.records, restoredChoiceLists)
-        : saveRecords(store.records, "Yedek yükleme", { syncLinks: false });
+      const restored = saveWorkspaceSnapshot(
+        store.records,
+        {
+          ...(hasChoiceLists ? { choiceLists: restoredChoiceLists } : {}),
+          ...(restoredNotes.present ? { notes: restoredNotes.notes } : {}),
+        },
+        "Yedek yükleme",
+      );
       if (restored) {
         dialog.close();
         toast(`${store.records.length} kayıt geri yüklendi.`);
@@ -708,7 +732,11 @@ export async function startMainApp() {
       return false;
     }
   }
-  function saveWorkspaceWithLists(records, choiceLists) {
+  function saveWorkspaceSnapshot(
+    records,
+    additions = {},
+    label = "Yedek yükleme",
+  ) {
     if (storageError) {
       toast(storageError, true);
       return false;
@@ -717,12 +745,19 @@ export async function startMainApp() {
       workspaceStore.saveWorkspace(
         {
           records: cleanupMeetingContacts(records),
-          preferences: {
-            ...preferences,
-            choiceLists: normalizeChoiceLists(choiceLists),
-          },
+          ...(Object.hasOwn(additions, "choiceLists")
+            ? {
+                preferences: {
+                  ...preferences,
+                  choiceLists: normalizeChoiceLists(additions.choiceLists),
+                },
+              }
+            : {}),
+          ...(Object.hasOwn(additions, "notes")
+            ? { notes: normalizeNotes(additions.notes) }
+            : {}),
         },
-        "Yedek yükleme",
+        label,
       );
       syncWorkspaceView();
       return true;
@@ -733,6 +768,30 @@ export async function startMainApp() {
         true,
       );
       return false;
+    }
+  }
+  function saveWorkspaceNotes(
+    nextNotes,
+    expectedNotes,
+    label = "Not değişikliği",
+  ) {
+    if (storageError) {
+      toast(storageError, true);
+      return false;
+    }
+    try {
+      if (
+        JSON.stringify(workspaceStore.notes) !== JSON.stringify(expectedNotes)
+      )
+        throw new Error(
+          "Notlar başka bir pencerede değişti. Taslağın korunuyor; güncel notu yeniden açarak devam et.",
+        );
+      workspaceStore.saveNotes(nextNotes, label);
+      syncWorkspaceView();
+      return true;
+    } catch (error) {
+      syncWorkspaceView();
+      throw error;
     }
   }
   function undoLastAction() {
@@ -1324,7 +1383,7 @@ export async function startMainApp() {
       {
         today: today(),
         query: state.search,
-        limit: Infinity,
+        limit: 2,
       },
     );
     const nextWeek = shiftPlanningPeriod(
@@ -1354,19 +1413,10 @@ export async function startMainApp() {
               .join("")}</ul>`
           : `<div class="weekly-dashboard-empty"><p>${state.search ? "Eşleşen haftalık hedef yok." : "Bu hafta için açık hedef yok."}</p><button type="button" class="btn" data-action="dashboard-weekly">Hedef seç</button></div>`
       }
-      ${total > records.length ? `<button type="button" class="text-btn dashboard-goals-more" data-action="dashboard-weekly" data-week="${esc(period.key)}">Diğer ${total - records.length} hedef ${icon("arrow")}</button>` : ""}
       </section>`;
   }
   function dashboardCardColumns() {
-    const content = document.querySelector("#content");
-    const style = window.getComputedStyle(content);
-    const contentWidth =
-      content.clientWidth -
-      parseFloat(style.paddingLeft) -
-      parseFloat(style.paddingRight);
-    const panelWidth =
-      window.innerWidth > 760 ? (contentWidth - 14) / 2 : contentWidth;
-    return panelWidth >= 430 ? 3 : panelWidth >= 380 ? 2 : 1;
+    return 2;
   }
   function attentionPanel(pageSize = dashboardCardColumns()) {
     const { records, total } = selectAttention(state.records, {
@@ -1395,7 +1445,7 @@ export async function startMainApp() {
   }
   function dashboard() {
     const columns = dashboardCardColumns();
-    return `${stats()}<div class="dashboard-workspace dashboard-rows" data-card-columns="${columns}" style="--dashboard-card-columns:${columns}"><div class="dashboard-top-row"><div class="dashboard-main-column">${focusList()}</div><aside class="dashboard-followups">${dashboardCalendar?.render() || ""}</aside></div><div class="dashboard-bottom-row">${attentionPanel(columns)}${weeklyDashboardPanel()}</div></div>`;
+    return `${stats()}<div class="dashboard-workspace dashboard-rows" data-card-columns="${columns}" style="--dashboard-card-columns:${columns}"><div class="dashboard-top-row"><div class="dashboard-main-column">${focusList()}</div><aside class="dashboard-followups">${dashboardCalendar?.render() || ""}</aside></div><div class="dashboard-bottom-row">${attentionPanel(columns)}${weeklyDashboardPanel()}${workspaceNotes?.render() || ""}</div></div>`;
   }
   function planningPeriodBar() {
     if (!Object.hasOwn(state.planningPeriods, state.view)) return "";
@@ -1697,6 +1747,7 @@ export async function startMainApp() {
     waitingDetails?.refresh();
     waitingInfo?.refresh();
     recordNotes?.refresh();
+    workspaceNotes?.refresh();
     meetingBoth?.refresh();
     recordCreation?.refresh();
     dashboardCalendar?.refresh();
@@ -2637,6 +2688,13 @@ export async function startMainApp() {
     onError: (message) => toast(message, true),
   });
   window.addEventListener("pagehide", recordNotes.destroy, { once: true });
+  workspaceNotes = createWorkspaceNotesUI({
+    root: app,
+    getNotes: () => workspaceStore?.notes || [],
+    onSaveNotes: saveWorkspaceNotes,
+    onError: (message) => toast(message, true),
+  });
+  window.addEventListener("pagehide", workspaceNotes.destroy, { once: true });
   waitingInfo = createWaitingInfoUI({
     root: app,
     getRecord: (id) => state.records.find((record) => record.id === id),

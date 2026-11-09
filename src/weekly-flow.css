@@ -167,10 +167,6 @@
   font-size: 11px;
 }
 
-.full-table:has(.weekly-goal-row) > thead > tr > th.row-action-col {
-  width: 98px;
-}
-
 .weekly-backlog > summary:focus-visible,
 .carry-weekly:focus-visible,
 .backlog-title:focus-visible {

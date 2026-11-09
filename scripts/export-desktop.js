@@ -38,6 +38,8 @@ Genel bakışın altındaki takip ve hedef alanları ikişer kart gösterir.
 Yanlarındaki Notlar alanı bağımsız maddeler tutar; ekleme/düzenleme/silme
 tek Geri al adımıdır. Enter kaydeder, Shift+Enter alt satır ekler.
 Notlar JSON yedeğine dahildir; eski notsuz yedek mevcut notları korur.
+Takip kartlarında konu metni üstteki boş alanı kullanır; durum ve tarih
+alt bölüme yaklaşır. Panel yüksekliği artmadan daha fazla satır okunur.
 
 Ayarlar içindeki eski Listeler menüsü kaldırıldı; eski kayıt değerleri
 ve yedek uyumluluğu korunur. Bekleme bilgisi penceresinde Enter kaydeder,
@@ -630,7 +632,8 @@ MEVCUT KAYITLARINLA DEVAM ETMEK İÇİN
 
 1. Önce eski ODAK'ı kullandığın Chrome profilinde aç. Ayarlar > Yedekleme >
    Yedeği indir ile güncel kayıtlarının JSON yedeğini al.
-2. Açık ODAK ve widget pencerelerini kapat.
+2. Açık ODAK ve widget pencerelerini kapat; eski pencere yardımcısının
+   kapanması için 6 saniye bekle.
 3. ZIP'i çıkar. İçindeki BEŞ DOSYANIN TAMAMINI (TAKIP.html, ODAK.cmd,
    ODAK-Widget.cmd, ODAK-Pencere.ps1 ve KULLANIM.txt), daha önce kullandığın
    TAKIP.html dosyasının BULUNDUĞU AYNI KLASÖRE koy. Yeni TAKIP.html ile
@@ -668,8 +671,11 @@ okunurdur; gün değiştirmek kayıtları değiştirmez. Başlık ilgili kaydı
 ana ekranda açar. Ana uygulamadaki değişiklikler ve Geri al burada da görünür.
 Widget'ın hedef içerik alanı 380x420 pikseldir. Tekrar tıklamak, açık
 widget'ı yeniden kullanır; ana ekran yenilense bile widget bulunur.
-Açılışta içerik alanı ölçülür; ekran ölçeği ve pencere çerçevesine göre
-dış boyut kısa süreli olarak düzeltilir. Hedef 380x420 CSS piksel içeriktir.
+Açılışta ölçüler sabitlenince ekran ölçeği ve pencere çerçevesine göre
+dış boyut bir kez düzeltilir. Hedef 380x420 CSS piksel içeriktir.
+Windows yardımcısı hazırsa tarayıcı ayrıca boyutlandırma yapmaz.
+Normal HTML açılışında tarayıcı bir kez dener; öncesinde fare veya klavye
+kullanılırsa bu deneme iptal edilir.
 Sonraki elle boyutlandırmalar zorlanmaz; açık widget yeniden kullanılırken
 boyutuna müdahale edilmez.
 

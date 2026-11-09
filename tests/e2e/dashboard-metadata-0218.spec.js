@@ -727,7 +727,7 @@ test("dense previews keep two shared cards beside independent notes and every go
   await expect(
     waiting(page).locator(".followup-last .waiting-last-date"),
   ).toHaveAttribute("title", "Henüz takip edilmedi");
-  // Fixed title boxes must remain safe when a browser ignores line clamping.
+  // Expanded subjects stay bounded when a browser ignores line clamping.
   await page.addStyleTag({
     content:
       ".followup-title { -webkit-line-clamp: unset !important; line-clamp: unset !important; display: block !important; }",
@@ -736,12 +736,21 @@ test("dense previews keep two shared cards beside independent notes and every go
     { width: 1100, height: 640 },
     { width: 1280, height: 800 },
     { width: 1280, height: 720 },
+    { width: 1280, height: 700 },
     { width: 1200, height: 800 },
     { width: 1536, height: 864 },
     { width: 1920, height: 1080 },
     { width: 375, height: 700 },
+    { width: 1536, height: 864, theme: "dark" },
+    { width: 1280, height: 700, theme: "dark" },
   ]) {
-    await page.setViewportSize(viewport);
+    await page.setViewportSize({
+      width: viewport.width,
+      height: viewport.height,
+    });
+    await page.evaluate((theme) => {
+      document.documentElement.dataset.theme = theme;
+    }, viewport.theme || "light");
     const columns = viewport.width > 760 ? 2 : 1;
     const goals = page.locator(".weekly-dashboard-panel .dashboard-goals");
     const followups = page.locator(".attention-panel .attention-list");
@@ -777,6 +786,15 @@ test("dense previews keep two shared cards beside independent notes and every go
       .boundingBox();
     const notesBounds = await notes.boundingBox();
     if (viewport.width >= 1280) {
+      for (const bounds of [attentionPanelBounds, goalPanelBounds, notesBounds])
+        expect(bounds.height).toBeCloseTo(
+          viewport.height <= 740 ? 210 : 220,
+          0,
+        );
+      for (const header of await page
+        .locator(".dashboard-bottom-row .dashboard-panel-header")
+        .all())
+        expect((await header.boundingBox()).height).toBeCloseTo(42, 0);
       expect(Math.abs(notesBounds.y - goalPanelBounds.y)).toBeLessThanOrEqual(
         1,
       );
@@ -796,20 +814,35 @@ test("dense previews keep two shared cards beside independent notes and every go
     }
     const firstGoal = goals.locator(".dashboard-goal-row").first();
     const goalBounds = await firstGoal.boundingBox();
-    const goalStatus = await firstGoal.locator(".status-trigger").boundingBox();
     const goalActions = await firstGoal
       .locator(".dashboard-goal-actions")
       .boundingBox();
     for (const item of await followups.locator(".followup-row").all()) {
       const bounds = await item.boundingBox();
       const title = await item.locator(".followup-title-line").boundingBox();
+      const subject = item.locator(".followup-title");
+      const subjectBounds = await subject.boundingBox();
+      const lineHeight = await subject.evaluate((element) =>
+        parseFloat(getComputedStyle(element).lineHeight),
+      );
+      const visibleLines =
+        viewport.width >= 1536 && viewport.height > 740
+          ? 4
+          : viewport.width >= 1280 &&
+              viewport.width < 1536 &&
+              viewport.height <= 740
+            ? 2
+            : 3;
       const status = await item.locator(".status-trigger").boundingBox();
       const action = item.locator('[data-action="waiting-followup"]');
       const actionBounds = await action.boundingBox();
-      expect(Math.abs(title.height - 30)).toBeLessThanOrEqual(1);
-      expect(
-        Math.abs(status.y - bounds.y - (goalStatus.y - goalBounds.y)),
-      ).toBeLessThanOrEqual(1);
+      expect(subjectBounds.height).toBeCloseTo(lineHeight * visibleLines, 0);
+      expect(title.height).toBeGreaterThanOrEqual(subjectBounds.height - 1);
+      expect(status.y).toBeGreaterThanOrEqual(title.y + title.height - 1);
+      const dateBounds = await item
+        .locator('[data-action="edit-next-followup"]')
+        .boundingBox();
+      expect(dateBounds.y).toBeGreaterThanOrEqual(title.y + title.height - 1);
       expect(
         Math.abs(
           bounds.y +
@@ -853,8 +886,8 @@ test("dense previews keep two shared cards beside independent notes and every go
       await page.screenshot({
         path: testInfo.outputPath(
           viewport.width === 1536
-            ? "dashboard-two-cards-notes-light.png"
-            : `dashboard-two-cards-notes-${viewport.width}x${viewport.height}-light.png`,
+            ? `dashboard-two-cards-notes-${viewport.theme || "light"}.png`
+            : `dashboard-two-cards-notes-${viewport.width}x${viewport.height}-${viewport.theme || "light"}.png`,
         ),
         fullPage: false,
       });

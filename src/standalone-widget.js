@@ -1,7 +1,11 @@
 import { validateStore } from "./model.js";
 import { renderWidgetSummary, widgetDocumentHtml } from "./widget.js";
 import { createWindowCoordinator } from "./window-coordinator.js";
-import { desktopWindowFeatures, fitWidgetWindow } from "./window-size.js";
+import {
+  desktopWindowFeatures,
+  fitWidgetWindow,
+  windowRoleHash,
+} from "./window-size.js";
 import {
   applyTheme,
   normalizePreferences,
@@ -136,9 +140,11 @@ export function startStandaloneWidget() {
         return;
       }
       const target = new URL(window.location.href);
-      target.hash = recordId
-        ? `desktop?${new URLSearchParams({ record: recordId })}`
-        : "desktop";
+      target.hash = windowRoleHash(
+        "desktop",
+        window,
+        recordId ? { record: recordId } : {},
+      );
       const scope = new URL(target.href);
       scope.hash = "";
       let hash = 5381;

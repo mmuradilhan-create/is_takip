@@ -19,6 +19,16 @@ test("both launchers keep window geometry out of Chrome's process-wide arguments
       /--(?:start-maximized|window-size|window-position)/i,
     );
     assert(launcher.includes("$sizingReady=$ready.WaitOne(10000)"));
+    const wait = launcher.indexOf("$sizingReady=$ready.WaitOne(10000)");
+    const ownership = launcher.indexOf(
+      "if ($sizingReady) { $url+='?windowSizing=native' }",
+    );
+    const argumentsReady = launcher.indexOf("$arguments=@(");
+    const open = launcher.indexOf("Start-Process -FilePath $chrome");
+    assert(
+      wait < ownership && ownership < argumentsReady && argumentsReady < open,
+      "only a ready native helper takes ownership before app arguments are built",
+    );
     assert(
       launcher.includes(
         "Start-Process -FilePath $chrome -ArgumentList $arguments",
@@ -73,7 +83,23 @@ test("native helper only settles newly identified ODAK roles and releases later 
     ),
   );
   assert(helper.includes("$now -ge $entry.Until"));
-  assert(helper.includes("$settling.Remove($h); continue"));
+  assert(
+    helper.includes(
+      "if ([OdakWidgetBounds]::Fit($h,$now,($now -ge $entry.Until))) { $settling.Remove($h); [OdakWidgetBounds]::Forget($h) }",
+    ),
+    "completed widget sizing is removed instead of corrected again on the next poll",
+  );
+  assert(
+    helper.includes(
+      "if (!$alive.Contains($h)) { $settling.Remove($h); [OdakWidgetBounds]::Forget($h); continue }",
+    ),
+  );
+  assert(
+    helper.includes(
+      "[void]$seen.Remove($h); $settling.Remove($h); [OdakWidgetBounds]::Forget($h)",
+    ),
+    "closed HWND state cannot leak into a later window reusing the handle",
+  );
   assert(helper.includes('t.ToString()=="ODAK · Özet"'));
   const titles = JSON.parse(
     `[${helper.match(/static readonly string\[\] Titles=new string\[\]\{([^}]+)\};/)[1]}]`,
@@ -98,7 +124,60 @@ test("native helper only settles newly identified ODAK roles and releases later 
     helper.includes("Array.IndexOf(Titles,t.ToString())>=0 && !IsZoomed(h)"),
   );
   assert(helper.includes('Class(h).StartsWith("Chrome_WidgetWin_")'));
-  assert(helper.includes("if(h==IntPtr.Zero || !Widget(h)) return"));
+  assert(helper.includes("if(h==IntPtr.Zero || !Widget(h)) return true"));
+});
+
+test("native widget observes stable bounds before one size change and reserves fallback for the deadline", () => {
+  // The Linux suite inspects the generated native boundary, not live Win32 calls.
+  const start = helper.indexOf(
+    "public static bool Fit(IntPtr h,long now,bool expired)",
+  );
+  const fit = helper.slice(
+    start,
+    helper.indexOf("public static class OdakMainBounds"),
+  );
+  assert(start >= 0);
+  assert(fit.includes("if(!PendingWindows.TryGetValue(h,out pending))"));
+  assert(
+    fit.includes(
+      'string sample=dpi+":"+outer.L+":"+outer.T+":"+outer.W+":"+outer.H+":"+view.W+":"+view.H;',
+    ),
+    "monitor DPI and both outer and renderer bounds must settle together",
+  );
+  assert(
+    fit.includes(
+      "if(pending.Sample!=sample) { pending.Sample=sample; pending.StableSince=now; return expired; }",
+    ),
+  );
+  assert(fit.includes("if(now-pending.StableSince<200) return expired;"));
+  assert(
+    fit.includes(
+      "if(!pending.Restored) { pending.Restored=true; pending.Sample=null; ShowWindow(h,9); }",
+    ),
+    "a minimized or maximized new widget is restored at most once",
+  );
+  assert(
+    fit.includes("Math.Abs(view.W-targetW)<=1 && Math.Abs(view.H-targetH)<=1"),
+  );
+  assert(fit.includes("w=outer.W+targetW-view.W; z=outer.H+targetH-view.H;"));
+  assert.equal((fit.match(/SetWindowPos\(/g) || []).length, 1);
+  assert(
+    fit.includes(
+      "if(w>0 && z>0) SetWindowPos(h,IntPtr.Zero,0,0,w,z,0x0002|0x0004|0x0010);\n    return true;",
+    ),
+    "one size application completes the operation without moving or activating it",
+  );
+  const fallbackStart = fit.indexOf("} else {\n      pending.Sample=null;");
+  assert(fallbackStart >= 0);
+  const fallback = fit.slice(fallbackStart);
+  const waitForDeadline = fallback.indexOf("if(!expired) return false;");
+  assert(
+    waitForDeadline >= 0 &&
+      waitForDeadline <
+        fallback.indexOf("if(outer.W>500*scale || outer.H>600*scale)"),
+    "renderer absence cannot cause an early fallback followed by another correction",
+  );
+  assert(fit.includes("finally { SetThreadDpiAwarenessContext(previous); }"));
 });
 
 test("helper startup and idle shutdown share a per-user lock without changing Chrome or record storage", () => {

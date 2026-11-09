@@ -153,6 +153,44 @@ test("widget initialization is read-only and activation reaches exactly one main
   ]);
 });
 
+test("native sizing ownership stays in the same window scope as plain HTML through either transport", async () => {
+  for (const broadcast of [true, false]) {
+    const env = environment({ broadcast });
+    const calls = [];
+    const main = createWindowCoordinator({
+      window: env.createWindow(
+        "file:///C:/ODAK/TAKIP.html#desktop?record=example&windowSizing=native",
+      ),
+      onActivateMain: (id) => {
+        calls.push(id);
+        return { focused: true };
+      },
+    });
+    const widget = createWindowCoordinator({
+      window: env.createWindow("file:///C:/ODAK/TAKIP.html#widget"),
+      onActivateWidget: () => {
+        calls.push("widget");
+        return { focused: true };
+      },
+    });
+    try {
+      assert.deepEqual(await main.activateWidget(), {
+        existing: true,
+        focused: true,
+      });
+      assert.deepEqual(await widget.activateMain("saved-record"), {
+        existing: true,
+        focused: true,
+      });
+      assert.deepEqual(calls, ["widget", "saved-record"]);
+      assert.equal(env.values.get("is-takip-v1"), "untouched-workspace");
+    } finally {
+      widget.stop();
+      main.stop();
+    }
+  }
+});
+
 test("the last focused main is targeted and localStorage carries requests when BroadcastChannel is unavailable", async () => {
   const env = environment({ broadcast: false, locks: false });
   const calls = [];

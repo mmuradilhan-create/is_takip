@@ -1,4 +1,4 @@
-import { WIDGET_VIEWPORT } from "./window-size.js";
+import { WIDGET_VIEWPORT, windowRoleHash } from "./window-size.js";
 import { widgetAgenda } from "./widget-agenda-model.js";
 
 const escapeHtml = (value) =>
@@ -168,7 +168,7 @@ export function createSummaryWidget({ findWidget, onMessage } = {}) {
   let popup = null;
   let opening = null;
   const url = new URL(window.location.href);
-  url.hash = "widget";
+  url.hash = windowRoleHash("widget", window);
   const scope = new URL(url.href);
   scope.hash = "";
   let hash = 5381;

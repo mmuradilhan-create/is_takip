@@ -4,6 +4,8 @@ import {
   desktopWindowFeatures,
   widgetWindowSize,
   fitWidgetWindow,
+  windowSizingMode,
+  windowRoleHash,
 } from "../src/window-size.js";
 
 const windowFeatures = (metrics) =>
@@ -83,6 +85,58 @@ test("unknown monitor geometry uses bounded main-window defaults rather than inv
   );
 });
 
+test("native sizing requires the helper-ready fragment marker", () => {
+  for (const hash of [
+    "#widget?windowSizing=native",
+    "#desktop?record=example&windowSizing=native",
+  ])
+    assert.equal(windowSizingMode({ location: { hash } }), "native");
+  for (const hash of [
+    "",
+    "#widget",
+    "#desktop?record=windowSizing%3Dnative",
+    "#widget?windowSizing=browser",
+  ])
+    assert.equal(windowSizingMode({ location: { hash } }), "browser");
+  assert.equal(
+    windowSizingMode({ location: { search: "?windowSizing=native" } }),
+    "browser",
+  );
+  assert.equal(windowSizingMode(null), "browser");
+});
+
+test("new main and widget windows carry sizing ownership without changing their workspace scope or record target", () => {
+  const owner = {
+    location: new URL("file:///work/TAKIP.html#desktop?windowSizing=native"),
+  };
+  const widget = new URL(owner.location);
+  widget.hash = windowRoleHash("widget", owner);
+  assert.equal(widget.hash, "#widget?windowSizing=native");
+  assert.equal(windowSizingMode({ location: widget }), "native");
+  const main = new URL(widget);
+  main.hash = windowRoleHash(
+    "desktop",
+    { location: widget },
+    { record: "a b&c" },
+  );
+  const query = new URLSearchParams(main.hash.split("?")[1]);
+  assert.equal(query.get("record"), "a b&c");
+  assert.equal(query.get("windowSizing"), "native");
+  assert.equal(
+    windowRoleHash("desktop", { location: widget }),
+    "desktop?windowSizing=native",
+  );
+  for (const url of [main, widget]) {
+    url.hash = "";
+    assert.equal(url.href, "file:///work/TAKIP.html");
+  }
+  assert.equal(windowRoleHash("widget", {}), "widget");
+  assert.equal(
+    windowRoleHash("desktop", {}, { record: "example" }),
+    "desktop?record=example",
+  );
+});
+
 test("widget bounds add the actual browser frame to the small content viewport", () => {
   assert.deepEqual(
     widgetWindowSize({
@@ -123,15 +177,19 @@ test("widget bounds fit available CSS screen pixels without scaling twice for de
   );
 });
 
-function simulatedWidget({ scale = 1, denied = false } = {}) {
+function simulatedWidget({ scale = 1, denied = false, native = false } = {}) {
   let now = 0;
   let nextId = 1;
   let frameWidth = 16;
   let frameHeight = 39;
   const timers = new Map();
-  const listeners = new Set();
+  const listeners = new Map();
   const calls = [];
+  function emit(type) {
+    for (const listener of [...(listeners.get(type) || [])]) listener();
+  }
   const win = {
+    location: { hash: native ? "#widget?windowSizing=native" : "#widget" },
     innerWidth: 1264,
     innerHeight: 811,
     outerWidth: 1280,
@@ -146,7 +204,7 @@ function simulatedWidget({ scale = 1, denied = false } = {}) {
       win.outerHeight = height;
       win.innerWidth = width - frameWidth;
       win.innerHeight = height - frameHeight;
-      for (const listener of listeners) listener();
+      emit("resize");
     },
     setTimeout(callback, delay) {
       const id = nextId++;
@@ -157,15 +215,17 @@ function simulatedWidget({ scale = 1, denied = false } = {}) {
       timers.delete(id);
     },
     addEventListener(type, listener) {
-      if (type === "resize") listeners.add(listener);
+      if (!listeners.has(type)) listeners.set(type, new Set());
+      listeners.get(type).add(listener);
     },
     removeEventListener(type, listener) {
-      if (type === "resize") listeners.delete(listener);
+      listeners.get(type)?.delete(listener);
     },
   };
   return {
     win,
     calls,
+    emit,
     advance(milliseconds) {
       const end = now + milliseconds;
       while (timers.size) {
@@ -186,32 +246,76 @@ function simulatedWidget({ scale = 1, denied = false } = {}) {
       win.outerHeight = height;
       win.innerWidth = width - frameWidth;
       win.innerHeight = height - frameHeight;
-      for (const listener of listeners) listener();
+      emit("resize");
     },
-    pending: () => ({ timers: timers.size, listeners: listeners.size }),
+    pending: () => ({
+      timers: timers.size,
+      listeners: [...listeners.values()].reduce(
+        (sum, set) => sum + set.size,
+        0,
+      ),
+    }),
   };
 }
 
-test("startup converges after a late restored size and changed browser frame, then releases manual resizing", () => {
+test("plain HTML corrects the initial frame once and preserves every later manual size", () => {
   const env = simulatedWidget();
-  fitWidgetWindow(env.win);
-  assert.deepEqual(env.calls, [[396, 459]]);
-  assert.equal(env.win.innerWidth, 380);
-  assert.equal(env.win.innerHeight, 420);
-  env.advance(800);
+  const stop = fitWidgetWindow(env.win);
+  assert.equal(fitWidgetWindow(env.win), stop);
+  env.advance(100);
   env.hostResize(1400, 920, { width: 20, height: 60 });
-  env.advance(40);
-  assert.deepEqual(env.calls.at(-1), [400, 480]);
+  env.advance(99);
+  assert.deepEqual(env.calls, []);
+  env.advance(1);
+  assert.deepEqual(env.calls, [[400, 480]]);
   assert.equal(env.win.innerWidth, 380);
   assert.equal(env.win.innerHeight, 420);
-  env.advance(2000);
   assert.deepEqual(env.pending(), { timers: 0, listeners: 0 });
-  const count = env.calls.length;
+  env.advance(450);
   env.hostResize(720, 600);
+  env.emit("focus");
+  assert.equal(fitWidgetWindow(env.win), stop);
   env.advance(10000);
-  assert.equal(env.calls.length, count);
+  assert.deepEqual(env.calls, [[400, 480]]);
   assert.equal(env.win.innerWidth, 700);
   assert.equal(env.win.innerHeight, 540);
+  assert.deepEqual(env.pending(), { timers: 0, listeners: 0 });
+});
+
+test("native-managed startup leaves all geometry and sizing timers to the helper", () => {
+  const env = simulatedWidget({ native: true });
+  fitWidgetWindow(env.win);
+  assert.deepEqual(env.pending(), { timers: 0, listeners: 0 });
+  env.hostResize(1400, 920);
+  env.advance(10000);
+  assert.deepEqual(env.calls, []);
+  assert.equal(env.win.outerWidth, 1400);
+  assert.equal(env.win.outerHeight, 920);
+});
+
+test("interaction before the startup attempt gives control to the user immediately", () => {
+  for (const type of ["pointerdown", "keydown"]) {
+    const env = simulatedWidget();
+    fitWidgetWindow(env.win);
+    env.advance(100);
+    env.emit(type);
+    env.hostResize(720, 600);
+    fitWidgetWindow(env.win);
+    env.advance(10000);
+    assert.deepEqual(env.calls, [], type);
+    assert.equal(env.win.outerWidth, 720);
+    assert.equal(env.win.outerHeight, 600);
+    assert.deepEqual(env.pending(), { timers: 0, listeners: 0 });
+  }
+});
+
+test("an already compact popup is left at its requested size without geometry writes", () => {
+  const env = simulatedWidget();
+  env.hostResize(396, 459);
+  fitWidgetWindow(env.win);
+  env.advance(10000);
+  assert.deepEqual(env.calls, []);
+  assert.deepEqual(env.pending(), { timers: 0, listeners: 0 });
 });
 
 test("CSS viewport calibration is identical at 100, 125, 150 and 200 percent display scale", () => {
@@ -250,13 +354,13 @@ test("cleanup, closure and denied resizing end all startup work without a perman
   const denied = simulatedWidget({ denied: true });
   assert.doesNotThrow(() => fitWidgetWindow(denied.win));
   denied.advance(3000);
-  assert(denied.calls.length > 1 && denied.calls.length < 20);
+  assert.deepEqual(denied.calls, [[396, 459]]);
   assert.deepEqual(denied.pending(), { timers: 0, listeners: 0 });
 
   const closed = simulatedWidget();
   fitWidgetWindow(closed.win);
   closed.win.closed = true;
-  closed.advance(100);
+  closed.advance(200);
   assert.deepEqual(closed.pending(), { timers: 0, listeners: 0 });
   const alreadyClosed = simulatedWidget();
   alreadyClosed.win.closed = true;

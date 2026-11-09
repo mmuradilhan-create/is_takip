@@ -6,6 +6,19 @@ function positive(value, fallback) {
   return Number.isFinite(value) && value > 0 ? value : fallback;
 }
 
+/** The launcher marks native sizing only after its helper is ready. */
+export function windowSizingMode(win = globalThis.window) {
+  const parameters = new URLSearchParams(win?.location?.hash?.split("?")[1]);
+  return parameters.get("windowSizing") === "native" ? "native" : "browser";
+}
+
+/** Keep sizing ownership in the fragment so workspace/window identity stays the same. */
+export function windowRoleHash(role, win = globalThis.window, parameters = {}) {
+  const query = new URLSearchParams(parameters);
+  if (windowSizingMode(win) === "native") query.set("windowSizing", "native");
+  return query.size ? `${role}?${query}` : role;
+}
+
 /** Request the monitor's work area for a newly created main window. */
 export function desktopWindowFeatures(metrics = {}) {
   const screen = metrics.screen || {};
@@ -52,35 +65,30 @@ export function widgetWindowSize(metrics = {}) {
   };
 }
 
-/** Let Chrome finish restoring its frame, then leave manual resizing alone. */
+/** Size unmanaged windows once; native launches have one owner in the helper. */
 export function fitWidgetWindow(win = globalThis.window) {
-  if (!win || typeof win.resizeTo !== "function") return () => {};
-  widgetSizing.get(win)?.();
+  if (
+    !win ||
+    win.closed ||
+    windowSizingMode(win) === "native" ||
+    typeof win.resizeTo !== "function"
+  )
+    return () => {};
+  const existing = widgetSizing.get(win);
+  if (existing) return existing;
   let stopped = false;
-  let resizeTimer;
-  const timers = new Set();
-  function schedule(callback, delay) {
-    const timer = win.setTimeout(() => {
-      timers.delete(timer);
-      callback();
-    }, delay);
-    timers.add(timer);
-    return timer;
-  }
+  let timer;
   function stop() {
     if (stopped) return;
     stopped = true;
-    for (const timer of timers) win.clearTimeout(timer);
-    timers.clear();
-    win.removeEventListener?.("resize", onResize);
-    if (widgetSizing.get(win) === stop) widgetSizing.delete(win);
+    if (timer !== undefined) win.clearTimeout(timer);
+    win.removeEventListener?.("pointerdown", stop, true);
+    win.removeEventListener?.("keydown", stop, true);
   }
   function fit() {
     if (stopped) return;
-    if (win.closed) {
-      stop();
-      return;
-    }
+    stop();
+    if (win.closed) return;
     try {
       const size = widgetWindowSize(win);
       if (
@@ -90,26 +98,14 @@ export function fitWidgetWindow(win = globalThis.window) {
         win.resizeTo(size.width, size.height);
       }
     } catch {
-      // A normal tab may forbid resizing. The Windows launcher also measures
-      // the widget's native renderer and corrects only its newly opened window.
+      // A normal tab may forbid resizing. Leave it alone without retrying.
     }
-  }
-  function onResize() {
-    if (stopped) return;
-    if (resizeTimer !== undefined) {
-      win.clearTimeout(resizeTimer);
-      timers.delete(resizeTimer);
-    }
-    resizeTimer = schedule(fit, 40);
   }
   widgetSizing.set(win, stop);
-  win.addEventListener?.("resize", onResize);
-  fit();
-  if (stopped) return stop;
-  // Chrome may apply remembered placement or change frame metrics after load.
-  // Sampling stays bounded, including when resizeTo is denied by the browser.
-  for (const delay of [50, 150, 300, 600, 1000, 1600, 2400])
-    schedule(fit, delay);
-  schedule(stop, 2500);
+  win.addEventListener?.("pointerdown", stop, { once: true, capture: true });
+  win.addEventListener?.("keydown", stop, { once: true, capture: true });
+  // Popup features already request the compact viewport. Only correct a
+  // different initial frame, and give control to the user after this attempt.
+  timer = win.setTimeout(fit, 200);
   return stop;
 }

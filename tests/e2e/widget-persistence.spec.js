@@ -240,77 +240,229 @@ test("a widget task opens its record in a separate main and leaves the small wid
   await expectCompactWindow(widget);
 });
 
-test("late browser placement is corrected during startup and later manual sizing survives widget reuse", async ({
-  browser,
-  baseURL,
-}) => {
-  // A fixed Playwright viewport masks native window.resizeTo geometry.
+async function sizingContext(browser, baseURL) {
   const context = await browser.newContext({
     baseURL,
     viewport: null,
     locale: "tr-TR",
     timezoneId: "Europe/Istanbul",
   });
+  await context.clock.install({ time: NOW });
+  await context.clock.pauseAt(NOW);
+  await context.addInitScript(
+    ({ key, records }) => {
+      if (localStorage.getItem(key) === null)
+        localStorage.setItem(key, JSON.stringify({ version: 1, records }));
+      window.widgetResizeRequests = [];
+      window.widgetFocusCalls = 0;
+      const resize = window.resizeTo.bind(window);
+      window.manualWindowResize = (width, height) => resize(width, height);
+      window.resizeTo = (width, height) => {
+        window.widgetResizeRequests.push({ width, height });
+        resize(width, height);
+      };
+      const focus = window.focus.bind(window);
+      window.focus = () => {
+        window.widgetFocusCalls++;
+        focus();
+      };
+    },
+    { key: KEY, records: fixtureRecords() },
+  );
+  return context;
+}
+
+async function clockedPopup(owner, context, activate) {
+  let popup;
+  let advanced = 0;
+  const observe = (next) => {
+    popup = next;
+  };
+  owner.on("popup", observe);
   try {
-    await context.clock.setFixedTime(NOW);
-    await context.addInitScript(
-      ({ key, records }) => {
-        if (localStorage.getItem(key) === null)
-          localStorage.setItem(key, JSON.stringify({ version: 1, records }));
-      },
-      { key: KEY, records: fixtureRecords() },
-    );
+    await activate();
+    await expect
+      .poll(
+        async () => {
+          if (!popup && advanced < 2000) {
+            await context.clock.runFor(200);
+            advanced += 200;
+          }
+          return Boolean(popup);
+        },
+        { timeout: 5000, intervals: [0, 25, 50, 100] },
+      )
+      .toBe(true);
+    return popup;
+  } finally {
+    owner.off("popup", observe);
+  }
+}
+
+async function openClockedWidget(main, context) {
+  const widget = await clockedPopup(main, context, () =>
+    main.getByRole("button", { name: "Widget aç", exact: true }).click(),
+  );
+  await expect(widget.locator("#widget-open-main")).toBeVisible();
+  return widget;
+}
+
+async function manualWindowSize(widget) {
+  await widget.evaluate(() => window.manualWindowResize(640, 560));
+  await expect
+    .poll(() => widget.evaluate(() => innerWidth > 380 && innerHeight > 420))
+    .toBe(true);
+  return widget.evaluate(() => ({ width: innerWidth, height: innerHeight }));
+}
+
+async function expectReusedSize(main, widget, context, manual) {
+  const previousFocus = await widget.evaluate(() => window.widgetFocusCalls);
+  await main.getByRole("button", { name: "Widget aç", exact: true }).click();
+  await context.clock.runFor(300);
+  await expect
+    .poll(() => widget.evaluate(() => window.widgetFocusCalls))
+    .toBeGreaterThan(previousFocus);
+  expect(context.pages()).toHaveLength(2);
+  expect(
+    await widget.evaluate(() => ({ width: innerWidth, height: innerHeight })),
+  ).toEqual(manual);
+}
+
+test("plain HTML sizes a widget once and preserves an early manual resize through focus and main reload", async ({
+  browser,
+  baseURL,
+}) => {
+  const context = await sizingContext(browser, baseURL);
+  try {
     const main = await context.newPage();
     await main.goto("/#desktop");
-    const widget = await openWidget(main);
-    await expectCompactWindow(widget);
+    await expect(main.locator("#page-title")).toHaveText("Genel bakış");
     const mainViewport = await main.evaluate(() => ({
       width: innerWidth,
       height: innerHeight,
     }));
     const before = await main.evaluate((key) => localStorage.getItem(key), KEY);
-
-    // Chrome's restored placement can arrive after the old 200 ms correction.
-    await widget.waitForTimeout(650);
-    await widget.evaluate(() => window.resizeTo(900, 700));
+    const opening = main.waitForEvent("popup");
+    // Start with a deliberately different browser frame so the single fallback
+    // attempt is observable independently of the native Windows helper.
+    await main.evaluate(() => {
+      window.open(
+        "/#widget",
+        "plain-widget-sizing-test",
+        "popup=yes,width=900,height=700,resizable=yes,scrollbars=yes",
+      );
+    });
+    const widget = await opening;
+    await expect(widget.locator("#widget-open-main")).toBeVisible();
+    await expect(widget).toHaveURL(/#widget$/);
+    expect(await widget.evaluate(() => window.widgetResizeRequests)).toEqual(
+      [],
+    );
+    await context.clock.runFor(199);
+    expect(await widget.evaluate(() => window.widgetResizeRequests)).toEqual(
+      [],
+    );
+    await context.clock.runFor(1);
     await expectCompactWindow(widget);
+    expect(
+      await widget.evaluate(() => window.widgetResizeRequests),
+    ).toHaveLength(1);
+
+    await context.clock.runFor(450);
+    const manual = await manualWindowSize(widget);
+    await context.clock.runFor(3000);
+    expect(
+      await widget.evaluate(() => window.widgetResizeRequests),
+    ).toHaveLength(1);
+    expect(
+      await widget.evaluate(() => ({ width: innerWidth, height: innerHeight })),
+    ).toEqual(manual);
+    await expectReusedSize(main, widget, context, manual);
+    await main.reload();
+    await expect(main.locator("#page-title")).toHaveText("Genel bakış");
+    await expectReusedSize(main, widget, context, manual);
+    expect(
+      await widget.evaluate(() => window.widgetResizeRequests),
+    ).toHaveLength(1);
+    expect(await main.evaluate((key) => localStorage.getItem(key), KEY)).toBe(
+      before,
+    );
     expect(
       await main.evaluate(() => ({ width: innerWidth, height: innerHeight })),
     ).toEqual(mainViewport);
 
-    // The startup calibrator ends; it must not fight a deliberate later resize.
-    await widget.waitForTimeout(2700);
-    await widget.evaluate(() => window.resizeTo(640, 560));
-    await expect
-      .poll(() => widget.evaluate(() => innerWidth > 380 && innerHeight > 420))
-      .toBe(true);
-    const manual = await widget.evaluate(() => ({
-      width: innerWidth,
-      height: innerHeight,
-    }));
-    await main.getByRole("button", { name: "Widget aç", exact: true }).click();
-    await widget.waitForTimeout(350);
-    expect(
-      await widget.evaluate(() => ({ width: innerWidth, height: innerHeight })),
-    ).toEqual(manual);
-    expect(context.pages()).toHaveLength(2);
-
-    // Reopening from a reloaded main uses coordination, not the cached popup ref.
-    await main.reload();
-    await main.getByRole("button", { name: "Widget aç", exact: true }).click();
-    await widget.waitForTimeout(350);
-    expect(
-      await widget.evaluate(() => ({ width: innerWidth, height: innerHeight })),
-    ).toEqual(manual);
-    expect(context.pages()).toHaveLength(2);
-    expect(await main.evaluate((key) => localStorage.getItem(key), KEY)).toBe(
-      before,
-    );
-
     await widget.close();
-    const fresh = await openWidget(main);
+    const fresh = await openClockedWidget(main, context);
+    await context.clock.runFor(250);
+    await expect(fresh).toHaveURL(/#widget$/);
     await expectCompactWindow(fresh);
     expect(context.pages()).toHaveLength(2);
+    expect(await fresh.evaluate((key) => localStorage.getItem(key), KEY)).toBe(
+      before,
+    );
+  } finally {
+    await context.close();
+  }
+});
+
+test("native sizing stays the only owner while widget and record routes retain the marker and reuse manual geometry", async ({
+  browser,
+  baseURL,
+}) => {
+  const context = await sizingContext(browser, baseURL);
+  try {
+    const main = await context.newPage();
+    await main.goto("/#desktop?windowSizing=native");
+    await expect(main.locator("#page-title")).toHaveText("Genel bakış");
+    const before = await main.evaluate((key) => localStorage.getItem(key), KEY);
+    const widget = await openClockedWidget(main, context);
+    await expect(widget).toHaveURL(/#widget\?windowSizing=native$/);
+    await context.clock.runFor(650);
+    expect(await widget.evaluate(() => window.widgetResizeRequests)).toEqual(
+      [],
+    );
+    const manual = await manualWindowSize(widget);
+    await context.clock.runFor(3000);
+    await expectReusedSize(main, widget, context, manual);
+    await main.reload();
+    await expect(main.locator("#page-title")).toHaveText("Genel bakış");
+    await expectReusedSize(main, widget, context, manual);
+    expect(await widget.evaluate(() => window.widgetResizeRequests)).toEqual(
+      [],
+    );
+    expect(await main.evaluate(() => window.widgetResizeRequests)).toEqual([]);
+
+    await main.close();
+    const reopened = await clockedPopup(widget, context, () =>
+      widget.locator('[data-record-id="widget-persistent-urgent"]').click(),
+    );
+    await expect(reopened).toHaveURL(
+      /#desktop\?record=widget-persistent-urgent&windowSizing=native$/,
+    );
+    await expect(reopened.locator('#record-form [name="title"]')).toHaveValue(
+      "Öncelikli günlük iş",
+    );
+    await reopened.locator('#editor [data-action="close"]').first().click();
+    await expectReusedSize(reopened, widget, context, manual);
+    expect(await widget.evaluate(() => window.widgetResizeRequests)).toEqual(
+      [],
+    );
+    expect(
+      await reopened.evaluate((key) => localStorage.getItem(key), KEY),
+    ).toBe(before);
+
+    await widget.close();
+    const fresh = await openClockedWidget(reopened, context);
+    await expect(fresh).toHaveURL(/#widget\?windowSizing=native$/);
+    await context.clock.runFor(3000);
+    expect(await fresh.evaluate(() => window.widgetResizeRequests)).toEqual([]);
+    expect(await reopened.evaluate(() => window.widgetResizeRequests)).toEqual(
+      [],
+    );
+    expect(context.pages()).toHaveLength(2);
+    expect(await fresh.evaluate((key) => localStorage.getItem(key), KEY)).toBe(
+      before,
+    );
   } finally {
     await context.close();
   }

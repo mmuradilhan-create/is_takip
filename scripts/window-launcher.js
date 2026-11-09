@@ -20,7 +20,37 @@ static string Class(IntPtr h) { var c=new StringBuilder(128); GetClassName(h,c,c
 static bool Widget(IntPtr h) { if(!IsWindowVisible(h) || !Class(h).StartsWith("Chrome_WidgetWin_")) return false; var t=new StringBuilder(512); GetWindowText(h,t,t.Capacity); return t.ToString()=="ODAK · Özet"; }
 public static IntPtr[] Windows(bool widgetOnly) { var found=new List<IntPtr>(); EnumWindows(delegate(IntPtr h,IntPtr p) { if(Class(h).StartsWith("Chrome_WidgetWin_")) { var t=new StringBuilder(512); GetWindowText(h,t,t.Capacity); if(!widgetOnly || (IsWindowVisible(h) && t.ToString()=="ODAK · Özet")) found.Add(h); } return true; },IntPtr.Zero); return found.ToArray(); }
 static bool Renderer(IntPtr h,R outer,out R view) { R best=new R(); EnumChildWindows(h,delegate(IntPtr child,IntPtr p) { R r; if(IsWindowVisible(child) && Class(child)=="Chrome_RenderWidgetHostHWND" && GetWindowRect(child,out r) && r.W>0 && r.H>0 && r.L>=outer.L && r.T>=outer.T && r.Rt<=outer.Rt && r.B<=outer.B && (long)r.W*r.H>(long)best.W*best.H) best=r; return true; },IntPtr.Zero); view=best; return best.W>0 && best.H>0; }
-public static void Fit(IntPtr h) { if(h==IntPtr.Zero || !Widget(h)) return; if(IsZoomed(h) || IsIconic(h)) { ShowWindow(h,9); return; } IntPtr previous=IntPtr.Zero; try { previous=SetThreadDpiAwarenessContext(new IntPtr(-4)); if(previous==IntPtr.Zero) previous=SetThreadDpiAwarenessContext(new IntPtr(-3)); } catch(EntryPointNotFoundException) {} if(previous==IntPtr.Zero) return; try { uint dpi=96; try { dpi=GetDpiForWindow(h); } catch(EntryPointNotFoundException) {} if(dpi==0) dpi=96; double scale=dpi/96.0; R outer,view; if(!GetWindowRect(h,out outer)) return; int w=0,z=0; if(Renderer(h,outer,out view)) { int targetW=(int)Math.Round(${WIDGET_VIEWPORT.width}*scale),targetH=(int)Math.Round(${WIDGET_VIEWPORT.height}*scale); if(Math.Abs(view.W-targetW)<=1 && Math.Abs(view.H-targetH)<=1) return; w=outer.W+targetW-view.W; z=outer.H+targetH-view.H; } else if(outer.W>500*scale || outer.H>600*scale) { w=(int)Math.Round(${WIDGET_OUTER_FALLBACK.width}*scale); z=(int)Math.Round(${WIDGET_OUTER_FALLBACK.height}*scale); } if(w>0 && z>0) SetWindowPos(h,IntPtr.Zero,0,0,w,z,0x0002|0x0004|0x0010); } finally { SetThreadDpiAwarenessContext(previous); } }
+class Pending { public string Sample; public long StableSince; public bool Restored; }
+static readonly Dictionary<IntPtr,Pending> PendingWindows=new Dictionary<IntPtr,Pending>();
+public static void Forget(IntPtr h) { PendingWindows.Remove(h); }
+// true releases this HWND; wait without resizing until startup measurements settle.
+public static bool Fit(IntPtr h,long now,bool expired) {
+  if(h==IntPtr.Zero || !Widget(h)) return true;
+  Pending pending; if(!PendingWindows.TryGetValue(h,out pending)) { pending=new Pending(); PendingWindows.Add(h,pending); }
+  if(IsZoomed(h) || IsIconic(h)) { if(!pending.Restored) { pending.Restored=true; pending.Sample=null; ShowWindow(h,9); } return expired; }
+  IntPtr previous=IntPtr.Zero;
+  try { previous=SetThreadDpiAwarenessContext(new IntPtr(-4)); if(previous==IntPtr.Zero) previous=SetThreadDpiAwarenessContext(new IntPtr(-3)); } catch(EntryPointNotFoundException) {}
+  if(previous==IntPtr.Zero) return expired;
+  try {
+    uint dpi=96; try { dpi=GetDpiForWindow(h); } catch(EntryPointNotFoundException) {} if(dpi==0) dpi=96;
+    double scale=dpi/96.0; R outer,view; if(!GetWindowRect(h,out outer)) return expired;
+    int w=0,z=0;
+    if(Renderer(h,outer,out view)) {
+      string sample=dpi+":"+outer.L+":"+outer.T+":"+outer.W+":"+outer.H+":"+view.W+":"+view.H;
+      if(pending.Sample!=sample) { pending.Sample=sample; pending.StableSince=now; return expired; }
+      if(now-pending.StableSince<200) return expired;
+      int targetW=(int)Math.Round(${WIDGET_VIEWPORT.width}*scale),targetH=(int)Math.Round(${WIDGET_VIEWPORT.height}*scale);
+      if(Math.Abs(view.W-targetW)<=1 && Math.Abs(view.H-targetH)<=1) return true;
+      w=outer.W+targetW-view.W; z=outer.H+targetH-view.H;
+    } else {
+      pending.Sample=null;
+      if(!expired) return false;
+      if(outer.W>500*scale || outer.H>600*scale) { w=(int)Math.Round(${WIDGET_OUTER_FALLBACK.width}*scale); z=(int)Math.Round(${WIDGET_OUTER_FALLBACK.height}*scale); }
+    }
+    if(w>0 && z>0) SetWindowPos(h,IntPtr.Zero,0,0,w,z,0x0002|0x0004|0x0010);
+    return true;
+  } finally { SetThreadDpiAwarenessContext(previous); }
+}
 }`;
   const mainTitles = [
     "Dashboard · Odak",
@@ -80,7 +110,7 @@ ${native}
     if ($wake.WaitOne(0)) { $lastSeen=$now; $idleGrace=30000 }
     $alive=[Collections.Generic.HashSet[IntPtr]]::new()
     foreach ($h in @([OdakMainBounds]::Windows($false))) { [void]$alive.Add($h) }
-    foreach ($h in @($seen)) { if (!$alive.Contains($h)) { [void]$seen.Remove($h); $settling.Remove($h) } }
+    foreach ($h in @($seen)) { if (!$alive.Contains($h)) { [void]$seen.Remove($h); $settling.Remove($h); [OdakWidgetBounds]::Forget($h) } }
     $mains=@([OdakMainBounds]::Windows($true))
     $widgets=@([OdakWidgetBounds]::Windows($true))
     if ($mains.Count+$widgets.Count -gt 0) { $lastSeen=$now; $idleGrace=5000 }
@@ -92,8 +122,10 @@ ${native}
     }
     foreach ($h in @($settling.Keys)) {
       $entry=$settling[$h]
-      if (!$alive.Contains($h) -or $now -ge $entry.Until) { $settling.Remove($h); continue }
-      if ($entry.Role -eq 'widget') { [OdakWidgetBounds]::Fit($h) }
+      if (!$alive.Contains($h)) { $settling.Remove($h); [OdakWidgetBounds]::Forget($h); continue }
+      if ($entry.Role -eq 'widget') {
+        if ([OdakWidgetBounds]::Fit($h,$now,($now -ge $entry.Until))) { $settling.Remove($h); [OdakWidgetBounds]::Forget($h) }
+      } elseif ($now -ge $entry.Until) { $settling.Remove($h) }
       else { [OdakMainBounds]::Maximize($h) }
     }
     if ($mains.Count+$widgets.Count -eq 0 -and $now-$lastSeen -ge $idleGrace) {
@@ -132,13 +164,12 @@ export function createWindowsLauncher(mode) {
     "if (!$chrome) { foreach ($key in @('HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\chrome.exe','HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\chrome.exe','HKLM:\\SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\App Paths\\chrome.exe')) { if (Test-Path -LiteralPath $key) { $candidate=(Get-Item -LiteralPath $key).GetValue(''); if ($candidate) { $candidate=$candidate.Trim([char]34); if (Test-Path -LiteralPath $candidate -PathType Leaf) { $chrome=$candidate; break } } } } }",
     "if (!$chrome) { throw 'Google Chrome bulunamadi. Mevcut kayitlarin farkli bir tarayicida acilmamasi icin otomatik tarayici degisikligi yapilmadi.' }",
     `$url=([Uri]$html).AbsoluteUri+'#${mode}'`,
-    "$arguments=@(('--app='+[char]34+$url+[char]34))",
     "$helper=Join-Path ([IO.Path]::GetDirectoryName($html)) 'ODAK-Pencere.ps1'",
     "$sid=[Security.Principal.WindowsIdentity]::GetCurrent().User.Value",
     "$prefix='Local\\ODAK.WindowSizing.'+$sid",
     "$launch=[Threading.Mutex]::new($false,$prefix+'.Launch')",
     "$ready=$null; $wake=$null; $launchOwned=$false; $sizingReady=$false",
-    "try { try { $launchOwned=$launch.WaitOne(10000) } catch [Threading.AbandonedMutexException] { $launchOwned=$true }; if ($launchOwned) { try { if (!(Test-Path -LiteralPath $helper -PathType Leaf)) { throw 'ODAK-Pencere.ps1 bulunamadi.' }; $ready=[Threading.EventWaitHandle]::new($false,[Threading.EventResetMode]::ManualReset,$prefix+'.Ready'); $wake=[Threading.EventWaitHandle]::new($false,[Threading.EventResetMode]::AutoReset,$prefix+'.Wake'); $wake.Set() | Out-Null; $encoded=[Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes([IO.File]::ReadAllText($helper))); if ($encoded.Length -gt 30000) { throw 'Pencere yardimcisi komut sinirini asiyor.' }; Start-Process -FilePath (Join-Path $PSHOME 'powershell.exe') -WindowStyle Hidden -ArgumentList @('-NoLogo','-NoProfile','-EncodedCommand',$encoded); $sizingReady=$ready.WaitOne(10000) } catch { $sizingReady=$false } }; Start-Process -FilePath $chrome -ArgumentList $arguments } finally { if ($ready) { $ready.Dispose() }; if ($wake) { $wake.Dispose() }; if ($launchOwned) { $launch.ReleaseMutex() }; $launch.Dispose() }",
+    "try { try { $launchOwned=$launch.WaitOne(10000) } catch [Threading.AbandonedMutexException] { $launchOwned=$true }; if ($launchOwned) { try { if (!(Test-Path -LiteralPath $helper -PathType Leaf)) { throw 'ODAK-Pencere.ps1 bulunamadi.' }; $ready=[Threading.EventWaitHandle]::new($false,[Threading.EventResetMode]::ManualReset,$prefix+'.Ready'); $wake=[Threading.EventWaitHandle]::new($false,[Threading.EventResetMode]::AutoReset,$prefix+'.Wake'); $wake.Set() | Out-Null; $encoded=[Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes([IO.File]::ReadAllText($helper))); if ($encoded.Length -gt 30000) { throw 'Pencere yardimcisi komut sinirini asiyor.' }; Start-Process -FilePath (Join-Path $PSHOME 'powershell.exe') -WindowStyle Hidden -ArgumentList @('-NoLogo','-NoProfile','-EncodedCommand',$encoded); $sizingReady=$ready.WaitOne(10000) } catch { $sizingReady=$false } }; if ($sizingReady) { $url+='?windowSizing=native' }; $arguments=@(('--app='+[char]34+$url+[char]34)); Start-Process -FilePath $chrome -ArgumentList $arguments } finally { if ($ready) { $ready.Dispose() }; if ($wake) { $wake.Dispose() }; if ($launchOwned) { $launch.ReleaseMutex() }; $launch.Dispose() }",
     "if (!$sizingReady) { Write-Host 'ODAK acildi; otomatik pencere boyutu uygulanamadi. ODAK-Pencere.ps1 dosyasini ayni klasorde tutun.'; pause }",
   ];
   const command =

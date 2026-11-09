@@ -172,6 +172,57 @@
   padding-left: 0;
 }
 
+/* The subject uses the free middle space; status, dates and actions stay below. */
+.dashboard-workspace.dashboard-rows
+  .dashboard-bottom-row
+  .attention-list
+  .followup-title-line {
+  --followup-subject-lines: 3;
+  flex: 1 1 0;
+  align-items: flex-start;
+  min-height: 28px;
+  height: auto;
+  max-height: none;
+}
+
+.dashboard-workspace.dashboard-rows
+  .dashboard-bottom-row
+  .attention-list
+  .followup-title-line
+  > .followup-title {
+  flex: 0 1 auto;
+  min-height: 0;
+  height: auto;
+  max-height: calc(var(--followup-subject-lines) * 14px);
+  line-height: 14px;
+  -webkit-line-clamp: var(--followup-subject-lines);
+}
+
+.dashboard-workspace.dashboard-rows
+  .dashboard-bottom-row
+  .attention-list
+  .followup-tracking {
+  margin-top: 0;
+}
+
+@media (min-width: 1536px) and (min-height: 741px) {
+  .dashboard-workspace.dashboard-rows
+    .dashboard-bottom-row
+    .attention-list
+    .followup-title-line {
+    --followup-subject-lines: 4;
+  }
+}
+
+@media (min-width: 1280px) and (max-width: 1535px) and (max-height: 740px) {
+  .dashboard-workspace.dashboard-rows
+    .dashboard-bottom-row
+    .attention-list
+    .followup-title-line {
+    --followup-subject-lines: 2;
+  }
+}
+
 .dashboard-rows .dashboard-bottom-row .followup-last {
   padding-left: 0;
 }

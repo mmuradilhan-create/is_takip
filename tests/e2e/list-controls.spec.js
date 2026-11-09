@@ -58,6 +58,121 @@ async function seed(page, records) {
   await page.goto("/");
 }
 
+async function expectSingleFilterRow(group) {
+  const layout = await group.evaluate((element) => {
+    const style = getComputedStyle(element);
+    const children = [...element.children].filter(
+      (child) => child.getBoundingClientRect().width > 0,
+    );
+    return {
+      centers: children.map((child) => {
+        const box = child.getBoundingClientRect();
+        return box.y + box.height / 2;
+      }),
+      clientWidth: element.clientWidth,
+      scrollWidth: element.scrollWidth,
+      overflowX: style.overflowX,
+      requiredWidth:
+        children.reduce((sum, child) => {
+          const childStyle = getComputedStyle(child);
+          return (
+            sum +
+            child.getBoundingClientRect().width +
+            parseFloat(childStyle.marginLeft) +
+            parseFloat(childStyle.marginRight)
+          );
+        }, 0) +
+        Math.max(0, children.length - 1) * parseFloat(style.columnGap || 0) +
+        parseFloat(style.paddingLeft) +
+        parseFloat(style.paddingRight),
+    };
+  });
+  expect(layout.centers.length).toBeGreaterThan(0);
+  expect(
+    Math.max(...layout.centers) - Math.min(...layout.centers),
+  ).toBeLessThanOrEqual(1);
+  if (layout.scrollWidth > layout.clientWidth + 1) {
+    expect(["auto", "scroll"]).toContain(layout.overflowX);
+    expect(layout.requiredWidth).toBeGreaterThan(layout.clientWidth - 1);
+  }
+}
+
+async function expectReachableFilter(control) {
+  await control.scrollIntoViewIfNeeded();
+  await control.focus();
+  await expect(control).toBeFocused();
+  const geometry = await control.evaluate((element) => {
+    const native = element.tagName === "SELECT";
+    const surface = native ? element.closest(".filter-surface") : element;
+    const group = surface.closest(
+      ".filters, .focus-filters, .list-view-toolbar",
+    );
+    const text = native ? surface.querySelector(".filter-value") : surface;
+    const box = surface.getBoundingClientRect();
+    const groupBox = group.getBoundingClientRect();
+    const textBox = text.getBoundingClientRect();
+    const clip = {
+      left: Math.max(0, groupBox.left + group.clientLeft),
+      right: Math.min(
+        innerWidth,
+        groupBox.left + group.clientLeft + group.clientWidth,
+      ),
+      top: Math.max(0, groupBox.top + group.clientTop),
+      bottom: Math.min(
+        innerHeight,
+        groupBox.top + group.clientTop + group.clientHeight,
+      ),
+    };
+    const textRects = [];
+    const textLines = [];
+    const walker = document.createTreeWalker(text, NodeFilter.SHOW_TEXT);
+    while (walker.nextNode()) {
+      if (!walker.currentNode.textContent.trim()) continue;
+      const range = document.createRange();
+      range.selectNodeContents(walker.currentNode);
+      const rects = [...range.getClientRects()];
+      textLines.push(rects.length);
+      textRects.push(...rects.map((rect) => rect.toJSON()));
+    }
+    return {
+      box: box.toJSON(),
+      textBox: textBox.toJSON(),
+      textRects,
+      textLines,
+      clip,
+      textWidth: text.scrollWidth,
+      textClientWidth: text.clientWidth,
+      accessibleName:
+        element.getAttribute("aria-label") || element.textContent.trim(),
+      hits: [
+        [box.left + 3, box.top + 3],
+        [box.right - 3, box.bottom - 3],
+        [box.left + box.width / 2, box.top + box.height / 2],
+      ].map(([x, y]) => {
+        const hit = document.elementFromPoint(x, y);
+        return native ? hit === element : hit?.closest("button") === element;
+      }),
+    };
+  });
+  expect(geometry.accessibleName).not.toBe("");
+  expect(geometry.box.left).toBeGreaterThanOrEqual(geometry.clip.left - 1);
+  expect(geometry.box.right).toBeLessThanOrEqual(geometry.clip.right + 1);
+  expect(geometry.hits).toEqual([true, true, true]);
+  expect(geometry.textRects.length).toBeGreaterThan(0);
+  expect(geometry.textLines.every((lines) => lines === 1)).toBe(true);
+  expect(geometry.textWidth).toBeLessThanOrEqual(geometry.textClientWidth + 1);
+  for (const rect of geometry.textRects) {
+    expect(rect.left).toBeGreaterThanOrEqual(
+      Math.max(geometry.clip.left, geometry.textBox.left) - 0.5,
+    );
+    expect(rect.right).toBeLessThanOrEqual(
+      Math.min(geometry.clip.right, geometry.textBox.right) + 0.5,
+    );
+    expect(rect.top).toBeGreaterThanOrEqual(geometry.clip.top - 0.5);
+    expect(rect.bottom).toBeLessThanOrEqual(geometry.clip.bottom + 0.5);
+  }
+}
+
 test("every work list limits a page to fifty records and opens with the newest records first", async ({
   page,
 }) => {
@@ -393,9 +508,10 @@ test("filters, search, sort and scope reset pagination and deleting the last pag
   );
 });
 
-test("the compact native sort icon stays at the same toolbar edge across all lists and retains sorting without saving workspace data", async ({
+test("filters remain one reachable row beside a fixed native sort icon across every list and the dashboard without saving workspace data", async ({
   page,
 }) => {
+  test.setTimeout(60_000);
   const records = TYPES.flatMap((type) => [
     make({
       id: `geometry-${type}-old`,
@@ -425,8 +541,8 @@ test("the compact native sort icon stays at the same toolbar edge across all lis
   for (const viewport of [
     { width: 1536, height: 864 },
     { width: 1280, height: 720 },
-    { width: 1100, height: 700 },
-    { width: 375, height: 700 },
+    { width: 850, height: 700 },
+    { width: 390, height: 700 },
   ]) {
     await page.setViewportSize(viewport);
     for (const theme of ["light", "dark"]) {
@@ -435,6 +551,11 @@ test("the compact native sort icon stays at the same toolbar edge across all lis
         await page.evaluate((theme) => {
           document.documentElement.dataset.theme = theme;
         }, theme);
+        await page
+          .locator("#status-filter")
+          .selectOption(records.find((record) => record.type === type).status);
+        const filters = page.locator(".list-controls-bar > .filters");
+        await expectSingleFilterRow(filters);
         const label = page.locator(".list-controls-bar > .list-sort");
         const select = page.getByRole("combobox", {
           name: "Kayıtları sırala",
@@ -489,6 +610,58 @@ test("the compact native sort icon stays at the same toolbar edge across all lis
         expect(geometry.right).toBeCloseTo(viewport.width <= 600 ? 12 : 16, 0);
         expect(geometry.text).toBe("");
         expect(geometry.hits).toEqual([true, true, true]);
+        if (viewport.width <= 600) {
+          const scopeButtons = page.locator(
+            ".list-controls-bar .list-scope-tabs > button",
+          );
+          const scopeBefore = await scopeButtons.evaluateAll((buttons) =>
+            buttons.map((button) => ({
+              scope: button.dataset.scope,
+              pressed: button.getAttribute("aria-pressed"),
+            })),
+          );
+          const filtersBefore = await filters
+            .locator("select")
+            .evaluateAll((controls) =>
+              controls.map((control) => ({
+                id: control.id,
+                value: control.value,
+              })),
+            );
+          await expect(scopeButtons).toHaveCount(3);
+          for (const button of await scopeButtons.all())
+            await expectReachableFilter(button);
+          expect(
+            await scopeButtons.evaluateAll((buttons) =>
+              buttons.map((button) => ({
+                scope: button.dataset.scope,
+                pressed: button.getAttribute("aria-pressed"),
+              })),
+            ),
+          ).toEqual(scopeBefore);
+          expect(
+            await filters.locator("select").evaluateAll((controls) =>
+              controls.map((control) => ({
+                id: control.id,
+                value: control.value,
+              })),
+            ),
+          ).toEqual(filtersBefore);
+          expect(await saved(page)).toBe(before);
+        }
+        for (const native of await filters.locator("select").all()) {
+          await expectReachableFilter(native);
+          const edge = await label.evaluate((element) => {
+            const box = element.getBoundingClientRect();
+            const bar = element
+              .closest(".list-controls-bar")
+              .getBoundingClientRect();
+            return { top: box.top - bar.top, right: bar.right - box.right };
+          });
+          expect(edge.top).toBeCloseTo(10, 0);
+          expect(edge.right).toBeCloseTo(viewport.width <= 600 ? 12 : 16, 0);
+        }
+        await expectReachableFilter(filters.locator(".clear-filters"));
         expect(await ids(page)).toEqual([
           `geometry-${type}-old`,
           `geometry-${type}-new`,
@@ -500,6 +673,30 @@ test("the compact native sort icon stays at the same toolbar edge across all lis
         ).toBe(true);
         expect(await saved(page)).toBe(before);
       }
+      await view(page, "dashboard");
+      await page.evaluate((theme) => {
+        document.documentElement.dataset.theme = theme;
+      }, theme);
+      const focusFilters = page.locator(".focus-filters");
+      await expectSingleFilterRow(focusFilters);
+      const keys = await focusFilters
+        .locator('[data-action="focus-filter"]')
+        .evaluateAll((buttons) =>
+          buttons.map((button) => button.dataset.filter),
+        );
+      for (const key of keys) {
+        const control = focusFilters.locator(`[data-filter="${key}"]`);
+        await expectReachableFilter(control);
+        await control.click();
+        await expect(control).toHaveAttribute("aria-pressed", "true");
+        await expectSingleFilterRow(focusFilters);
+        expect(await saved(page)).toBe(before);
+      }
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth,
+        ),
+      ).toBe(true);
     }
   }
   await expect(

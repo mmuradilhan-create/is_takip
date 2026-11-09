@@ -333,6 +333,7 @@ test("sidebar working notes keep idle compact and inline finish controls bounded
     "Toplantı aksiyonları",
     "Bekleyen konular",
   ];
+  const expandedNotes = [];
   async function navigationGeometry(baseline) {
     const geometry = await page.locator("#nav").evaluate((nav) => {
       const rect = (box) => ({
@@ -424,14 +425,112 @@ test("sidebar working notes keep idle compact and inline finish controls bounded
     if (expanded) {
       await expect(workingNote).toBeInViewport({ ratio: 1 });
       expect((await workingNote.boundingBox()).height).toBeGreaterThan(0);
+      if (
+        (await journal
+          .locator("#work-session-panel")
+          .getAttribute("data-mode")) === "note"
+      ) {
+        await expect(workingNote).toHaveAccessibleName("Çalışma notu");
+        const caption = await journal
+          .locator("#work-session-note-label")
+          .boundingBox();
+        expect(!caption || (caption.width <= 1 && caption.height <= 1)).toBe(
+          true,
+        );
+      } else {
+        await expect(workingNote).toHaveAccessibleName("Sonuç (isteğe bağlı)");
+      }
     } else await expect(workingNote).toBeHidden();
     const pad = await journal.boundingBox();
     const nav = await page.locator("#nav").boundingBox();
     expect(nav.y + nav.height).toBeLessThanOrEqual(pad.y + 1);
     for (const control of await journal
       .locator("#work-session-panel button:visible")
-      .all())
-      await expect(control).toBeInViewport({ ratio: 1 });
+      .all()) {
+      await control.scrollIntoViewIfNeeded();
+      const visible = await control.evaluate((button) => {
+        const rect = (box) => ({
+          left: box.left,
+          top: box.top,
+          right: box.right,
+          bottom: box.bottom,
+        });
+        const viewport = window.visualViewport;
+        const clip = {
+          left: viewport?.offsetLeft || 0,
+          top: viewport?.offsetTop || 0,
+          right: (viewport?.offsetLeft || 0) + (viewport?.width || innerWidth),
+          bottom:
+            (viewport?.offsetTop || 0) + (viewport?.height || innerHeight),
+        };
+        for (
+          let ancestor = button.parentElement;
+          ancestor;
+          ancestor = ancestor.parentElement
+        ) {
+          const style = getComputedStyle(ancestor);
+          const box = ancestor.getBoundingClientRect();
+          if (style.overflowX !== "visible") {
+            clip.left = Math.max(clip.left, box.left + ancestor.clientLeft);
+            clip.right = Math.min(
+              clip.right,
+              box.left + ancestor.clientLeft + ancestor.clientWidth,
+            );
+          }
+          if (style.overflowY !== "visible") {
+            clip.top = Math.max(clip.top, box.top + ancestor.clientTop);
+            clip.bottom = Math.min(
+              clip.bottom,
+              box.top + ancestor.clientTop + ancestor.clientHeight,
+            );
+          }
+        }
+        const box = rect(button.getBoundingClientRect());
+        const contentClip = {
+          left: Math.max(clip.left, box.left),
+          top: Math.max(clip.top, box.top),
+          right: Math.min(clip.right, box.right),
+          bottom: Math.min(clip.bottom, box.bottom),
+        };
+        const captions = [];
+        if (button.id !== "work-session-title") {
+          const walker = document.createTreeWalker(
+            button,
+            NodeFilter.SHOW_TEXT,
+          );
+          let node;
+          while ((node = walker.nextNode())) {
+            if (!node.textContent.trim()) continue;
+            const range = document.createRange();
+            range.selectNodeContents(node);
+            captions.push([...range.getClientRects()].map(rect));
+          }
+        }
+        return {
+          box,
+          clip,
+          contentClip,
+          captions,
+          icons: [...button.querySelectorAll("svg")]
+            .map((icon) => icon.getBoundingClientRect())
+            .filter((icon) => icon.width && icon.height)
+            .map(rect),
+        };
+      });
+      expect(visible.box.left).toBeGreaterThanOrEqual(visible.clip.left - 1);
+      expect(visible.box.top).toBeGreaterThanOrEqual(visible.clip.top - 1);
+      expect(visible.box.right).toBeLessThanOrEqual(visible.clip.right + 1);
+      expect(visible.box.bottom).toBeLessThanOrEqual(visible.clip.bottom + 1);
+      for (const caption of visible.captions)
+        expect(caption.length).toBeGreaterThan(0);
+      for (const content of [...visible.captions.flat(), ...visible.icons]) {
+        expect(content.left).toBeGreaterThanOrEqual(visible.contentClip.left);
+        expect(content.top).toBeGreaterThanOrEqual(visible.contentClip.top);
+        expect(content.right).toBeLessThanOrEqual(visible.contentClip.right);
+        expect(content.bottom).toBeLessThanOrEqual(visible.contentClip.bottom);
+      }
+      await navigationGeometry(baseline);
+    }
     await expect(
       journal.locator("#work-session-time, #sidebar-saved-time"),
     ).toHaveCount(0);
@@ -475,10 +574,14 @@ test("sidebar working notes keep idle compact and inline finish controls bounded
     await focus(page).locator(".work-start").click();
     const active = await journal.boundingBox();
     expect(active.height).toBeGreaterThan(idle.height + 30);
-    expect(active.y + active.height).toBeCloseTo(idle.y + idle.height, 1);
+    expect(active.y).toBeLessThan(idle.y);
     const workingNote = journal.locator("#work-session-note");
     await expect(workingNote).toBeFocused();
     await noteControls(journal, workingNote, baseline);
+    expandedNotes.push({
+      viewportHeight: viewport.height,
+      height: (await workingNote.boundingBox()).height,
+    });
     const sidebar = await page.locator(".sidebar").boundingBox();
     expect(sidebar.y).toBeGreaterThanOrEqual(0);
     expect(sidebar.y + sidebar.height).toBeLessThanOrEqual(viewport.height);
@@ -494,7 +597,14 @@ test("sidebar working notes keep idle compact and inline finish controls bounded
       "true",
     );
     await expect(workingNote).toHaveValue(result);
-    expect((await journal.boundingBox()).height).toBeLessThan(active.height);
+    const compact = await journal.boundingBox();
+    expect(compact.height).toBeLessThan(active.height);
+    expect(active.y).toBeLessThan(compact.y);
+    const expand = await journal.locator("#work-note-expand").boundingBox();
+    const compactPanel = await journal
+      .locator("#work-session-panel")
+      .boundingBox();
+    expect(expand.width).toBeLessThan(compactPanel.width / 2);
     await noteControls(journal, workingNote, baseline, false);
     await journal.locator("#work-note-expand").click();
     await expect(journal.locator("#work-session-panel")).toHaveAttribute(
@@ -550,4 +660,9 @@ test("sidebar working notes keep idle compact and inline finish controls bounded
       `${savedCount} kayıt`,
     );
   }
+  expect(
+    expandedNotes.find((note) => note.viewportHeight === 864).height,
+  ).toBeGreaterThan(
+    expandedNotes.find((note) => note.viewportHeight === 700).height,
+  );
 });

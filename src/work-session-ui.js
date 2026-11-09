@@ -53,6 +53,24 @@ export function createWorkSessionUI({
   sidebar.append(journal);
   sidebar.classList.add("has-work-journal");
   const panel = journal.querySelector("#work-session-panel");
+  const noteArea = document.createElement("div");
+  noteArea.className = "work-note-area";
+  panel.before(noteArea);
+  noteArea.append(panel);
+  const runningSummary = document.createElement("div");
+  runningSummary.id = "work-running-summary";
+  runningSummary.className = "work-running-summary";
+  runningSummary.hidden = true;
+  runningSummary.innerHTML =
+    '<span class="work-running-title"></span><button type="button" data-action="work-running-open">Çalışmaya dön</button>';
+  noteArea.prepend(runningSummary);
+  const pausedList = document.createElement("ul");
+  pausedList.id = "work-paused-list";
+  pausedList.className = "work-paused-list";
+  pausedList.setAttribute("aria-label", "Duraklatılan çalışmalar");
+  pausedList.hidden = true;
+  noteArea.append(pausedList);
+  const pausedRows = new Map();
   const form = panel.querySelector("form");
   const note = panel.querySelector("#work-session-note");
   const contextHint = document.createElement("p");
@@ -194,6 +212,7 @@ export function createWorkSessionUI({
         .querySelector(".mobile-toggle")
         ?.setAttribute("aria-expanded", "true");
     }
+    noteArea.scrollTop = 0;
     note.focus({ preventScroll: true });
     if (
       editorState?.selectionStart !== null &&
@@ -317,6 +336,96 @@ export function createWorkSessionUI({
     document.body.removeAttribute("data-work-session");
     document.documentElement.style.removeProperty("--work-session-height");
     journal.dataset.phase = panel.hidden ? "idle" : panel.dataset.phase;
+    journal.dataset.expanded = String(
+      !panel.hidden && panel.dataset.collapsed !== "true",
+    );
+    journal.style.setProperty(
+      "--work-finish-space",
+      finishDraft ? "40px" : "0px",
+    );
+  }
+  function renderPausedWork(state) {
+    const paused = store.snapshot.entries
+      .filter(
+        (entry) =>
+          entry.status === "paused" &&
+          isOpen(find(entry.recordId)) &&
+          !isJournaled(find(entry.recordId), entry),
+      )
+      .sort(
+        (first, second) =>
+          second.updatedAt - first.updatedAt ||
+          first.recordId.localeCompare(second.recordId),
+      );
+    const selectedKey = state ? draftKey(state) : null;
+    const selectedPaused = paused.some(
+      (entry) => draftKey(entry) === selectedKey,
+    );
+    const visible = paused
+      .filter((entry) => draftKey(entry) !== selectedKey)
+      .slice(0, selectedPaused ? 2 : 3);
+    const keys = new Set(visible.map(draftKey));
+    for (const [key, row] of pausedRows) {
+      if (!keys.has(key)) {
+        row.remove();
+        pausedRows.delete(key);
+      }
+    }
+    const focused = document.activeElement;
+    visible.forEach((entry, index) => {
+      const key = draftKey(entry);
+      let row = pausedRows.get(key);
+      if (!row) {
+        row = document.createElement("li");
+        row.className = "work-paused-row";
+        row.dataset.recordId = entry.recordId;
+        row.dataset.sessionId = entry.sessionId;
+        row.innerHTML = `<button type="button" class="work-paused-title" data-action="work-paused-open"></button><button type="button" class="work-paused-resume" data-action="work-paused-resume">${resumeIcon}</button>`;
+        pausedRows.set(key, row);
+      }
+      const record = find(entry.recordId);
+      for (const control of row.querySelectorAll("button")) {
+        control.dataset.id = entry.recordId;
+        control.dataset.sessionId = entry.sessionId;
+        control.disabled = finishing;
+      }
+      const title = row.querySelector(".work-paused-title");
+      title.textContent = record.title;
+      title.title = record.title;
+      title.setAttribute("aria-label", `${record.title}: çalışma notunu aç`);
+      row
+        .querySelector(".work-paused-resume")
+        .setAttribute("aria-label", `${record.title}: çalışmaya devam et`);
+      if (pausedList.children[index] !== row)
+        pausedList.insertBefore(row, pausedList.children[index] || null);
+    });
+    if (
+      focused &&
+      pausedList.contains(focused) &&
+      document.activeElement !== focused
+    )
+      focused.focus({ preventScroll: true });
+    pausedList.hidden = !visible.length;
+    const current = store.current;
+    const currentRecord = current ? find(current.recordId) : null;
+    runningSummary.hidden = !(
+      current?.status === "running" &&
+      isOpen(currentRecord) &&
+      !isJournaled(currentRecord, current) &&
+      (!state || draftKey(current) !== selectedKey)
+    );
+    if (!runningSummary.hidden) {
+      runningSummary.querySelector(".work-running-title").textContent =
+        currentRecord.title;
+      const control = runningSummary.querySelector("button");
+      control.dataset.id = current.recordId;
+      control.dataset.sessionId = current.sessionId;
+      control.disabled = finishing;
+    }
+    journal.style.setProperty(
+      "--work-extra-space",
+      `${visible.length * 44 + (runningSummary.hidden ? 0 : 38)}px`,
+    );
   }
   function render() {
     if (destroyed || !store) return;
@@ -360,6 +469,7 @@ export function createWorkSessionUI({
     const savedLog = state ? recorded(record, state.sessionId) : null;
     const sameSession = entry?.sessionId === state?.sessionId;
     const retired = savedLog && (!sameSession || entry?.status === "finished");
+    renderPausedWork(state);
     if (
       savedLog &&
       state.text.trim() &&
@@ -435,6 +545,11 @@ export function createWorkSessionUI({
     panel.querySelector("#work-session-note-label").textContent = finishDraft
       ? "Sonuç (isteğe bağlı)"
       : "Çalışma notu";
+    panel.querySelector("#work-session-note-label").hidden = !finishDraft;
+    note.setAttribute(
+      "aria-label",
+      finishDraft ? "Sonuç (isteğe bağlı)" : "Çalışma notu",
+    );
     note.required = false;
     note.placeholder = finishDraft
       ? "İstersen kısa bir sonuç yaz…"
@@ -514,6 +629,7 @@ export function createWorkSessionUI({
     contextHint.hidden =
       Boolean(finishDraft) ||
       !sameSession ||
+      !runningSummary.hidden ||
       store.current?.recordId === state.recordId;
     contextHint.textContent = contextHint.hidden
       ? ""
@@ -881,6 +997,48 @@ export function createWorkSessionUI({
     contextDialog.innerHTML = `<div class="work-context-shell"><div class="modal-header"><h2>Kayıt notları</h2><button type="button" class="close-modal" data-action="work-context-close" aria-label="Pencereyi kapat">${closeIcon}</button></div><div class="modal-body work-context-body"><p class="work-context-title">${escapeHtml(record.title)}</p><p class="work-record-notes">${escapeHtml(record.description || "Bu iş için kayıt notu eklenmemiş.")}</p></div><div class="modal-footer"><button type="button" class="btn primary" data-action="work-context-close">Tamam</button></div></div>`;
     if (!contextDialog.open) contextDialog.showModal();
   }
+  function selectWorkNote(
+    id,
+    sessionId,
+    { resume = false, running = false } = {},
+  ) {
+    if (finishing) return;
+    if (finishDraft) {
+      finishError("Önce bu sonucu kaydet ya da Vazgeç ile çalışma notuna dön.");
+      return;
+    }
+    rememberCaret();
+    if (!flushDrafts()) return;
+    store.synchronize();
+    const entry = store.get(id);
+    const record = find(id);
+    if (
+      !entry ||
+      entry.sessionId !== sessionId ||
+      entry.status !== (running ? "running" : "paused") ||
+      !isOpen(record) ||
+      isJournaled(record, entry)
+    ) {
+      reportError(
+        "Bu çalışma başka bir pencerede değişti. Güncel notları kontrol et.",
+      );
+      render();
+      return;
+    }
+    if (resume) {
+      editorPinned = false;
+      if (!store.start(id, { trackTime: false })) {
+        render();
+        return;
+      }
+      editorState = stateFor(store.current);
+    } else editorState = stateFor(entry);
+    editorPinned = true;
+    editorState.pausedExpanded = true;
+    finishMessage = "";
+    render();
+    focusNote();
+  }
   function onClick(event) {
     const control = event.target.closest?.("[data-action]");
     if (!control || !root.contains(control)) return;
@@ -900,10 +1058,24 @@ export function createWorkSessionUI({
         "work-draft-save-local",
         "work-draft-fork",
         "work-note-toggle",
+        "work-paused-open",
+        "work-paused-resume",
+        "work-running-open",
       ].includes(action)
     )
       return;
     event.preventDefault();
+    if (
+      action === "work-paused-open" ||
+      action === "work-paused-resume" ||
+      action === "work-running-open"
+    ) {
+      selectWorkNote(id, control.dataset.sessionId, {
+        resume: action === "work-paused-resume",
+        running: action === "work-running-open",
+      });
+      return;
+    }
     if (action === "work-note-toggle") {
       if (!editorState || finishing || finishDraft) return;
       const expand = panel.dataset.collapsed === "true";
@@ -1025,6 +1197,7 @@ export function createWorkSessionUI({
     note.removeEventListener("input", onNoteInput);
     note.removeEventListener("select", rememberCaret);
     note.removeEventListener("wheel", onWheel);
+    noteArea.removeEventListener("wheel", onWheel);
     nav?.removeEventListener("wheel", onNavWheel);
     owner.removeEventListener("storage", onStorage);
     owner.removeEventListener("focus", refresh);
@@ -1042,6 +1215,7 @@ export function createWorkSessionUI({
   note.addEventListener("input", onNoteInput);
   note.addEventListener("select", rememberCaret);
   note.addEventListener("wheel", onWheel, { passive: true });
+  noteArea.addEventListener("wheel", onWheel, { passive: true });
   nav?.addEventListener("wheel", onNavWheel, { passive: true });
   owner.addEventListener("storage", onStorage);
   owner.addEventListener("focus", refresh);

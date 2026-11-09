@@ -1,6 +1,6 @@
 # Odak
 
-PC kullanımına odaklanan, Türkçe kişisel iş ve hedef takibi. HTML/CSS/JavaScript tabanlıdır. Güncel sürüm: **0.21.29**.
+PC kullanımına odaklanan, Türkçe kişisel iş ve hedef takibi. HTML/CSS/JavaScript tabanlıdır. Güncel sürüm: **0.21.30**.
 
 ## Kullanım
 
@@ -123,7 +123,11 @@ Eski aktarımın **Kaç Gün Bekledi** satırı yalnız kaynak değeriyle doğru
 
 Günlük işin **▶ Çalışmaya başla** düğmesi sol altta o işe ait **Çalışma notu** alanını açar. Çalışırken bu alana yazabilirsiniz. Süre sayacı ve saat/dakika girişi yoktur. Notlar bağımsız **Notlar** kartından ayrıdır; her çalışma notu kendi işine ve çalışma kaydına aittir.
 
+Sol altta en fazla üç duraklatılmış iş görünür. İş adına tıklamak notunu açar; **Devam et** ayrıca çalışmayı sürdürür. Başka bir işin notunu okumak çalışan işi durdurmaz. Not açıldığında kart, sabit menünün altındaki boşluktan yukarı doğru yararlanır; aynı başlık iki kez gösterilmez.
+
 **Duraklat** sonuç istemez; yazılanları taslak olarak korur ve not alanını küçük özete indirir. **Notu aç** notu yeniden gösterir. **Devam et** aynı nottan sürdürür. Başka işe başlandığında önceki iş duraklatılır; geri dönüldüğünde taslağı açılır. Sayfa yenilendiğinde veya pencere kapandığında da kaydedilmiş taslak korunur. Kaydedilemeyen metin açık alanda tutulur ve hata gösterilir; yeniden denenebilir. Başka penceredeki notun üzerine sessizce yazılmaz.
+
+Liste ve güncel iş filtreleri tek satırda kalır; yer daraldığında filtreler kendi satırında yatay kaydırılır. Alt satıra geçmez, sayfanın genişliğini büyütmez.
 
 Sol menüdeki sekmeler çalışma notu açıldığında da sabit kalır; menü kaydırılmaz ve başlıklar tek satırda gösterilir. Üst boşluklar ve not alanı ekran yüksekliğine göre sıkışır. Kartın alt satırında solda oksuz **Çalışma geçmişi**, sağda toplam kayıt sayısı bulunur.
 

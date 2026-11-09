@@ -97,37 +97,62 @@
   min-height: 0;
   max-height: none;
   margin: 0;
+  flex: 1 1 auto;
 }
 
 .sidebar #work-note-expand {
   min-width: 0;
-  min-height: 18px;
-  padding: 2px 0;
+  min-height: 16px;
+  padding: 1px 2px;
   border: 0;
   background: transparent;
   color: var(--theme-accent, #3b6b53);
-  font-size: 10px;
+  font-size: 9px;
   line-height: 1.3;
   white-space: nowrap;
 }
 
-.sidebar #work-session-panel[data-collapsed="true"] .work-note-form {
+.sidebar
+  #work-session-panel:is(
+    [data-collapsed="true"],
+    [data-phase="paused"][data-mode="note"]
+  )
+  .work-note-form {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 4px 6px;
 }
 
-.sidebar #work-session-panel[data-collapsed="true"] .work-note-form > * {
+.sidebar
+  #work-session-panel:is(
+    [data-collapsed="true"],
+    [data-phase="paused"][data-mode="note"]
+  )
+  .work-note-form
+  > * {
   grid-column: 1 / -1;
 }
 
-.sidebar #work-session-panel[data-collapsed="true"] #work-session-title {
+.sidebar
+  #work-session-panel:is(
+    [data-collapsed="true"],
+    [data-phase="paused"][data-mode="note"]
+  )
+  #work-session-title {
   grid-column: 1;
   grid-row: 1;
+}
+
+.sidebar #work-session-panel[data-collapsed="true"] #work-session-title {
   -webkit-line-clamp: 1;
 }
 
-.sidebar #work-session-panel[data-collapsed="true"] #work-note-expand {
+.sidebar
+  #work-session-panel:is(
+    [data-collapsed="true"],
+    [data-phase="paused"][data-mode="note"]
+  )
+  #work-note-expand {
   grid-column: 2;
   grid-row: 1;
 }
@@ -135,7 +160,7 @@
 .work-note-field {
   display: flex;
   flex-direction: column;
-  flex: 0 0 auto;
+  flex: 1 1 auto;
   gap: 4px;
   min-width: 0;
   color: var(--theme-muted, #647b60);
@@ -148,7 +173,8 @@
   width: 100%;
   height: 110px;
   min-height: 100px;
-  max-height: 180px;
+  max-height: 250px;
+  flex: 1 1 auto;
   margin: 0;
   padding: 7px;
   resize: vertical;
@@ -161,6 +187,18 @@
   font: inherit;
   font-size: 12px;
   line-height: 1.5;
+}
+
+.sidebar-work-journal[data-expanded="true"] #work-session-note {
+  height: clamp(
+    60px,
+    calc(
+      100dvh - 500px - var(--work-extra-space, 0px) -
+        var(--work-finish-space, 0px)
+    ),
+    250px
+  );
+  min-height: 60px;
 }
 
 #work-session-note:focus-visible {
@@ -275,7 +313,8 @@
     line-height: 1.3;
   }
 
-  #work-session-note {
+  #work-session-note,
+  .sidebar-work-journal[data-expanded="true"] #work-session-note {
     height: 60px;
     min-height: 60px;
     max-height: 90px;

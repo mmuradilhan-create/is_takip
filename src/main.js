@@ -56,6 +56,7 @@ import "./dashboard-card-details.css";
 import "./action-focus.css";
 import "./goal-transfer-ui.css";
 import "./workspace-notes-ui.css";
+import "./compact-filter-row.css";
 import { createWorkspaceNotesUI } from "./workspace-notes-ui.js";
 import { normalizeNotes, notesFromBackup } from "./workspace-notes.js";
 import { createGoalTransferUI } from "./goal-transfer-ui.js";
@@ -1783,7 +1784,10 @@ export async function startMainApp() {
             .join(""),
           state.period !== "all",
         );
-    return `<section class="panel">${planningPeriodBar()}<div class="list-controls-bar">${listToolbar()}${pendingInbox ? '<div class="daily-context-banner"><span>Eski Pop-Up işleri haftalık hedeften ayırıp Anlık işler grubunda takip edebilirsin.</span><button type="button" class="text-btn" data-action="migrate-daily-inbox">Anlık işlere taşı</button></div>' : ""}<div class="filters">${contextFilter}${statusFilter}${priorityFilter}${dateFilter}${hasListFilters() ? `<button type="button" class="clear-filters" data-action="clear-filters" aria-label="Liste filtrelerini temizle">${icon("close")}Temizle</button>` : ""}<span class="result-count">${state.search ? `“${esc(state.search)}” için ` : ""}${page.total} sonuç</span></div>${listSortControl()}</div>${state.view === "daily" && state.listScope !== "completed" && pendingGoalLinks.length ? `<div class="link-warning">${icon("link")}<span>${pendingGoalLinks.length} açık işin hedef bağlantısı eksik.</span><button type="button" class="text-btn" data-action="unlinked">${state.onlyUnlinked ? "Tüm açık işleri göster" : "Bu işleri göster"}</button></div>` : ""}${state.view === "weekly" && state.status === "transferred" ? '<p class="weekly-archive-note">Eski hafta aktarımları. İlerleme ve bağlı işler bu kayıtlarda korunur.</p>' : ""}${planningBacklog()}${["weekly", "monthly"].includes(state.view) && !records.length ? planningEmpty() : table(records)}${listPagination(page)}<button class="add-inline" data-action="new">${icon("plus")}Yeni kayıt ekle</button></section>`;
+    const contextBanner = pendingInbox
+      ? '<div class="daily-context-banner"><span>Eski Pop-Up işleri haftalık hedeften ayırıp Anlık işler grubunda takip edebilirsin.</span><button type="button" class="text-btn" data-action="migrate-daily-inbox">Anlık işlere taşı</button></div>'
+      : "";
+    return `<section class="panel">${planningPeriodBar()}<div class="list-controls-bar">${listToolbar()}<div class="filters">${contextFilter}${statusFilter}${priorityFilter}${dateFilter}${hasListFilters() ? `<button type="button" class="clear-filters" data-action="clear-filters" aria-label="Liste filtrelerini temizle">${icon("close")}Temizle</button>` : ""}<span class="result-count">${state.search ? `“${esc(state.search)}” için ` : ""}${page.total} sonuç</span></div>${listSortControl()}</div>${contextBanner}${state.view === "daily" && state.listScope !== "completed" && pendingGoalLinks.length ? `<div class="link-warning">${icon("link")}<span>${pendingGoalLinks.length} açık işin hedef bağlantısı eksik.</span><button type="button" class="text-btn" data-action="unlinked">${state.onlyUnlinked ? "Tüm açık işleri göster" : "Bu işleri göster"}</button></div>` : ""}${state.view === "weekly" && state.status === "transferred" ? '<p class="weekly-archive-note">Eski hafta aktarımları. İlerleme ve bağlı işler bu kayıtlarda korunur.</p>' : ""}${planningBacklog()}${["weekly", "monthly"].includes(state.view) && !records.length ? planningEmpty() : table(records)}${listPagination(page)}<button class="add-inline" data-action="new">${icon("plus")}Yeni kayıt ekle</button></section>`;
   }
   function render() {
     renderedCalendarDay = today();

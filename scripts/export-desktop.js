@@ -529,6 +529,12 @@ teslim tarihi ve çalışma geçmişi korunur.
 
 CALISMAYA BASLA
 
+Filtreler tek satırda kalır. Dar ekranda kendi satırında yatay kaydırılır;
+alt satıra geçmez ve sayfayı genişletmez.
+Sol altta en fazla üç duraklatılmış iş görünür. İş adı notunu açar;
+Devam et ayrıca çalışmayı sürdürür. Not okumak çalışan işi durdurmaz.
+Not açılınca kart sabit menünün altındaki boşluktan yukarı doğru yararlanır.
+
 Günlük işin Çalışmaya başla düğmesi sol altta o işe ait Çalışma notu alanını
 açar. Çalışırken yazabilirsin; süre sayacı veya saat/dakika girişi yoktur.
 Sol menü sekmeleri sabittir; kaydırılmaz ve adları tek satırda kalır.

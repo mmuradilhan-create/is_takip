@@ -396,6 +396,13 @@ test("sidebar work notes keep history available and save only finished results w
     .click();
   await page.clock.fastForward(35_000);
   await expect(panel).toHaveAttribute("data-phase", "running");
+  await expect(draft).toHaveAccessibleName("Çalışma notu");
+  const normalCaption = await panel
+    .locator("#work-session-note-label")
+    .boundingBox();
+  expect(
+    !normalCaption || (normalCaption.width <= 1 && normalCaption.height <= 1),
+  ).toBe(true);
   await expect(
     control.locator("#sidebar-saved-time, #work-session-time"),
   ).toHaveCount(0);
@@ -405,10 +412,7 @@ test("sidebar work notes keep history available and save only finished results w
   );
   const activeBounds = await control.boundingBox();
   expect(activeBounds.height).toBeGreaterThan(idleBounds.height + 30);
-  expect(activeBounds.y + activeBounds.height).toBeCloseTo(
-    idleBounds.y + idleBounds.height,
-    1,
-  );
+  expect(activeBounds.y).toBeLessThan(idleBounds.y);
   await control.screenshot({
     path: testInfo.outputPath("mini-journal-active.png"),
   });
@@ -445,6 +449,7 @@ test("sidebar work notes keep history available and save only finished results w
   await page.clock.fastForward(120_000);
   await expect(panel).toHaveAttribute("data-collapsed", "true");
   await expect(draft).toBeHidden();
+  expect(activeBounds.y).toBeLessThan((await control.boundingBox()).y);
   await expect(draft).toHaveValue("Kompakt panelden inceleme tamamlandı.");
   const paused = await page.evaluate(
     (key) => JSON.parse(localStorage.getItem(key)),
@@ -465,6 +470,7 @@ test("sidebar work notes keep history available and save only finished results w
   expect(await readSaved(page)).toBe(before);
   await panel.locator('[data-action="work-finish"]').click();
   await expect(panel).toHaveAttribute("data-mode", "finish");
+  await expect(draft).toHaveAccessibleName("Sonuç (isteğe bağlı)");
   await expect(panel.locator("#work-finish-form")).toBeVisible();
   await expect(page.locator("#work-finish-dialog")).toHaveCount(0);
   await expect(

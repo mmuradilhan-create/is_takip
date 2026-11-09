@@ -174,33 +174,26 @@ test("the first real follow-up archives an overwritten initial summary inside th
   await page.reload();
   await openHistory(page);
   await expect(dialog(page).locator("li[data-followup-id]")).toHaveCount(1);
-  await expect(
-    entry(page, changed.followUpLog[0].id).locator(
-      ".waiting-followup-previous",
-    ),
-  ).toContainText("Önceki son gelişme");
-  await expect(
-    entry(page, changed.followUpLog[0].id).locator(
-      ".waiting-followup-previous p",
-    ),
-  ).toHaveText(OLD_NOTE);
-  expect(
-    await entry(page, changed.followUpLog[0].id).evaluate((element) => {
-      const result = element.querySelector(".waiting-followup-result");
-      const previous = element.querySelector(".waiting-followup-previous");
-      const planned = element.querySelector(".waiting-followup-planned");
-      return {
-        resultBeforePrevious: Boolean(
-          result.compareDocumentPosition(previous) &
-            Node.DOCUMENT_POSITION_FOLLOWING,
-        ),
-        previousBeforePlan: Boolean(
-          previous.compareDocumentPosition(planned) &
-            Node.DOCUMENT_POSITION_FOLLOWING,
-        ),
-      };
-    }),
-  ).toEqual({ resultBeforePrevious: true, previousBeforePlan: true });
+  for (const theme of ["light", "dark"]) {
+    await page.evaluate((value) => {
+      document.documentElement.dataset.theme = value;
+    }, theme);
+    const card = entry(page, changed.followUpLog[0].id);
+    await expect(card.locator(".waiting-followup-previous")).toHaveCount(0);
+    await expect(card).not.toContainText("Önceki son gelişme");
+    await expect(card).not.toContainText(OLD_NOTE);
+    await expect(card.locator("time")).toHaveText("8 Kasım 2026");
+    await expect(card.locator(".waiting-followup-result")).toHaveText(
+      changed.followUpLog[0].note,
+    );
+    await expect(card.locator(".waiting-followup-planned")).toContainText(
+      "Sonraki takip: 14 Kasım 2026",
+    );
+    expect(await topic(page)).toEqual(changed);
+  }
+  await page.evaluate(() => {
+    document.documentElement.dataset.theme = "light";
+  });
   await expect(dialog(page).locator("img")).toHaveCount(0);
   expect(
     await page.evaluate(() => window.followupEditInjected),

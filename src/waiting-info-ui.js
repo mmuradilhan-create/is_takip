@@ -9,9 +9,6 @@ const escapeHtml = (value) =>
 
 const clockIcon =
   '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 7v5l3 2M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0"/></svg>';
-const closeIcon =
-  '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>';
-
 const eligible = (record) =>
   record?.type === "daily" && record.status === "waiting";
 
@@ -32,7 +29,10 @@ export function createWaitingInfoUI({
   popup.setAttribute("popover", "auto");
   popup.setAttribute("role", "dialog");
   popup.setAttribute("aria-label", "Bekleme bilgisi");
+  popup.innerHTML =
+    '<div id="waiting-info-reason" tabindex="-1" aria-label="Bekleme nedeni"></div>';
   root.append(popup);
+  const body = popup.querySelector("#waiting-info-reason");
 
   let trigger = null;
   let recordId = null;
@@ -43,7 +43,9 @@ export function createWaitingInfoUI({
   let contentKey = "";
   let destroyed = false;
   let restoringFocus = false;
-  let dismissedControl = null;
+  const dismissed = new Set();
+  let pointerPosition = null;
+  let keyboardNavigation = false;
 
   const isOpen = () => popup.matches(":popover-open");
   const focusInside = () =>
@@ -74,7 +76,7 @@ export function createWaitingInfoUI({
 
   function close({ restoreFocus = false } = {}) {
     const previous = trigger;
-    dismissedControl = restoreFocus ? previous || dismissedControl : null;
+    if (restoreFocus && previous) dismissed.add(previous.dataset.id);
     if (isOpen()) popup.hidePopover();
     reset();
     hoverControl = null;
@@ -91,15 +93,10 @@ export function createWaitingInfoUI({
     ).trim();
     const nextKey = JSON.stringify(reason);
     if (contentKey === nextKey) return;
-    const focusedAction = popup.contains(owner.activeElement)
-      ? owner.activeElement.dataset.action
-      : null;
-    popup.innerHTML = `<div class="waiting-info-heading"><strong>Bekleme bilgisi</strong><button type="button" class="waiting-info-close" data-action="waiting-info-close" aria-label="Bekleme bilgisini kapat">${closeIcon}</button></div><section class="waiting-info-reason"><h3>Neyi/kimi bekliyorum?</h3><p id="waiting-info-reason">${escapeHtml(reason || "Bekleme nedeni eklenmedi.")}</p></section><div class="waiting-info-actions"><button type="button" class="waiting-info-edit" data-action="waiting-info-edit">Düzenle</button></div>`;
+    const scrollTop = contentKey ? body.scrollTop : 0;
+    body.textContent = reason || "Bekleme nedeni eklenmedi.";
+    body.scrollTop = scrollTop;
     contentKey = nextKey;
-    if (focusedAction)
-      popup
-        .querySelector(`[data-action="${focusedAction}"]`)
-        ?.focus({ preventScroll: true });
   }
 
   function position() {
@@ -113,8 +110,8 @@ export function createWaitingInfoUI({
     const topEdge = viewport?.offsetTop || 0;
     const width = viewport?.width || win.innerWidth;
     const height = viewport?.height || win.innerHeight;
-    popup.style.maxWidth = `${Math.max(1, width - 16)}px`;
-    popup.style.maxHeight = `${Math.max(1, height - 16)}px`;
+    popup.style.maxWidth = `${Math.min(360, Math.max(1, width - 16))}px`;
+    popup.style.maxHeight = `${Math.min(420, Math.max(1, height - 16))}px`;
     const anchor = trigger.getBoundingClientRect();
     if (
       anchor.bottom < topEdge ||
@@ -138,10 +135,12 @@ export function createWaitingInfoUI({
         : Math.max(topEdge + 8, above);
     popup.style.left = `${left}px`;
     popup.style.top = `${Math.min(top, topEdge + height - bounds.height - 8)}px`;
+    body.tabIndex = body.scrollHeight > body.clientHeight + 1 ? 0 : -1;
   }
 
   function open(control) {
-    if (destroyed || !control?.isConnected) return;
+    if (destroyed || !control?.isConnected || dismissed.has(control.dataset.id))
+      return;
     const record = getRecord(control.dataset.id);
     if (!eligible(record)) {
       close();
@@ -167,6 +166,7 @@ export function createWaitingInfoUI({
     popup.style.top = "8px";
     popup.showPopover();
     position();
+    body.scrollTop = 0;
   }
 
   function scheduleOpen(control) {
@@ -178,7 +178,7 @@ export function createWaitingInfoUI({
       openTimer = null;
       if (hoverControl === control || control.contains(owner.activeElement))
         open(control);
-    }, 150);
+    }, 80);
   }
 
   function scheduleHide() {
@@ -211,12 +211,13 @@ export function createWaitingInfoUI({
     if (
       !control ||
       !root.contains(control) ||
-      control.contains(event.relatedTarget) ||
-      control === dismissedControl
+      control.contains(event.relatedTarget)
     )
       return;
+    if (pointerMoved(event)) dismissed.delete(control.dataset.id);
+    rememberPointer(event);
     hoverControl = control;
-    scheduleOpen(control);
+    if (!dismissed.has(control.dataset.id)) scheduleOpen(control);
   }
 
   function onPointerOut(event) {
@@ -234,6 +235,8 @@ export function createWaitingInfoUI({
   }
 
   function onFocusIn(event) {
+    const navigation = keyboardNavigation;
+    keyboardNavigation = false;
     if (restoringFocus) return;
     if (popup.contains(event.target)) {
       win.clearTimeout(hideTimer);
@@ -241,16 +244,13 @@ export function createWaitingInfoUI({
       return;
     }
     const control = event.target.closest?.('[data-action="waiting-info"]');
-    if (control && control !== dismissedControl && root.contains(control))
-      scheduleOpen(control);
+    if (control && root.contains(control)) {
+      if (navigation) dismissed.delete(control.dataset.id);
+      if (!dismissed.has(control.dataset.id)) open(control);
+    }
   }
 
   function onFocusOut(event) {
-    if (
-      dismissedControl?.contains(event.target) &&
-      !dismissedControl.contains(event.relatedTarget)
-    )
-      dismissedControl = null;
     if (
       popup.contains(event.relatedTarget) ||
       trigger?.contains(event.relatedTarget)
@@ -259,11 +259,29 @@ export function createWaitingInfoUI({
     scheduleHide();
   }
 
+  function pointerMoved(event) {
+    return (
+      !pointerPosition ||
+      pointerPosition.x !== event.clientX ||
+      pointerPosition.y !== event.clientY
+    );
+  }
+
+  function rememberPointer(event) {
+    pointerPosition = { x: event.clientX, y: event.clientY };
+  }
+
   function onPointerMove(event) {
-    if (!dismissedControl) return;
-    dismissedControl = null;
+    const moved = pointerMoved(event);
+    rememberPointer(event);
     const control = event.target.closest?.('[data-action="waiting-info"]');
-    if (control && root.contains(control)) {
+    if (
+      moved &&
+      control &&
+      root.contains(control) &&
+      dismissed.has(control.dataset.id)
+    ) {
+      dismissed.delete(control.dataset.id);
       hoverControl = control;
       scheduleOpen(control);
     }
@@ -272,23 +290,36 @@ export function createWaitingInfoUI({
   function onClick(event) {
     const control = event.target.closest?.("[data-action]");
     if (!control || !root.contains(control)) return;
-    const action = control.dataset.action;
-    if (
-      !["waiting-info", "waiting-info-close", "waiting-info-edit"].includes(
-        action,
-      )
-    )
-      return;
+    if (control.dataset.action !== "waiting-info") return;
     event.preventDefault();
     event.stopPropagation();
-    if (action === "waiting-info-close") {
-      close({ restoreFocus: true });
-      return;
-    }
-    const id = action === "waiting-info-edit" ? recordId : control.dataset.id;
+    keyboardNavigation = false;
+    const id = control.dataset.id;
     const record = getRecord(id);
     close();
+    dismissed.add(control.dataset.id);
     if (eligible(record)) onEdit(id);
+  }
+
+  function onNavigation(event) {
+    keyboardNavigation =
+      [
+        "Tab",
+        "ArrowLeft",
+        "ArrowRight",
+        "ArrowUp",
+        "ArrowDown",
+        "Home",
+        "End",
+      ].includes(event.key) &&
+      !event.isComposing &&
+      !event.ctrlKey &&
+      !event.altKey &&
+      !event.metaKey;
+  }
+
+  function onKeyup() {
+    keyboardNavigation = false;
   }
 
   function onKeydown(event) {
@@ -305,8 +336,10 @@ export function createWaitingInfoUI({
       isOpen() &&
       control === trigger
     ) {
-      event.preventDefault();
-      popup.querySelector("button")?.focus({ preventScroll: true });
+      if (body.scrollHeight > body.clientHeight + 1) {
+        event.preventDefault();
+        body.focus({ preventScroll: true });
+      }
     }
   }
 
@@ -322,7 +355,9 @@ export function createWaitingInfoUI({
     root.removeEventListener("pointerout", onPointerOut);
     root.removeEventListener("focusin", onFocusIn);
     root.removeEventListener("focusout", onFocusOut);
-    root.removeEventListener("pointermove", onPointerMove);
+    owner.removeEventListener("pointermove", onPointerMove, true);
+    owner.removeEventListener("keydown", onNavigation, true);
+    owner.removeEventListener("keyup", onKeyup, true);
     root.removeEventListener("click", onClick);
     root.removeEventListener("keydown", onKeydown, true);
     popup.removeEventListener("beforetoggle", onBeforeToggle);
@@ -336,7 +371,9 @@ export function createWaitingInfoUI({
   root.addEventListener("pointerout", onPointerOut);
   root.addEventListener("focusin", onFocusIn);
   root.addEventListener("focusout", onFocusOut);
-  root.addEventListener("pointermove", onPointerMove);
+  owner.addEventListener("pointermove", onPointerMove, true);
+  owner.addEventListener("keydown", onNavigation, true);
+  owner.addEventListener("keyup", onKeyup, true);
   root.addEventListener("click", onClick);
   root.addEventListener("keydown", onKeydown, true);
   popup.addEventListener("beforetoggle", onBeforeToggle);

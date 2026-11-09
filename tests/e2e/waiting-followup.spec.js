@@ -512,7 +512,7 @@ test("cancelled, future and failed follow-up saves preserve records and keep a r
   expect(await saved(page)).toBe(initialBytes);
 });
 
-test("closed waiting topics distinguish imported snapshots from actual closure and keep reopen, backup and exact Undo atomic", async ({
+test("closed waiting topics show plain durations while preserving original counts, reopen, backup and exact Undo", async ({
   page,
   context,
 }) => {
@@ -546,14 +546,27 @@ test("closed waiting topics distinguish imported snapshots from actual closure a
   const legacy = row(page, "waiting-closed").locator(".waiting-age");
   await expect(legacy).toHaveText("27 gün");
   await expect(legacy).toHaveAttribute("data-waiting-age-kind", "imported");
-  await expect(legacy).toHaveAttribute(
+  await expect(legacy).toHaveAttribute("title", "Bekleme süresi: 27 gün");
+  await expect(legacy).toHaveAttribute("aria-label", "27 gün bekledi");
+  await expect(legacy).not.toHaveAttribute("title", /Excel|aktar/iu);
+  await row(page, "waiting-closed").locator(".task-name").click();
+  const legacyDetail = page.locator("#waiting-record-panel");
+  await expect(legacyDetail).toHaveAttribute(
+    "data-record-id",
+    "waiting-closed",
+  );
+  const legacyDetailAge = legacyDetail.locator('[data-waiting-fact="age"] dd');
+  await expect(legacyDetailAge).toHaveText("27 gün bekledi");
+  await expect(legacyDetailAge).toHaveAttribute(
     "title",
-    "Excel’den aktarılan süre; kapanış tarihi bilinmiyor",
+    "Bekleme süresi: 27 gün",
   );
-  await expect(legacy).toHaveAttribute(
-    "aria-label",
-    /kapanış tarihi bilinmiyor/,
-  );
+  await expect(legacyDetailAge).toHaveAttribute("aria-label", "27 gün bekledi");
+  await expect(legacyDetailAge).not.toContainText(/Excel|aktar/iu);
+  await legacyDetail
+    .getByRole("button", { name: "Kapat", exact: true })
+    .click();
+  await expect(legacyDetail).not.toBeVisible();
   const unknown = row(page, "waiting-closed-unknown").locator(".waiting-age");
   await expect(unknown).toHaveText("—");
   await expect(unknown).toHaveAttribute("data-waiting-age-kind", "unknown");

@@ -115,8 +115,7 @@ body[data-work-session] #waiting-record-panel {
   grid-column: 1 / -1;
 }
 
-.waiting-record-facts dt,
-.waiting-record-previous > span {
+.waiting-record-facts dt {
   margin: 0 0 4px;
   color: var(--theme-muted, #74836a);
   font-size: 10px;
@@ -250,16 +249,6 @@ body[data-work-session] #waiting-record-panel {
 .waiting-record-history-note,
 .waiting-record-note > p {
   margin: 8px 0 0;
-}
-
-.waiting-record-previous {
-  margin-top: 9px;
-  padding-left: 9px;
-  border-left: 2px solid var(--theme-border, #d5dfcb);
-}
-
-.waiting-record-previous > p {
-  margin: 0;
 }
 
 .waiting-record-planned {

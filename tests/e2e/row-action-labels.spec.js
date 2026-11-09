@@ -81,8 +81,12 @@ test("a meeting with two routes names and opens each exact destination without c
       ".meeting-linked-cell .meeting-route",
     );
     await expect(routes).toHaveText(["İşi aç", "Takibi aç"]);
+    await expect(
+      row(page, "dual").locator(".status-col > .status-trigger"),
+    ).toHaveText("Açık");
     await expect(page.locator(".meeting-table > thead th")).toHaveText([
       "Aksiyon / Karar",
+      "Durum",
       "Bağlı iş",
       "Takip",
       "İşlem",

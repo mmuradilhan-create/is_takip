@@ -45,6 +45,45 @@ test("Turkish sheets import dates, priorities, statuses, and link daily work to 
   assert.equal(result.sheets[0].type, "dashboard");
 });
 
+test("plain workbooks recognize meeting state captions while Açık keeps its existing meaning in other modules", async () => {
+  const plain = workbook({
+    "Toplantı aksiyonları": [
+      ["ID", "Başlık", "Durum"],
+      ["meeting-planned", "Planlanacak toplantı", "Planlanacak"],
+      ["meeting-open", "Açık toplantı", "Açık"],
+      ["meeting-closed", "Kapalı toplantı", "Kapandı"],
+    ],
+    "Günlük işler": [
+      ["ID", "Başlık", "Durum"],
+      ["daily-open", "Açık günlük iş", "Açık"],
+    ],
+    "Bekleyen konular": [
+      ["ID", "Başlık", "Durum"],
+      ["waiting-open", "Açık bekleyen konu", "Açık"],
+    ],
+  });
+  const result = await parseExcelFile(await plain.xlsx.writeBuffer());
+  assert.deepEqual(result.warnings, []);
+  assert.equal(result.records.length, 5);
+  for (const [id, type, status, originalCaption] of [
+    ["meeting-planned", "meeting", "planned", "Planlanacak"],
+    ["meeting-open", "meeting", "in_progress", "Açık"],
+    ["meeting-closed", "meeting", "completed", "Kapandı"],
+    ["daily-open", "daily", "planned", "Açık"],
+    ["waiting-open", "waiting", "planned", "Açık"],
+  ]) {
+    const imported = result.records.find((record) => record.id === id);
+    assert.equal(imported.type, type);
+    assert.equal(imported.status, status);
+    assert.equal(imported.sourceFields.Durum, originalCaption);
+    assert.equal(imported.description, "");
+  }
+  assert.deepEqual(
+    validateStore({ version: 1, records: result.records }).records,
+    result.records,
+  );
+});
+
 test("unmapped sheets and malformed fields produce visible warnings without losing raw details", () => {
   const result = parseWorkbook(
     workbook({

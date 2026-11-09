@@ -292,7 +292,12 @@ export function createGoalPanel({
       const progress = goalProgress(record, records);
       return `<li class="goal-child-row goal-child-goal" data-id="${esc(record.id)}">${renderComplete(record)}<div class="goal-child-main"><button type="button" class="goal-child-title${record.status === "completed" ? " completed" : ""}" data-action="goal-open-child" data-id="${esc(record.id)}">${esc(record.title)}</button><div class="goal-child-meta">${renderStatus(record)}${due}<span>${esc(humanPeriod(record))}</span></div><div class="goal-child-progress"><div class="progress-track" role="progressbar" aria-label="${esc(record.title)} ilerlemesi" aria-valuenow="${progress.percent}" aria-valuemin="0" aria-valuemax="100"><span style="width:${progress.percent}%"></span></div><strong>%${progress.percent}</strong></div></div><div class="goal-child-actions">${unlinkControl(record)}<button type="button" class="goal-child-open" data-action="goal-open-child" data-id="${esc(record.id)}" aria-label="${esc(record.title)}: hedef ayrıntılarını aç">→</button></div></li>`;
     }
-    return `<li class="goal-child-row" data-id="${esc(record.id)}">${renderComplete(record)}<div class="goal-child-main"><button type="button" class="goal-child-title${record.status === "completed" ? " completed" : ""}" data-action="edit" data-id="${esc(record.id)}">${esc(record.title)}</button><div class="goal-child-meta">${renderStatus(record)}${renderBlocked(record)}${due}${renderJournal(record)}</div></div><div class="goal-child-action goal-child-actions">${unlinkControl(record)}${renderWork(record)}</div></li>`;
+    const title = `<button type="button" class="goal-child-title${record.status === "completed" ? " completed" : ""}" data-action="edit" data-id="${esc(record.id)}">${esc(record.title)}</button>`;
+    const waiting = renderBlocked(record);
+    const titleContent = waiting
+      ? `<div class="goal-child-title-line">${title}${waiting}</div>`
+      : title;
+    return `<li class="goal-child-row" data-id="${esc(record.id)}">${renderComplete(record)}<div class="goal-child-main">${titleContent}<div class="goal-child-meta">${renderStatus(record)}${due}${renderJournal(record)}</div></div><div class="goal-child-action goal-child-actions">${unlinkControl(record)}${renderWork(record)}</div></li>`;
   }
 
   function unboundChildren(record, records) {
@@ -364,7 +369,7 @@ export function createGoalPanel({
         return "";
       }
     };
-    return `<section class="goal-panel-section goal-panel-transfer-reasons" data-goal-section="transfers"><h3>Taşıma gerekçeleri</h3><ol>${reasons
+    return `<section class="goal-panel-section goal-panel-transfer-reasons" data-goal-section="transfers"><h3>Taşıma notları</h3><ol>${reasons
       .slice()
       .reverse()
       .map(({ type, move }) => {

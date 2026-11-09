@@ -131,16 +131,16 @@ test("old waiting goals remain readable, filterable and lossless through edits, 
   assert.equal(JSON.stringify(records), before);
 });
 
-test("meeting actions offer planning or archive labels while waiting subjects retain their own vocabulary", () => {
+test("meeting actions offer exactly three manual states while waiting subjects retain their own vocabulary", () => {
   const meetings = statusesForType("meeting");
   assert.deepEqual(Object.keys(meetings), [
     "planned",
+    "in_progress",
     "completed",
-    "cancelled",
   ]);
   assert.deepEqual(
     Object.values(meetings).map(({ label }) => label),
-    ["Planlanacak", "Arşivlendi", "İptal"],
+    ["Planlanacak", "Açık", "Kapandı"],
   );
   const waiting = statusesForType("waiting");
   assert.deepEqual(Object.keys(waiting), [
@@ -155,8 +155,11 @@ test("meeting actions offer planning or archive labels while waiting subjects re
   );
   assert.equal(statusLabel("daily", "planned"), "Yapılacak");
   assert.equal(statusLabel("meeting", "planned"), "Planlanacak");
-  assert.equal(statusLabel("meeting", "completed"), "Arşivlendi");
-  assert.equal(statusLabel("meeting", "waiting"), "Beklemede");
+  assert.equal(statusLabel("meeting", "in_progress"), "Açık");
+  assert.equal(statusLabel("meeting", "completed"), "Kapandı");
+  assert.equal(statusLabel("meeting", "waiting"), "Açık");
+  assert.equal(statusLabel("meeting", "cancelled"), "Kapandı");
+  assert.equal(statusLabel("meeting", "transferred"), "Kapandı");
   assert.equal(statusLabel("daily", "completed"), "Tamamlandı");
   assert.equal(statusLabel("waiting", "completed"), "Kapandı");
 });
@@ -182,9 +185,9 @@ test("legacy statuses remain available only when supplied for existing records",
   assert.ok(statusesForType("meeting").completed);
 });
 
-test("meeting manual choices exclude derived and historical states without changing legacy records through edits, backups or Undo", () => {
+test("meeting manual choices and display aliases preserve legacy raw states through unrelated edits, backups and Undo", () => {
   const stamp = "2026-11-07T12:00:00.000Z";
-  const manual = ["planned", "completed", "cancelled"];
+  const manual = ["planned", "in_progress", "completed"];
   const historical = Object.keys(STATUSES).filter(
     (status) => !manual.includes(status),
   );
@@ -229,8 +232,15 @@ test("meeting manual choices exclude derived and historical states without chang
     ),
     manual,
   );
-  for (const record of records)
-    assert.ok(choices[statusForDisplay(record.status)]);
+  assert.deepEqual(Object.keys(choices), manual);
+  for (const record of records) {
+    const alias = ["cancelled", "transferred"].includes(record.status)
+      ? "completed"
+      : "in_progress";
+    assert.equal(statusForDisplay(record.status, "meeting"), alias);
+    assert.equal(statusLabel("meeting", record.status), choices[alias].label);
+    assert.ok(choices[alias]);
+  }
   const key = "old-meeting-statuses";
   const values = new Map([[key, JSON.stringify({ version: 1, records })]]);
   const storage = {
@@ -269,7 +279,7 @@ test("type-specific UI catalogs do not rewrite any valid stored status", () => {
   for (const record of records) {
     assert.ok(
       statusesForType(record.type, [record.status])[
-        statusForDisplay(record.status)
+        statusForDisplay(record.status, record.type)
       ],
     );
   }
@@ -289,12 +299,18 @@ test("partial legacy keys display and filter through in-progress choices for eve
     ]);
     assert.equal(TYPE_STATUSES[type].partially_completed, undefined);
     assert.equal(choices.partially_completed, undefined);
-    assert.equal(choices.in_progress.label, "Devam ediyor");
+    assert.equal(
+      choices.in_progress.label,
+      type === "meeting" ? "Açık" : "Devam ediyor",
+    );
     assert.equal(
       Object.keys(choices).filter((status) => status === "in_progress").length,
       1,
     );
-    assert.equal(statusLabel(type, "partially_completed"), "Devam ediyor");
+    assert.equal(
+      statusLabel(type, "partially_completed"),
+      type === "meeting" ? "Açık" : "Devam ediyor",
+    );
     assert.ok(
       Object.values(choices).every(({ label }) => label !== "Kısmi tamamlandı"),
     );
@@ -354,7 +370,10 @@ test("reading legacy partial records preserves their raw keys, hierarchy, measur
   assert.equal(JSON.stringify(records), before);
   for (const record of parsed.records) {
     assert.equal(record.status, "partially_completed");
-    assert.equal(statusLabel(record.type, record.status), "Devam ediyor");
+    assert.equal(
+      statusLabel(record.type, record.status),
+      record.type === "meeting" ? "Açık" : "Devam ediyor",
+    );
     if (["weekly", "monthly", "yearly"].includes(record.type))
       assert.equal(goalProgress(record, parsed.records).percent, 40);
   }

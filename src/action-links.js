@@ -1,5 +1,4 @@
 const SOURCE_TYPES = new Set(["meeting", "waiting"]);
-const CLOSED = new Set(["completed", "cancelled", "transferred"]);
 
 function relation(record) {
   const link = record?.sourceFields?.__followupSource;
@@ -108,65 +107,12 @@ export function sourceForTarget(target, records) {
   return source;
 }
 
-function sourceStatus(target) {
-  if (target.status === "cancelled") return "cancelled";
-  if (CLOSED.has(target.status)) return "completed";
-  return ["follow_up", "waiting_response"].includes(target.status)
-    ? "waiting"
-    : statusForDisplay(target.status);
-}
-
-function aggregateStatus(targets) {
-  const open = targets.filter((target) => !CLOSED.has(target.status));
-  if (!open.length)
-    return targets.every((target) => target.status === "cancelled")
-      ? "cancelled"
-      : "completed";
-  if (
-    open.some(
-      (target) =>
-        target.type === "daily" &&
-        statusForDisplay(target.status) === "in_progress",
-    )
-  )
-    return "in_progress";
-  if (targets.every((target) => target.status === "planned")) return "planned";
-  if (
-    open.some(
-      (target) => target.type === "waiting" || target.status === "waiting",
-    )
-  )
-    return "waiting";
-  if (
-    open.some((target) => target.status === "partially_completed") ||
-    targets.some((target) =>
-      ["completed", "transferred"].includes(target.status),
-    )
-  )
-    return "in_progress";
-  return sourceStatus(open[0]);
-}
-
-function projectSource(source, targets) {
-  const status =
-    targets.length > 1 ? aggregateStatus(targets) : sourceStatus(targets[0]);
-  // The meeting owns its decision context; dates and next steps live on routes.
-  return source.status === status ? source : { ...source, status };
-}
-
-function resolveSource(source, index) {
-  if (!source || source.type !== "meeting") return source;
-  const targets = directTargets(source.id, index);
-  if (!targets.length) return source;
-  return projectSource(source, targets);
-}
-
-/** View-only lifecycle projection. Loading, filtering and undo never write it. */
+/** Meeting status belongs to the meeting; routes are validated, not projected. */
 export function resolveActionSource(source, records) {
   if (!source || source.type !== "meeting") return source;
   const index = indexRecords(records);
   checkPath(source.id, index);
-  return resolveSource(source, index);
+  return source;
 }
 
 function sameRecord(first, second) {
@@ -174,8 +120,7 @@ function sameRecord(first, second) {
 }
 
 /**
- * Apply the target lifecycle status to affected meeting contexts in one save.
- * Undo, backup restore and loading must bypass this explicit edit operation.
+ * Validate affected action relationships without changing either lifecycle.
  */
 export function syncActionLinks(before, after) {
   if (!Array.isArray(before) || !Array.isArray(after))
@@ -191,37 +136,20 @@ export function syncActionLinks(before, after) {
     if (!index.byId.has(record.id)) changed.add(record.id);
   if (!changed.size) return after;
 
-  const affected = new Set();
   const validate = new Set();
   for (const id of changed) {
     const current = index.byId.get(id);
     if (index.bySource.has(id)) validate.add(id);
-    if (current?.type === "meeting" && index.bySource.has(id)) affected.add(id);
     for (const record of [current, previous.get(id)]) {
       const parentId = relation(record)?.recordId;
       if (parentId) validate.add(parentId);
-      const parent = index.byId.get(parentId);
-      if (parent?.type === "meeting") affected.add(parent.id);
     }
   }
 
   for (const id of validate) checkPath(id, index);
-  const replacements = new Map();
-  for (const id of affected) {
-    const source = index.byId.get(id);
-    checkPath(id, index);
-    const resolved = resolveSource(source, index);
-    if (resolved !== source) replacements.set(id, resolved);
-  }
-  if (!replacements.size) return after;
-  return after.map((record) => replacements.get(record.id) || record);
+  return after;
 }
-import {
-  createRecord,
-  localDate,
-  validateStore,
-  statusForDisplay,
-} from "./model.js";
+import { createRecord, localDate, validateStore } from "./model.js";
 import { normalizeFollowUpDate } from "./waiting-followup.js";
 
 function actionTimestamp(value) {

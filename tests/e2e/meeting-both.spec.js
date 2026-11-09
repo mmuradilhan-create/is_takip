@@ -184,10 +184,7 @@ test("Her ikisi de saves a daily delivery and an external follow-up plan in one 
       recordId: SOURCE_ID,
       type: "meeting",
     });
-  expect({
-    ...created.find((item) => item.id === SOURCE_ID),
-    status: fixture[0].status,
-  }).toEqual(fixture[0]);
+  expect(created.find((item) => item.id === SOURCE_ID)).toEqual(fixture[0]);
   expect(actions.find((item) => item.type === "waiting")).not.toHaveProperty(
     "followUpLog",
   );
@@ -294,6 +291,7 @@ test("an existing action is read-only and reused while only the missing external
   const created = await records(page);
   expect(created).toHaveLength(fixture.length + 1);
   expect(created.find((item) => item.id === daily.id)).toEqual(daily);
+  expect(created.find((item) => item.id === SOURCE_ID)).toEqual(fixture[0]);
   expect(
     targets(created).find((item) => item.type === "waiting"),
   ).toMatchObject({

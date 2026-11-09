@@ -85,15 +85,13 @@ async function expectAssignmentChoices(page) {
       ),
   ).toEqual([
     { value: "planned", label: "Planlanacak", disabled: false },
-    { value: "completed", label: "Arşivlendi", disabled: false },
-    { value: "cancelled", label: "İptal", disabled: false },
+    { value: "in_progress", label: "Açık", disabled: false },
+    { value: "completed", label: "Kapandı", disabled: false },
   ]);
 }
 
-async function openUnlinkedMenu(page, id) {
-  await row(page, id)
-    .locator(".meeting-title-state .status-trigger, .meeting-archive-control")
-    .click();
+async function openSourceMenu(page, id) {
+  await row(page, id).locator(".status-col > .status-trigger").click();
   await expect(menu(page)).toBeVisible();
   expect(
     await menu(page)
@@ -107,12 +105,13 @@ async function openUnlinkedMenu(page, id) {
       ),
   ).toEqual([
     { id, status: "planned", label: "Planlanacak" },
-    { id, status: "cancelled", label: "İptal" },
+    { id, status: "in_progress", label: "Açık" },
+    { id, status: "completed", label: "Kapandı" },
   ]);
   await expect(menu(page).getByRole("group")).toHaveCount(0);
 }
 
-test("legacy unlinked open meetings display Planlanacak without rewriting their status on load, backup or title edits", async ({
+test("legacy unlinked meetings display their own status aliases without rewriting raw status on load, backup or title edits", async ({
   page,
 }) => {
   const items = [
@@ -125,11 +124,14 @@ test("legacy unlinked open meetings display Planlanacak without rewriting their 
   ];
   const original = await seed(page, items);
   for (const item of items.slice(0, 4)) {
-    const badge = row(page, item.id).locator(".status-trigger");
-    await expect(badge).toHaveText("Planlanacak");
-    await expect(badge).toHaveClass(/status-planned/);
+    const badge = row(page, item.id).locator(".status-col > .status-trigger");
+    const planned = item.status === "planned";
+    await expect(badge).toHaveText(planned ? "Planlanacak" : "Açık");
+    await expect(badge).toHaveClass(
+      planned ? /status-planned/ : /status-in_progress/,
+    );
   }
-  await page.locator("#status-filter").selectOption("planned");
+  await page.locator("#status-filter").selectOption("in_progress");
   expect(
     (
       await page
@@ -138,10 +140,16 @@ test("legacy unlinked open meetings display Planlanacak without rewriting their 
     ).sort(),
   ).toEqual(
     items
-      .slice(0, 4)
+      .slice(0, 3)
       .map((item) => item.id)
       .sort(),
   );
+  await page.locator("#status-filter").selectOption("planned");
+  await expect(row(page, "current-planned")).toBeVisible();
+  await expect(page.locator(".meeting-table tr[data-record-row]")).toHaveCount(
+    1,
+  );
+  await page.locator("#status-filter").selectOption("all");
   expect(await saved(page)).toBe(original);
 
   await page.getByRole("button", { name: "Ayarlar", exact: true }).click();
@@ -157,14 +165,18 @@ test("legacy unlinked open meetings display Planlanacak without rewriting their 
 
   await page.getByRole("button", { name: "Yeni kayıt", exact: true }).click();
   await openCreationExtras(page);
-  await expect(form(page).locator('[name="type"]')).toHaveValue("meeting");
+  await expect(form(page).locator('select[name="type"]')).toHaveValue(
+    "meeting",
+  );
   await expectAssignmentChoices(page);
   await closeEditor(page);
   expect(await saved(page)).toBe(original);
 
   await row(page, "legacy-waiting").locator(".record-edit-trigger").click();
   await expectAssignmentChoices(page);
-  await expect(form(page).locator('[name="status"]')).toHaveValue("planned");
+  await expect(form(page).locator('[name="status"]')).toHaveValue(
+    "in_progress",
+  );
   await form(page)
     .locator('[name="title"]')
     .fill("Başlığı açıklığa kavuşmuş toplantı kararı");
@@ -183,76 +195,56 @@ test("legacy unlinked open meetings display Planlanacak without rewriting their 
   expect((await stored(page)).odak.history).toHaveLength(1);
   await expect(
     row(page, "legacy-waiting").locator(".status-trigger"),
-  ).toHaveText("Planlanacak");
+  ).toHaveText("Açık");
   await undo(page);
   expect(await saved(page)).toBe(original);
   await page.reload();
   expect(await saved(page)).toBe(original);
 });
 
-test("an unlinked meeting archives from its form and reopens from its compact title control with exact Undo per transition", async ({
+test("an unlinked meeting opens and closes through its own status column with exact Undo per transition", async ({
   page,
 }) => {
-  const item = source("unlinked-transition", "waiting");
+  const item = source("unlinked-transition", "planned");
   const original = await seed(page, [item]);
-  await expect(page.locator(".list-scope-tabs button")).toHaveText([
-    "Güncel",
-    "Arşiv",
-    "Tümü",
-  ]);
+  const ownStatus = () =>
+    row(page, item.id).locator(".status-col > .status-trigger");
+  await expect(ownStatus()).toHaveText("Planlanacak");
   await expect(
     row(page, item.id).locator(
-      ".task-name-line .meeting-title-state .status-trigger",
-    ),
-  ).toHaveText("Planlanacak");
-  await expect(
-    row(page, item.id).locator(
-      ".quick-complete, .completion-mark, .meeting-unlinked-status",
+      ".quick-complete, .completion-mark, .meeting-title-state, .meeting-archive-control",
     ),
   ).toHaveCount(0);
   await page.locator('[data-action="list-scope"][data-scope="all"]').click();
-  await openUnlinkedMenu(page, item.id);
+  await openSourceMenu(page, item.id);
   await menu(page).locator('[data-status="planned"]').click();
   expect(await saved(page)).toBe(original);
   await expect(
     page.getByRole("button", { name: "Geri al", exact: true }),
   ).toBeDisabled();
 
-  await openUnlinkedMenu(page, item.id);
-  await menu(page).locator('[data-status="cancelled"]').click();
-  const cancelled = {
+  await openSourceMenu(page, item.id);
+  await menu(page).locator('[data-status="in_progress"]').click();
+  const opened = {
     ...item,
-    status: "cancelled",
+    status: "in_progress",
     updatedAt: NOW.toISOString(),
   };
-  expect(await records(page)).toEqual([cancelled]);
+  expect(await records(page)).toEqual([opened]);
   expect((await stored(page)).odak.history).toHaveLength(1);
-  await expect(
-    row(page, item.id).locator(".meeting-archive-control"),
-  ).toHaveAttribute("title", "İptal · Durumu değiştir");
-
-  await openUnlinkedMenu(page, item.id);
-  await menu(page).locator('[data-status="planned"]').click();
-  const reopened = { ...item, status: "planned", updatedAt: NOW.toISOString() };
-  expect(await records(page)).toEqual([reopened]);
-  expect((await stored(page)).odak.history).toHaveLength(2);
+  await expect(ownStatus()).toHaveText("Açık");
   await row(page, item.id).locator(".record-edit-trigger").click();
   await expectAssignmentChoices(page);
+  await expect(form(page).locator('[name="status"]')).toBeEnabled();
   await form(page).locator('[name="status"]').selectOption("completed");
   await saveEditor(page);
-  expect(await records(page)).toEqual([{ ...reopened, status: "completed" }]);
-  expect((await stored(page)).odak.history).toHaveLength(3);
+  expect(await records(page)).toEqual([{ ...opened, status: "completed" }]);
+  expect((await stored(page)).odak.history).toHaveLength(2);
   const completedBytes = await saved(page);
-  const archiveControl = row(page, item.id).locator(
-    ".task-name-line .meeting-archive-control",
-  );
-  await expect(archiveControl).toHaveAttribute(
-    "title",
-    "Arşivlendi · Durumu değiştir",
-  );
+  await expect(ownStatus()).toHaveText("Kapandı");
   await expect(
     row(page, item.id).locator(
-      ".status-trigger, .meeting-route, .quick-complete, .completion-mark",
+      ".meeting-archive-control, .quick-complete, .completion-mark",
     ),
   ).toHaveCount(0);
   await page
@@ -265,18 +257,16 @@ test("an unlinked meeting archives from its form and reopens from its compact ti
   await page
     .locator('[data-action="list-scope"][data-scope="completed"]')
     .click();
-  await openUnlinkedMenu(page, item.id);
-  await menu(page).locator('[data-status="planned"]').click();
+  await openSourceMenu(page, item.id);
+  await menu(page).locator('[data-status="in_progress"]').click();
   await expect(row(page, item.id)).toHaveCount(0);
-  expect(await records(page)).toEqual([reopened]);
-  expect((await stored(page)).odak.history).toHaveLength(4);
+  expect(await records(page)).toEqual([opened]);
+  expect((await stored(page)).odak.history).toHaveLength(3);
   await page.locator('[data-action="list-scope"][data-scope="all"]').click();
   await undo(page);
   expect(await saved(page)).toBe(completedBytes);
   await undo(page);
-  expect(await records(page)).toEqual([reopened]);
-  await undo(page);
-  expect(await records(page)).toEqual([cancelled]);
+  expect(await records(page)).toEqual([opened]);
   await undo(page);
   expect(await saved(page)).toBe(original);
   await expect(
@@ -284,7 +274,7 @@ test("an unlinked meeting archives from its form and reopens from its compact ti
   ).toBeDisabled();
 });
 
-test("linked meetings keep real target status menus and derive their summary while source context edits preserve legacy fields", async ({
+test("linked meetings keep independent source and target status menus while source context edits preserve legacy fields", async ({
   page,
 }) => {
   const context = source("linked-context", "in_progress");
@@ -351,7 +341,8 @@ test("linked meetings keep real target status menus and derive their summary whi
   const followedBytes = await saved(page);
 
   await row(page, context.id).locator(".record-edit-trigger").click();
-  await expect(form(page).locator('[name="status"]')).toBeDisabled();
+  await expect(form(page).locator('[name="status"]')).toBeEnabled();
+  await expectAssignmentChoices(page);
   await expect(form(page).locator('[name="status"]')).toHaveValue(
     "in_progress",
   );
@@ -386,8 +377,11 @@ test("linked meetings keep real target status menus and derive their summary whi
   await list(page);
   await expect(dailyStatus()).toHaveText("Tamamlandı");
   await expect(waitingStatus()).toHaveText("Takipte");
+  await expect(
+    row(page, context.id).locator(".status-col > .status-trigger"),
+  ).toHaveText("Açık");
   expect(await records(page)).toEqual([
-    { ...context, status: "waiting" },
+    context,
     { ...daily, status: "completed", updatedAt: NOW.toISOString() },
     followed[2],
   ]);

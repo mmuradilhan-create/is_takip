@@ -152,16 +152,16 @@ test("one meeting can create a daily action and an external follow-up only on sa
     });
     const currentSource = current.find((item) => item.id === sourceId);
     const originalSource = original.find((item) => item.id === sourceId);
-    expect({ ...currentSource, status: originalSource.status }).toEqual(
-      originalSource,
-    );
-    if (index === 0)
-      expect(currentSource).toMatchObject({
-        status: target.status,
-      });
+    expect(currentSource).toEqual(originalSource);
     const beforeReopen = await saved(page);
     await openSource(page, sourceId);
-    for (const name of ["status", "priority", "dueDate", "nextAction"])
+    await expect(form(page).locator('[name="status"]')).toBeEnabled();
+    await expect(form(page).locator('[name="status"] option')).toHaveText([
+      "Planlanacak",
+      "Açık",
+      "Kapandı",
+    ]);
+    for (const name of ["priority", "dueDate", "nextAction"])
       await expect(form(page).locator(`[name="${name}"]`)).toBeDisabled();
     for (const name of ["priority", "dueDate", "nextAction"])
       await expect(form(page).locator(`[name="${name}"]`)).toBeHidden();
@@ -221,7 +221,7 @@ test("one meeting can create a daily action and an external follow-up only on sa
   expect(await saved(page)).toBe(originalSaved);
 });
 
-test("daily and waiting actions own their lifecycle while the meeting closes only after both actions close", async ({
+test("daily and waiting actions keep their own lifecycle without changing the meeting's independently selected status", async ({
   page,
 }) => {
   const original = await seed(page, [source("authority")]);
@@ -233,7 +233,11 @@ test("daily and waiting actions own their lifecycle while the meeting closes onl
   const created = await records(page);
   const [target] = targets(created, "authority");
   await list(page, "meeting");
-  await row(page, "authority").locator(".status-trigger").click();
+  await row(page, "authority")
+    .locator(
+      `.meeting-linked-cell[data-route="daily"] .status-trigger[data-target-id="${target.id}"]`,
+    )
+    .click();
   const menu = page.locator("#status-menu");
   await expect(menu).toBeVisible();
   await expect(
@@ -253,8 +257,8 @@ test("daily and waiting actions own their lifecycle while the meeting closes onl
   expect(afterStatus.find((item) => item.id === target.id).status).toBe(
     "in_progress",
   );
-  expect(afterStatus.find((item) => item.id === "authority").status).toBe(
-    "in_progress",
+  expect(afterStatus.find((item) => item.id === "authority")).toEqual(
+    original[0],
   );
   await row(page, "authority")
     .locator(
@@ -358,7 +362,13 @@ test("daily and waiting actions own their lifecycle while the meeting closes onl
   await openSource(page, "authority");
   await expect(form(page).locator('[name="id"]')).toHaveValue("authority");
   await openCreationExtras(page);
-  for (const name of ["status", "priority", "dueDate", "nextAction"])
+  await expect(form(page).locator('[name="status"]')).toBeEnabled();
+  await expect(form(page).locator('[name="status"] option')).toHaveText([
+    "Planlanacak",
+    "Açık",
+    "Kapandı",
+  ]);
+  for (const name of ["priority", "dueDate", "nextAction"])
     await expect(form(page).locator(`[name="${name}"]`)).toBeDisabled();
   for (const name of ["owner", "participants"]) {
     const field = form(page).locator(`[name="${name}"]`);
@@ -393,8 +403,8 @@ test("daily and waiting actions own their lifecycle while the meeting closes onl
   expect(dailyCompleted.find((item) => item.id === waitingTarget.id)).toEqual(
     waitingTarget,
   );
-  expect(dailyCompleted.find((item) => item.id === "authority").status).toBe(
-    "waiting",
+  expect(dailyCompleted.find((item) => item.id === "authority")).toEqual(
+    editedContext.find((item) => item.id === "authority"),
   );
   await list(page, "waiting");
   await row(page, waitingTarget.id).locator(".quick-complete").click();
@@ -402,9 +412,23 @@ test("daily and waiting actions own their lifecycle while the meeting closes onl
   expect(completed.find((item) => item.id === waitingTarget.id).status).toBe(
     "completed",
   );
-  expect(completed.find((item) => item.id === "authority").status).toBe(
-    "completed",
+  expect(completed.find((item) => item.id === "authority")).toEqual(
+    editedContext.find((item) => item.id === "authority"),
   );
+  await list(page, "meeting");
+  await expect(
+    row(page, "authority").locator(".status-col > .status-trigger"),
+  ).toHaveText("Açık");
+  await expect(
+    row(page, "authority").locator(
+      `.status-trigger[data-target-id="${target.id}"]`,
+    ),
+  ).toHaveText("Tamamlandı");
+  await expect(
+    row(page, "authority").locator(
+      `.status-trigger[data-target-id="${waitingTarget.id}"]`,
+    ),
+  ).toHaveText("Kapandı");
   await undo(page);
   expect(await records(page)).toEqual(dailyCompleted);
   await undo(page);
@@ -505,7 +529,12 @@ test("legacy contact work stays independent and concurrent drafts allow opposite
   await expect(form(page).locator('[name="status"]')).toHaveValue(
     "in_progress",
   );
-  await expect(form(page).locator('[name="status"]')).toBeDisabled();
+  await expect(form(page).locator('[name="status"]')).toBeEnabled();
+  await expect(form(page).locator('[name="status"] option')).toHaveText([
+    "Planlanacak",
+    "Açık",
+    "Kapandı",
+  ]);
   await expect(form(page).locator('[name="dueDate"]')).toHaveValue(
     "09.11.2026",
   );

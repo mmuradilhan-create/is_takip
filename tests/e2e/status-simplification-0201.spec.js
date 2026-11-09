@@ -160,7 +160,7 @@ async function editLegacyFromRow(page, type) {
   await expect(form(page).locator('[name="id"]')).toHaveValue(id);
   await expect(form(page).locator('select[name="type"]')).toHaveValue(type);
   await expect(form(page).locator('select[name="status"]')).toHaveValue(
-    type === "meeting" ? "planned" : "in_progress",
+    "in_progress",
   );
 }
 
@@ -179,7 +179,7 @@ test("legacy partial work uses current display states while filters, menus and b
     await expect(
       page.locator('#status-filter option[value="partially_completed"]'),
     ).toHaveCount(0);
-    const displayStatus = type === "meeting" ? "planned" : "in_progress";
+    const displayStatus = "in_progress";
     await page.locator("#status-filter").selectOption(displayStatus);
     expect(
       (
@@ -187,15 +187,11 @@ test("legacy partial work uses current display states while filters, menus and b
           .locator(".full-table tbody > tr[data-record-row]")
           .evaluateAll((rows) => rows.map((row) => row.dataset.id))
       ).sort(),
-    ).toEqual(
-      type === "meeting"
-        ? [`canonical-${type}`, `legacy-${type}`, `planned-${type}`]
-        : [`canonical-${type}`, `legacy-${type}`],
-    );
+    ).toEqual([`canonical-${type}`, `legacy-${type}`]);
     const legacy = row(page, `legacy-${type}`);
     const badge = legacy.locator(".status-trigger");
     await expect(badge).toHaveText(
-      type === "meeting" ? "Planlanacak" : "Devam ediyor",
+      type === "meeting" ? "Açık" : "Devam ediyor",
     );
     await expect(badge).toHaveClass(new RegExp(`status-${displayStatus}`));
     await expect(badge).not.toHaveClass(/status-partially_completed/);
@@ -215,8 +211,8 @@ test("legacy partial work uses current display states while filters, menus and b
     ).toHaveAttribute("aria-checked", "true");
     if (type === "meeting")
       await expect(
-        page.locator('#status-menu [data-status="in_progress"]'),
-      ).toHaveCount(0);
+        page.locator('#status-menu [data-status="completed"]'),
+      ).toHaveText("Kapandı");
     await expect(page.locator("#status-menu")).not.toContainText("Kısmi");
     await page.keyboard.press("Escape");
     await editLegacyFromRow(page, type);
@@ -296,12 +292,12 @@ test("unrelated edits preserve raw legacy status and all original measurements, 
   expect(await saved(page)).toBe(before);
 });
 
-test("explicit ongoing selections canonicalize supported records while meeting archive controls preserve their legacy source and exact undo", async ({
+test("explicit ongoing selections canonicalize every module while unrelated data and exact Undo remain intact", async ({
   page,
 }) => {
   const original = await seed(page);
   const before = await saved(page);
-  for (const type of TYPES.filter((type) => type !== "meeting")) {
+  for (const type of TYPES) {
     await list(page, type);
     await row(page, `legacy-${type}`).locator(".status-trigger").click();
     await page
@@ -325,17 +321,6 @@ test("explicit ongoing selections canonicalize supported records while meeting a
     await undo(page);
     expect(await saved(page)).toBe(before);
   }
-  await list(page, "meeting");
-  await row(page, "legacy-meeting").locator(".status-trigger").click();
-  await expect(
-    page.locator('#status-menu [data-status="in_progress"]'),
-  ).toHaveCount(0);
-  await expect(
-    page.locator('#status-menu [data-status="planned"]'),
-  ).toHaveAttribute("aria-checked", "true");
-  await page.locator('#status-menu [data-status="planned"]').click();
-  expect(await saved(page)).toBe(before);
-  expect((await store(page)).records).toEqual(original);
   await openLegacy(page, "daily");
   await form(page).locator('[name="status"]').selectOption("planned");
   await form(page).locator('[name="status"]').selectOption("in_progress");

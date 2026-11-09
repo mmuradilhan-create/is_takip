@@ -106,10 +106,7 @@ function initialize(form) {
 }
 
 /** Rearrange existing edit controls without changing any entered or stored value. */
-export function arrangeRecordEditor(
-  form,
-  { type, linkedMeeting = false } = {},
-) {
+export function arrangeRecordEditor(form, { type } = {}) {
   if (!form || form.dataset.creation === "true" || !Object.hasOwn(TITLES, type))
     return;
   let layout = layouts.get(form);
@@ -169,7 +166,7 @@ export function arrangeRecordEditor(
     field.hidden = !active;
     // A locked type selector can have a live hidden companion. Preserve both.
     if (name !== "type") {
-      const disabled = !active || (linkedMeeting && name === "status");
+      const disabled = !active;
       for (const control of field.querySelectorAll(
         "input, select, textarea, button",
       ))

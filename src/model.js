@@ -61,8 +61,8 @@ export const TYPE_STATUSES = {
   },
   meeting: {
     planned: { label: "Planlanacak" },
-    completed: { label: "Arşivlendi" },
-    cancelled: { label: "İptal" },
+    in_progress: { label: "Açık" },
+    completed: { label: "Kapandı" },
   },
   waiting: {
     planned: { label: "Açık" },
@@ -73,12 +73,18 @@ export const TYPE_STATUSES = {
 };
 
 /** Fold a retired display state without rewriting a saved record's raw key. */
-export function statusForDisplay(status) {
+export function statusForDisplay(status, type) {
+  if (type === "meeting") {
+    if (status === "planned") return "planned";
+    return ["completed", "cancelled", "transferred"].includes(status)
+      ? "completed"
+      : "in_progress";
+  }
   return status === "partially_completed" ? "in_progress" : status;
 }
 
 export function statusLabel(type, status) {
-  status = statusForDisplay(status);
+  status = statusForDisplay(status, type);
   if (type === "weekly" && status === "transferred") return "Arşivlendi";
   if ((GOAL_TYPES.has(type) || type === "meeting") && status === "waiting")
     return "Beklemede";
@@ -105,6 +111,7 @@ export function statusesForType(type, extraStatuses = []) {
       { ...value },
     ]),
   );
+  if (type === "meeting") return statuses;
   // Older records can expose a current alias while keeping their stored key.
   // Historical keys remain readable/filterable for existing records. Assignment
   // controls must also apply isStatusSelectable before offering a transition.

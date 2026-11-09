@@ -1,4 +1,4 @@
-import { statusLabel } from "./model.js";
+import { statusLabel, statusForDisplay } from "./model.js";
 import { linkedActions } from "./action-links.js";
 import { createRecordPanelHandoff } from "./record-panel-handoff.js";
 
@@ -76,7 +76,7 @@ export function createMeetingRecordPanel({
 
   function statusMarkup(record) {
     if (typeof renderStatus === "function") return renderStatus(record);
-    return `<span class="badge status-${esc(record.status)}"><span class="dot"></span>${esc(statusLabel(record.type, record.status))}</span>`;
+    return `<span class="badge status-${esc(statusForDisplay(record.status, record.type))}"><span class="dot"></span>${esc(statusLabel(record.type, record.status))}</span>`;
   }
 
   function routeMarkup(record, type, targets) {

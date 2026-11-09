@@ -140,6 +140,7 @@ const STATUS_ALIASES = {
   planned: [
     "Planlandı",
     "Planlanan",
+    "Planlanacak",
     "Planlı",
     "Başlamadı",
     "Başlanmadı",
@@ -514,10 +515,14 @@ export function parseWorkbook(workbook) {
       const notes = [];
       const statusValue = get("status"),
         priorityValue = get("priority");
-      const status = resolveAlias(statusValue, STATUS_ALIASES) || "planned";
+      const resolvedStatus =
+        type === "meeting" && normalize(statusValue) === "acik"
+          ? "in_progress"
+          : resolveAlias(statusValue, STATUS_ALIASES);
+      const status = resolvedStatus || "planned";
       const priority =
         resolveAlias(priorityValue, PRIORITY_ALIASES) || "normal";
-      if (statusValue && !resolveAlias(statusValue, STATUS_ALIASES)) {
+      if (statusValue && !resolvedStatus) {
         warnings.push(
           `${location}: “${statusValue}” durumu tanınmadı; Planlandı seçildi.`,
         );

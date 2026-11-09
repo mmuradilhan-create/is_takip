@@ -187,6 +187,23 @@ test("an unfinished prior weekly goal moves as the same record with progress and
   await carry(page, "flow-old").click();
   const transfer = page.locator("#goal-transfer-dialog");
   await expect(transfer).toBeVisible();
+  await expect(transfer.locator(".goal-transfer-title")).toHaveText(
+    original.find((record) => record.id === "flow-old").title,
+  );
+  await expect(
+    transfer.locator(".goal-transfer-title").locator(".."),
+  ).toContainText("Hedef");
+  const transferNote = transfer.getByRole("textbox", {
+    name: "Taşıma notu",
+    exact: true,
+  });
+  await expect(transferNote).toHaveAttribute(
+    "placeholder",
+    "Örn. Test tarihleri değişti; çalışmaya gelecek hafta devam edilecek.",
+  );
+  await expect(transferNote).toHaveAccessibleDescription(
+    "İsteğe bağlı · Hedefin yeni dönemdeki durumu veya plan değişikliği hakkında kısa bir not ekleyebilirsin.",
+  );
   await expect(transfer.locator('[name="targetPeriod"]')).toHaveValue(
     "2026-W45",
   );

@@ -258,25 +258,6 @@
   color: var(--theme-accent, #3a7049);
 }
 
-.waiting-followup-previous {
-  margin: 8px 0 0;
-  padding: 6px 8px;
-  border-left: 2px solid var(--theme-border, #c7d8bc);
-  border-radius: 0 5px 5px 0;
-  background: var(--theme-soft, #f6f9f1);
-}
-
-.waiting-followup-previous > span {
-  color: var(--theme-muted, #798a70);
-  font-size: 10px;
-}
-
-.waiting-followup-history li .waiting-followup-previous > p {
-  margin-top: 3px;
-  color: var(--theme-muted, #798a70);
-  font-size: 11px;
-}
-
 .waiting-followup-history
   li
   .waiting-followup-result:not(.waiting-followup-muted) {

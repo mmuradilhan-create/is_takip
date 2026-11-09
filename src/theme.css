@@ -882,33 +882,6 @@
   color: #f1b2aa;
 }
 
-[data-theme="dark"]
-  :is(.waiting-info-trigger, .waiting-info-popover > section) {
-  color: #efd19c;
-  background: #3a3222;
-  border-color: #746446;
-}
-
-[data-theme="dark"] .waiting-info-trigger:hover,
-[data-theme="dark"] .waiting-info-trigger[aria-expanded="true"] {
-  color: #ffe0aa;
-  background: #4a3c25;
-  border-color: #ab8f58;
-}
-
-[data-theme="dark"] .waiting-info-popover :is(h3, p) {
-  color: #efd19c;
-}
-
-[data-theme="dark"] .waiting-info-popover > section + section {
-  background: var(--theme-soft);
-  border-color: var(--theme-border);
-}
-
-[data-theme="dark"] .waiting-info-popover .waiting-info-next :is(h3, p) {
-  color: var(--theme-muted);
-}
-
 [data-theme="dark"] .focus-row.is-working {
   background: #223e2f;
   box-shadow: inset 3px 0 #8cc7a2;
@@ -970,7 +943,6 @@
     .choice-menu,
     .odak-date-picker,
     .blocker-popover,
-    .waiting-info-popover,
     .work-session-panel
   ) {
   box-shadow: 0 14px 48px #0007;

@@ -138,7 +138,11 @@ async function expectReadonlyWaiting(page, original) {
       .locator("li[data-followup-id]")
       .evaluateAll((rows) => rows.map((row) => row.dataset.followupId)),
   ).toEqual(["details-newest", "details-older"]);
-  await expect(panel.locator(".waiting-record-previous")).toContainText(
+  await expect(panel.locator(".waiting-record-previous")).toHaveCount(0);
+  await expect(panel.locator(".waiting-record-history")).not.toContainText(
+    "Önceki son gelişme",
+  );
+  await expect(panel.locator(".waiting-record-history")).not.toContainText(
     "Önceki özgün gelişme.",
   );
   await expect(

@@ -1765,8 +1765,8 @@ const STATUS_SETS = {
   ],
   meeting: [
     ["planned", "Planlanacak"],
-    ["completed", "Arşivlendi"],
-    ["cancelled", "İptal"],
+    ["in_progress", "Açık"],
+    ["completed", "Kapandı"],
   ],
   waiting: [
     ["planned", "Açık"],
@@ -1829,7 +1829,11 @@ test("each module keeps its own status options in forms, filters and the quick s
             button.textContent.trim(),
           ]),
         ),
-    ).toEqual(expected.filter(([status]) => status !== "completed"));
+    ).toEqual(
+      type === "meeting"
+        ? expected
+        : expected.filter(([status]) => status !== "completed"),
+    );
     await expect(menu.locator('[data-status="planned"]')).toHaveAttribute(
       "aria-checked",
       "true",

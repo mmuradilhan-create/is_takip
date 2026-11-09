@@ -502,7 +502,7 @@ test("an external waiting source may create one contact task and its response st
   );
 });
 
-test("adding an independent external route can reopen a completed meeting without overwriting its completed daily branch", () => {
+test("adding an external route preserves the completed meeting and its completed daily branch", () => {
   const source = record("meeting", "meeting", {
     status: "completed",
     title: "İlk adımı tamamlanan karar",
@@ -543,7 +543,7 @@ test("adding an independent external route can reopen a completed meeting withou
   assert.equal(built.records[1], completed);
   assert.deepEqual(built.records[1], snapshot[1]);
   assert.equal(built.record.status, "waiting_response");
-  assert.equal(built.records[0].status, "waiting");
+  assert.equal(built.records[0], source);
   assert.equal(built.records[0].decision, source.decision);
   assert.equal(built.records[0].participants, source.participants);
   assert.equal(built.records[0].updatedAt, source.updatedAt);
@@ -627,6 +627,7 @@ test("a new meeting optionally creates either route or both in the same prepared
     assert.equal(built.record.title, meetingInput().title);
     assert.equal(built.record.decision, meetingInput().decision);
     assert.equal(built.record.participants, meetingInput().participants);
+    assert.equal(built.record.status, "planned");
     for (const action of targets) {
       assert.equal(action.title, routeDrafts()[action.type].title);
       assert.equal(action.dueDate, routeDrafts()[action.type].dueDate);

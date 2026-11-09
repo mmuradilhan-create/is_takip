@@ -85,6 +85,10 @@ test("direct note editing confirms dirty dismissal, preserves only the note on S
   await expect(editor(page)).toBeVisible();
   await expect(page.locator("#editor")).not.toBeVisible();
   await expect(text(page)).toBeFocused();
+  await expect(text(page)).toHaveAccessibleName("Notlar");
+  await expect(text(page)).toHaveAccessibleDescription(
+    "Enter ile kaydet, Shift+Enter ile alt satıra geç.",
+  );
   await expect(text(page)).toHaveValue(record.description);
   await expect(editor(page).locator("img")).toHaveCount(0);
   expect(await page.evaluate(() => window.noteEditInjected)).toBeUndefined();
@@ -120,12 +124,42 @@ test("direct note editing confirms dirty dismissal, preserves only the note on S
   await page.keyboard.press("Escape");
   await expect(editor(page)).not.toBeVisible();
   await trigger(page).click();
-  await save(page).click();
+  await text(page).press("Enter");
   await expect(editor(page)).not.toBeVisible();
   expect(await saved(page)).toBe(before);
   await trigger(page).click();
-  await text(page).fill("Yeni ilk satır\nİkinci satır");
-  await save(page).click();
+  await text(page).fill("Yeni ilk satır");
+  await text(page).press("Shift+Enter");
+  await text(page).pressSequentially("İkinci satır");
+  await expect(text(page)).toHaveValue("Yeni ilk satır\nİkinci satır");
+  expect(await saved(page)).toBe(before);
+  await text(page).evaluate((field) => {
+    for (const options of [
+      { isComposing: true },
+      { keyCode: 229 },
+      { repeat: true },
+      { ctrlKey: true },
+      { altKey: true },
+      { metaKey: true },
+      { shiftKey: true },
+      { prevented: true },
+    ]) {
+      const event = new KeyboardEvent("keydown", {
+        key: "Enter",
+        bubbles: true,
+        cancelable: true,
+        ...options,
+      });
+      if (options.keyCode)
+        Object.defineProperty(event, "keyCode", { value: options.keyCode });
+      if (options.prevented) event.preventDefault();
+      field.dispatchEvent(event);
+    }
+  });
+  await expect(editor(page)).toBeVisible();
+  await expect(text(page)).toHaveValue("Yeni ilk satır\nİkinci satır");
+  expect(await saved(page)).toBe(before);
+  await text(page).press("Enter");
   await expect(editor(page)).not.toBeVisible();
   expect((await stored(page)).records).toEqual([
     {
@@ -139,7 +173,7 @@ test("direct note editing confirms dirty dismissal, preserves only the note on S
   expect(await saved(page)).toBe(before);
   await trigger(page).click();
   await text(page).fill("   ");
-  await save(page).click();
+  await text(page).press("Enter");
   await expect(editor(page)).not.toBeVisible();
   await expect(trigger(page)).toHaveCount(0);
   expect((await stored(page)).records).toEqual([
@@ -179,7 +213,7 @@ test("editing a linked action or meeting note never synchronizes an unrelated st
   const before = await saved(page);
   await trigger(page).click();
   await text(page).fill("Günlük işin yeni notu");
-  await save(page).click();
+  await text(page).press("Enter");
   await expect(editor(page)).not.toBeVisible();
   expect((await stored(page)).records).toEqual([
     meeting,
@@ -199,7 +233,7 @@ test("editing a linked action or meeting note never synchronizes an unrelated st
     )
     .click();
   await text(page).fill("Toplantının yeni notu");
-  await save(page).click();
+  await text(page).press("Enter");
   await expect(editor(page)).not.toBeVisible();
   expect((await stored(page)).records).toEqual([
     {
@@ -231,7 +265,7 @@ test("a failed note storage write leaves the draft and exact records intact and 
       return originalSetItem.call(this, name, value);
     };
   }, KEY);
-  await save(page).click();
+  await text(page).press("Enter");
   await expect(editor(page)).toBeVisible();
   await expect(editor(page).locator("#record-note-edit-error")).toContainText(
     "kaydedilemedi",
@@ -239,7 +273,7 @@ test("a failed note storage write leaves the draft and exact records intact and 
   await expect(text(page)).toHaveValue("Yeniden denenecek not");
   expect(await saved(page)).toBe(before);
   await page.evaluate(() => window.restoreNoteStorage());
-  await save(page).click();
+  await text(page).press("Enter");
   await expect(editor(page)).not.toBeVisible();
   expect((await stored(page)).records).toEqual([
     {
@@ -282,7 +316,7 @@ test("note editing preserves a concurrent unrelated title change and refuses a c
   await expect(
     editor(page).locator(".record-note-edit-availability"),
   ).not.toBeVisible();
-  await save(page).click();
+  await text(page).press("Enter");
   await expect(editor(page)).not.toBeVisible();
   const externalStore = JSON.parse(external);
   expect((await stored(page)).records).toEqual([
@@ -308,6 +342,10 @@ test("note editing preserves a concurrent unrelated title change and refuses a c
   ).toContainText("değişti");
   await expect(save(page)).toBeDisabled();
   await expect(text(page)).toHaveValue("Çakışmada korunacak yerel not");
+  await text(page).press("Enter");
+  await expect(editor(page)).toBeVisible();
+  await expect(text(page)).toHaveValue("Çakışmada korunacak yerel not");
+  expect(await saved(page)).toBe(externalNote);
   await editor(page)
     .locator("form")
     .evaluate((form) =>

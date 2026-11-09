@@ -147,7 +147,7 @@ export function createGoalTransferUI({
             `<option value="${escapeHtml(option.key)}" ${option.key === draft.periodKey ? "selected" : ""}>${escapeHtml(option.label)}</option>`,
         ),
       ].join("");
-      dialog.innerHTML = `<form id="goal-transfer-form"><div class="modal-header"><h2>Hedefi taşı</h2><button type="button" class="close-modal" data-action="goal-transfer-cancel" aria-label="Pencereyi kapat">×</button></div><div class="modal-body goal-transfer-body"><p class="goal-transfer-title">${escapeHtml(record.title)}</p><label class="field">Hedef dönem<select name="targetPeriod" required>${choiceMarkup}</select></label><label class="field">Taşıma gerekçesi <small>İsteğe bağlı</small><textarea name="transferReason" rows="2" maxlength="1000">${escapeHtml(draft.reason)}</textarea></label><p id="goal-transfer-error" class="error-message" role="alert" hidden></p></div><div class="modal-footer"><button type="button" class="btn" data-action="goal-transfer-cancel">Vazgeç</button><button type="submit" class="btn primary">Taşı</button></div></form>`;
+      dialog.innerHTML = `<form id="goal-transfer-form"><div class="modal-header"><h2>Hedefi taşı</h2><button type="button" class="close-modal" data-action="goal-transfer-cancel" aria-label="Pencereyi kapat">×</button></div><div class="modal-body goal-transfer-body"><div class="field"><span>Hedef</span><p class="goal-transfer-title">${escapeHtml(record.title)}</p></div><label class="field">Hedef dönem<select name="targetPeriod" required>${choiceMarkup}</select></label><label class="field"><span id="goal-transfer-note-label">Taşıma notu</span><small id="goal-transfer-note-help">İsteğe bağlı · Hedefin yeni dönemdeki durumu veya plan değişikliği hakkında kısa bir not ekleyebilirsin.</small><textarea name="transferReason" rows="2" maxlength="1000" aria-labelledby="goal-transfer-note-label" aria-describedby="goal-transfer-note-help" placeholder="Örn. Test tarihleri değişti; çalışmaya gelecek hafta devam edilecek.">${escapeHtml(draft.reason)}</textarea></label><p id="goal-transfer-error" class="error-message" role="alert" hidden></p></div><div class="modal-footer"><button type="button" class="btn" data-action="goal-transfer-cancel">Vazgeç</button><button type="submit" class="btn primary">Taşı</button></div></form>`;
       updateState();
       dialog.showModal();
       form().elements.transferReason.focus({ preventScroll: true });
@@ -167,7 +167,7 @@ export function createGoalTransferUI({
       const period = parsePeriod(active.type, active.draft.periodKey);
       if (!period) throw new Error("Geçerli bir hedef dönem seç.");
       if (active.draft.reason.trim().length > 1000)
-        throw new Error("Taşıma gerekçesi en fazla 1000 karakter olabilir.");
+        throw new Error("Taşıma notu en fazla 1000 karakter olabilir.");
       saving = true;
       updateState();
       const pending = active;

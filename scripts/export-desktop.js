@@ -34,6 +34,15 @@ geçişinde ve pencereye dönünce güncellenir. Kayıtları veya açık formlar
 
 LISTE DUZENI
 
+Takip kartlarında tarih, sonuç ve sonraki takip tarihi gösterilir.
+
+Notu düzenle penceresinde Enter kaydeder, Shift+Enter alt satıra geçer.
+
+Bekleme bilgisi, başlıktan sonraki bağlantı ve not simgeleriyle aynı
+gruptadır. Küçük balon yalnız bekleme nedenini gösterir; simgeye tıklamak
+bekleme düzenleyicisini açar. Hedefi taşı formundaki Taşıma notu alanı
+açıklama ve örnekle isteğe bağlı bir not ister.
+
 Hedefin bağlı kaydındaki Bağı kaldır, yalnız o ilişkiyi çözer; günlük iş
 anlık işe döner, alt hedef kendi türünde kalır. Durum/tarih/not/günlük ve
 kaynak bağlantısı korunur, tek Geri al ilişkiyi geri getirir.
@@ -95,15 +104,14 @@ temel alanlar kayıt türüne göre öne çıkar; diğerleri sonradan gelen aç�
 Günlük, haftalık, aylık ve senelik ekranlar ortak liste düzenini kullanır.
 Tamamlama kutusu sol başta, günlük işlerde oynat düğmesi en sağdadır.
 Açık işlerin kutusu boştur; tik yalnız tamamlanmış kayıtta görünür.
-Bağımsız kayıtların durum menüsünde tamamlama tekrarlanmaz; listede
+Toplantı dışındaki listelerin durum menüsünde tamamlama tekrarlanmaz; listede
 tamamlanmış kayıtlar ve formdaki durum seçenekleri korunur.
 
 Eski Kısmi tamamlandı artık seçilemez; mevcut kayıt Devam ediyor olarak
 gösterilir ve bu filtreye dahildir. Görüntüleme, filtreleme ve yedek alma
 özgün değeri değiştirmez; durum dışındaki doğrudan düzenlemelerde de korunur.
-Yönlendirilmiş toplantı aksiyonlarının durumu bağlı iş ve takiplerden
-hesaplanır; bu akış kaydedildiğinde eski değer Devam ediyor olarak
-güncellenebilir. Geri al özgün değeri geri getirir.
+Toplantıda eski açık durumlar Açık, kapalı durumlar Kapandı olarak gösterilir.
+Ham değer yalnız açıkça durum seçilince güncellenir; Geri al özgün değeri getirir.
 
 Senelik hedefte yıl/dönem yeterlidir. Teslim tarihi sütunu, Termin filtresi,
 teslim sıralaması ve form alanı kullanılmaz; senelik hedef takvimde tarih
@@ -357,8 +365,8 @@ tamamlanınca veya konu kapanınca o konu öneriden çıkar. Süre, Beklemeye ba
 ile bugün arasındaki takvim günü farkıdır; günlük hesaplanır ve 103 gün
 gibi kısa gösterilir. Başlangıç tarihi üzerine gelince okunur; tarih
 bilinmiyorsa çizgi görünür. Yeni kapanışta toplam süre o günde sabitlenir;
-yeniden açılınca canlı hesap sürer. Eski kapalı konunun sayısal Excel süresi
-varsa kaynak açıklamasıyla gösterilir; kapanış tarihi olarak yorumlanmaz.
+yeniden açılınca canlı hesap sürer. Eski kapalı konunun kayıtlı sayısal süresi
+varsa ek kaynak açıklaması olmadan gösterilir; tek başına kapanış tarihi oluşturmaz.
 
 Takip planla veya sonraki tarih düğmesi yalnız hatırlatmayı düzenler;
 gerçekleşmiş takip kaydı oluşturmaz. Takip filtresi sonraki tarihi kullanır:
@@ -551,19 +559,18 @@ konu açılabilir. Ben yapacağım benim çalışmamı; Başkasından bekliyorum
 yanıtı takip eder. Formdan vazgeçmek kayıt oluşturmaz. İlgili türde kayıt
 varsa düğme İşi aç / Takibi aç olur ve o kaydı açar; ikinci kopya oluşturmaz.
 
-Listede Aksiyon / Karar, Bağlı iş, Takip ve İşlem sütunları vardır; üstte
-Güncel / Arşiv / Tümü seçilir. Toplantıda tamamlama kutusu yoktur.
-Bağlantısız kararın durum/arşiv kontrolü başlık hizasındadır; kararın
-altında ayrı durum satırı yoktur. Bağlı iş/takip kendi durumunu gösterir.
-Her akışın düğmesi kaydı toplantı sayfasının üzerinde açar; kapatınca aynı
-toplantıda kalırsın. Güncel kararda akış yoksa İş oluştur / Takip oluştur
-formunu açar; arşivdeki bağlantısız satırda bu düğmeler gösterilmez. Tarih varsa bağlı kayıttan İş teslimi / Sonraki takip
-olarak kendi sütununda gösterilir.
+Listede Aksiyon / Karar, Durum, Bağlı iş, Takip ve İşlem sütunları vardır.
+Açık / Kapalı / Tümü kapsamı seçilir. Toplantının kendi durumu
+Planlanacak / Açık / Kapandı olarak etiketinden ve kayıt formundan yönetilir.
+Durum ve yönlendirme düğmeleri aynı ölçüdedir; sağ sütunlar kompakt ve sola
+hizalıdır. Toplantıda tamamlama kutusu yoktur.
+Bağlı iş ve takip kendi durumlarını kendi sütunlarında gösterir. Her akışın
+düğmesi kaydı toplantı sayfasının üzerinde açar; kapatınca aynı yerde kalırsın.
+Açık kararda akış yoksa İş oluştur / Takip oluştur formu açılır. Gerçek bağlı
+kaydın tarihleri İş teslimi / Sonraki takip olarak gösterilir.
 Öncelik ve teslim tarihi filtreleri bu listede kullanılmaz.
-İş ve Takip durumları ayrı rozetlerde görünür; her rozet kendi gerçek kaydının
-menüsünü açar. Bu menülerde Tamamlandı / Kapandı yoktur; tamamlama ilgili
-kaydın kendi arayüzünden yapılır. Toplantının güncel/arşiv görünümü bağlı kayıtları izler; arşiv simgesi bağlı
-işi veya takibi tamamlamaz.
+İş ve Takip rozetleri kendi gerçek kaydının menüsünü açar. Bu çocuk menülerinde
+Tamamlandı / Kapandı tekrarlanmaz; tamamlama ilgili kaydın kendi arayüzündedir.
 
 Her ikisi de, Yapacağım iş ve Beklediğim sonuç için iki ayrı bölüm içeren
 formu açar. İki akışı kaydet ile birlikte oluşturabilirsin. Bir akış zaten
@@ -576,8 +583,8 @@ Günlük iş kendi önceliği ve teslim tarihiyle yönetilir.
 Beklenen yanıtın kimden beklendiği, sonraki takip tarihi ve son gelişmesi vardır.
 Takip tarihi yanıtın teslim tarihi değildir; Son takip boş başlar.
 Yeni akışlar toplantının eski tarih, öncelik, sorumlu veya sonraki adımını devralmaz.
-Bir akışı bitirmek diğerini kapatmaz. Toplantının yalnız durumu bağlı kayıtlardan
-özetlenir; eski tarih/öncelik/sorumlu/sonraki adım saklanan değerler olarak korunur.
+Toplantı, günlük iş ve takip ayrı durumlar olarak yönetilir. Her durum işlemi
+yalnız seçilen kaydı günceller; eski tarih/öncelik/sorumlu/sonraki adım korunur.
 Takvim, mini ajanda ve takip kartları toplantının eski teslimini kullanmaz;
 gerçek iş teslimini ve bekleyen konunun sonraki takip tarihini kullanır.
 

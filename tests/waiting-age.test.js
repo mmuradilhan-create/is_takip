@@ -167,7 +167,7 @@ test("a present but invalid close marker or invalid start cannot fall back to a 
   }
 });
 
-test("legacy integer counts remain qualified Excel snapshots rather than invented closed totals", () => {
+test("legacy integer counts use plain waiting text without rewriting cached data or inventing closure dates", () => {
   for (const count of [0, 37]) {
     const item = record({
       status: "completed",
@@ -176,13 +176,15 @@ test("legacy integer counts remain qualified Excel snapshots rather than invente
     const raw = JSON.stringify(item);
     const shown = waitingAgePresentation(item, DAY);
     assert.equal(shown.kind, "imported");
+    assert.equal(shown.days, count);
     assert.equal(shown.text, `${count} gün`);
-    assert.match(
-      shown.title,
-      /Excel’den aktarılan süre; kapanış tarihi bilinmiyor/,
+    assert.equal(shown.description, `${count} gün bekledi`);
+    assert.equal(shown.title, `Bekleme süresi: ${count} gün`);
+    assert.equal(shown.ariaLabel, `${count} gün bekledi`);
+    assert.doesNotMatch(
+      `${shown.description} ${shown.title} ${shown.ariaLabel}`,
+      /Excel|aktar|kapanış tarihi bilinmiyor|gündür bekliyor/iu,
     );
-    assert.match(shown.ariaLabel, /kapanış tarihi bilinmiyor/);
-    assert.doesNotMatch(shown.description, /gündür bekliyor|gün bekledi/);
     assert.equal(waitingAge(item, DAY), null);
     assert.equal(JSON.stringify(item), raw);
   }
@@ -297,7 +299,7 @@ test("closure is one atomic store edit whose failure and exact Undo preserve eve
   assert.deepEqual(reopened.records, original);
 });
 
-test("Excel export and import preserve both closure proof and the qualified original snapshot", async () => {
+test("Excel export and import preserve both closure proof and the original cached duration", async () => {
   const item = close(record());
   const legacy = record({ id: "legacy-one", status: "completed" });
   const original = JSON.stringify([item, legacy]);

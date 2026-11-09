@@ -1,4 +1,5 @@
 import { DISCARD_RECORD_CHANGES } from "./record-form-discard.js";
+import { isPlainSaveEnter } from "./record-form-shortcuts.js";
 
 const escapeHtml = (value) =>
   String(value ?? "").replace(
@@ -97,7 +98,7 @@ export function createRecordNoteEditor({
       previousTrigger = trigger?.isConnected ? trigger : document.activeElement;
       generation++;
       saving = false;
-      dialog.innerHTML = `<form id="record-note-edit-form"><div class="modal-header"><h2>Notu düzenle</h2><button type="button" class="close-modal" data-action="record-note-edit-close" aria-label="Pencereyi kapat">${closeIcon}</button></div><div class="modal-body record-note-edit-body"><p class="record-note-edit-topic">${escapeHtml(record.title)}</p><p class="record-note-edit-availability" role="status" hidden></p><label class="field">Notlar<textarea name="description" maxlength="50000" rows="8">${escapeHtml(expectedDescription)}</textarea></label><p id="record-note-edit-error" class="error-message" role="alert" hidden></p></div><div class="modal-footer"><button type="button" class="btn" data-action="record-note-edit-close">Vazgeç</button><button type="submit" class="btn primary">Kaydet</button></div></form>`;
+      dialog.innerHTML = `<form id="record-note-edit-form"><div class="modal-header"><h2>Notu düzenle</h2><button type="button" class="close-modal" data-action="record-note-edit-close" aria-label="Pencereyi kapat">${closeIcon}</button></div><div class="modal-body record-note-edit-body"><p class="record-note-edit-topic">${escapeHtml(record.title)}</p><p class="record-note-edit-availability" role="status" hidden></p><label class="field"><span id="record-note-edit-label">Notlar</span><textarea name="description" maxlength="50000" rows="8" aria-labelledby="record-note-edit-label" aria-describedby="record-note-edit-shortcuts">${escapeHtml(expectedDescription)}</textarea><small id="record-note-edit-shortcuts">Enter ile kaydet, Shift+Enter ile alt satıra geç.</small></label><p id="record-note-edit-error" class="error-message" role="alert" hidden></p></div><div class="modal-footer"><button type="button" class="btn" data-action="record-note-edit-close">Vazgeç</button><button type="submit" class="btn primary">Kaydet</button></div></form>`;
       dialog.showModal();
       textarea().focus({ preventScroll: true });
     } catch (error) {
@@ -153,6 +154,19 @@ export function createRecordNoteEditor({
     requestClose();
   }
 
+  function onKeydown(event) {
+    if (destroyed || saving || !dialog.open || !isPlainSaveEnter(event)) return;
+    const field = textarea();
+    if (event.target !== field || field.readOnly || field.matches(":disabled"))
+      return;
+    const form = field.form;
+    const submitter = form?.querySelector('[type="submit"]');
+    if (!submitter || typeof form.requestSubmit !== "function") return;
+    event.preventDefault();
+    event.stopPropagation();
+    if (!submitter.matches(":disabled")) form.requestSubmit(submitter);
+  }
+
   function onCancel(event) {
     event.preventDefault();
     requestClose();
@@ -193,6 +207,7 @@ export function createRecordNoteEditor({
     generation++;
     dialog.removeEventListener("submit", onSubmit);
     dialog.removeEventListener("click", onClick);
+    dialog.removeEventListener("keydown", onKeydown);
     dialog.removeEventListener("cancel", onCancel);
     dialog.removeEventListener("close", onClose);
     dialog.remove();
@@ -200,6 +215,7 @@ export function createRecordNoteEditor({
 
   dialog.addEventListener("submit", onSubmit);
   dialog.addEventListener("click", onClick);
+  dialog.addEventListener("keydown", onKeydown);
   dialog.addEventListener("cancel", onCancel);
   dialog.addEventListener("close", onClose);
   return { open, refresh, destroy };

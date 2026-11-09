@@ -550,9 +550,11 @@ test("waiting history icons keep actual saved contacts separate from note previe
   await expect(entries.first().locator(".record-history-result")).toHaveText(
     topic.followUpLog[1].note,
   );
-  await expect(
-    entries.first().locator(".record-history-previous"),
-  ).toContainText(topic.followUpLog[1].previousUpdate);
+  await expect(entries.locator(".record-history-previous")).toHaveCount(0);
+  await expect(entries.first()).not.toContainText("Önceki son gelişme");
+  await expect(entries.first()).not.toContainText(
+    topic.followUpLog[1].previousUpdate,
+  );
   await expect(entries.first().locator(".record-history-planned")).toHaveText(
     "Sonraki takip: 15 Kasım 2026",
   );

@@ -1,10 +1,15 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createRecord, validateStore } from "../src/model.js";
+import {
+  createRecord,
+  validateStore,
+  statusForDisplay,
+  statusLabel,
+} from "../src/model.js";
 import { resolveActionSource, syncActionLinks } from "../src/action-links.js";
 import { createWorkspaceStore } from "../src/workspace-store.js";
 
-test("a derived meeting may canonicalize on context save while its raw legacy target and reloaded undo remain lossless", () => {
+test("a meeting display alias preserves both raw legacy statuses through unrelated context edits and exact reload Undo", () => {
   const stamp = "2026-11-01T09:00:00.000Z";
   const record = (input) =>
     createRecord({ createdAt: stamp, updatedAt: stamp, ...input });
@@ -45,7 +50,10 @@ test("a derived meeting may canonicalize on context save while its raw legacy ta
   };
   const originalStore = values.get(key);
   const view = resolveActionSource(source, records);
-  assert.equal(view.status, "in_progress");
+  assert.equal(view, source);
+  assert.equal(view.status, "partially_completed");
+  assert.equal(statusForDisplay(view.status, view.type), "in_progress");
+  assert.equal(statusLabel(view.type, view.status), "Açık");
   assert.equal(JSON.stringify(records), originalRecords);
   assert.equal(values.get(key), originalStore);
 
@@ -57,13 +65,13 @@ test("a derived meeting may canonicalize on context save while its raw legacy ta
     updatedAt: "2026-11-07T12:00:00.000Z",
   };
   const transaction = syncActionLinks(records, [editedSource, target]);
-  assert.equal(transaction[0].status, "in_progress");
+  assert.equal(transaction[0], editedSource);
+  assert.equal(transaction[0].status, source.status);
   assert.equal(transaction[1], target);
   assert.equal(transaction[1].status, "partially_completed");
   assert.deepEqual(
     {
       ...transaction[0],
-      status: source.status,
       description: source.description,
       updatedAt: source.updatedAt,
     },
@@ -72,7 +80,7 @@ test("a derived meeting may canonicalize on context save while its raw legacy ta
   workspace.saveRecords(transaction, "Toplantı bağlamı");
 
   const reopened = createWorkspaceStore({ storage, key });
-  assert.equal(reopened.records[0].status, "in_progress");
+  assert.equal(reopened.records[0].status, "partially_completed");
   assert.equal(reopened.records[1].status, "partially_completed");
   assert.deepEqual(
     validateStore(JSON.parse(values.get(key))).records,

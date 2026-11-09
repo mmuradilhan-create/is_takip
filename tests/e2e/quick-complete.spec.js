@@ -106,7 +106,7 @@ test("daily quick completion takes one click, hides from open work and undo rest
   await expect(daily.locator(".quick-complete")).toBeVisible();
 });
 
-test("meeting archival and waiting quick closure use their own terminal captions and each undo restores source details", async ({
+test("meeting status closure and waiting quick closure use their own terminal captions and each undo restores source details", async ({
   page,
 }) => {
   const originals = [
@@ -146,18 +146,13 @@ test("meeting archival and waiting quick closure use their own terminal captions
     }
     await expect(row(page, original.id)).toHaveCount(0);
     await selectListStatus(page, "completed");
-    if (original.type === "meeting") {
+    await expect(row(page, original.id).locator(".status-trigger")).toHaveText(
+      "Kapandı",
+    );
+    if (original.type === "meeting")
       await expect(
         row(page, original.id).locator(".meeting-archive-control"),
-      ).toHaveAttribute("aria-label", /Arşivlendi/);
-      await expect(
-        row(page, original.id).locator(".status-trigger"),
       ).toHaveCount(0);
-    } else {
-      await expect(
-        row(page, original.id).locator(".status-trigger"),
-      ).toHaveText("Kapandı");
-    }
     await expect(row(page, original.id).locator(".quick-complete")).toHaveCount(
       0,
     );
@@ -247,17 +242,16 @@ test("closed records have no quick completion control across every list", async 
       await expect(
         row(page, original.id).locator(".quick-complete"),
       ).toHaveCount(0);
+      await expect(
+        row(page, original.id).locator(".status-trigger"),
+      ).toBeVisible();
       if (type === "meeting") {
         await expect(
           row(page, original.id).locator(".meeting-archive-control"),
-        ).toBeVisible();
-        await expect(
-          row(page, original.id).locator(".status-trigger"),
         ).toHaveCount(0);
-      } else {
         await expect(
-          row(page, original.id).locator(".status-trigger"),
-        ).toBeVisible();
+          row(page, original.id).locator(".status-col > .status-trigger"),
+        ).toHaveText("Kapandı");
       }
     }
   }

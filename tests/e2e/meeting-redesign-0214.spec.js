@@ -225,6 +225,7 @@ test("creating both routes saves the daily work's own priority and delivery sepa
     lastFollowUpDate: "",
   });
   expect(meeting).toMatchObject({
+    status: "planned",
     priority: "normal",
     dueDate: "",
     nextAction: "",
@@ -351,7 +352,7 @@ test("existing meeting edits and new routes preserve remaining legacy source fie
   expect(await saved(page)).toBe(before);
 });
 
-test("meeting tables place status below its own route control, omit missing dates and keep route changes reversible", async ({
+test("meeting tables keep their own status separate from route statuses, omit missing dates and keep route changes reversible", async ({
   page,
 }) => {
   const items = [
@@ -377,6 +378,7 @@ test("meeting tables place status below its own route control, omit missing date
   const before = await saved(page);
   await expect(page.locator(".meeting-table thead th")).toHaveText([
     "Aksiyon / Karar",
+    "Durum",
     "Bağlı iş",
     "Takip",
     "İşlem",
@@ -392,12 +394,19 @@ test("meeting tables place status below its own route control, omit missing date
     cell(page, "none", "waiting").locator(".meeting-linked-date"),
   ).toHaveCount(0);
   await expect(
-    row(page, "none").locator(
-      ".task-name-line .meeting-title-state .status-trigger",
-    ),
+    row(page, "none").locator(".status-col > .status-trigger"),
+  ).toHaveText("Açık");
+  await expect(
+    row(page, "both").locator(".status-col > .status-trigger"),
   ).toHaveText("Planlanacak");
   await expect(
-    row(page, "both").locator(".meeting-unlinked-status, .meeting-status-cell"),
+    row(page, "both").locator(".status-col > .status-trigger"),
+  ).toHaveAttribute("data-id", "both");
+  await expect(
+    row(page, "both").locator(".status-col > .status-trigger"),
+  ).not.toHaveAttribute("data-target-id", /./);
+  await expect(
+    page.locator(".meeting-title-state, .meeting-archive-control"),
   ).toHaveCount(0);
   await expect(
     cell(page, "only-daily", "daily").locator(".meeting-linked-date"),
@@ -483,7 +492,7 @@ test("meeting tables place status below its own route control, omit missing date
       `${type} akışının kendi notu.`,
     );
     const updatedSource = updated.find((item) => item.id === "both");
-    expect({ ...updatedSource, status: items[3].status }).toEqual(items[3]);
+    expect(updatedSource).toEqual(items[3]);
     await undo(page);
     expect(await saved(page)).toBe(before);
   }
@@ -503,10 +512,7 @@ test("meeting tables place status below its own route control, omit missing date
     "in_progress",
   );
   expect(after.find((item) => item.id === "both-reply")).toEqual(items[7]);
-  expect(after.find((item) => item.id === "both")).toEqual({
-    ...items[3],
-    status: "in_progress",
-  });
+  expect(after.find((item) => item.id === "both")).toEqual(items[3]);
   await page.reload();
   await undo(page);
   expect(await saved(page)).toBe(before);

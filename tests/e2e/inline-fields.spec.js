@@ -252,6 +252,9 @@ test("lists expose context-appropriate quick controls without opening the full e
       await expect(row.locator(".inline-priority, .inline-date")).toHaveCount(
         0,
       );
+      await expect(row.locator(".status-col > .status-trigger")).toHaveText(
+        "Planlanacak",
+      );
       await expect(
         page.locator("#priority-filter, #period-filter"),
       ).toHaveCount(0);
@@ -267,9 +270,9 @@ test("lists expose context-appropriate quick controls without opening the full e
       await expect(page.locator('#record-form [name="id"]')).toHaveValue(
         record.id,
       );
-      await expect(page.locator('#record-form [name="type"]')).toHaveValue(
-        "meeting",
-      );
+      await expect(
+        page.locator('#record-form select[name="type"]'),
+      ).toHaveValue("meeting");
       await openCreationExtras(page);
       for (const name of ["priority", "dueDate", "nextAction"]) {
         await expect(

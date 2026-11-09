@@ -75,7 +75,7 @@ async function seed(page, items) {
 async function openMenu(page, id, targetId = null) {
   const trigger = targetId
     ? routeStatus(page, id, targetId)
-    : row(page, id).locator('[data-action="status-menu"]').first();
+    : row(page, id).locator('.status-col > [data-action="status-menu"]');
   await trigger.click();
   await expect(menu(page)).toBeVisible();
   await expect(page.locator("#editor")).not.toBeVisible();
@@ -101,6 +101,7 @@ test("a linked meeting exposes independent job and follow-up badges and changes 
   );
   await expect(page.locator(".meeting-table thead th")).toHaveText([
     "Aksiyon / Karar",
+    "Durum",
     "Bağlı iş",
     "Takip",
     "İşlem",
@@ -160,14 +161,10 @@ test("a linked meeting exposes independent job and follow-up badges and changes 
   expect(after.records.find((item) => item.id === "unrelated")).toEqual(
     items[3],
   );
-  expect(after.records.find((item) => item.id === "dual")).toMatchObject({
-    id: "dual",
-    status: "in_progress",
-    title: items[0].title,
-    decision: items[0].decision,
-    description: items[0].description,
-    sourceFields: items[0].sourceFields,
-  });
+  expect(after.records.find((item) => item.id === "dual")).toEqual(items[0]);
+  await expect(
+    row(page, "dual").locator(".status-col > .status-trigger"),
+  ).toHaveText("Planlanacak");
   expect(after.odak.history).toHaveLength(1);
   await expect(page.locator("#editor")).not.toBeVisible();
   await expect(page).toHaveURL(url);
@@ -198,7 +195,7 @@ test("a linked meeting exposes independent job and follow-up badges and changes 
   expect((await store(page)).records).toEqual(items);
 });
 
-test("the meeting closes only after both separate targets close and two Undo steps restore each exact prior state", async ({
+test("closing both targets leaves the meeting unchanged until its own explicit closure and each Undo restores the exact prior state", async ({
   page,
 }) => {
   const items = [
@@ -220,8 +217,8 @@ test("the meeting closes only after both separate targets close and two Undo ste
     "completed",
   );
   expect(first.records.find((item) => item.id === "reply")).toEqual(items[2]);
-  expect(first.records.find((item) => item.id === "completion").status).toBe(
-    "waiting",
+  expect(first.records.find((item) => item.id === "completion")).toEqual(
+    items[0],
   );
   await expect(row(page, "completion")).toBeVisible();
   await expect(routeStatus(page, "completion", "own")).toHaveText("Tamamlandı");
@@ -240,13 +237,42 @@ test("the meeting closes only after both separate targets close and two Undo ste
   expect(complete.records.find((item) => item.id === "reply").status).toBe(
     "completed",
   );
-  expect(complete.records.find((item) => item.id === "completion").status).toBe(
-    "completed",
+  expect(complete.records.find((item) => item.id === "completion")).toEqual(
+    items[0],
   );
   expect(complete.odak.history).toHaveLength(2);
+  await expect(row(page, "completion")).toBeVisible();
+  await expect(
+    row(page, "completion").locator(".status-col > .status-trigger"),
+  ).toHaveText("Planlanacak");
+  const afterBothTargets = await saved(page);
+  await openMenu(page, "completion");
+  await expect(menu(page).locator(".status-option")).toHaveText([
+    "Planlanacak",
+    "Açık",
+    "Kapandı",
+  ]);
+  await option(page, "completion", "completed").click();
+  const manuallyClosed = await store(page);
+  expect(
+    manuallyClosed.records.find((item) => item.id === "completion"),
+  ).toEqual({
+    ...items[0],
+    status: "completed",
+    updatedAt: NOW.toISOString(),
+  });
+  expect(manuallyClosed.records.find((item) => item.id === "own")).toEqual(
+    complete.records.find((item) => item.id === "own"),
+  );
+  expect(manuallyClosed.records.find((item) => item.id === "reply")).toEqual(
+    complete.records.find((item) => item.id === "reply"),
+  );
+  expect(manuallyClosed.odak.history).toHaveLength(3);
   await expect(row(page, "completion")).toHaveCount(0);
   await expect(page.locator("#editor")).not.toBeVisible();
   await page.reload();
+  await undo(page);
+  expect(await saved(page)).toBe(afterBothTargets);
   await undo(page);
   expect(await saved(page)).toBe(afterFirst);
   await undo(page);
@@ -267,7 +293,7 @@ test("a single external target keeps waiting statuses and keyboard access while 
   ];
   await seed(page, items);
   const before = await saved(page);
-  await openMenu(page, "single");
+  await openMenu(page, "single", "single-reply");
   await expect(group(page, "İşin durumu")).toHaveCount(0);
   await expect(group(page, "Takibin durumu")).toHaveCount(1);
   await expect(option(page, "single-reply", "planned")).toHaveText("Açık");
@@ -292,7 +318,7 @@ test("a single external target keeps waiting statuses and keyboard access while 
   await expect(menu(page).locator(".status-option").last()).toBeFocused();
   await page.keyboard.press("Escape");
   await expect(menu(page)).not.toBeVisible();
-  await openMenu(page, "legacy");
+  await openMenu(page, "legacy", "legacy-work");
   await expect(option(page, "legacy-work", "in_progress")).toHaveAttribute(
     "aria-checked",
     "true",
@@ -304,10 +330,16 @@ test("a single external target keeps waiting statuses and keyboard access while 
   await openMenu(page, "ordinary");
   await expect(menu(page).getByRole("group")).toHaveCount(0);
   await expect(option(page, "ordinary", "planned")).toBeVisible();
-  await expect(option(page, "ordinary", "completed")).toHaveCount(0);
+  await expect(menu(page).locator(".status-option")).toHaveText([
+    "Planlanacak",
+    "Açık",
+    "Kapandı",
+  ]);
+  await expect(option(page, "ordinary", "in_progress")).toBeVisible();
+  await expect(option(page, "ordinary", "completed")).toBeVisible();
   await page.keyboard.press("Escape");
   expect(await saved(page)).toBe(before);
-  await openMenu(page, "single");
+  await openMenu(page, "single", "single-reply");
   await option(page, "single-reply", "follow_up").click();
   const after = await store(page);
   expect(after.records.find((item) => item.id === "single-reply")).toEqual({

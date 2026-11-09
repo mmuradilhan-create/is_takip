@@ -9,14 +9,18 @@ const root = fileURLToPath(new URL("../", import.meta.url));
 const directory = resolve(root, ".local");
 let data = emptyStore();
 let snapshotFile = null;
-for (const file of ["current-data.json", "imported-data.json"]) {
+const requestedDataFile = process.env.ODAK_EXPORT_DATA?.trim();
+const snapshotFiles = requestedDataFile
+  ? [resolve(root, requestedDataFile)]
+  : ["current-data.json", "imported-data.json"];
+for (const file of snapshotFiles) {
   try {
     const saved = JSON.parse(await readFile(resolve(directory, file), "utf8"));
     data = { ...validateStore(saved), migration: saved.migration || null };
     snapshotFile = file;
     break;
   } catch (error) {
-    if (error.code !== "ENOENT") throw error;
+    if (requestedDataFile || error.code !== "ENOENT") throw error;
   }
 }
 data.records = cleanupMeetingContacts(data.records);
@@ -54,7 +58,7 @@ await writeFile(destination, html, { mode: 0o600 });
 await writeFile(
   resolve(
     directory,
-    snapshotFile === "current-data.json"
+    requestedDataFile || snapshotFile === "current-data.json"
       ? "ODAK-guncel-kayit-yedegi.json"
       : "ODAK-kayit-yedegi.json",
   ),

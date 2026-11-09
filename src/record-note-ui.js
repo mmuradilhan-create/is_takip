@@ -54,7 +54,7 @@ function historyMarkup(record) {
   return `<ol class="record-history-list">${entries
     .map(
       ({ entry }) =>
-        `<li data-followup-id="${escapeHtml(entry.id)}"><time datetime="${escapeHtml(entry.date)}">${escapeHtml(historyDate(entry.date))}</time><p class="record-history-result">${escapeHtml(entry.note || "Sonuç notu eklenmemiş.")}</p>${Object.hasOwn(entry, "previousUpdate") ? `<div class="record-history-previous"><span>Önceki son gelişme</span><p>${escapeHtml(entry.previousUpdate || "")}</p></div>` : ""}${entry.nextFollowUpDate ? `<p class="record-history-planned">Sonraki takip: ${escapeHtml(historyDate(entry.nextFollowUpDate))}</p>` : ""}</li>`,
+        `<li data-followup-id="${escapeHtml(entry.id)}"><time datetime="${escapeHtml(entry.date)}">${escapeHtml(historyDate(entry.date))}</time><p class="record-history-result">${escapeHtml(entry.note || "Sonuç notu eklenmemiş.")}</p>${entry.nextFollowUpDate ? `<p class="record-history-planned">Sonraki takip: ${escapeHtml(historyDate(entry.nextFollowUpDate))}</p>` : ""}</li>`,
     )
     .join("")}</ol>`;
 }

@@ -64,57 +64,58 @@ test("typed source lookup reuses only its chosen route and old daily origins rem
   assert.equal(sourceForTarget(oldDaily, [oldDaily]), null);
 });
 
-test("meeting projections read target lifecycle without changing saved decision context or timestamps", () => {
-  for (const [type, status, expected] of [
-    ["daily", "in_progress", "in_progress"],
-    ["daily", "partially_completed", "in_progress"],
-    ["daily", "waiting", "waiting"],
-    ["waiting", "follow_up", "waiting"],
-    ["waiting", "waiting_response", "waiting"],
-    ["waiting", "planned", "planned"],
-    ["daily", "completed", "completed"],
-    ["waiting", "completed", "completed"],
-    ["daily", "transferred", "completed"],
-    ["waiting", "cancelled", "cancelled"],
+test("meeting status and context remain independent of every linked target outcome", () => {
+  for (const sourceStatus of [
+    "planned",
+    "in_progress",
+    "completed",
+    "cancelled",
+    "partially_completed",
+    "waiting",
   ]) {
-    const source = meeting();
-    const action = target("target", source.id, {
-      type,
-      status,
-      expectedFrom: "Ahmet",
-    });
-    const rows = [source, action];
-    const before = JSON.stringify(rows);
-    const projected = resolveActionSource(source, rows);
-    assert.equal(projected.status, expected);
-    assert.equal(projected.dueDate, source.dueDate);
-    assert.equal(projected.nextAction, source.nextAction);
-    assert.equal(projected.owner, source.owner);
-    for (const key of [
-      "id",
-      "title",
-      "participants",
-      "decision",
-      "sourceFields",
-      "createdAt",
-      "updatedAt",
-    ])
-      assert.deepEqual(projected[key], source[key]);
-    assert.equal(JSON.stringify(rows), before);
-    assert.equal(
-      validateStore({ version: 1, records: rows }).records[0].status,
-      "planned",
-    );
-    const synced = syncActionLinks([source], rows);
-    assert.equal(synced[0].status, expected);
-    assert.equal(
-      validateStore({ version: 1, records: synced }).records[0].status,
-      expected,
-    );
+    for (const [type, status] of [
+      ["daily", "in_progress"],
+      ["daily", "partially_completed"],
+      ["daily", "waiting"],
+      ["waiting", "follow_up"],
+      ["waiting", "waiting_response"],
+      ["waiting", "planned"],
+      ["daily", "completed"],
+      ["waiting", "completed"],
+      ["daily", "transferred"],
+      ["waiting", "cancelled"],
+    ]) {
+      const source = meeting("meeting", { status: sourceStatus });
+      const action = target("target", source.id, {
+        type,
+        status,
+        expectedFrom: "Ahmet",
+      });
+      const rows = [source, action];
+      const before = JSON.stringify(rows);
+      assert.equal(
+        resolveActionSource(source, rows),
+        source,
+        `${sourceStatus}/${type}/${status}`,
+      );
+      assert.equal(
+        validateStore({ version: 1, records: rows }).records[0].status,
+        sourceStatus,
+      );
+      const synced = syncActionLinks([source], rows);
+      assert.equal(synced, rows);
+      assert.equal(synced[0], source);
+      assert.equal(synced[1], action);
+      assert.equal(
+        validateStore({ version: 1, records: synced }).records[0].status,
+        sourceStatus,
+      );
+      assert.equal(JSON.stringify(rows), before);
+    }
   }
 });
 
-test("legacy partial routes remain byte-stable when read and only explicit affected saves derive an in-progress meeting", () => {
+test("legacy partial meeting and route statuses remain byte-stable through reads and unrelated target edits", () => {
   const source = meeting("legacy-partial-source", {
     status: "partially_completed",
   });
@@ -125,7 +126,7 @@ test("legacy partial routes remain byte-stable when read and only explicit affec
   });
   const rows = [source, work];
   const before = JSON.stringify(rows);
-  assert.equal(resolveActionSource(source, rows).status, "in_progress");
+  assert.equal(resolveActionSource(source, rows), source);
   assert.equal(syncActionLinks(rows, rows), rows);
   assert.equal(
     JSON.stringify(validateStore({ version: 1, records: rows }).records),
@@ -134,7 +135,7 @@ test("legacy partial routes remain byte-stable when read and only explicit affec
   assert.equal(JSON.stringify(rows), before);
   const edited = { ...work, nextAction: "Kaydedilen açık adım." };
   const result = syncActionLinks(rows, [source, edited]);
-  assert.equal(result[0].status, "in_progress");
+  assert.equal(result[0], source);
   assert.equal(result[0].decision, source.decision);
   assert.equal(result[1], edited);
   assert.equal(result[1].status, "partially_completed");
@@ -143,7 +144,7 @@ test("legacy partial routes remain byte-stable when read and only explicit affec
   assert.equal(JSON.stringify(rows), before);
 });
 
-test("creating or editing one target mirrors only its meeting source and leaves unrelated stale links untouched", () => {
+test("creating or editing a target preserves its own meeting and unrelated stale links", () => {
   const source = meeting();
   const unrelatedSource = meeting("unrelated", { status: "waiting" });
   const unrelatedAction = target("unrelated-work", unrelatedSource.id, {
@@ -167,7 +168,7 @@ test("creating or editing one target mirrors only its meeting source and leaves 
   };
   const edited = synced.map((row) => (row.id === action.id ? completed : row));
   const closed = syncActionLinks(synced, edited);
-  assert.equal(closed[0].status, "completed");
+  assert.equal(closed[0], source);
   assert.equal(closed[0].dueDate, source.dueDate);
   assert.equal(closed[0].nextAction, source.nextAction);
   assert.equal(closed[0].owner, source.owner);
@@ -175,25 +176,34 @@ test("creating or editing one target mirrors only its meeting source and leaves 
   assert.deepEqual(before, [source, unrelatedSource, unrelatedAction]);
 });
 
-test("source context edits preserve the context while target lifecycle remains authoritative", () => {
+test("explicit meeting status and context edits do not change linked target lifecycle", () => {
   const source = meeting();
   const action = target();
   const before = [source, action];
   const contextEdit = {
     ...source,
     title: "Düzeltilen karar",
+    status: "completed",
     decision: "Yeni açıklama",
     dueDate: "2026-12-01",
   };
   const after = [contextEdit, action];
   const synced = syncActionLinks(before, after);
+  assert.equal(synced[0], contextEdit);
+  assert.equal(synced[0].status, "completed");
   assert.equal(synced[0].title, contextEdit.title);
   assert.equal(synced[0].decision, contextEdit.decision);
   assert.equal(synced[0].dueDate, contextEdit.dueDate);
   assert.equal(synced[1], action);
+  const reopened = { ...contextEdit, status: "in_progress" };
+  const reopenedRows = syncActionLinks(after, [reopened, action]);
+  assert.equal(reopenedRows[0], reopened);
+  assert.equal(reopenedRows[1], action);
+  assert.equal(source.status, "planned");
+  assert.equal(action.status, "in_progress");
 });
 
-test("finishing contact work never closes an external expectation or the meeting waiting for that expectation", () => {
+test("finishing contact work or the external expectation never changes its meeting status", () => {
   const source = meeting();
   const expectation = target("expectation", source.id, {
     type: "waiting",
@@ -220,7 +230,7 @@ test("finishing contact work never closes an external expectation or the meeting
   contact.sourceFields.__followupSource.type = "waiting";
   const before = [source, expectation, contact];
   const projected = resolveActionSource(source, before);
-  assert.equal(projected.status, "waiting");
+  assert.equal(projected, source);
   assert.equal(projected.dueDate, source.dueDate);
   assert.equal(projected.owner, source.owner);
   assert.equal(resolveActionSource(expectation, before), expectation);
@@ -230,7 +240,7 @@ test("finishing contact work never closes an external expectation or the meeting
     { ...contact, status: "completed" },
   ];
   assert.equal(syncActionLinks(before, afterContact), afterContact);
-  assert.equal(resolveActionSource(source, afterContact).status, "waiting");
+  assert.equal(resolveActionSource(source, afterContact), source);
   assert.equal(resolveActionSource(expectation, afterContact), expectation);
   const responseReceived = [
     source,
@@ -238,7 +248,7 @@ test("finishing contact work never closes an external expectation or the meeting
     afterContact[2],
   ];
   const synced = syncActionLinks(afterContact, responseReceived);
-  assert.equal(synced[0].status, "completed");
+  assert.equal(synced[0], source);
   assert.deepEqual(synced[1].followUpLog, expectation.followUpLog);
   assert.equal(synced[1].expectedFrom, "Ahmet");
   assert.equal(synced[1].nextFollowUpDate, expectation.nextFollowUpDate);
@@ -289,7 +299,7 @@ test("deleting a target keeps its meeting context, and deleting a source keeps t
   assert.equal(action.sourceFields.__followupSource.recordId, source.id);
 });
 
-test("one native workspace transaction persists target and meeting changes with exact reload undo and failed-write safety", () => {
+test("target lifecycle and manual meeting status use separate transactions with exact reload Undo and failed-write safety", () => {
   const source = meeting();
   const action = target();
   const original = [source, action];
@@ -314,10 +324,23 @@ test("one native workspace transaction persists target and meeting changes with 
   assert.equal(store.canUndo, false);
   fail = false;
   store.saveRecords(synced, "Aksiyonu tamamla");
-  assert.equal(store.records[0].status, "completed");
+  assert.deepEqual(store.records[0], source);
   assert.equal(store.records[1].status, "completed");
+  const completedAction = store.records;
+  const meetingClosed = syncActionLinks(
+    completedAction,
+    completedAction.map((item) =>
+      item.id === source.id ? { ...item, status: "completed" } : item,
+    ),
+  );
+  store.saveRecords(meetingClosed, "Toplantıyı kapat");
+  assert.equal(store.history.length, 2);
+  assert.equal(store.records[0].status, "completed");
+  assert.deepEqual(store.records[1], completedAction[1]);
   store = createWorkspaceStore({ storage, key: "actions" });
-  store.undo();
+  assert.equal(store.undo(), "Toplantıyı kapat");
+  assert.deepEqual(store.records, completedAction);
+  assert.equal(store.undo(), "Aksiyonu tamamla");
   assert.deepEqual(store.records, original);
   assert.deepEqual(
     validateStore(JSON.parse(values.get("actions"))).records,
@@ -345,41 +368,44 @@ test("a meeting has one target per route with stable typed lookups and original 
   assert.deepEqual(rows, snapshot);
 });
 
-test("dual-route status follows all outcomes and does not complete the expectation when own work finishes", () => {
-  for (const [dailyStatus, waitingStatus, expected] of [
-    ["planned", "planned", "planned"],
-    ["in_progress", "planned", "in_progress"],
-    ["in_progress", "waiting_response", "in_progress"],
-    ["completed", "waiting_response", "waiting"],
-    ["completed", "planned", "waiting"],
-    ["waiting", "completed", "waiting"],
-    ["planned", "completed", "in_progress"],
-    ["partially_completed", "cancelled", "in_progress"],
-    ["partially_completed", "waiting_response", "in_progress"],
-    ["cancelled", "planned", "waiting"],
-    ["cancelled", "completed", "completed"],
-    ["completed", "completed", "completed"],
-    ["transferred", "completed", "completed"],
-    ["cancelled", "cancelled", "cancelled"],
-  ]) {
-    const source = meeting();
-    const work = target("work", source.id, { status: dailyStatus });
-    const waiting = target("expectation", source.id, {
-      type: "waiting",
-      status: waitingStatus,
-    });
-    const rows = [source, work, waiting];
-    const snapshot = JSON.stringify(rows);
-    assert.equal(
-      resolveActionSource(source, rows).status,
-      expected,
-      `${dailyStatus}/${waitingStatus}`,
-    );
-    assert.equal(JSON.stringify(rows), snapshot);
+test("dual-route outcomes leave each manually selected meeting status untouched", () => {
+  for (const sourceStatus of ["planned", "in_progress", "completed"]) {
+    for (const [dailyStatus, waitingStatus] of [
+      ["planned", "planned"],
+      ["in_progress", "planned"],
+      ["in_progress", "waiting_response"],
+      ["completed", "waiting_response"],
+      ["completed", "planned"],
+      ["waiting", "completed"],
+      ["planned", "completed"],
+      ["partially_completed", "cancelled"],
+      ["partially_completed", "waiting_response"],
+      ["cancelled", "planned"],
+      ["cancelled", "completed"],
+      ["completed", "completed"],
+      ["transferred", "completed"],
+      ["cancelled", "cancelled"],
+    ]) {
+      const source = meeting("meeting", { status: sourceStatus });
+      const work = target("work", source.id, { status: dailyStatus });
+      const waiting = target("expectation", source.id, {
+        type: "waiting",
+        status: waitingStatus,
+      });
+      const rows = [source, work, waiting];
+      const snapshot = JSON.stringify(rows);
+      assert.equal(
+        resolveActionSource(source, rows),
+        source,
+        `${sourceStatus}/${dailyStatus}/${waitingStatus}`,
+      );
+      assert.equal(syncActionLinks([source], rows), rows);
+      assert.equal(JSON.stringify(rows), snapshot);
+    }
   }
 });
 
-test("dual summaries derive only status while route dates, owners and next steps never replace historical meeting context", () => {
+test("linked route statuses, dates, owners and next steps never replace historical meeting context", () => {
   const source = meeting();
   const work = target("work", source.id, {
     status: "completed",
@@ -395,7 +421,7 @@ test("dual summaries derive only status while route dates, owners and next steps
   });
   const rows = [source, waiting, work];
   const projected = resolveActionSource(source, rows);
-  assert.deepEqual(projected, { ...source, status: "waiting" });
+  assert.equal(projected, source);
   for (const key of [
     "id",
     "title",
@@ -445,19 +471,19 @@ test("external waiting contact steps remain independent even alongside a direct 
   const contact = target("contact", waiting.id, { status: "in_progress" });
   contact.sourceFields.__followupSource.type = "waiting";
   const before = syncActionLinks([source], [source, ownWork, waiting, contact]);
-  assert.equal(before[0].status, "waiting");
+  assert.equal(before[0], source);
   assert.equal(resolveActionSource(waiting, before), waiting);
   const after = before.map((row) =>
     row.id === contact.id ? { ...row, status: "completed" } : row,
   );
   assert.equal(syncActionLinks(before, after), after);
   assert.equal(after[0], before[0]);
-  assert.equal(resolveActionSource(after[0], after).status, "waiting");
+  assert.equal(resolveActionSource(after[0], after), source);
   assert.equal(after[2], waiting);
   const response = after.map((row) =>
     row.id === waiting.id ? { ...row, status: "completed" } : row,
   );
-  assert.equal(syncActionLinks(after, response)[0].status, "completed");
+  assert.equal(syncActionLinks(after, response)[0], source);
 });
 
 test("same-type duplicate routes, invalid waiting branches and cycles reject only affected transactions", () => {
@@ -517,7 +543,7 @@ test("same-type duplicate routes, invalid waiting branches and cycles reject onl
   assert.deepEqual(before, snapshot);
 });
 
-test("deleting one dual target projects the remaining branch without deleting sources, other targets or history", () => {
+test("deleting one dual target preserves the meeting and remaining branch without deleting history", () => {
   const source = meeting();
   const work = target("work", source.id);
   const waiting = target("expectation", source.id, {
@@ -530,7 +556,7 @@ test("deleting one dual target projects the remaining branch without deleting so
     before,
     before.filter((row) => row.id !== work.id),
   );
-  assert.equal(removedWork[0].status, "waiting");
+  assert.equal(removedWork[0], source);
   assert.equal(removedWork[0].nextAction, source.nextAction);
   assert.equal(removedWork[0].owner, source.owner);
   assert.equal(removedWork[1], waiting);
@@ -538,7 +564,7 @@ test("deleting one dual target projects the remaining branch without deleting so
     before,
     before.filter((row) => row.id !== waiting.id),
   );
-  assert.equal(removedWait[0].status, work.status);
+  assert.equal(removedWait[0], source);
   assert.equal(removedWait[0].nextAction, source.nextAction);
   assert.equal(removedWait[1], work);
   const removedSource = before.filter((row) => row.id !== source.id);
@@ -585,7 +611,7 @@ test("concurrent route drafts require a fresh snapshot, preserve the other route
   );
   assert.equal(second.records.length, 3);
   assert.equal(linkedActions(source.id, second.records).length, 2);
-  assert.equal(second.records[0].status, "in_progress");
+  assert.deepEqual(second.records[0], source);
   const savedRaw = values.get("dual-actions");
   assert.throws(
     () =>
@@ -604,8 +630,8 @@ test("concurrent route drafts require a fresh snapshot, preserve the other route
   const nativeBackup = validateStore(JSON.parse(savedRaw));
   assert.equal(nativeBackup.records.length, 3);
   assert.equal(
-    resolveActionSource(nativeBackup.records[0], nativeBackup.records).status,
-    "in_progress",
+    resolveActionSource(nativeBackup.records[0], nativeBackup.records),
+    nativeBackup.records[0],
   );
 });
 
@@ -700,7 +726,7 @@ test("new meeting routes keep independent work priority and follow-up facts with
   assert.equal(built.waiting.nextFollowUpDate, "2026-11-09");
   assert.equal(built.waiting.latestUpdate, "Planın ilk sürümü paylaşıldı.");
   assert.equal(built.waiting.expectedFrom, "Test ekibi");
-  assert.deepEqual(built.records[0], { ...source, status: "waiting" });
+  assert.equal(built.records[0], source);
   assert.equal(JSON.stringify(source), sourceBefore);
 
   const own = buildMeetingActions(
@@ -726,7 +752,7 @@ test("new meeting routes keep independent work priority and follow-up facts with
   assert.equal(own.daily.owner, "Ben");
   assert.equal(own.daily.nextAction, "İlgili kişilere ulaş.");
   assert.equal(own.waiting.nextFollowUpDate, "2026-11-09");
-  assert.deepEqual(own.records[0], { ...source, status: "waiting" });
+  assert.equal(own.records[0], source);
   const reused = buildMeetingActions(own.records, source.id, {}, pairOptions());
   assert.equal(reused.records, own.records);
   assert.equal(reused.daily, own.daily);
@@ -784,7 +810,7 @@ test("new paired daily work defaults to unlinked context without rewriting expli
   assert.equal(Object.hasOwn(reused.waiting, "workContext"), false);
 });
 
-test("the Save-time pair builder creates separate editable routes in one derived snapshot without mutating source context", () => {
+test("the Save-time pair builder creates separate editable routes without changing the meeting status or context", () => {
   const source = meeting("meeting", { priority: "urgent" });
   const original = [source];
   const snapshot = structuredClone(original);
@@ -813,7 +839,7 @@ test("the Save-time pair builder creates separate editable routes in one derived
     });
   }
   const projected = built.records[0];
-  assert.equal(projected.status, "waiting");
+  assert.equal(projected, source);
   assert.equal(projected.owner, source.owner);
   assert.equal(projected.dueDate, source.dueDate);
   assert.equal(projected.nextAction, source.nextAction);
@@ -978,7 +1004,7 @@ test("new target metadata cannot redirect the pair away from its meeting and exp
   assert.equal(built.records[0].nextAction, source.nextAction);
 });
 
-test("both new routes and aggregate source save as one transaction with quota safety, native backup and exact reload Undo", () => {
+test("both new routes save as one transaction while retaining meeting status, quota safety, native backup and exact reload Undo", () => {
   const source = meeting();
   const values = new Map([
     ["pair", JSON.stringify({ version: 1, records: [source] })],

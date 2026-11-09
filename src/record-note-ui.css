@@ -256,21 +256,6 @@
   white-space: pre-wrap;
 }
 
-.record-history-previous {
-  margin-top: 6px;
-  color: var(--theme-muted, #74836a);
-  font-size: 10px;
-}
-
-.record-history-previous > span {
-  font-size: 9px;
-  font-weight: 600;
-}
-
-.record-history-list .record-history-previous > p {
-  margin-top: 2px;
-}
-
 .record-history-planned {
   color: var(--theme-muted, #74836a);
   font-size: 10px;

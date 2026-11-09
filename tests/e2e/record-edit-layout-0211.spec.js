@@ -558,7 +558,7 @@ test("switching waiting and daily preserves drafts and dates without duplicate s
   expect(await saved(page)).toBe(before);
 });
 
-test("routed meetings stay read-only while waiting follow-up history survives a later summary edit", async ({
+test("routed meeting statuses stay editable while legacy context and waiting follow-up history survive a later summary edit", async ({
   page,
 }) => {
   const items = fixture();
@@ -572,7 +572,13 @@ test("routed meetings stay read-only while waiting follow-up history survives a 
   const before = await saved(page);
   await open(page, "meeting");
   await openExtras(page);
-  for (const name of ["status", "dueDate", "nextAction"])
+  await expect(field(page, "status")).toBeEnabled();
+  await expect(field(page, "status").locator("option")).toHaveText([
+    "Planlanacak",
+    "Açık",
+    "Kapandı",
+  ]);
+  for (const name of ["dueDate", "nextAction"])
     await expect(field(page, name)).toBeDisabled();
   for (const name of ["owner", "participants"]) {
     await expect(field(page, name)).toBeHidden();

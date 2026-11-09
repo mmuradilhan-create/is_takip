@@ -15,7 +15,7 @@ const GROUPS = {
   waiting: { title: "Takip", label: "Takibin durumu" },
 };
 
-/** A routed action changes its real destinations; its own status stays derived. */
+/** Route-specific controls change only their chosen linked destination. */
 export function renderMeetingStatusMenu(record, targets, { targetId } = {}) {
   const selectedTarget = targets.find((target) => target.id === targetId);
   const groups = (selectedTarget ? [selectedTarget] : targets)

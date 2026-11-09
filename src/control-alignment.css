@@ -45,8 +45,24 @@
 }
 
 /* Matching column and control widths keep status and both action routes aligned. */
-.full-table.meeting-table > thead > tr > th:nth-child(n + 2) {
-  width: 160px;
+.full-table.meeting-table > thead > tr > th.meeting-source-status-col {
+  width: 128px;
+}
+
+.full-table.meeting-table > thead > tr > th.meeting-linked-heading {
+  width: 132px;
+}
+
+.full-table.meeting-table
+  > :is(thead, tbody)
+  > tr
+  > :is(
+    .meeting-source-status-col,
+    .meeting-linked-heading,
+    .meeting-linked-cell
+  ) {
+  padding-inline: 8px;
+  text-align: left;
 }
 
 .full-table.meeting-table > thead > tr > th.row-action-col {

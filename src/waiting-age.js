@@ -128,7 +128,7 @@ export function waitingAge(record, today = localDay()) {
   return calendarDays(record.sourceDate, today);
 }
 
-/** Distinguish a measured total from the old Excel cache without rewriting it. */
+/** Present waiting durations without rewriting their source or closure proof. */
 export function waitingAgePresentation(
   record,
   today = localDay(),
@@ -152,14 +152,13 @@ export function waitingAgePresentation(
   }
   const text = days === null ? "—" : `${days} gün`;
   if (kind === "imported") {
-    const provenance = "Excel’den aktarılan süre; kapanış tarihi bilinmiyor";
     return {
       kind,
       days,
       text,
-      description: `${days} gün (Excel’den aktarılan süre)`,
-      title: provenance,
-      ariaLabel: `${days} gün; ${provenance}`,
+      description: `${days} gün bekledi`,
+      title: `Bekleme süresi: ${days} gün`,
+      ariaLabel: `${days} gün bekledi`,
     };
   }
   if (kind === "closure") {

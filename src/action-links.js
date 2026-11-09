@@ -41,10 +41,8 @@ function directTargets(sourceId, index) {
         "Bağlı aksiyonun kayıt türü geçersiz. Önce bağlantıyı düzenle.",
       );
     if (source?.type === "waiting" && target.type !== "daily")
-      throw new Error(
-        "Bekleyen konuya yalnızca bir günlük temas işi bağlanabilir.",
-      );
-    if (types.has(target.type))
+      throw new Error("Bekleyen konuya yalnızca günlük işler bağlanabilir.");
+    if (source?.type !== "waiting" && types.has(target.type))
       throw new Error(
         "Bu aksiyona aynı türde birden fazla kayıt bağlı. Önce bağlantıları düzenle.",
       );
@@ -79,7 +77,7 @@ function checkPath(sourceId, index) {
   visit(sourceId);
 }
 
-/** A meeting may have one daily action and one separate external expectation. */
+/** Meetings have one target per route; waiting topics may have several daily steps. */
 export function linkedActions(sourceId, records) {
   const index = indexRecords(records);
   checkPath(sourceId, index);
@@ -210,6 +208,71 @@ function actionTimestamp(value) {
     }
   }
   throw new Error("Aksiyonların kayıt zamanı geçersiz.");
+}
+
+function waitingWorkContext(records, waitingId, dailyId) {
+  const index = indexRecords(records);
+  const source = index.byId.get(waitingId);
+  if (source?.type !== "waiting")
+    throw new Error("Bağlantı için bekleyen konu bulunamadı.");
+  const target = index.byId.get(dailyId);
+  if (target?.type !== "daily")
+    throw new Error("Bağlantı için günlük iş bulunamadı.");
+  checkPath(source.id, index);
+  return { index, source, target };
+}
+
+/** Link an existing daily without changing its goal, lifecycle or saved work. */
+export function attachWaitingWork(
+  records,
+  waitingId,
+  dailyId,
+  { now = new Date() } = {},
+) {
+  const { source, target } = waitingWorkContext(records, waitingId, dailyId);
+  if (relation(target)?.recordId === source.id) return records;
+  if (CLOSED.has(source.status))
+    throw new Error("Kapalı bekleyen konuya yeni iş bağlanamaz.");
+  if (Object.hasOwn(target.sourceFields || {}, "__followupSource"))
+    throw new Error(
+      "Bu günlük iş zaten bir kaynağa bağlı. Önce mevcut kaynak bağlantısını kaldır.",
+    );
+  const updated = {
+    ...target,
+    sourceFields: {
+      ...target.sourceFields,
+      __followupSource: { recordId: source.id, type: "waiting" },
+    },
+    updatedAt: actionTimestamp(now),
+  };
+  const result = records.map((record) =>
+    record.id === target.id ? updated : record,
+  );
+  checkPath(source.id, indexRecords(result));
+  return result;
+}
+
+/** Removing a source marker preserves both records, including the last daily step. */
+export function unlinkWaitingWork(
+  records,
+  waitingId,
+  dailyId,
+  { now = new Date() } = {},
+) {
+  const { source, target } = waitingWorkContext(records, waitingId, dailyId);
+  if (relation(target)?.recordId !== source.id) return records;
+  const sourceFields = { ...target.sourceFields };
+  delete sourceFields.__followupSource;
+  const updated = {
+    ...target,
+    sourceFields,
+    updatedAt: actionTimestamp(now),
+  };
+  const result = records.map((record) =>
+    record.id === target.id ? updated : record,
+  );
+  checkPath(source.id, indexRecords(result));
+  return result;
 }
 
 /** Build both routes only on Save; existing routes are reused without edits. */

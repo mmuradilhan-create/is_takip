@@ -92,8 +92,8 @@ const textField = (name, label, value, attributes = "") =>
   `<label class="field">${label}<input name="${name}" value="${esc(value)}" ${attributes}></label>`;
 const textArea = (name, label, value, maxLength = 10000) =>
   `<label class="field creation-full">${label}<textarea name="${name}" maxlength="${maxLength}" rows="3">${esc(value)}</textarea></label>`;
-const dateField = (name, label, value) =>
-  `<label class="field">${label}${dateInput({ name, id: `creation-${name}`, value: /^\d{4}-\d{2}-\d{2}$/.test(String(value)) ? value : "", label })}</label>`;
+const dateField = (name, label, value, full = false) =>
+  `<label class="field${full ? " creation-full" : ""}">${label}${dateInput({ name, id: `creation-${name}`, value: /^\d{4}-\d{2}-\d{2}$/.test(String(value)) ? value : "", label })}</label>`;
 const selectField = (name, label, items, value) =>
   `<label class="field">${label}<select name="${name}">${options(items, value)}</select></label>`;
 
@@ -136,6 +136,7 @@ export function createRecordCreationUI({
   today = () => localDate(),
   onSave,
   onOpenRecord = () => {},
+  onCreated = () => {},
   onError = () => {},
   onMessage = () => {},
 } = {}) {
@@ -216,7 +217,7 @@ export function createRecordCreationUI({
       waitingDueDate: "",
       waitingNextAction: "",
       _numeric: false,
-      _advanced: true,
+      _advanced: false,
       _meetingRoute: "",
       ...values,
     };
@@ -347,8 +348,6 @@ export function createRecordCreationUI({
         values.sourceDate,
       ),
     );
-    if (["weekly", "monthly"].includes(currentType))
-      fields.push(dateField("dueDate", "Teslim tarihi", values.dueDate));
     fields.push(
       `<input type="hidden" name="owner" value="${esc(values.owner)}">`,
     );
@@ -425,8 +424,12 @@ export function createRecordCreationUI({
         selectField("priority", "Öncelik", PRIORITIES, values.priority),
         parentMarkup(),
       );
-    if (GOALS.has(currentType))
-      main.push(periodMarkup(values), parentMarkup(), numericMarkup(values));
+    if (GOALS.has(currentType)) {
+      main.push(periodMarkup(values));
+      if (["weekly", "monthly"].includes(currentType))
+        main.push(dateField("dueDate", "Teslim tarihi", values.dueDate, true));
+      main.push(parentMarkup(), numericMarkup(values));
+    }
     if (currentType === "meeting")
       main.push(
         textArea("decision", "Alınan karar", values.decision),
@@ -533,7 +536,15 @@ export function createRecordCreationUI({
         if (!valid)
           unavailable =
             "Kaynak kayıt artık bulunamıyor. Taslağın burada korunuyor.";
-        else {
+        else if (
+          context.forceNewSourceAction &&
+          (source.type !== "waiting" ||
+            currentType !== "daily" ||
+            CLOSED.has(source.status))
+        )
+          unavailable =
+            "Bu bekleyen konuya yeni iş eklenemiyor. Taslağın burada korunuyor.";
+        else if (!context.forceNewSourceAction) {
           reusedTarget = linkedAction(source.id, getRecords(), currentType);
         }
         const banner = current.querySelector(".creation-source-context");
@@ -604,6 +615,8 @@ export function createRecordCreationUI({
     parentId = "",
     goalParentId = "",
     sourceId = "",
+    forceNewSourceAction = false,
+    navigateAfterCreate = false,
     values = {},
   } = {}) {
     if (destroyed) return;
@@ -616,6 +629,8 @@ export function createRecordCreationUI({
         parentId,
         goalParentId,
         sourceId,
+        forceNewSourceAction,
+        navigateAfterCreate,
         locked: Boolean(parentId || goalParentId || sourceId),
       };
       currentType = type;
@@ -826,6 +841,7 @@ export function createRecordCreationUI({
       input,
       options: {
         sourceId: context.sourceId,
+        ...(context.forceNewSourceAction ? { forceNewSourceAction: true } : {}),
         numeric: Boolean(current.elements.numeric?.checked),
         meetingRoute,
         routeDrafts,
@@ -842,9 +858,10 @@ export function createRecordCreationUI({
       capture();
       refresh();
       if (form().querySelector('[type="submit"]').disabled) return;
-      const existing = context.sourceId
-        ? linkedAction(context.sourceId, getRecords(), currentType)
-        : null;
+      const existing =
+        context.sourceId && !context.forceNewSourceAction
+          ? linkedAction(context.sourceId, getRecords(), currentType)
+          : null;
       if (!existing && !form().reportValidity()) return;
       const { input, options } = existing
         ? {
@@ -866,8 +883,11 @@ export function createRecordCreationUI({
         throw new Error(
           "Kayıt kaydedilemedi. Taslağın burada korunuyor; yeniden deneyebilirsin.",
         );
+      const navigateAfterCreate = context.navigateAfterCreate;
       close();
       if (result.reused && result.record?.id) onOpenRecord(result.record.id);
+      else if (result.record?.id)
+        onCreated(result.record, { navigateAfterCreate });
       onMessage(result.reused ? "Mevcut kayıt açıldı." : "Yeni kayıt eklendi.");
     } catch (error) {
       if (!destroyed && attempt === generation)

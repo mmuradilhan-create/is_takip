@@ -383,6 +383,44 @@ test("single waiting and goal cards retain one shared grid slot and common heade
       "soon",
     );
     await expect(dateControl(page)).toBeInViewport({ ratio: 1 });
+    const actions = waitingCard(page).locator(
+      ".followup-tracking > .followup-card-actions",
+    );
+    await expect(actions.locator("button")).toHaveCount(2);
+    const followup = actions.locator('[data-action="waiting-followup"]');
+    await expect(followup).toHaveText("Takip ettim");
+    await expect(followup.locator("svg:visible")).toHaveCount(0);
+    const waitingChildren = actions.locator(
+      '.followup-children-action[data-action="waiting-children-open"][data-id="adjustment-waiting"]',
+    );
+    await expect(waitingChildren).toHaveText("Bağlı işler 0");
+    await expect(
+      waitingChildren.locator(".followup-children-count"),
+    ).toHaveText("0");
+    await expect(waitingChildren).toBeEnabled();
+    await expect(waitingChildren).toBeInViewport({ ratio: 1 });
+    await waitingChildren.click();
+    const waitingPanel = page.locator("#waiting-record-panel");
+    await expect(waitingPanel).toHaveAttribute(
+      "data-record-id",
+      "adjustment-waiting",
+    );
+    await expect(
+      waitingPanel.locator('[data-waiting-section-heading="children"]'),
+    ).toBeFocused();
+    await expect(
+      waitingPanel.locator(
+        '[data-waiting-section="children"] .waiting-record-empty',
+      ),
+    ).toHaveText("Henüz bağlı günlük iş yok.");
+    await expect(page.locator("#editor")).not.toBeVisible();
+    await expect(page.locator("#waiting-followup-dialog")).not.toBeVisible();
+    await waitingPanel
+      .locator('[data-action="waiting-record-close"]')
+      .last()
+      .click();
+    await expect(waitingChildren).toBeFocused();
+    expect(await saved(page)).toBe(original);
 
     await attention(page).locator(".dashboard-panel-link").click();
     await expect(page.locator("#page-title")).toHaveText("Bekleyen konular");

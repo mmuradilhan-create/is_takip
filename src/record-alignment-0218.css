@@ -272,18 +272,60 @@
 .dashboard-rows
   .dashboard-bottom-row
   .followup-tracking
-  > .waiting-followup-trigger {
+  > .followup-card-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
   grid-column: 1;
   grid-row: 2;
   justify-self: stretch;
   align-self: end;
   width: 100%;
   min-width: 0;
+  height: 28px;
+}
+
+.dashboard-rows .dashboard-bottom-row .followup-card-actions > button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-width: 0;
   min-height: 28px;
   height: 28px;
   max-height: 28px;
-  white-space: nowrap;
-  overflow-wrap: normal;
+  margin: 0;
+  padding: 2px 3px;
+  border: 1px solid var(--theme-border, #d4dfcd);
+  border-radius: 5px;
+  background: var(--theme-surface, #fff);
+  color: var(--theme-accent, #52734d);
+  font-size: 10px;
+  font-weight: 550;
+  line-height: 11px;
+  text-align: center;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.dashboard-rows .dashboard-bottom-row .followup-card-actions > button:hover {
+  border-color: var(--theme-accent, #6f9264);
+  background: var(--theme-hover, #f0f6eb);
+}
+
+.dashboard-rows
+  .dashboard-bottom-row
+  .followup-card-actions
+  .waiting-followup-trigger
+  > svg {
+  display: none;
+}
+
+.dashboard-rows .dashboard-bottom-row .followup-children-count {
+  flex: 0 0 auto;
+  font-size: 9px;
+  line-height: 11px;
+  font-variant-numeric: tabular-nums;
 }
 
 /* Focus stays on each action instead of outlining the whole card list. */
@@ -294,7 +336,7 @@
   box-shadow: none;
 }
 
-/* Tracking facts share columns above the full-width action. */
+/* Tracking facts share columns above the two compact actions. */
 .dashboard-rows .dashboard-bottom-row .followup-last {
   min-width: 0;
 }

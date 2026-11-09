@@ -1,6 +1,6 @@
 # Odak
 
-PC kullanımına odaklanan, Türkçe kişisel iş ve hedef takibi. HTML/CSS/JavaScript tabanlıdır. Güncel sürüm: **0.21.25**.
+PC kullanımına odaklanan, Türkçe kişisel iş ve hedef takibi. HTML/CSS/JavaScript tabanlıdır. Güncel sürüm: **0.21.26**.
 
 ## Kullanım
 
@@ -45,7 +45,7 @@ Hedef notları kayıt formundaki **Notlar** alanında saklanır ve düzenlenir; 
 
 Haftalık ve aylık hedefin kayıt formundaki **Bağlı aylık / senelik hedef** alanı isteğe bağlıdır. Mevcut kapalı bağlantılar seçili kalır. Hedef silinirse alt kayıtlar korunur ve yalnız bu hedefe bağlantıları kaldırılır; **Geri al** hedefi ve bağlantıları birlikte geri getirir. Yeni bağlantılar JSON yedeğine dahildir; eski yedekler açılırken yeni bağlantı kurulmaz.
 
-Genel **Sonraki adım** kayıt formlarında, hedef panelinde ve bekleme penceresinde gösterilmez; eski metinler kayıtta ve yedekte korunur. Sonraki somut iş, bağlı günlük iş veya alt hedef olarak açılır. İş günlüğünün oturuma ait alanları korunur. Hedef kayıt formunda açıklama için **Notlar** vardır; **Sapma / neden** alanı gösterilmez. Haftalık ve aylık teslim tarihi kayıt/açılış tarihinin yanındadır; senelik hedefte teslim tarihi kullanılmaz.
+Genel **Sonraki adım** kayıt formlarında, hedef panelinde ve bekleme penceresinde gösterilmez; eski metinler kayıtta ve yedekte korunur. Sonraki somut iş, bağlı günlük iş veya alt hedef olarak açılır. İş günlüğünün oturuma ait alanları korunur. Hedef kayıt formunda açıklama için **Notlar** vardır; **Sapma / neden** alanı gösterilmez. Haftalık ve aylık teslim tarihi ana bölümde dönem bilgisinin ardından görünür; senelik hedefte teslim tarihi kullanılmaz.
 
 Günlük iş formundaki **Bağlı haftalık hedef** yeni seçimlerde yalnızca açık hedefleri sunar; **Tamamlananları göster** düğmesi kaldırıldı. Mevcut seçili kapalı bağlantı, açıkça verilen kapalı hedef ve türe ait taslak korunur; kayıt açmak bağlantıyı kendiliğinden değiştirmez.
 
@@ -308,3 +308,9 @@ Takip kartlarındaki konu metni, durum ve tarih satırının üstündeki boşlu�
 Haftalık hedef kartındaki durum ve teslim tarihi de takip kartlarıyla aynı alt hizadadır. İlerleme ve düğmeler yerinde kalır; panel yüksekliği artmaz.
 
 Takip kartında Bekleme solda, Son takip başlığı ve tarihi sağ kenara hizalıdır.
+
+Takip kartının altında iki yazılı işlem vardır: **Takip ettim** ve bağlı günlük iş sayısını gösteren **Bağlı işler**. Bağlı işler, bekleyen konu panelindeki ilgili bölümü açar. Burada günlük işler hedef panelindekiyle aynı kompakt düzende listelenir; yeni adım oluşturulabilir, mevcut açık iş bağlanabilir veya yalnız kaynak bağlantısı kaldırılabilir. Bir bekleyen konuya birden fazla günlük iş bağlanabilir; işin hedef bağlantısı, durum, tarihler, notlar ve iş günlüğü korunur. Bağlama ve ayırma tek **Geri al** adımıdır. Günlük işlerin tamamlanması bekleyen konuyu kendiliğinden kapatmaz. Toplantılardaki her tür için tek akış kuralı korunur.
+
+Yeni kayıt ve düzenleme formlarında **Ek bilgiler** kapalı başlar. Haftalık ve aylık hedeflerin **Teslim tarihi** ana bölümde, dönem bilgisinin ardından görünür. Düzenleme ekranında da **Adetle takip et**, **Hedef adet**, **Birim** ve ek bilgilerde **Mevcut adet** bulunur. Ölçümü kapatıp kaydetmek sayısal ölçümü kaldırır; açıp kapatmak taslaktaki sayıları silmez. Değişmemiş kayıt formunu kaydetmek kayıt veya geçmiş oluşturmaz.
+
+Genel **Yeni kayıt** üzerinden farklı bir listeye kayıt eklendiğinde o liste ve varsa seçilen hedef dönemi açılır. Takvim, hedef veya bekleyen konu içinden oluşturulan adımlar, açık panel ve takvim bağlamına döner. Mevcut kayıt bağlama alanı aday yokken de görünür; uygun aday bulunamadığı belirtilir.

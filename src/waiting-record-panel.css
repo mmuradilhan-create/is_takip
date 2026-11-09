@@ -32,7 +32,7 @@ body[data-work-session] #waiting-record-panel {
 #waiting-record-panel > :is(.modal-header, .modal-footer) {
   flex: 0 0 auto;
   gap: 8px;
-  padding: 14px 18px;
+  padding: 12px 16px;
 }
 
 #waiting-record-panel > .modal-header {
@@ -55,11 +55,11 @@ body[data-work-session] #waiting-record-panel {
   display: -webkit-box;
   margin: 0;
   overflow: hidden;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
   line-height: 1.5;
   overflow-wrap: anywhere;
-  -webkit-line-clamp: 3;
+  -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
 }
 
@@ -68,7 +68,7 @@ body[data-work-session] #waiting-record-panel {
   flex-wrap: wrap;
   align-items: center;
   gap: 6px 10px;
-  margin-top: 8px;
+  margin-top: 6px;
   color: var(--theme-muted, #74836a);
   font-size: 10px;
   line-height: 1.5;
@@ -90,7 +90,7 @@ body[data-work-session] #waiting-record-panel {
 #waiting-record-panel > .waiting-record-body {
   flex: 1 1 auto;
   min-height: 0;
-  padding: 16px 18px;
+  padding: 14px 16px;
   overflow-y: auto;
   overscroll-behavior: contain;
   scroll-padding-block: 12px;
@@ -101,7 +101,7 @@ body[data-work-session] #waiting-record-panel {
 .waiting-record-facts {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
+  gap: 10px 12px;
   min-width: 0;
   margin: 0;
 }
@@ -134,7 +134,7 @@ body[data-work-session] #waiting-record-panel {
 
 .waiting-record-history,
 .waiting-record-note,
-.waiting-record-route {
+.waiting-record-children {
   min-width: 0;
   margin-top: 20px;
   padding-top: 15px;
@@ -189,32 +189,93 @@ body[data-work-session] #waiting-record-panel {
   line-height: 1.5;
 }
 
-.waiting-record-route {
-  padding: 12px;
-  border: 1px solid var(--theme-border, #dce5d5);
-  border-radius: 8px;
-  background: var(--theme-soft, #f7faf3);
+.waiting-record-children h3 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
-.waiting-record-linked-title {
-  margin: 8px 0 0;
-  color: var(--theme-ink, #405b49);
-  font-weight: 600;
+.waiting-record-children h3 small {
+  color: var(--theme-muted, #74836a);
+  font-size: 11px;
+  font-weight: 400;
 }
 
-.waiting-record-route-facts {
+.waiting-record-new-step {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 0;
+  font-size: 11px;
+}
+
+.waiting-record-children .goal-child-list {
+  margin-top: 8px;
+}
+
+.waiting-record-child.goal-child-row {
+  grid-template-columns: 22px minmax(0, 1fr) max-content;
+  gap: 8px;
+  padding: 11px 0;
+  border-color: var(--theme-border, #e6ecdf);
+}
+
+.waiting-record-child-complete {
+  display: inline-flex;
+  align-items: flex-start;
+  margin-top: 1px;
+}
+
+.waiting-record-child .goal-child-title-line {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px 10px;
-  margin-top: 8px;
-  color: var(--theme-muted, #74836a);
-  font-size: 10px;
-  line-height: 1.5;
+  gap: 5px;
+  min-width: 0;
 }
 
-.waiting-record-route > .btn {
-  margin-top: 10px;
+.waiting-record-child .goal-child-title {
+  flex: 0 1 auto;
+  width: auto;
+  min-width: 0;
+  color: var(--theme-ink, #405b49);
+}
+
+.waiting-record-child .goal-child-title:hover {
+  color: var(--theme-accent, #55754b);
+  text-decoration: none;
+}
+
+.waiting-record-child .goal-child-meta {
+  gap: 5px 7px;
+}
+
+.waiting-record-child .goal-child-actions {
+  gap: 4px;
+}
+
+.waiting-record-child .goal-child-meta .inline-date {
+  min-width: 0;
+  min-height: 22px;
+  padding: 3px 5px;
+  font-size: 10px;
+}
+
+.waiting-record-children .goal-link-child-form {
+  margin-bottom: 0;
+  border-color: var(--theme-border, #dce5d5);
+}
+
+.waiting-record-link-error:empty {
+  display: none;
+}
+
+.waiting-record-body .waiting-record-link-error {
+  margin: 8px 0 0;
+  color: var(--theme-danger, #a6483c);
+  font-size: 11px;
+  line-height: 1.5;
 }
 
 .waiting-record-history ol {
@@ -275,7 +336,13 @@ body[data-work-session] #waiting-record-panel {
   font-size: 11px;
 }
 
-#waiting-record-panel :is(button, .waiting-record-body):focus-visible {
+#waiting-record-panel
+  :is(
+    button,
+    select,
+    .waiting-record-body,
+    [data-waiting-section-heading]
+  ):focus-visible {
   outline: 2px solid var(--theme-accent, #80b8a6);
   outline-offset: 2px;
 }

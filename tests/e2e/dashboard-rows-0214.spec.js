@@ -217,6 +217,20 @@ test("dashboard keeps three compact desktop panels and moves notes below the two
     await expect(cards.locator('[data-action="waiting-followup"]')).toHaveCount(
       visibleCards,
     );
+    await expect(
+      cards.locator(
+        '.followup-card-actions > [data-action="waiting-children-open"]',
+      ),
+    ).toHaveCount(visibleCards);
+    for (const card of await cards.all()) {
+      await expect(card.locator('[data-action="waiting-followup"]')).toHaveText(
+        "Takip ettim",
+      );
+      await expect(
+        card.locator('[data-action="waiting-followup"] svg:visible'),
+      ).toHaveCount(0);
+      await expect(card.locator(".followup-children-count")).toHaveText("0");
+    }
     const goals = weekly(page).locator(".dashboard-goal-row");
     await expect(goals).toHaveCount(2);
     for (const goal of await goals.all()) {

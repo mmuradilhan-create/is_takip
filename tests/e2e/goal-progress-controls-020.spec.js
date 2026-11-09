@@ -232,6 +232,9 @@ test("weekly, monthly and yearly panels render human periods and readable child 
   await expect(
     cancelledChild.locator(".completion-mark.is-cancelled svg path"),
   ).toHaveAttribute("d", "m6 6 12 12M6 18 18 6");
+  await expect(panel(page).locator(".goal-child-order")).toHaveText(
+    "1 iptal veya arşiv kaydı ilerlemeye dahil değil.",
+  );
   for (const [theme, muted] of [
     ["light", "rgb(123, 137, 115)"],
     ["dark", "rgb(150, 156, 165)"],
@@ -255,6 +258,9 @@ test("weekly, monthly and yearly panels render human periods and readable child 
   ).toHaveAttribute(
     "aria-label",
     "İptal edildi; üst hedefin ilerlemesine dahil değil.",
+  );
+  await expect(panel(page).locator(".goal-child-order")).toHaveText(
+    "1 iptal veya arşiv kaydı ilerlemeye dahil değil.",
   );
   await cancelledGoal.locator(".goal-child-title").click();
   await expect(panel(page)).toHaveAttribute("data-goal-id", "closed-month");

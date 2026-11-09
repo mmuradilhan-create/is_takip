@@ -77,7 +77,10 @@ import { installInputModality } from "./input-modality.js";
 import { createTopbarClock } from "./topbar-clock.js";
 import { createMeetingBothUI } from "./meeting-both-ui.js";
 import { createRecordCreationUI } from "./record-creation-ui.js";
-import { arrangeRecordEditor } from "./record-editor-layout.js";
+import {
+  arrangeRecordEditor,
+  readRecordEditorNumeric,
+} from "./record-editor-layout.js";
 import { renderMeetingStatusMenu } from "./meeting-status-menu.js";
 import {
   cleanupMeetingContacts,
@@ -101,6 +104,8 @@ import {
   resolveActionSource,
   syncActionLinks,
   buildMeetingActions,
+  attachWaitingWork,
+  unlinkWaitingWork,
 } from "./action-links.js";
 import { createWaitingDetailsUI } from "./waiting-details-ui.js";
 import {
@@ -1436,10 +1441,13 @@ export async function startMainApp() {
       const date = record.nextFollowUpDate;
       const near = date >= today() && date <= nearEnd;
       const dateControl = inlineFields?.followUpDateControl(record) || "";
+      const linkedDailyCount = linkedActions(record.id, state.records).filter(
+        (item) => item.type === "daily",
+      ).length;
       const lastFollowUp = record.lastFollowUpDate
         ? lastFollowUpMarkup(record)
         : `<span class="waiting-last-date" title="${record.followUpLog?.length ? "Son takip tarihi yok" : "Henüz takip edilmedi"}">—</span>`;
-      return `<li class="followup-row dashboard-detail-card" role="group" tabindex="0" data-action="waiting-record-details" data-record-row data-id="${esc(record.id)}" aria-label="${esc(record.title)}: ayrıntıları aç" aria-keyshortcuts="Enter Space"><div class="followup-title-line"><button type="button" class="followup-title" data-action="waiting-record-details" data-id="${esc(record.id)}">${esc(record.title)}</button></div><div class="followup-meta">${statusBadge(record)}<span class="attention-date${near ? " attention-date-near" : ""}" data-attention-date="${esc(date)}">${dateControl}</span></div><div class="followup-tracking"><button type="button" class="followup-wait-info followup-detail-trigger" data-action="waiting-record-details" data-id="${esc(record.id)}" aria-label="${esc(record.title)}: bekleme ve son takip ayrıntılarını aç"><span class="followup-fact" data-followup-fact="age"><span class="followup-fact-label">Bekleme</span>${waitingAgeMarkup(record)}</span><span class="followup-fact" data-followup-fact="last"><span class="followup-fact-label">Son takip</span><span class="followup-last">${lastFollowUp}</span></span></button>${waitingFollowUps?.button(record, { compact: true }) || ""}</div></li>`;
+      return `<li class="followup-row dashboard-detail-card" role="group" tabindex="0" data-action="waiting-record-details" data-record-row data-id="${esc(record.id)}" aria-label="${esc(record.title)}: ayrıntıları aç" aria-keyshortcuts="Enter Space"><div class="followup-title-line"><button type="button" class="followup-title" data-action="waiting-record-details" data-id="${esc(record.id)}">${esc(record.title)}</button></div><div class="followup-meta">${statusBadge(record)}<span class="attention-date${near ? " attention-date-near" : ""}" data-attention-date="${esc(date)}">${dateControl}</span></div><div class="followup-tracking"><button type="button" class="followup-wait-info followup-detail-trigger" data-action="waiting-record-details" data-id="${esc(record.id)}" aria-label="${esc(record.title)}: bekleme ve son takip ayrıntılarını aç"><span class="followup-fact" data-followup-fact="age"><span class="followup-fact-label">Bekleme</span>${waitingAgeMarkup(record)}</span><span class="followup-fact" data-followup-fact="last"><span class="followup-fact-label">Son takip</span><span class="followup-last">${lastFollowUp}</span></span></button><div class="followup-card-actions">${waitingFollowUps?.button(record, { compact: true }) || ""}<button type="button" class="btn small followup-children-action" data-action="waiting-children-open" data-id="${esc(record.id)}" aria-label="${esc(record.title)}: bağlı işler, ${linkedDailyCount} iş" aria-haspopup="dialog" aria-controls="waiting-record-panel">Bağlı işler <span class="followup-children-count">${linkedDailyCount}</span></button></div></div></li>`;
     });
     return `<section class="panel attention-panel"><div class="followup-header dashboard-panel-header"><div class="dashboard-panel-heading"><h2>Takip gerekenler<span class="dashboard-panel-count">${total}</span></h2></div>${pageCount > 1 ? `<nav class="attention-pagination" aria-label="Takip kartı sayfaları"><button type="button" class="attention-prev" data-action="attention-page" data-page="${state.attentionPage - 1}" aria-label="Önceki takipler" title="Önceki takipler" ${state.attentionPage === 1 ? "disabled" : ""}>${icon("arrow")}</button><span class="attention-page-label" aria-live="polite">Sayfa ${state.attentionPage} / ${pageCount}</span><button type="button" data-action="attention-page" data-page="${state.attentionPage + 1}" aria-label="Sonraki takipler" title="Sonraki takipler" ${state.attentionPage === pageCount ? "disabled" : ""}>${icon("arrow")}</button></nav>` : ""}<button type="button" class="text-btn open-list dashboard-panel-link" data-action="open-list" data-view="waiting">Bekleyen konular ${icon("arrow")}</button></div>${records.length ? `<ul class="attention-list followup-list" tabindex="0" aria-label="Takip gereken kartlar">${cards.join("")}</ul>` : '<div class="followup-empty">Yaklaşan takip yok.</div>'}</section>`;
   }
@@ -2052,6 +2060,8 @@ export async function startMainApp() {
         parentId: type === "daily" ? parentId : "",
         goalParentId: ["weekly", "monthly"].includes(type) ? parentId : "",
         sourceId,
+        forceNewSourceAction: creationOptions.forceNewSourceAction === true,
+        navigateAfterCreate: creationOptions.navigateAfterCreate === true,
         values: {
           ...(source
             ? {
@@ -2726,6 +2736,17 @@ export async function startMainApp() {
       navigate(record.type);
       openEditor(id);
     },
+    onCreated: (record, { navigateAfterCreate }) => {
+      if (!navigateAfterCreate || state.view === record.type) return;
+      if (Object.hasOwn(state.planningPeriods, record.type) && record.periodKey)
+        state.planningPeriods[record.type] = shiftPlanningPeriod(
+          { type: record.type, key: record.periodKey },
+          0,
+        );
+      state.search = "";
+      document.querySelector("#global-search").value = "";
+      navigate(record.type);
+    },
     onError: (message) => toast(message, true),
     onMessage: (message) => toast(message),
   });
@@ -2851,10 +2872,49 @@ export async function startMainApp() {
     root: app,
     getRecords: () => state.records,
     formatDate,
-    renderStatus: statusSummary,
+    renderStatus: (record) =>
+      record.type === "daily" ? statusBadge(record) : statusSummary(record),
+    renderComplete: completionControl,
+    renderWork: workControl,
+    renderJournal: (record) => journalControl(record),
+    renderNote: (record) => recordNotes?.button(record) || "",
+    renderBlocked: (record) => waitingInfo?.button(record) || "",
+    renderDateControl: (record) =>
+      active(record) ? lifecycleDateControl(record) : "",
     onEdit: (id) => openEditor(id, "", "", "daily", { keepRecordPanel: true }),
     onFollowUp: (id) => waitingFollowUps?.open(id),
     onRoute: openPanelRoute,
+    onCreateDaily: (id) => {
+      const source = state.records.find((record) => record.id === id);
+      if (source?.type !== "waiting" || !active(source))
+        throw new Error("Yeni iş eklemek için bekleyen konuyu yeniden aç.");
+      openEditor(null, "", id, "daily", {
+        keepRecordPanel: true,
+        forceNewSourceAction: true,
+        values: { title: "", dueDate: "", nextAction: "" },
+      });
+    },
+    onOpenDaily: (dailyId, waitingId) => {
+      const linked = linkedActions(waitingId, state.records).some(
+        (record) => record.id === dailyId && record.type === "daily",
+      );
+      if (!linked) throw new Error("Bu iş artık bekleyen konuya bağlı değil.");
+      openEditor(dailyId, "", "", "daily", { keepRecordPanel: true });
+    },
+    onLinkDaily: (waitingId, dailyId) => {
+      const next = attachWaitingWork(state.records, waitingId, dailyId);
+      if (next === state.records) return true;
+      const saved = saveRecords(next, "Bekleyen konuya iş bağlama");
+      if (saved) toast("İş bağlandı. Geri alınabilir.");
+      return saved;
+    },
+    onUnlinkDaily: (waitingId, dailyId) => {
+      const next = unlinkWaitingWork(state.records, waitingId, dailyId);
+      if (next === state.records) return true;
+      const saved = saveRecords(next, "Bekleyen konu iş bağlantısını kaldırma");
+      if (saved) toast("İş bağlantısı kaldırıldı. Geri alınabilir.");
+      return saved;
+    },
     onError: (message) => toast(message, true),
   });
   window.addEventListener("pagehide", waitingRecordPanel.destroy, {
@@ -3058,7 +3118,7 @@ export async function startMainApp() {
         }
         break;
       case "new":
-        openEditor();
+        openEditor(null, "", "", "daily", { navigateAfterCreate: true });
         break;
       case "new-linked":
         openEditor(null, id);
@@ -3066,6 +3126,19 @@ export async function startMainApp() {
       case "waiting-record-details":
         event.preventDefault();
         openRecordPreview("waiting", id, button);
+        break;
+      case "waiting-children-open":
+        event.preventDefault();
+        if (!waitingRecordPanel?.canOpen(id)) break;
+        closeStatusMenu();
+        datePicker?.close();
+        choiceFields?.close();
+        inlineFields?.close();
+        waitingInfo?.close();
+        recordNotes?.close();
+        closeRecordPreviews("waiting");
+        button.focus({ preventScroll: true });
+        waitingRecordPanel.open(id, { trigger: button, section: "children" });
         break;
       case "meeting-record-details":
         event.preventDefault();
@@ -3461,6 +3534,18 @@ export async function startMainApp() {
     if (!event.target.matches("form#record-form")) return;
     event.preventDefault();
     const data = Object.fromEntries(new FormData(event.target));
+    const measurement = readRecordEditorNumeric(event.target);
+    delete data.editorNumeric;
+    if (
+      ["weekly", "monthly", "yearly"].includes(data.type) &&
+      measurement &&
+      !measurement.enabled
+    ) {
+      for (const key of ["metric", "targetValue", "currentValue"]) {
+        if (measurement.touched) data[key] = key === "metric" ? "" : null;
+        else delete data[key];
+      }
+    }
     const existing = state.records.find((r) => r.id === data.id);
     try {
       if (data.id && !existing)
@@ -3474,6 +3559,22 @@ export async function startMainApp() {
         throw new Error(
           "Bu kayıt başka bir pencerede değişti. Taslağın korunuyor; güncel kaydı yeniden açarak devam et.",
         );
+      if (
+        existing &&
+        event.target.dataset.statusTouched !== "true" &&
+        recordFormValues(event.target) === event.target.dataset.initialValues &&
+        !(
+          ["weekly", "monthly", "yearly"].includes(data.type) &&
+          measurement?.touched &&
+          !measurement.enabled &&
+          ["metric", "targetValue", "currentValue"].some(
+            (key) => data[key] !== existing[key],
+          )
+        )
+      ) {
+        document.querySelector("#editor").close();
+        return;
+      }
       for (const key of [
         "dueDate",
         "sourceDate",

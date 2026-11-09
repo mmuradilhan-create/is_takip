@@ -157,7 +157,7 @@ test("all six creation forms expose a short optional workflow and save title-onl
     await openCreation(page, type);
     const extra = form(page).locator("details.creation-advanced");
     await expect(extra.locator("summary")).toContainText("Ek bilgiler");
-    expect(await extra.evaluate((element) => element.open)).toBe(true);
+    expect(await extra.evaluate((element) => element.open)).toBe(false);
     expect(
       await form(page).evaluate((element) =>
         Boolean(
@@ -187,6 +187,8 @@ test("all six creation forms expose a short optional workflow and save title-onl
       for (const name of ["dueDate", "priority", "parentId"])
         await expect(field(page, name)).toBeVisible();
       await expect(field(page, "parentId")).toBeEnabled();
+      await expect(field(page, "workContext")).not.toBeVisible();
+      await advanced(page);
       await expect(field(page, "workContext")).toBeVisible();
       await expect(field(page, "workContext")).toHaveValue("ad_hoc");
       for (const name of ["projectCode", "workType"]) {
@@ -200,6 +202,14 @@ test("all six creation forms expose a short optional workflow and save title-onl
         await expect(field(page, "periodWeek")).toBeVisible();
       if (type === "monthly")
         await expect(field(page, "periodMonth")).toBeVisible();
+      if (type !== "yearly") {
+        const deadline = form(page).locator(
+          '.creation-main-fields [name="dueDate"]',
+        );
+        await expect(deadline).toBeVisible();
+        await expect(deadline).toBeEnabled();
+        await expect(deadline).toHaveValue("");
+      }
       await expect(field(page, "numeric")).not.toBeChecked();
       await expect(field(page, "targetValue")).not.toBeVisible();
     } else if (type === "waiting") {
@@ -257,10 +267,18 @@ test("all six creation forms expose a short optional workflow and save title-onl
         await expect(field(page, name)).toHaveValue("");
       }
       if (type !== "yearly") {
-        const sourceBox = await field(page, "sourceDate").boundingBox();
-        const dueBox = await field(page, "dueDate").boundingBox();
-        expect(Math.abs(sourceBox.y - dueBox.y)).toBeLessThanOrEqual(1);
-        expect(sourceBox.x).toBeLessThan(dueBox.x);
+        const source = form(page).locator(
+          '.creation-advanced [name="sourceDate"]',
+        );
+        await expect(source).toBeVisible();
+        await expect(source).toBeEnabled();
+        await expect(source).toHaveValue("07.11.2026");
+        const deadline = form(page).locator(
+          '.creation-main-fields [name="dueDate"]',
+        );
+        await expect(deadline).toBeVisible();
+        await expect(deadline).toBeEnabled();
+        await expect(deadline).toHaveValue("");
       } else await expect(field(page, "dueDate")).toBeHidden();
     }
     expect(await saved(page)).toBe(before);
@@ -321,7 +339,7 @@ test("switching creation types preserves separate drafts including collapsed det
     await form(page)
       .locator(".creation-advanced")
       .evaluate((element) => element.open),
-  ).toBe(true);
+  ).toBe(false);
   await field(page, "title").fill("Haftalık taslak");
   await field(page, "periodWeek").selectOption("46");
   await field(page, "numeric").check();

@@ -775,3 +775,280 @@ test("a stale source form cannot overwrite another window's new typed action and
   assert.equal(retry.record.title, "İlk pencerenin işi");
   assert.equal(linkedActions(source.id, retry.records).length, 1);
 });
+
+test("an explicit new step creates a second distinct daily under an open waiting topic while preserving its existing linked work", () => {
+  const source = record("waiting-topic", "waiting", {
+    status: "waiting_response",
+    expectedFrom: "Ahmet",
+    description: "Özgün konu",
+    nextFollowUpDate: "2026-11-12",
+    latestUpdate: "Yanıt bekleniyor.",
+    sourceFields: { retained: { source: true } },
+  });
+  const week = record("step-week", "weekly", { periodKey: "2026-W45" });
+  const first = prepare(
+    [source, week],
+    { id: "first-step", title: "İlk temas işi", dueDate: "2026-11-08" },
+    { sourceId: source.id },
+  );
+  const before = JSON.stringify(first.records);
+  Object.freeze(first.records);
+  for (const item of first.records) Object.freeze(item);
+  const built = prepare(
+    first.records,
+    {
+      id: "second-step",
+      type: "daily",
+      title: "İkinci somut adım",
+      status: "in_progress",
+      priority: "urgent",
+      parentId: week.id,
+      dueDate: "2026-11-11",
+      description: "Yeni işin kendi notu",
+      sourceFields: { custom: { values: [1, "iki"] } },
+    },
+    { sourceId: source.id, forceNewSourceAction: true },
+  );
+  assert.equal(built.records.length, 4);
+  assert.equal(built.records[0], source);
+  assert.equal(built.records[1], week);
+  assert.equal(built.records[2], first.record);
+  assert.notEqual(built.record.id, first.record.id);
+  assert.equal(built.record.id, "second-step");
+  assert.equal(built.record.title, "İkinci somut adım");
+  assert.equal(built.record.status, "in_progress");
+  assert.equal(built.record.priority, "urgent");
+  assert.equal(built.record.parentId, week.id);
+  assert.equal(built.record.workContext, "");
+  assert.equal(built.record.dueDate, "2026-11-11");
+  assert.equal(built.record.description, "Yeni işin kendi notu");
+  assert.equal(built.record.createdAt, NOW);
+  assert.equal(built.record.updatedAt, NOW);
+  assert.deepEqual(built.record.sourceFields, {
+    custom: { values: [1, "iki"] },
+    __followupSource: { recordId: source.id, type: "waiting" },
+  });
+  assert.equal(Object.hasOwn(built.record, "workLog"), false);
+  assert.equal(Object.hasOwn(built.record, "followUpLog"), false);
+  assert.equal(built.reused, false);
+  assert.deepEqual(built.createdTypes, ["daily"]);
+  assert.deepEqual(built.reusedTypes, []);
+  assert.deepEqual(linkedActions(source.id, built.records), [
+    first.record,
+    built.record,
+  ]);
+  assert.deepEqual(
+    validateStore({ version: 1, records: built.records }).records,
+    built.records,
+  );
+  assert.equal(JSON.stringify(first.records), before);
+});
+
+test("default source routing continues to reuse the first daily even with several steps and a closed topic", () => {
+  const source = record("legacy-topic", "waiting", { status: "completed" });
+  const steps = ["first", "second"].map((id) =>
+    record(id, "daily", {
+      title: `${id} korunur`,
+      sourceFields: {
+        __followupSource: { recordId: source.id, type: "waiting" },
+      },
+    }),
+  );
+  const rows = [source, ...steps];
+  const before = JSON.stringify(rows);
+  for (const options of [{}, { forceNewSourceAction: false }]) {
+    const result = prepare(
+      rows,
+      { type: "daily", title: "", status: "invalid", id: 42 },
+      { sourceId: source.id, now: "unused", numeric: true, ...options },
+    );
+    assert.equal(result.records, rows);
+    assert.equal(result.record, steps[0]);
+    assert.equal(result.reused, true);
+    assert.deepEqual(result.createdTypes, []);
+    assert.deepEqual(result.reusedTypes, ["daily"]);
+  }
+  assert.equal(JSON.stringify(rows), before);
+});
+
+test("explicit waiting steps reject missing, meeting, wrong-type and closed sources while default meeting reuse stays unchanged", () => {
+  const topic = record("topic", "waiting");
+  const meeting = record("meeting", "meeting");
+  const ordinary = record("ordinary", "daily");
+  const rows = [topic, meeting, ordinary];
+  const before = JSON.stringify(rows);
+  for (const [sourceId, type] of [
+    ["", "daily"],
+    ["missing", "daily"],
+    [meeting.id, "daily"],
+    [meeting.id, "waiting"],
+    [ordinary.id, "daily"],
+    [topic.id, "waiting"],
+    [topic.id, "weekly"],
+  ])
+    assert.throws(() =>
+      prepare(
+        rows,
+        { id: "new-step", title: "Yeni adım", type },
+        { sourceId, forceNewSourceAction: true },
+      ),
+    );
+  for (const status of ["completed", "cancelled", "transferred"]) {
+    const closed = { ...topic, status };
+    const existing = record("closed-step", "daily", {
+      sourceFields: {
+        __followupSource: { recordId: topic.id, type: "waiting" },
+      },
+    });
+    for (const records of [[closed], [closed, existing]])
+      assert.throws(
+        () =>
+          prepare(
+            records,
+            { id: "new-step", title: "Yeni adım", type: "daily" },
+            { sourceId: topic.id, forceNewSourceAction: true },
+          ),
+        /açık bekleyen/,
+      );
+  }
+  for (const forceNewSourceAction of [null, "true", 1, {}, []])
+    assert.throws(
+      () =>
+        prepare(
+          rows,
+          { title: "Yeni adım" },
+          {
+            sourceId: topic.id,
+            forceNewSourceAction,
+          },
+        ),
+      /kaynak işi seçimi/,
+    );
+  const meetingStep = record("meeting-step", "daily", {
+    sourceFields: {
+      __followupSource: { recordId: meeting.id, type: "meeting" },
+    },
+  });
+  const withMeetingStep = [...rows, meetingStep];
+  assert.equal(
+    prepare(withMeetingStep, { title: "Aç" }, { sourceId: meeting.id }).record,
+    meetingStep,
+  );
+  assert.throws(
+    () =>
+      prepare(
+        withMeetingStep,
+        { title: "Yeni" },
+        {
+          sourceId: meeting.id,
+          forceNewSourceAction: true,
+        },
+      ),
+    /açık bekleyen/,
+  );
+  assert.equal(JSON.stringify(rows), before);
+});
+
+test("explicit new waiting steps still validate prior paths, unique identities, ordinary goal links and real dates", () => {
+  const topic = record("topic", "waiting");
+  const existing = record("step", "daily", {
+    sourceFields: { __followupSource: { recordId: topic.id, type: "waiting" } },
+  });
+  const rows = [topic, existing];
+  const options = { sourceId: topic.id, forceNewSourceAction: true };
+  for (const input of [
+    { id: existing.id, title: "Çift kimlik" },
+    { id: "new", title: "Hedef yok", parentId: "missing-goal" },
+    { id: "new", title: "Tarih yanlış", dueDate: "2026-02-30" },
+    { id: "new", title: "Gerçekleşmemiş çalışma", workLog: [{ id: "fake" }] },
+  ])
+    assert.throws(() => prepare(rows, input, options));
+  assert.throws(
+    () => prepare([...rows, existing], { id: "new", title: "Yeni" }, options),
+    /Tekrarlanan/,
+  );
+  const wrongBranch = record("nested-wait", "waiting", {
+    sourceFields: { __followupSource: { recordId: topic.id, type: "waiting" } },
+  });
+  assert.throws(
+    () =>
+      prepare([...rows, wrongBranch], { id: "new", title: "Yeni" }, options),
+    /yalnızca günlük/,
+  );
+  const cycle = {
+    ...topic,
+    sourceFields: {
+      __followupSource: { recordId: existing.id, type: "waiting" },
+    },
+  };
+  assert.throws(
+    () => prepare([cycle, existing], { id: "new", title: "Yeni" }, options),
+    /döngü/,
+  );
+});
+
+test("an explicit second-step creation remains atomic on quota failure and fresh retries preserve concurrent steps with exact Undo", () => {
+  const source = record("topic", "waiting", { status: "waiting_response" });
+  const initial = prepare(
+    [source],
+    { id: "first", title: "İlk adım" },
+    { sourceId: source.id },
+  ).records;
+  const key = "multi-waiting-race";
+  const values = new Map([
+    [key, JSON.stringify({ version: 1, records: initial })],
+  ]);
+  let fail = false;
+  const storage = {
+    getItem: (name) => values.get(name) ?? null,
+    setItem: (name, value) => {
+      if (fail) throw new Error("quota");
+      values.set(name, value);
+    },
+  };
+  const first = createWorkspaceStore({ storage, key });
+  const second = createWorkspaceStore({ storage, key });
+  const options = { sourceId: source.id, forceNewSourceAction: true };
+  const stale = prepare(
+    second.records,
+    { id: "second", title: "İkinci adım" },
+    options,
+  );
+  const raw = values.get(key);
+  fail = true;
+  assert.throws(
+    () => second.saveRecords(stale.records, "Yeni bağlı iş"),
+    /quota/,
+  );
+  assert.equal(values.get(key), raw);
+  assert.equal(second.canUndo, false);
+  fail = false;
+  const concurrent = prepare(
+    first.records,
+    { id: "third", title: "Diğer pencerenin adımı" },
+    options,
+  );
+  first.saveRecords(concurrent.records, "Eşzamanlı bağlı iş");
+  assert.throws(
+    () => second.saveRecords(stale.records, "Yeni bağlı iş"),
+    /başka bir pencerede/,
+  );
+  const fresh = prepare(
+    second.records,
+    { id: "second", title: "İkinci adım" },
+    options,
+  );
+  assert.equal(fresh.reused, false);
+  assert.equal(linkedActions(source.id, fresh.records).length, 3);
+  assert.equal(
+    fresh.records.find((item) => item.id === "third").title,
+    "Diğer pencerenin adımı",
+  );
+  second.saveRecords(fresh.records, "Yeni bağlı iş");
+  assert.equal(second.history.length, 2);
+  const reload = createWorkspaceStore({ storage, key });
+  assert.equal(reload.undo(), "Yeni bağlı iş");
+  assert.deepEqual(reload.records, concurrent.records);
+  assert.equal(reload.undo(), "Eşzamanlı bağlı iş");
+  assert.deepEqual(reload.records, initial);
+});

@@ -46,6 +46,49 @@ function arrange(container, nodes) {
   }
 }
 
+function numericControls(form, document) {
+  const element = document.createElement("div");
+  element.className = "record-editor-numeric full";
+  element.setAttribute("data-record-editor-measurement", "");
+  const label = document.createElement("label");
+  label.className = "record-editor-numeric-toggle";
+  const checkbox = document.createElement("input");
+  checkbox.type = "checkbox";
+  checkbox.name = "editorNumeric";
+  const metric = form.querySelector('[name="metric"]')?.value.trim();
+  const target = form.querySelector('[name="targetValue"]')?.value.trim();
+  const current = form.querySelector('[name="currentValue"]')?.value.trim();
+  const initialEnabled = Boolean(
+    metric || target || (current && Number(current) !== 0),
+  );
+  checkbox.checked = initialEnabled;
+  checkbox.defaultChecked = initialEnabled;
+  label.append(checkbox, document.createTextNode("Adetle takip et"));
+  const grid = document.createElement("fieldset");
+  grid.className = "record-editor-numeric-fields";
+  element.append(label, grid);
+  return { element, grid, checkbox, initialEnabled, touched: false };
+}
+
+function updateNumeric(layout) {
+  const { measurement, fields, type } = layout;
+  const goal = GOALS.has(type);
+  const enabled = goal && measurement.checkbox.checked;
+  measurement.element.hidden = !goal;
+  measurement.checkbox.disabled = !goal;
+  measurement.grid.hidden = !enabled;
+  measurement.grid.disabled = !enabled;
+  for (const name of MEASUREMENT) {
+    const field = fields.get(name);
+    if (!field) continue;
+    field.hidden = !enabled;
+    for (const control of field.querySelectorAll(
+      "input, select, textarea, button",
+    ))
+      control.disabled = !enabled;
+  }
+}
+
 function initialize(form) {
   const body = form.querySelector(":scope > .modal-body");
   const basic = body?.querySelector(":scope > .form-grid");
@@ -63,16 +106,8 @@ function initialize(form) {
     (element) => !element.matches(".field"),
   );
   const extras = details(document, "data-record-editor-extras", "Ek bilgiler");
-  extras.element.open = true;
-  const measurement = details(
-    document,
-    "data-record-editor-measurement",
-    "Sayısal ölçüm",
-  );
-  measurement.element.open = MEASUREMENT.some((name) => {
-    const value = form.querySelector(`[name="${name}"]`)?.value.trim();
-    return name === "metric" ? Boolean(value) : Number(value) > 0;
-  });
+  extras.element.open = false;
+  const measurement = numericControls(form, document);
   const followupHeading = document.createElement("h3");
   followupHeading.className = "record-editor-followup-heading full";
   followupHeading.textContent = "Takip bilgileri";
@@ -93,7 +128,7 @@ function initialize(form) {
   body.insertBefore(pool, error);
   basic.dataset.recordEditorBasic = "";
   form.dataset.recordEditorLayout = "";
-  return {
+  const layout = {
     basic,
     fields,
     context,
@@ -102,6 +137,23 @@ function initialize(form) {
     followupHeading,
     pool,
     oldGroups: [...body.querySelectorAll(":scope > .extra-group")],
+  };
+  form.addEventListener("change", (event) => {
+    if (event.target !== measurement.checkbox) return;
+    measurement.touched = true;
+    updateNumeric(layout);
+  });
+  return layout;
+}
+
+/** Read the edit form's chosen mode; deciding what to persist stays with Save. */
+export function readRecordEditorNumeric(form) {
+  const layout = layouts.get(form);
+  if (!layout) return null;
+  return {
+    enabled: GOALS.has(layout.type) && layout.measurement.checkbox.checked,
+    initialEnabled: layout.measurement.initialEnabled,
+    touched: layout.measurement.touched,
   };
 }
 
@@ -120,6 +172,7 @@ export function arrangeRecordEditor(
   }
   const { basic, fields, context, extras, measurement, followupHeading, pool } =
     layout;
+  layout.type = type;
   const daily = type === "daily";
   const goal = GOALS.has(type);
   const waiting =
@@ -138,6 +191,7 @@ export function arrangeRecordEditor(
           "title",
           "status",
           "periodKey",
+          ...(type !== "yearly" ? ["dueDate"] : []),
           ...(type !== "yearly" ? ["goalParentId"] : []),
         ]
       : type === "meeting"
@@ -154,8 +208,8 @@ export function arrangeRecordEditor(
     "type",
     ...(goal ? ["priority"] : []),
     "sourceDate",
-    ...(goal && type !== "yearly" ? ["dueDate"] : []),
     "description",
+    ...(goal ? ["currentValue"] : []),
     ...(daily ? ["workContext"] : []),
   ];
   const activeNames = new Set([
@@ -175,13 +229,13 @@ export function arrangeRecordEditor(
       ))
         control.disabled = disabled;
     }
-    if (!active && !MEASUREMENT.includes(name)) inactive.push(field);
+    if (!active && (!MEASUREMENT.includes(name) || name === "currentValue"))
+      inactive.push(field);
   }
   arrange(pool, [...new Set(inactive)]);
   const nodes = basicNames.map((name) => fields.get(name)).filter(Boolean);
   if (type === "waiting") nodes.splice(1, 0, followupHeading);
   else if (followupHeading.parentElement !== pool) pool.append(followupHeading);
-  measurement.element.hidden = !goal;
   arrange(
     basic,
     type === "meeting"
@@ -194,11 +248,22 @@ export function arrangeRecordEditor(
   );
   arrange(
     measurement.grid,
-    MEASUREMENT.map((name) => fields.get(name)).filter(Boolean),
+    ["targetValue", "metric"].map((name) => fields.get(name)).filter(Boolean),
   );
   for (const group of layout.oldGroups) group.remove();
   layout.oldGroups = [];
   caption(fields.get("title"), TITLES[type]);
+  caption(fields.get("targetValue"), "Hedef adet");
+  caption(fields.get("metric"), "Birim");
+  caption(fields.get("currentValue"), "Mevcut adet");
+  fields.get("dueDate")?.classList.toggle("full", goal);
+  form
+    .querySelector('[name="targetValue"]')
+    ?.setAttribute("placeholder", "Örn. 10");
+  form
+    .querySelector('[name="metric"]')
+    ?.setAttribute("placeholder", "Örn. Rapor, parça");
+  updateNumeric(layout);
   if (
     goal &&
     !fields.get("periodKey")?.hasAttribute("data-editor-period-field")

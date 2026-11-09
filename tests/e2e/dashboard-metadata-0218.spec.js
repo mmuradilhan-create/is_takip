@@ -906,6 +906,44 @@ test("dense previews keep two shared cards beside independent notes and every go
       const status = await item.locator(".status-trigger").boundingBox();
       const action = item.locator('[data-action="waiting-followup"]');
       const actionBounds = await action.boundingBox();
+      const actions = item.locator(
+        ".followup-tracking > .followup-card-actions",
+      );
+      const children = actions.locator(
+        '.followup-children-action[data-action="waiting-children-open"]',
+      );
+      await expect(actions.locator("button")).toHaveCount(2);
+      await expect(action).toHaveText("Takip ettim");
+      await expect(action.locator("svg:visible")).toHaveCount(0);
+      await expect(children).toHaveText("Bağlı işler 0");
+      await expect(children).toHaveAttribute(
+        "data-id",
+        await item.getAttribute("data-id"),
+      );
+      await expect(children.locator(".followup-children-count")).toHaveText(
+        "0",
+      );
+      await expect(children).toBeEnabled();
+      const footer = await actions.evaluate((element) => {
+        const style = getComputedStyle(element);
+        return {
+          display: style.display,
+          columns: style.gridTemplateColumns.split(" ").map(parseFloat),
+          gap: parseFloat(style.columnGap),
+          height: element.getBoundingClientRect().height,
+          trackingHeight: element.parentElement.getBoundingClientRect().height,
+        };
+      });
+      expect(footer.display).toBe("grid");
+      expect(footer.columns).toHaveLength(2);
+      expect(footer.columns[0]).toBeCloseTo(footer.columns[1], 0);
+      expect(footer.gap).toBe(4);
+      expect(footer.height).toBe(28);
+      expect(footer.trackingHeight).toBe(54);
+      await expect(item.locator('[data-followup-fact="last"]')).toHaveCSS(
+        "text-align",
+        "right",
+      );
       expect(subjectBounds.height).toBeCloseTo(lineHeight * visibleLines, 0);
       expect(title.height).toBeGreaterThanOrEqual(subjectBounds.height - 1);
       expect(status.y).toBeGreaterThanOrEqual(title.y + title.height - 1);
@@ -933,10 +971,16 @@ test("dense previews keep two shared cards beside independent notes and every go
       ).toBeLessThanOrEqual(1);
       for (const control of await item
         .locator(
-          '.status-trigger, [data-action="edit-next-followup"], .waiting-age, .followup-last, [data-action="waiting-followup"]',
+          '.status-trigger, [data-action="edit-next-followup"], .followup-fact-label, .waiting-age, .followup-last, .followup-card-actions > button',
         )
         .all()) {
-        await expect(control).toHaveCSS("white-space", "nowrap");
+        const cardAction = await control.evaluate((element) =>
+          element.parentElement.classList.contains("followup-card-actions"),
+        );
+        await expect(control).toHaveCSS(
+          "white-space",
+          cardAction ? "normal" : "nowrap",
+        );
         const box = await control.boundingBox();
         expect(box.x).toBeGreaterThanOrEqual(bounds.x);
         expect(box.x + box.width).toBeLessThanOrEqual(
@@ -953,6 +997,33 @@ test("dense previews keep two shared cards beside independent notes and every go
               element.scrollHeight <= element.clientHeight + 1,
           ),
         ).toBe(true);
+        if (cardAction) {
+          expect(box.height).toBe(28);
+          const caption = await control.evaluate((element) => {
+            const box = element.getBoundingClientRect();
+            const walker = document.createTreeWalker(
+              element,
+              NodeFilter.SHOW_TEXT,
+            );
+            const rects = [];
+            while (walker.nextNode()) {
+              if (!walker.currentNode.textContent.trim()) continue;
+              const range = document.createRange();
+              range.selectNodeContents(walker.currentNode);
+              rects.push(
+                ...[...range.getClientRects()].map((rect) => rect.toJSON()),
+              );
+            }
+            return { box: box.toJSON(), rects };
+          });
+          expect(caption.rects.length).toBeGreaterThan(0);
+          for (const text of caption.rects) {
+            expect(text.left).toBeGreaterThanOrEqual(caption.box.left);
+            expect(text.right).toBeLessThanOrEqual(caption.box.right);
+            expect(text.top).toBeGreaterThanOrEqual(caption.box.top);
+            expect(text.bottom).toBeLessThanOrEqual(caption.box.bottom);
+          }
+        }
       }
     }
     if (viewport.width === 1536 || viewport.width === 1280) {

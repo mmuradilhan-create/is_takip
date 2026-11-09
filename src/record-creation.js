@@ -16,6 +16,7 @@ import {
 import { normalizeFollowUpDate } from "./waiting-followup.js";
 
 const GOALS = new Set(["weekly", "monthly", "yearly"]);
+const CLOSED = new Set(["completed", "cancelled", "transferred"]);
 
 function timestamp(value) {
   if (value instanceof Date && !Number.isNaN(value.getTime()))
@@ -175,6 +176,7 @@ export function prepareRecordCreation(
   input,
   {
     sourceId = "",
+    forceNewSourceAction = false,
     meetingRoute = "",
     routeDrafts = {},
     numeric = false,
@@ -184,6 +186,8 @@ export function prepareRecordCreation(
   if (!Array.isArray(records))
     throw new TypeError("Yeni kayıt için kayıt listesi gereklidir.");
   objectInput(input);
+  if (typeof forceNewSourceAction !== "boolean")
+    throw new Error("Yeni kaynak işi seçimi geçersiz.");
   const requestedType = input.type ?? "daily";
   let source = null;
   if (sourceId) {
@@ -196,7 +200,16 @@ export function prepareRecordCreation(
     )
       throw new Error("Kaynak kayıt için geçerli bir takip akışı seç.");
     const existing = linkedAction(source.id, records, requestedType);
-    if (existing)
+    if (
+      forceNewSourceAction &&
+      (source.type !== "waiting" ||
+        requestedType !== "daily" ||
+        CLOSED.has(source.status))
+    )
+      throw new Error(
+        "Yeni adım yalnızca açık bekleyen konu için eklenebilir.",
+      );
+    if (existing && !forceNewSourceAction)
       return {
         records,
         record: existing,
@@ -205,6 +218,8 @@ export function prepareRecordCreation(
         reused: true,
       };
   }
+  if (forceNewSourceAction && !source)
+    throw new Error("Yeni adım için açık bekleyen konu gereklidir.");
   if (
     !["", "daily", "waiting", "both"].includes(meetingRoute) ||
     (meetingRoute && (source || requestedType !== "meeting"))

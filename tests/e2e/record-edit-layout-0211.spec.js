@@ -11,7 +11,7 @@ const field = (page, name) => form(page).locator(`[name="${name}"]`);
 const extras = (page) =>
   form(page).locator("details[data-record-editor-extras]");
 const measurement = (page) =>
-  form(page).locator("details[data-record-editor-measurement]");
+  form(page).locator("div[data-record-editor-measurement]");
 const row = (page, id) =>
   page.locator(`.full-table tr[data-record-row][data-id="${id}"]`);
 const saved = (page) => page.evaluate((key) => localStorage.getItem(key), KEY);
@@ -422,22 +422,51 @@ test("all goal editors keep period and parent basics, existing numeric measureme
         original.goalParentId,
       );
     }
-    await expect(measurement(page).locator(":scope > summary")).toHaveText(
-      "Sayısal ölçüm",
+    await expect(measurement(page)).toBeVisible();
+    await expect(measurement(page).locator("summary")).toHaveCount(0);
+    await expect(
+      measurement(page).getByRole("checkbox", {
+        name: "Adetle takip et",
+        exact: true,
+      }),
+    ).toBeChecked();
+    await expect(
+      measurement(page).getByLabel("Hedef adet", { exact: true }),
+    ).toHaveValue("10");
+    await expect(
+      measurement(page).getByLabel("Birim", { exact: true }),
+    ).toHaveValue("Rapor");
+    expect(await extras(page).evaluate((element) => element.open)).toBe(false);
+    await expect(extras(page).locator('[name="sourceDate"]')).toBeHidden();
+    await expect(field(page, "sourceDate")).toHaveValue("20.10.2026");
+    await expect(field(page, "dueDate")).toHaveValue(
+      original.dueDate.split("-").reverse().join("."),
     );
-    expect(await measurement(page).evaluate((element) => element.open)).toBe(
-      true,
-    );
+    if (type !== "yearly") {
+      await expect(
+        form(page).locator('[data-record-editor-basic] [name="dueDate"]'),
+      ).toBeVisible();
+      await expect(field(page, "dueDate")).toBeEnabled();
+      await expect(extras(page).locator('[name="dueDate"]')).toHaveCount(0);
+    }
+    await expect(field(page, "currentValue")).toBeHidden();
+    await openExtras(page);
+    await expect(extras(page).locator('[name="sourceDate"]')).toBeVisible();
+    await expect(field(page, "sourceDate")).toBeEnabled();
+    await expect(
+      extras(page).getByLabel("Mevcut adet", { exact: true }),
+    ).toHaveValue("4");
+    await expect(field(page, "currentValue")).toBeVisible();
     await expect(field(page, "currentValue")).toHaveValue("4");
     await expect(field(page, "targetValue")).toHaveValue("10");
     await expect(field(page, "metric")).toHaveValue("Rapor");
     expect(await extras(page).evaluate((element) => element.open)).toBe(true);
     await extras(page).locator(":scope > summary").click();
-    await measurement(page).locator(":scope > summary").click();
     await field(page, "status").selectOption("planned");
-    expect(await measurement(page).evaluate((element) => element.open)).toBe(
-      false,
-    );
+    await expect(measurement(page)).toBeVisible();
+    await expect(field(page, "targetValue")).toBeVisible();
+    await expect(field(page, "metric")).toBeVisible();
+    await expect(field(page, "currentValue")).toBeHidden();
     await field(page, "status").selectOption("in_progress");
     expect(await extras(page).evaluate((element) => element.open)).toBe(false);
     await openExtras(page);
@@ -451,24 +480,6 @@ test("all goal editors keep period and parent basics, existing numeric measureme
     if (type === "yearly") {
       await expect(field(page, "dueDate")).not.toBeVisible();
       await expect(field(page, "dueDate")).toBeDisabled();
-    } else {
-      await expect(field(page, "sourceDate")).toBeVisible();
-      await expect(field(page, "dueDate")).toBeVisible();
-      expect(
-        await form(page).evaluate((element) => {
-          const source = element.querySelector(
-            '[data-record-editor-field="sourceDate"]',
-          );
-          return (
-            source.nextElementSibling ===
-            element.querySelector('[data-record-editor-field="dueDate"]')
-          );
-        }),
-      ).toBe(true);
-      const sourceBox = await field(page, "sourceDate").boundingBox();
-      const dueBox = await field(page, "dueDate").boundingBox();
-      expect(Math.abs(sourceBox.y - dueBox.y)).toBeLessThanOrEqual(1);
-      expect(sourceBox.x).toBeLessThan(dueBox.x);
     }
     expect(await saved(page)).toBe(before);
     if (type === "weekly")

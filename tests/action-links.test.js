@@ -540,7 +540,7 @@ test("external waiting contact steps remain independent even alongside a direct 
   });
 });
 
-test("same-type duplicate routes, invalid waiting branches and cycles reject only affected transactions", () => {
+test("meeting duplicate routes and invalid waiting branches still reject while waiting topics accept multiple daily steps", () => {
   const source = meeting();
   const work = target("work", source.id);
   const waiting = target("expectation", source.id, { type: "waiting" });
@@ -562,22 +562,28 @@ test("same-type duplicate routes, invalid waiting branches and cycles reject onl
   }
   const firstContact = target("contact-1", waiting.id);
   const secondContact = target("contact-2", waiting.id);
-  assert.throws(
-    () =>
-      syncActionLinks(
-        [...before, firstContact],
-        [...before, firstContact, secondContact],
-      ),
-    /aynı türde birden fazla/,
+  const multipleContacts = [...before, firstContact, secondContact];
+  assert.equal(
+    syncActionLinks([...before, firstContact], multipleContacts),
+    multipleContacts,
   );
+  assert.deepEqual(linkedActions(waiting.id, multipleContacts), [
+    firstContact,
+    secondContact,
+  ]);
+  assert.equal(
+    linkedAction(waiting.id, multipleContacts, "daily"),
+    firstContact,
+  );
+  assert.equal(linkedAction(waiting.id, multipleContacts), null);
   const wrongBranch = target("nested-waiting", waiting.id, { type: "waiting" });
   assert.throws(
     () => linkedActions(waiting.id, [...before, wrongBranch]),
-    /yalnızca bir günlük/,
+    /yalnızca günlük/,
   );
   assert.throws(
     () => syncActionLinks(before, [...before, wrongBranch]),
-    /yalnızca bir günlük/,
+    /yalnızca günlük/,
   );
   const self = {
     ...work,

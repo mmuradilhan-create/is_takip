@@ -56,6 +56,40 @@
   margin-top: 2px;
 }
 
+#editor .record-editor-numeric {
+  min-width: 0;
+}
+
+#editor .record-editor-numeric-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 30px;
+  color: var(--theme-accent, var(--green));
+  font-size: 12px;
+  cursor: pointer;
+}
+
+#editor .record-editor-numeric-toggle input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+}
+
+#editor .record-editor-numeric-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 13px 16px;
+  min-width: 0;
+  margin: 10px 0 0;
+  padding: 0;
+  border: 0;
+}
+
+#editor .record-editor-numeric-fields[hidden] {
+  display: none;
+}
+
 #editor .record-editor-details > summary {
   display: flex;
   align-items: center;
@@ -115,6 +149,10 @@
   }
 
   #editor .record-editor-details-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  #editor .record-editor-numeric-fields {
     grid-template-columns: minmax(0, 1fr);
   }
 }

@@ -138,7 +138,7 @@ const sourceContext = (page) =>
     scroll: [window.scrollX, window.scrollY],
   }));
 
-test("waiting panel keeps its sole follow-up action beside history and uses plus only for missing jobs with compact footer and responsive alignment", async ({
+test("waiting panel keeps its sole follow-up action beside history and daily steps in their own section with compact footer and responsive alignment", async ({
   page,
 }) => {
   const { raw } = await seed(page);
@@ -158,7 +158,9 @@ test("waiting panel keeps its sole follow-up action beside history and uses plus
         ),
       ).toHaveAttribute("d", "M12 5v14M5 12h14");
       await open(page, "waiting-actions-open");
-      const heading = panel(page).locator(".waiting-record-section-heading");
+      const heading = panel(page).locator(
+        ".waiting-record-history .waiting-record-section-heading",
+      );
       const followUp = heading.getByRole("button", {
         name: "Takip ettim",
         exact: true,
@@ -196,23 +198,63 @@ test("waiting panel keeps its sole follow-up action beside history and uses plus
       );
       expect(bounds.x).toBeGreaterThanOrEqual(0);
       expect(bounds.x + bounds.width).toBeLessThanOrEqual(width);
-      const create = panel(page).locator(
-        '[data-action="waiting-record-route"]',
+      const children = panel(page).locator('[data-waiting-section="children"]');
+      const childrenHeading = children.locator(
+        '[data-waiting-section-heading="children"]',
       );
-      await expect(create).toHaveText("İş oluştur");
+      await expect(childrenHeading).toHaveText("Bağlı günlük işler 0");
+      await expect(childrenHeading).toHaveAttribute("tabindex", "-1");
+      await expect(children.locator(".waiting-record-child")).toHaveCount(0);
+      await expect(children.locator(".waiting-record-empty")).toHaveText(
+        "Henüz bağlı günlük iş yok.",
+      );
+      const create = children.locator(
+        '[data-action="waiting-record-create-daily"]',
+      );
+      await expect(create).toHaveAttribute("data-id", "waiting-actions-open");
+      await expect(create).toHaveText("Yeni adım ekle");
       await expect(
         create.locator(".waiting-record-create-icon path"),
       ).toHaveAttribute("d", "M12 5v14M5 12h14");
+      await expect(
+        children.locator("#waiting-link-daily-form"),
+      ).toHaveAttribute("data-id", "waiting-actions-open");
+      await expect(children.locator("#waiting-link-daily")).toBeDisabled();
+      await expect(
+        children.getByRole("button", { name: "Bağla", exact: true }),
+      ).toBeDisabled();
       await close(page);
       expect(await saved(page)).toBe(raw);
     }
   }
   await open(page, "waiting-actions-linked");
+  const children = panel(page).locator('[data-waiting-section="children"]');
   await expect(
-    panel(page).locator('[data-action="waiting-record-route"]'),
-  ).toHaveText("İşi aç");
-  await expect(panel(page).locator(".waiting-record-create-icon")).toHaveCount(
-    0,
+    children.locator('[data-waiting-section-heading="children"]'),
+  ).toHaveText("Bağlı günlük işler 1");
+  const child = children.locator(
+    '.waiting-record-child.goal-child-row[data-id="waiting-actions-daily"]',
+  );
+  await expect(child).toHaveCount(1);
+  const openDaily = child.locator('[data-action="waiting-record-open-daily"]');
+  await expect(openDaily).toHaveText("Yanıta bağlı gerçek günlük iş");
+  await expect(openDaily).toHaveAttribute("data-id", "waiting-actions-daily");
+  await expect(openDaily).toHaveAttribute(
+    "data-route",
+    "waiting-actions-daily",
+  );
+  await expect(
+    child.locator('[data-action="waiting-record-unlink-daily"]'),
+  ).toHaveAttribute("data-id", "waiting-actions-daily");
+  await expect(
+    child.locator('[data-action="waiting-record-unlink-daily"]'),
+  ).toHaveAttribute("data-route", "waiting-actions-daily");
+  await expect(
+    children.locator('[data-action="waiting-record-create-daily"]'),
+  ).toHaveText("Yeni adım ekle");
+  await expect(children.locator("#waiting-link-daily-form")).toHaveAttribute(
+    "data-id",
+    "waiting-actions-linked",
   );
   await expect(panel(page).locator(".waiting-record-history-count")).toHaveText(
     "0",
@@ -224,8 +266,9 @@ test("waiting panel keeps its sole follow-up action beside history and uses plus
     panel(page).locator('[data-action="waiting-record-followup"]'),
   ).toHaveCount(0);
   await expect(
-    panel(page).locator('[data-action="waiting-record-route"]'),
+    panel(page).locator('[data-action="waiting-record-create-daily"]'),
   ).toHaveCount(0);
+  await expect(panel(page).locator("#waiting-link-daily-form")).toHaveCount(0);
   await expect(panel(page).locator(".waiting-record-history-count")).toHaveText(
     "1",
   );

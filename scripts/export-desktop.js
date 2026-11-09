@@ -34,6 +34,17 @@ geçişinde ve pencereye dönünce güncellenir. Kayıtları veya açık formlar
 
 LISTE DUZENI
 
+Takip kartlarında Takip ettim ve Bağlı işler sayacı yan yanadır. Bağlı işler,
+bekleyen konudaki günlük iş listesini açar; yeni iş eklenebilir, mevcut iş
+bağlanabilir ve kaynak bağlantısı kaldırılabilir. Birden fazla günlük iş
+bağlanabilir; hedefi, durumu, tarihi, notları ve günlüğü korunur. Bağlama ve
+ayırma tek Geri al adımıdır. Temas işlerini tamamlamak konuyu kapatmaz.
+Yeni/düzenleme formlarında Ek bilgiler kapalı başlar. Haftalık ve aylık
+teslim tarihi üsttedir. Düzenlemede de Adetle takip et seçeneği vardır;
+değişmemiş formu kaydetmek yeni kayıt/geçmiş oluşturmaz. Genel Yeni kayıt
+başka listeye eklenirse o liste açılır; panel/takvim içindeki yeni adımlar
+bulundukları bağlama döner. Mevcut hedefi bağla alanı aday yokken de görünür.
+
 Genel bakışın altındaki takip ve hedef alanları ikişer kart gösterir.
 Yanlarındaki Notlar alanı bağımsız maddeler tutar; ekleme/düzenleme/silme
 tek Geri al adımıdır. Enter kaydeder, Shift+Enter alt satır ekler.

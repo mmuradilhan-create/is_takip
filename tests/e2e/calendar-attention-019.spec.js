@@ -226,7 +226,7 @@ for (const { width, height, theme } of [
     await expect(
       calendar(page).locator(".calendar-selected-label"),
     ).toContainText("8 Kasım");
-    await expect(attentionRows(page)).toHaveCount(3);
+    await expect(attentionRows(page)).toHaveCount(2);
     const allCards = await readAttentionCards(page);
     const ids = allCards.map((card) => card.id);
     expect(ids).toEqual([
@@ -284,7 +284,7 @@ for (const { width, height, theme } of [
         .evaluate((list) => list.scrollWidth <= list.clientWidth + 1),
     ).toBe(true);
     await nextAttention(page).click();
-    await expect(attentionRows(page)).toHaveCount(1);
+    await expect(attentionRows(page)).toHaveCount(2);
     await expect(page.locator(".attention-page-label")).toHaveText(
       "Sayfa 2 / 2",
     );

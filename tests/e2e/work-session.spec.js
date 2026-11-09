@@ -1,6 +1,11 @@
 import { selectListStatus } from "./list-scope-helper.js";
 import { test, expect } from "@playwright/test";
 import { createRecord } from "../../src/model.js";
+import {
+  readEffectiveWorkSession,
+  readEffectiveWorkSessionRaw,
+  workspaceDomainRaw,
+} from "./work-session-support.js";
 
 const KEY = "is-takip-v1";
 const PREFERENCES_KEY = `${KEY}-preferences`;
@@ -108,22 +113,73 @@ const draft = (page) => page.locator("#work-session-note");
 const finish = (page) => page.locator("#work-finish-form");
 const currentEntry = async (page, id = "work-first") =>
   (await currentState(page)).entries.find((entry) => entry.recordId === id);
+async function expectFullSidebarControl(control) {
+  await expect(control).toBeVisible();
+  const geometry = await control.evaluate((element) => {
+    const bounds = [
+      { left: 0, top: 0, right: innerWidth, bottom: innerHeight },
+    ];
+    for (
+      let parent = element.parentElement;
+      parent;
+      parent = parent.parentElement
+    )
+      if (
+        parent.matches(
+          ".sidebar, #sidebar-work-journal, .work-note-area, #work-session-panel, form",
+        )
+      )
+        bounds.push(parent.getBoundingClientRect().toJSON());
+    const caption = [];
+    const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+    while (walker.nextNode()) {
+      if (!walker.currentNode.textContent.trim()) continue;
+      const range = document.createRange();
+      range.selectNodeContents(walker.currentNode);
+      caption.push(...[...range.getClientRects()].map((rect) => rect.toJSON()));
+    }
+    return {
+      box: element.getBoundingClientRect().toJSON(),
+      bounds,
+      content: [
+        ...caption,
+        ...[...element.querySelectorAll("svg")].map((icon) =>
+          icon.getBoundingClientRect().toJSON(),
+        ),
+      ],
+    };
+  });
+  for (const clip of geometry.bounds) {
+    expect(geometry.box.left).toBeGreaterThanOrEqual(clip.left - 1);
+    expect(geometry.box.top).toBeGreaterThanOrEqual(clip.top - 1);
+    expect(geometry.box.right).toBeLessThanOrEqual(clip.right + 1);
+    expect(geometry.box.bottom).toBeLessThanOrEqual(clip.bottom + 1);
+    for (const content of geometry.content) {
+      expect(content.left).toBeGreaterThanOrEqual(clip.left);
+      expect(content.top).toBeGreaterThanOrEqual(clip.top);
+      expect(content.right).toBeLessThanOrEqual(clip.right);
+      expect(content.bottom).toBeLessThanOrEqual(clip.bottom);
+    }
+  }
+}
+
 const noClocks = (page) =>
   expect(
     page.locator(
       "#work-session-time, #sidebar-saved-time, #work-finish-duration",
     ),
   ).toHaveCount(0);
-const currentState = (page) =>
-  page.evaluate((key) => JSON.parse(localStorage.getItem(key)), SESSION_KEY);
-const primaryState = (page) =>
-  page.evaluate(
+const currentState = (page) => readEffectiveWorkSession(page);
+const primaryState = async (page) => {
+  const state = await page.evaluate(
     ({ key, preferencesKey }) => ({
       records: localStorage.getItem(key),
       preferences: localStorage.getItem(preferencesKey),
     }),
     { key: KEY, preferencesKey: PREFERENCES_KEY },
   );
+  return { ...state, records: workspaceDomainRaw(state.records) };
+};
 
 async function start(page, id = "work-first") {
   await workButton(page, id).click();
@@ -350,6 +406,9 @@ test("a legacy running goal session is paused without creating or changing recor
   expect(
     state.entries.find((entry) => entry.recordId === "work-weekly").status,
   ).toBe("paused");
+  expect(
+    await page.evaluate((key) => localStorage.getItem(key), SESSION_KEY),
+  ).toBe(JSON.stringify(legacy));
   await page.clock.fastForward(60_000);
   expect(
     (await currentState(page)).entries.filter(
@@ -437,6 +496,7 @@ test("the sidebar work notepad stays bounded and escapes real text without movin
     { width: 1440, height: 900 },
   ]) {
     await page.setViewportSize(viewport);
+    await page.clock.runFor(32);
     await expect(panel(page)).toBeInViewport({ ratio: 1 });
     expect(
       await page.evaluate(
@@ -457,9 +517,9 @@ test("the sidebar work notepad stays bounded and escapes real text without movin
     ).toBeVisible();
     await expect(draft(page)).toBeInViewport({ ratio: 1 });
     for (const action of ["work-pause", "work-finish"])
-      await expect(
+      await expectFullSidebarControl(
         panel(page).locator(`[data-action="${action}"]`),
-      ).toBeInViewport({ ratio: 1 });
+      );
   }
   await page.screenshot({
     path: testInfo.outputPath("work-session-notepad.png"),
@@ -562,6 +622,9 @@ test("corrupt work-session storage does not overwrite session data or prevent th
   expect(
     await page.evaluate((key) => localStorage.getItem(key), SESSION_KEY),
   ).toBe("broken-work-session-json");
+  expect(await readEffectiveWorkSessionRaw(page)).toBe(
+    "broken-work-session-json",
+  );
   expect(await primaryState(page)).toEqual(saved);
 });
 

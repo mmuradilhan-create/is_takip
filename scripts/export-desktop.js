@@ -55,6 +55,7 @@ Notlar JSON yedeğine dahildir; eski notsuz yedek mevcut notları korur.
 Takip kartlarında konu metni üstteki boş alanı kullanır; durum ve tarih
 alt bölüme yaklaşır. Panel yüksekliği artmadan daha fazla satır okunur.
 Haftalık hedefin durum/teslim tarihi takip kartlarıyla aynı alt hizadadır.
+Durum solda, tarih sağda tek satırda kalır; dar kartta durum düğmesi iki satır olabilir.
 
 Ayarlar içindeki eski Listeler menüsü kaldırıldı; eski kayıt değerleri
 ve yedek uyumluluğu korunur. Bekleme bilgisi penceresinde Enter kaydeder,
@@ -527,11 +528,17 @@ uygula düğmesine bas. Öneriyi görmek veya pencereyi açmak bağlantı kurmaz
 Yalnız işaretlenen kayıtlar değişir; işlem tek Geri al adımıdır. Durum,
 teslim tarihi ve çalışma geçmişi korunur.
 
+Toplantı ayrıntısında bağlı günlük iş ve takipler sayılı kompakt bölümlerdir.
+Oluşturma işlemi başlık hizasındadır; mevcut kayıt yanındaki açma düğmesinden açılır.
+
+Haftalık, aylık ve senelik hedef panellerinin sonunda mevcut Notlar alanı görünür.
+Boşsa bölüm açılmaz; Hedefi düzenle ile düzenlenir.
+
 CALISMAYA BASLA
 
 Filtreler tek satırda kalır. Dar ekranda kendi satırında yatay kaydırılır;
 alt satıra geçmez ve sayfayı genişletmez.
-Sol altta en fazla üç duraklatılmış iş görünür. İş adı notunu açar;
+Sol altta yer olduğu ölçüde en fazla üç duraklatılmış iş görünür. İş adı notunu açar;
 Devam et ayrıca çalışmayı sürdürür. Not okumak çalışan işi durdurmaz.
 Not açılınca kart sabit menünün altındaki boşluktan yukarı doğru yararlanır.
 
@@ -539,24 +546,35 @@ Günlük işin Çalışmaya başla düğmesi sol altta o işe ait Çalışma not
 açar. Çalışırken yazabilirsin; süre sayacı veya saat/dakika girişi yoktur.
 Sol menü sekmeleri sabittir; kaydırılmaz ve adları tek satırda kalır.
 Üst boşluklar ve not alanı ekran yüksekliğine göre sıkışır.
-Duraklat sonuç istemez, taslağı koruyup alanı küçük özete indirir. Notu aç
-notu gösterir. Altta çalışma geçmişi ve toplam kayıt sayısı tek satırdadır.
+Duraklat sonuç istemez, taslağı koruyup alanı küçük özete indirir. Konu adına
+veya kartın boş alanına tıklamak notu gösterir. Kart kaydırılmaz; metin alanı
+kalan yüksekliğe sığar. Çok kısa pencerelerde ek duraklatılmış satırlar azalır.
+Altta çalışma geçmişi ve toplam kayıt sayısı tek satırdadır.
 Devam et aynı nottan
 sürdürür. Başka işe geçmek öncekini duraklatır; geri dönünce notu açılır.
 Kaydedilen taslak yenileme ve pencere kapanışında korunur. Kaydetme hatası
 veya başka pencereyle çakışma metni sessizce silmez; hata gösterilir.
+
+Çalışma kartı etkinken Ctrl+P Duraklat / Devam et, Ctrl+Enter sonuç adımını açar.
+Notun içinde yazıyor olmak gerekmez. Normal notta Enter işlem yapmaz, Shift+Enter alt satırdır.
+Sonuç adımında Enter veya Ctrl+Enter kaydeder; ayrı formların klavye davranışı korunur.
 
 Bitir, aynı not alanında Sonuç adımını açar. Notun hazır gelir; sonuç yazmak
 isteğe bağlıdır. Boşsa çalışma kapanır ve geçmişe kayıt eklenmez. Vazgeçmek
 taslağı korur. Kaydetme hatasında yeniden deneyebilirsin; kayıt çoğalmaz.
 Bitirmek işin durumunu değiştirmez. Kaydedilmiş çalışma tek Geri al adımıdır.
 
+Çalışma geçmişi ve haftalık yapılanlar sağda açılır; kayıt sayıları başlıktadır.
+İş listesi görünür kalır.
 Çalışma geçmişi kayıtları tarih ve sonuçla gösterir. İşin sağındaki geçmiş
 simgesi o işin kayıtlarını, sol alttaki bağlantı haftalık geçmişi açar.
 Tarih ve sonuç düzenlenebilir; eski hassas süreler, sonraki adımlar ve boş
 sonuçlar kayıtta/yedekte aynen korunur. Düzenleme ve silme geri alınabilir.
-Bağımsız Notlar kartı çalışma taslaklarından ayrıdır. Taslaklar bu tarayıcıda
-kalır; JSON yedeğine ancak sonuç bitirilip kaydedildikten sonra dahil olur.
+Bağımsız Notlar kartı çalışma taslaklarından ayrıdır. Bitmemiş, boş olmayan
+çalışma taslakları da JSON yedeğine dahildir. Onayda taslak sayısı gösterilir.
+Yeni taslaklar duraklatılmış geri gelir. Aynı işe ait farklı yerel metin varsa
+yükleme durur. Taslaksız eski yedekler mevcut çalışma notlarını korur.
+Kayıtlar ve taslaklar birlikte tek Geri al adımıyla geri alınır.
 
 Güncel işler başlığının yanında Açık işler / Bugün teslim / Geciken /
 Bugünün odağı düğmeleri vardır.
@@ -618,8 +636,8 @@ açılabilir. Bu işi bitirmek dış yanıtı almak değildir; bekleyen konuyu
 kapatmaz. Konunun takibi, kendi durumu ve tarihleriyle devam eder ve takip
 kuyruğunda kalabilir. Outlook bağlantısı bu sürümde bulunmaz.
 
-Kaydedilen iş günlüğü JSON kayıt yedeğine dahildir. Kaydedilmemiş çalışma notu
-taslağı bu tarayıcıda kalır ve JSON yedeğine dahil edilmez.
+Kaydedilen iş günlüğü ve bitmemiş çalışma notu taslakları JSON kayıt yedeğine
+dahildir. Yedekte bulunmayan işe ait taslak içeri alınmaz.
 
 BU SURUMDEKI KAYIT DUZENLEMESI
 

@@ -101,6 +101,29 @@ export function readWorkSessionSnapshot(raw) {
   return parse(raw);
 }
 
+/** Primary session metadata wins; old secondary context is a read-only fallback. */
+export function readPrimaryWorkSessionRaw(primaryRaw, legacyRaw) {
+  if (primaryRaw !== null) {
+    if (typeof primaryRaw !== "string")
+      throw new Error("Çalışma alanı depolaması geçersiz.");
+    const primary = JSON.parse(primaryRaw);
+    if (!primary || primary.version !== 1 || !Array.isArray(primary.records))
+      throw new Error("Çalışma alanı depolaması geçersiz.");
+    const metadata = primary.odak;
+    if (
+      metadata &&
+      typeof metadata === "object" &&
+      Object.hasOwn(metadata, "workSessions")
+    ) {
+      if (metadata.version !== 1)
+        throw new Error("Çalışma notlarının sürümü desteklenmiyor.");
+      return JSON.stringify(parse(JSON.stringify(metadata.workSessions)));
+    }
+  }
+  parse(legacyRaw);
+  return legacyRaw;
+}
+
 function elapsedAt(entry, at) {
   if (!entry) return 0;
   const added =

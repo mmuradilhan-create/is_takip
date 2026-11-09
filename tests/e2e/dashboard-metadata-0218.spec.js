@@ -256,6 +256,31 @@ const palette = (control) =>
     };
   });
 
+async function expectControlCaption(control, maxLines) {
+  const caption = await control.evaluate((element) => {
+    const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+    const rects = [];
+    const lines = [];
+    while (walker.nextNode()) {
+      if (!walker.currentNode.textContent.trim()) continue;
+      const range = document.createRange();
+      range.selectNodeContents(walker.currentNode);
+      const textRects = [...range.getClientRects()];
+      lines.push(textRects.length);
+      rects.push(...textRects.map((rect) => rect.toJSON()));
+    }
+    return { box: element.getBoundingClientRect().toJSON(), rects, lines };
+  });
+  expect(caption.rects.length).toBeGreaterThan(0);
+  expect(caption.lines.every((lines) => lines <= maxLines)).toBe(true);
+  for (const text of caption.rects) {
+    expect(text.left).toBeGreaterThanOrEqual(caption.box.left);
+    expect(text.right).toBeLessThanOrEqual(caption.box.right);
+    expect(text.top).toBeGreaterThanOrEqual(caption.box.top);
+    expect(text.bottom).toBeLessThanOrEqual(caption.box.bottom);
+  }
+}
+
 test("Dashboard metadata explains follow-up age, offers reversible type-specific status menus and keeps daily connections in compact accessible title icons", async ({
   page,
 }) => {
@@ -782,6 +807,7 @@ test("a child deadline calendar safely retries failed writes and preserves goal 
 test("dense previews keep two shared cards beside independent notes and every goal remains reachable as the panels narrow", async ({
   page,
 }, testInfo) => {
+  test.setTimeout(60_000);
   await seed(page, { dense: true });
   const before = await saved(page);
   await expect(waiting(page).locator(".waiting-age")).toHaveText("0 gün");
@@ -804,11 +830,16 @@ test("dense previews keep two shared cards beside independent notes and every go
     { width: 1280, height: 720 },
     { width: 1280, height: 700 },
     { width: 1200, height: 800 },
+    { width: 1440, height: 900 },
+    { width: 1535, height: 900 },
+    { width: 1536, height: 900 },
     { width: 1536, height: 864 },
     { width: 1920, height: 1080 },
     { width: 375, height: 700 },
     { width: 1536, height: 864, theme: "dark" },
     { width: 1280, height: 700, theme: "dark" },
+    { width: 1440, height: 900, theme: "dark" },
+    { width: 1535, height: 900, theme: "dark" },
   ]) {
     await page.setViewportSize({
       width: viewport.width,
@@ -892,6 +923,15 @@ test("dense previews keep two shared cards beside independent notes and every go
       const title = await item.locator(".followup-title-line").boundingBox();
       const subject = item.locator(".followup-title");
       const subjectBounds = await subject.boundingBox();
+      await expect(subject).toHaveCSS(
+        "font-size",
+        viewport.width >= 1280 &&
+          viewport.height >= 640 &&
+          viewport.height <= 740
+          ? "11px"
+          : "12px",
+      );
+      await expect(subject).toHaveCSS("font-weight", "600");
       const lineHeight = await subject.evaluate((element) =>
         parseFloat(getComputedStyle(element).lineHeight),
       );
@@ -950,6 +990,10 @@ test("dense previews keep two shared cards beside independent notes and every go
       const dateBounds = await item
         .locator('[data-action="edit-next-followup"]')
         .boundingBox();
+      expect(Math.abs(status.y - dateBounds.y)).toBeLessThanOrEqual(1);
+      expect(status.height).toBeCloseTo(28, 0);
+      expect(dateBounds.height).toBeCloseTo(28, 0);
+      expect(status.x + status.width).toBeLessThanOrEqual(dateBounds.x + 1);
       expect(dateBounds.y).toBeGreaterThanOrEqual(title.y + title.height - 1);
       expect(
         Math.abs(status.y - bounds.y - (goalStatus.y - goalBounds.y)),
@@ -974,13 +1018,20 @@ test("dense previews keep two shared cards beside independent notes and every go
           '.status-trigger, [data-action="edit-next-followup"], .followup-fact-label, .waiting-age, .followup-last, .followup-card-actions > button',
         )
         .all()) {
-        const cardAction = await control.evaluate((element) =>
-          element.parentElement.classList.contains("followup-card-actions"),
-        );
-        await expect(control).toHaveCSS(
-          "white-space",
-          cardAction ? "normal" : "nowrap",
-        );
+        const kind = await control.evaluate((element) => ({
+          cardAction: element.parentElement.classList.contains(
+            "followup-card-actions",
+          ),
+          status: element.matches(".status-trigger"),
+          date: element.matches('[data-action="edit-next-followup"]'),
+        }));
+        if (!kind.status)
+          await expect(control).toHaveCSS(
+            "white-space",
+            kind.cardAction ? "normal" : "nowrap",
+          );
+        if (kind.status || kind.date)
+          await expect(control).toHaveCSS("font-size", "10px");
         const box = await control.boundingBox();
         expect(box.x).toBeGreaterThanOrEqual(bounds.x);
         expect(box.x + box.width).toBeLessThanOrEqual(
@@ -997,33 +1048,11 @@ test("dense previews keep two shared cards beside independent notes and every go
               element.scrollHeight <= element.clientHeight + 1,
           ),
         ).toBe(true);
-        if (cardAction) {
+        if (kind.cardAction) {
           expect(box.height).toBe(28);
-          const caption = await control.evaluate((element) => {
-            const box = element.getBoundingClientRect();
-            const walker = document.createTreeWalker(
-              element,
-              NodeFilter.SHOW_TEXT,
-            );
-            const rects = [];
-            while (walker.nextNode()) {
-              if (!walker.currentNode.textContent.trim()) continue;
-              const range = document.createRange();
-              range.selectNodeContents(walker.currentNode);
-              rects.push(
-                ...[...range.getClientRects()].map((rect) => rect.toJSON()),
-              );
-            }
-            return { box: box.toJSON(), rects };
-          });
-          expect(caption.rects.length).toBeGreaterThan(0);
-          for (const text of caption.rects) {
-            expect(text.left).toBeGreaterThanOrEqual(caption.box.left);
-            expect(text.right).toBeLessThanOrEqual(caption.box.right);
-            expect(text.top).toBeGreaterThanOrEqual(caption.box.top);
-            expect(text.bottom).toBeLessThanOrEqual(caption.box.bottom);
-          }
         }
+        if (kind.cardAction || kind.status || kind.date)
+          await expectControlCaption(control, kind.date ? 1 : 2);
       }
     }
     if (viewport.width === 1536 || viewport.width === 1280) {
@@ -1058,7 +1087,15 @@ test("dense previews keep two shared cards beside independent notes and every go
         ),
       ).toBeLessThanOrEqual(1);
       await expect(item.locator(".dashboard-goal-meta-controls")).toBeVisible();
-      await expect(item.locator(".status-trigger")).toHaveCSS(
+      await expect(item.locator(".dashboard-goal-title")).toHaveCSS(
+        "font-size",
+        "12px",
+      );
+      await expect(item.locator(".dashboard-goal-title")).toHaveCSS(
+        "font-weight",
+        "600",
+      );
+      await expect(item.locator('[data-action="edit-date"]')).toHaveCSS(
         "white-space",
         "nowrap",
       );
@@ -1066,15 +1103,10 @@ test("dense previews keep two shared cards beside independent notes and every go
       const dateBox = await item
         .locator('[data-action="edit-date"]')
         .boundingBox();
-      expect(Math.abs(statusBox.height - dateBox.height)).toBeLessThanOrEqual(
-        1,
-      );
-      expect(
-        statusBox.x + statusBox.width <= dateBox.x + 1 ||
-          dateBox.x + dateBox.width <= statusBox.x + 1 ||
-          statusBox.y + statusBox.height <= dateBox.y + 1 ||
-          dateBox.y + dateBox.height <= statusBox.y + 1,
-      ).toBe(true);
+      expect(Math.abs(statusBox.y - dateBox.y)).toBeLessThanOrEqual(1);
+      expect(statusBox.height).toBeCloseTo(28, 0);
+      expect(dateBox.height).toBeCloseTo(28, 0);
+      expect(statusBox.x + statusBox.width).toBeLessThanOrEqual(dateBox.x + 1);
       await expect(item.locator('[role="progressbar"]')).toBeVisible();
       await expect(
         item.locator(".dashboard-goal-meta, .dashboard-goal-linked"),
@@ -1101,6 +1133,14 @@ test("dense previews keep two shared cards beside independent notes and every go
               element.scrollHeight <= element.clientHeight + 1,
           ),
         ).toBe(true);
+        const metadata = await control.evaluate((element) => ({
+          status: element.matches(".status-trigger"),
+          date: element.matches('[data-action="edit-date"]'),
+        }));
+        if (metadata.status || metadata.date) {
+          await expect(control).toHaveCSS("font-size", "10px");
+          await expectControlCaption(control, metadata.date ? 1 : 2);
+        }
         if (viewport.width >= 1100)
           await expect(control).toBeInViewport({ ratio: 1 });
       }

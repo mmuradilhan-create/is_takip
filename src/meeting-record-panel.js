@@ -13,6 +13,8 @@ const esc = (value) =>
   );
 const closeIcon =
   '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>';
+const plusIcon =
+  '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>';
 
 /** Keep the original decision and the real linked work in one read-only panel. */
 export function createMeetingRecordPanel({
@@ -91,7 +93,8 @@ export function createMeetingRecordPanel({
         ? "İş oluştur"
         : "Takip oluştur";
     const date = target && (daily ? target.dueDate : target.nextFollowUpDate);
-    return `<section class="meeting-record-route" data-meeting-route="${type}"><h3>${daily ? "Bağlı iş" : "Takip"}</h3>${target ? `<p class="meeting-record-linked-title">${esc(target.title)}</p><div class="meeting-record-route-facts">${statusMarkup(target)}${date ? `<span>${daily ? "Teslim" : "Sonraki takip"}: <time datetime="${esc(date)}">${esc(formatDate(date))}</time></span>` : ""}</div>` : ""}<button type="button" class="btn small" data-action="meeting-record-route" data-id="${esc(record.id)}" data-route="${type}">${label}</button></section>`;
+    const routeAttributes = `data-action="meeting-record-route" data-id="${esc(record.id)}" data-route="${type}"`;
+    return `<section class="meeting-record-route" data-meeting-route="${type}"><div class="meeting-record-section-heading"><h3>${daily ? "Bağlı günlük iş" : "Bağlı takip"} <small aria-label="${target ? 1 : 0} kayıt">${target ? 1 : 0}</small></h3>${target ? "" : `<button type="button" class="text-btn meeting-record-create" ${routeAttributes}>${plusIcon}<span>${label}</span></button>`}</div>${target ? `<ul class="meeting-record-linked-list"><li class="meeting-record-linked-row"><div class="meeting-record-linked-copy"><p class="meeting-record-linked-title">${esc(target.title)}</p><div class="meeting-record-route-facts">${statusMarkup(target)}${date ? `<span>${daily ? "Teslim" : "Sonraki takip"}: <time datetime="${esc(date)}">${esc(formatDate(date))}</time></span>` : ""}</div></div><button type="button" class="text-btn meeting-record-open" ${routeAttributes}>${label}</button></li></ul>` : `<p class="meeting-record-muted meeting-record-empty">${daily ? "Henüz bağlı günlük iş yok." : "Henüz bağlı takip yok."}</p>`}</section>`;
   }
 
   function render(record, { resetScroll = false } = {}) {

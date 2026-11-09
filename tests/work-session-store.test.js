@@ -4,6 +4,7 @@ import {
   createWorkSessionStore,
   WORK_SESSION_KEY,
   readWorkSessionSnapshot,
+  readPrimaryWorkSessionRaw,
 } from "../src/work-session-store.js";
 
 class MemoryStorage {
@@ -43,6 +44,69 @@ function setup(options = {}) {
   });
   return { store, storage, time, changes, errors };
 }
+
+test("primary session reader validates authority, ignores obsolete fallback and never migrates while reading", () => {
+  const legacy = JSON.stringify({ version: 1, currentId: null, entries: [] });
+  const primarySession = {
+    version: 1,
+    currentId: "daily",
+    entries: [
+      {
+        recordId: "daily",
+        sessionId: "session",
+        status: "paused",
+        elapsedMs: 12345,
+        startedAt: null,
+        ownerId: null,
+        updatedAt: 1000,
+        draftNote: "  Satır\nİkinci  ",
+        trackTime: false,
+      },
+    ],
+  };
+  const primary = JSON.stringify({
+    version: 1,
+    records: [],
+    odak: { version: 1, workSessions: primarySession },
+  });
+  assert.equal(readPrimaryWorkSessionRaw(null, legacy), legacy);
+  assert.equal(
+    readPrimaryWorkSessionRaw(
+      JSON.stringify({ version: 1, records: [] }),
+      legacy,
+    ),
+    legacy,
+  );
+  assert.deepEqual(
+    JSON.parse(readPrimaryWorkSessionRaw(primary, "malformed legacy")),
+    primarySession,
+  );
+  assert.equal(readPrimaryWorkSessionRaw(null, null), null);
+  for (const invalid of [
+    "broken",
+    JSON.stringify({ version: 2, records: [] }),
+    JSON.stringify({
+      version: 1,
+      records: [],
+      odak: {
+        version: 1,
+        workSessions: { version: 1, currentId: "missing", entries: [] },
+      },
+    }),
+    JSON.stringify({
+      version: 1,
+      records: [],
+      odak: { version: 2, workSessions: primarySession },
+    }),
+  ])
+    assert.throws(() => readPrimaryWorkSessionRaw(invalid, legacy));
+  assert.throws(() =>
+    readPrimaryWorkSessionRaw(
+      JSON.stringify({ version: 1, records: [] }),
+      "broken legacy",
+    ),
+  );
+});
 
 test("session initialization and elapsed ticking do not write task data, preferences, history or session storage", () => {
   const { store, storage, time, changes } = setup();

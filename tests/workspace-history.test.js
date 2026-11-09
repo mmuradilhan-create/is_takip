@@ -36,6 +36,94 @@ function freeze(value) {
   return value;
 }
 
+function context(note, sessionId = "work") {
+  return {
+    version: 1,
+    currentId: null,
+    entries:
+      note == null
+        ? []
+        : [
+            {
+              recordId: "daily",
+              sessionId,
+              status: "paused",
+              elapsedMs: 0,
+              startedAt: null,
+              ownerId: null,
+              updatedAt: 1000,
+              trackTime: false,
+              draftNote: note,
+            },
+          ],
+  };
+}
+
+test("draft-only restore history is one detached step with guarded Undo while ordinary signatures ignore live typing", () => {
+  const workspace = state([record("daily")]);
+  const before = context(null);
+  const after = context("  Geri yüklendi\n");
+  const entry = makeHistoryEntry(workspace, workspace, "Taslak yükleme", {
+    sessionChange: { version: 1, before, after },
+  });
+  assert.equal(entry.changes.length, 0);
+  assert.equal(entry.beforeSignature, entry.afterSignature);
+  assert.equal(
+    workspaceSignature({ ...workspace, workSessions: after }),
+    workspaceSignature(workspace),
+  );
+  assert.deepEqual(undoEntry({ ...workspace, workSessions: after }, entry), {
+    ...workspace,
+    workSessions: before,
+  });
+  const changed = context("Sonradan değişti");
+  assert.throws(
+    () => undoEntry({ ...workspace, workSessions: changed }, entry),
+    { name: "WorkDraftConflictError" },
+  );
+  assert.deepEqual(
+    readHistory([entry], { ...workspace, workSessions: changed }),
+    [entry],
+  );
+  after.entries[0].draftNote = "Dışarıdan değiştirildi";
+  assert.equal(
+    entry.sessionChange.after.entries[0].draftNote,
+    "  Geri yüklendi\n",
+  );
+  assert.throws(() =>
+    makeHistoryEntry(workspace, workspace, "Boş", {
+      sessionChange: { version: 1, before, after: before },
+    }),
+  );
+});
+
+test("a valid restore history survives later record changes and typing, while malformed session history is discarded", () => {
+  const before = state([record("daily")]);
+  const after = state([record("daily", { title: "Yüklenen başlık" })]);
+  const sessionsBefore = context("Eski taslak");
+  const sessionsAfter = context("Yeni taslak", "new-work");
+  const restored = makeHistoryEntry(before, after, "Yedek", {
+    sessionChange: { version: 1, before: sessionsBefore, after: sessionsAfter },
+  });
+  const edited = state([record("daily", { title: "Daha yeni başlık" })]);
+  const recordChange = makeHistoryEntry(after, edited, "Düzenleme");
+  const typed = context("Sonradan yazılan metin", "new-work");
+  const history = readHistory([restored, recordChange], {
+    ...edited,
+    workSessions: typed,
+  });
+  assert.equal(history.length, 2);
+  const undone = undoEntry({ ...edited, workSessions: typed }, history[1]);
+  assert.deepEqual(undone.records, after.records);
+  assert.deepEqual(undone.workSessions, typed);
+  assert.throws(() => undoEntry(undone, history[0]), {
+    name: "WorkDraftConflictError",
+  });
+  const malformed = copy(restored);
+  malformed.sessionChange.after.entries[0].status = "unknown";
+  assert.deepEqual(readHistory([malformed], after), []);
+});
+
 function validSteps() {
   const weekly = record("weekly", {
     type: "weekly",

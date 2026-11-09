@@ -534,8 +534,10 @@ test("filters remain one reachable row beside a fixed native sort icon across ev
   const before = await saved(page);
   await view(page, "daily");
   await page.locator("#list-sort").selectOption("created-asc");
-  await page.locator("#list-sort").focus();
-  await page.keyboard.press("ArrowUp");
+  await page.locator(".list-controls-bar .filters select").last().focus();
+  await page.keyboard.press("Tab");
+  await expect(page.locator("#list-sort")).toBeFocused();
+  await page.locator("#list-sort").selectOption("created-desc");
   await expect(page.locator("#list-sort")).toHaveValue("created-desc");
   await page.locator("#list-sort").selectOption("created-asc");
   for (const viewport of [

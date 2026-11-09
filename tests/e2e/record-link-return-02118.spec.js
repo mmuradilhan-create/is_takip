@@ -25,6 +25,15 @@ async function seed(page) {
       targetValue: 10,
       currentValue: 3,
     }),
+    ...Array.from({ length: 8 }, (_, index) =>
+      make({
+        id: `return-month-step-${index + 1}`,
+        type: "weekly",
+        title: `Aylık doğrulama adımı ${index + 1}: teknik kapsamı ve kontrol sonuçlarını değerlendir`,
+        periodKey: "2026-W46",
+        goalParentId: "return-month",
+      }),
+    ),
     make({
       id: "return-meeting",
       type: "meeting",
@@ -174,7 +183,7 @@ test("revealing a covered connection icon under a stationary pointer does not un
   page,
 }) => {
   const original = await seed(page);
-  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.setViewportSize({ width: 1100, height: 720 });
   const control = page.locator(
     '.dashboard-goal-row[data-id="return-week"] .record-parent-link[data-id="return-month"]',
   );
@@ -185,6 +194,11 @@ test("revealing a covered connection icon under a stationary pointer does not un
   await control.click();
   await expect(panel).toBeVisible();
   await expect(panel).toHaveAttribute("data-goal-id", "return-month");
+  expect(
+    await panel
+      .locator(".goal-panel-body")
+      .evaluate((body) => body.scrollHeight > body.clientHeight),
+  ).toBe(true);
   const iconBounds = await control.boundingBox();
   const panelBounds = await panel.boundingBox();
   expect(iconBounds.x + iconBounds.width / 2).toBeGreaterThan(panelBounds.x);

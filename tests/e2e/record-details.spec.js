@@ -152,6 +152,7 @@ test("only proven imported metadata is removed from notes, and a single undo rem
   ).toBe("1");
   await list(page);
   await row(page, generated.id).locator(".task-name").click();
+  await openCreationExtras(page);
   await expect(form(page).locator('[name="description"]')).toHaveValue(
     realNote,
   );
@@ -190,6 +191,7 @@ test("legacy field values survive note edits and new daily work while cancelled 
   await expect(page.locator("#record-choice-menu")).not.toBeVisible();
   await expect(page.locator("#editor img, #editor script")).toHaveCount(0);
   expect(await page.evaluate(() => window.detailsInjected)).toBeUndefined();
+  await openCreationExtras(page);
   await form(page)
     .locator('[name="description"]')
     .fill("Düzenlenen gerçek not.");

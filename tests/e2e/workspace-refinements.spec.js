@@ -1,3 +1,4 @@
+import { readWorkspaceDomainRaw } from "./work-session-support.js";
 import { selectListStatus } from "./list-scope-helper.js";
 import { test, expect } from "@playwright/test";
 import { createRecord } from "../../src/model.js";
@@ -119,7 +120,7 @@ async function seed(page) {
   return records;
 }
 
-const saved = (page) => page.evaluate((key) => localStorage.getItem(key), KEY);
+const saved = (page) => readWorkspaceDomainRaw(page);
 const records = (page) =>
   page.evaluate((key) => JSON.parse(localStorage.getItem(key)).records, KEY);
 const navigate = (page, type) =>
@@ -334,7 +335,10 @@ test("sidebar working notes keep idle compact and inline finish controls bounded
     "Bekleyen konular",
   ];
   const expandedNotes = [];
+  let keyboardOpens = 0;
+  let blankOpens = 0;
   async function navigationGeometry(baseline) {
+    await page.clock.runFor(32);
     const geometry = await page.locator("#nav").evaluate((nav) => {
       const rect = (box) => ({
         x: box.x,
@@ -349,6 +353,19 @@ test("sidebar working notes keep idle compact and inline finish controls bounded
         scrollWidth: nav.scrollWidth,
         scrollTop: nav.scrollTop,
         box: rect(nav.getBoundingClientRect()),
+        outer: [
+          ...document.querySelectorAll(
+            ".sidebar, #sidebar-work-journal, .work-note-area, #work-session-panel, .work-note-form, .work-paused-list",
+          ),
+        ].map((element) => ({
+          name: element.id || element.className,
+          clientHeight: element.clientHeight,
+          scrollHeight: element.scrollHeight,
+          clientWidth: element.clientWidth,
+          scrollWidth: element.scrollWidth,
+          scrollTop: element.scrollTop,
+          scrollLeft: element.scrollLeft,
+        })),
         buttons: [...nav.querySelectorAll("button[data-view]")].map(
           (button) => {
             const node = [...button.childNodes].find(
@@ -376,6 +393,16 @@ test("sidebar working notes keep idle compact and inline finish controls bounded
     );
     expect(geometry.scrollWidth).toBeLessThanOrEqual(geometry.clientWidth + 1);
     expect(geometry.scrollTop).toBe(0);
+    for (const outer of geometry.outer) {
+      expect(outer.scrollHeight, outer.name).toBeLessThanOrEqual(
+        outer.clientHeight + 1,
+      );
+      expect(outer.scrollWidth, outer.name).toBeLessThanOrEqual(
+        outer.clientWidth + 1,
+      );
+      expect(outer.scrollTop, outer.name).toBe(0);
+      expect(outer.scrollLeft, outer.name).toBe(0);
+    }
     expect(geometry.buttons.map((button) => button.label)).toEqual(labels);
     for (const [index, button] of geometry.buttons.entries()) {
       expect(button.box.x).toBeGreaterThanOrEqual(geometry.box.x - 0.5);
@@ -447,7 +474,6 @@ test("sidebar working notes keep idle compact and inline finish controls bounded
     for (const control of await journal
       .locator("#work-session-panel button:visible")
       .all()) {
-      await control.scrollIntoViewIfNeeded();
       const visible = await control.evaluate((button) => {
         const rect = (box) => ({
           left: box.left,
@@ -558,12 +584,12 @@ test("sidebar working notes keep idle compact and inline finish controls bounded
     ).toBeLessThanOrEqual(1);
     expect(await saved(page)).toBe(originalBytes);
   }
-  for (const viewport of [
+  for (const [index, viewport] of [
     { width: 1536, height: 864 },
     { width: 1280, height: 700 },
     { width: 1280, height: 400 },
     { width: 850, height: 480 },
-  ]) {
+  ].entries()) {
     await page.setViewportSize(viewport);
     await navigate(page, "dashboard");
     const baseline = await navigationGeometry();
@@ -572,6 +598,7 @@ test("sidebar working notes keep idle compact and inline finish controls bounded
     expect(idle.height).toBeLessThanOrEqual(110);
     await expect(journal.locator(".sidebar-journal-idle")).toHaveCount(0);
     await focus(page).locator(".work-start").click();
+    await page.clock.runFor(32);
     const active = await journal.boundingBox();
     expect(active.height).toBeGreaterThan(idle.height + 30);
     expect(active.y).toBeLessThan(idle.y);
@@ -597,16 +624,43 @@ test("sidebar working notes keep idle compact and inline finish controls bounded
       "true",
     );
     await expect(workingNote).toHaveValue(result);
+    await page.clock.runFor(32);
     const compact = await journal.boundingBox();
     expect(compact.height).toBeLessThan(active.height);
     expect(active.y).toBeLessThan(compact.y);
-    const expand = await journal.locator("#work-note-expand").boundingBox();
-    const compactPanel = await journal
-      .locator("#work-session-panel")
-      .boundingBox();
-    expect(expand.width).toBeLessThan(compactPanel.width / 2);
+    await expect(journal.locator("#work-note-expand")).toHaveCount(0);
+    const opener = journal.locator(
+      '#work-session-title[data-action="work-note-open"]',
+    );
+    await expect(opener).toHaveAttribute("aria-expanded", "false");
+    await expect(opener).toHaveAttribute("aria-controls", "work-session-note");
     await noteControls(journal, workingNote, baseline, false);
-    await journal.locator("#work-note-expand").click();
+    const blank = await journal
+      .locator("#work-session-panel")
+      .evaluate((panel) => {
+        const box = panel.getBoundingClientRect();
+        for (let y = box.top + 2; y < box.bottom - 2; y += 3)
+          for (let x = box.left + 2; x < box.right - 2; x += 8) {
+            const target = document.elementFromPoint(x, y);
+            if (
+              target &&
+              panel.contains(target) &&
+              !target.closest(
+                'button, a, input, select, textarea, label, summary, [role="button"], [role="link"], [contenteditable]',
+              )
+            )
+              return { x, y };
+          }
+        return null;
+      });
+    if (index % 2 && blank) {
+      await page.mouse.click(blank.x, blank.y);
+      blankOpens++;
+    } else {
+      await opener.focus();
+      await page.keyboard.press("Enter");
+      keyboardOpens++;
+    }
     await expect(journal.locator("#work-session-panel")).toHaveAttribute(
       "data-collapsed",
       "false",
@@ -614,6 +668,15 @@ test("sidebar working notes keep idle compact and inline finish controls bounded
     await expect(journal.locator("#work-session-panel")).toHaveAttribute(
       "data-phase",
       "paused",
+    );
+    await expect(page.locator("#editor")).not.toBeVisible();
+    await expect(journal.locator("#work-session-title")).toHaveAttribute(
+      "data-action",
+      "work-note-open",
+    );
+    await expect(journal.locator("#work-session-title")).toHaveAttribute(
+      "aria-expanded",
+      "true",
     );
     await noteControls(journal, workingNote, baseline);
     await journal.locator('[data-action="work-resume"]').click();
@@ -665,4 +728,6 @@ test("sidebar working notes keep idle compact and inline finish controls bounded
   ).toBeGreaterThan(
     expandedNotes.find((note) => note.viewportHeight === 700).height,
   );
+  expect(keyboardOpens).toBeGreaterThan(0);
+  expect(blankOpens).toBeGreaterThan(0);
 });

@@ -1,3 +1,4 @@
+import { readWorkspaceDomainRaw } from "./work-session-support.js";
 import { test, expect } from "@playwright/test";
 import { createRecord } from "../../src/model.js";
 import { openCreationExtras } from "./creation-support.js";
@@ -7,7 +8,7 @@ const NOW = new Date("2026-11-07T12:00:00.000Z");
 const STAMP = "2026-11-01T09:00:00.000Z";
 const make = (input) =>
   createRecord({ createdAt: STAMP, updatedAt: STAMP, ...input });
-const saved = (page) => page.evaluate((key) => localStorage.getItem(key), KEY);
+const saved = (page) => readWorkspaceDomainRaw(page);
 const records = async (page) => JSON.parse(await saved(page)).records;
 const waitingRow = (page) =>
   page.locator('.waiting-table tbody > tr[data-id="regression-waiting"]');

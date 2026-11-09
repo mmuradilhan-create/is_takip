@@ -1,5 +1,10 @@
 import { test, expect } from "@playwright/test";
 import { createRecord } from "../../src/model.js";
+import {
+  readEffectiveWorkSessionRaw,
+  readWorkspaceDomainRaw,
+  sessionAwareStorageHooks,
+} from "./work-session-support.js";
 
 const KEY = "is-takip-v1";
 const SESSION = `${KEY}-work-session`;
@@ -10,14 +15,17 @@ const ACTIVE_TITLE =
 const journal = (page) => page.locator("#sidebar-work-journal");
 const panel = (page) => page.locator("#work-session-panel");
 const note = (page) => page.locator("#work-session-note");
-const rows = (page) => page.locator("#work-paused-list > .work-paused-row");
+const rows = (page) =>
+  page.locator("#work-paused-list > .work-paused-row:visible");
 const row = (page, id) =>
   rows(page).filter({
     has: page.locator(`[data-action="work-paused-open"][data-id="${id}"]`),
   });
 const action = (page, name) => journal(page).locator(`[data-action="${name}"]`);
 const saved = (page, key = KEY) =>
-  page.evaluate((key) => localStorage.getItem(key), key);
+  key === SESSION
+    ? readEffectiveWorkSessionRaw(page)
+    : readWorkspaceDomainRaw(page);
 const session = async (page) => JSON.parse(await saved(page, SESSION));
 const entry = async (page, id) =>
   (await session(page)).entries.find((item) => item.recordId === id);
@@ -146,21 +154,6 @@ async function seed(page, context) {
         localStorage.setItem(key, raw);
         localStorage.setItem(sessionKey, sessionRaw);
       }
-      window.pausedQuota = false;
-      window.pausedPrimaryWrites = 0;
-      const set = Storage.prototype.setItem;
-      Storage.prototype.setItem = function (name, value) {
-        if (
-          this === window.localStorage &&
-          name === sessionKey &&
-          window.pausedQuota
-        )
-          throw new DOMException("Test depolaması dolu", "QuotaExceededError");
-        const result = set.call(this, name, value);
-        if (this === window.localStorage && name === key)
-          window.pausedPrimaryWrites++;
-        return result;
-      };
     },
     {
       key: KEY,
@@ -169,9 +162,15 @@ async function seed(page, context) {
       sessionRaw: JSON.stringify(data.context),
     },
   );
+  await context.addInitScript(sessionAwareStorageHooks, {
+    baselineRaw: raw,
+    sessionQuotaFlag: "pausedQuota",
+    domainWriteCounter: "pausedPrimaryWrites",
+  });
   await page.goto("/");
   await page.locator('#nav [data-view="daily"]').click();
   await expect(panel(page)).toHaveAttribute("data-phase", "running");
+  await page.clock.runFor(32);
   await expect
     .poll(() => rowIds(page))
     .toEqual(["paused-4", "paused-3", "paused-2"]);
@@ -191,12 +190,80 @@ async function choose(page, id, keyboard = false) {
   );
   await expect(panel(page)).toHaveAttribute("data-phase", "paused");
   await expect(note(page)).toBeFocused();
+  await page.clock.runFor(32);
 }
 
 async function unchangedPrimary(page, raw) {
   expect(await saved(page)).toBe(raw);
   expect(await page.evaluate(() => window.pausedPrimaryWrites)).toBe(0);
 }
+
+async function noCardScroll(page) {
+  const geometry = await page.evaluate(() =>
+    [
+      ".sidebar",
+      "#nav",
+      "#sidebar-work-journal",
+      ".work-note-area",
+      "#work-session-panel",
+      "#work-session-panel form",
+      "#work-paused-list",
+    ].flatMap((selector) => {
+      const element = document.querySelector(selector);
+      if (!element || !element.getClientRects().length) return [];
+      return [
+        {
+          selector,
+          height: element.clientHeight,
+          contentHeight: element.scrollHeight,
+          width: element.clientWidth,
+          contentWidth: element.scrollWidth,
+          top: element.scrollTop,
+          left: element.scrollLeft,
+        },
+      ];
+    }),
+  );
+  for (const box of geometry) {
+    expect(box.contentHeight, box.selector).toBeLessThanOrEqual(box.height + 1);
+    expect(box.contentWidth, box.selector).toBeLessThanOrEqual(box.width + 1);
+    expect(box.top, box.selector).toBe(0);
+    expect(box.left, box.selector).toBe(0);
+  }
+  for (const pausedRow of await rows(page).all()) {
+    await expect(pausedRow).toBeInViewport({ ratio: 1 });
+    await expect(
+      pausedRow.locator('[data-action="work-paused-open"]'),
+    ).toBeInViewport({ ratio: 1 });
+    await expect(
+      pausedRow.locator('[data-action="work-paused-resume"]'),
+    ).toBeInViewport({ ratio: 1 });
+  }
+  for (const control of await panel(page)
+    .locator("button:visible, textarea:visible")
+    .all())
+    await expect(control).toBeInViewport({ ratio: 1 });
+}
+
+const navRects = (page) =>
+  page.locator("#nav [data-view]").evaluateAll((nodes) =>
+    nodes.map((element) => {
+      const rect = element.getBoundingClientRect();
+      return {
+        id: element.dataset.view,
+        x: rect.x,
+        y: rect.y,
+        width: rect.width,
+        height: rect.height,
+      };
+    }),
+  );
+const documentPosition = (page) =>
+  page.evaluate(() => ({
+    x: scrollX,
+    y: scrollY,
+    nav: document.querySelector("#nav").scrollTop,
+  }));
 
 test("only the latest three eligible paused notes are shown and selecting one never resumes or duplicates it before an explicit resume", async ({
   page,
@@ -207,6 +274,7 @@ test("only the latest three eligible paused notes are shown and selecting one ne
   const before = await saved(page, SESSION);
   const beforeEntries = (await session(page)).entries;
   await expect(rows(page)).toHaveCount(3);
+  await noCardScroll(page);
   for (const pausedRow of await rows(page).all()) {
     await expect(pausedRow).toBeInViewport({ ratio: 1 });
     const title = pausedRow.locator('[data-action="work-paused-open"]');
@@ -226,9 +294,11 @@ test("only the latest three eligible paused notes are shown and selecting one ne
   await expect(note(page)).toHaveAccessibleName("Çalışma notu");
   await expect(page.locator("#work-session-note-label")).toBeHidden();
   await page.setViewportSize({ width: 1536, height: 864 });
+  await page.clock.runFor(32);
   await choose(page, "paused-4");
   await expect(note(page)).toHaveValue("4. duraklatılmış işin ayrı notu");
   await expect(rows(page)).toHaveCount(2);
+  await noCardScroll(page);
   expect(await rowIds(page)).toEqual(["paused-3", "paused-2"]);
   for (const pausedRow of await rows(page).all()) {
     await expect(pausedRow).toBeInViewport({ ratio: 1 });
@@ -246,6 +316,7 @@ test("only the latest three eligible paused notes are shown and selecting one ne
   await action(page, "work-running-open").click();
   await expect(note(page)).toHaveValue("Aktif işin korunacak notu");
   await expect(panel(page)).toHaveAttribute("data-phase", "running");
+  await page.clock.runFor(32);
   expect(await rowIds(page)).toEqual(["paused-4", "paused-3", "paused-2"]);
   expect(await saved(page, SESSION)).toBe(before);
   await choose(page, "paused-3", true);
@@ -260,6 +331,8 @@ test("only the latest three eligible paused notes are shown and selecting one ne
   );
   await expect(note(page)).toBeFocused();
   await expect(note(page)).toHaveValue("4. duraklatılmış işin ayrı notu");
+  await page.clock.runFor(32);
+  await noCardScroll(page);
   const resumed = await session(page);
   const selected = resumed.entries.find((item) => item.recordId === "paused-4");
   expect(selected).toMatchObject({
@@ -293,21 +366,137 @@ test("only the latest three eligible paused notes are shown and selecting one ne
     ),
   );
   expect(await rowIds(page)).toEqual(["paused-active", "paused-3", "paused-2"]);
-  await action(page, "work-pause").click();
-  await expect(panel(page)).toHaveAttribute("data-collapsed", "true");
+  await note(page).evaluate((textarea) =>
+    textarea.setSelectionRange(textarea.value.length, textarea.value.length),
+  );
+  const beforeDraftEnter = await saved(page, SESSION);
+  await note(page).press("Enter");
   await expect(note(page)).toHaveValue("4. duraklatılmış işin ayrı notu");
+  await expect(note(page)).toBeFocused();
+  expect(await saved(page, SESSION)).toBe(beforeDraftEnter);
+  await note(page).press("Shift+Enter");
+  let multiline = "4. duraklatılmış işin ayrı notu\n";
+  await expect(note(page)).toHaveValue(multiline);
+  await expect(panel(page)).toHaveAttribute("data-phase", "running");
+  await expect
+    .poll(async () => (await entry(page, "paused-4")).draftNote)
+    .toBe(multiline);
+  const beforeIgnoredKeys = await saved(page, SESSION);
+  for (const ignored of [
+    { altKey: true },
+    { metaKey: true },
+    { shiftKey: true },
+    { repeat: true },
+    { isComposing: true },
+    { keyCode: 229 },
+  ]) {
+    await page.locator("html").dispatchEvent("keydown", {
+      key: "p",
+      code: "KeyP",
+      ctrlKey: true,
+      ...ignored,
+    });
+    await expect(panel(page)).toHaveAttribute("data-phase", "running");
+    await expect(note(page)).toHaveValue(multiline);
+    expect(await saved(page, SESSION)).toBe(beforeIgnoredKeys);
+  }
+  await page.evaluate(() => {
+    window.pausedQuota = true;
+  });
+  multiline += "Enter ile yeniden kaydedilecek yerel taslak";
+  await note(page).fill(multiline);
+  await expect(action(page, "work-draft-retry")).toBeVisible();
+  await note(page).press("Enter");
+  await expect(note(page)).toHaveValue(multiline);
+  await expect(note(page)).toBeFocused();
+  await expect(panel(page)).toHaveAttribute("data-phase", "running");
+  expect(await saved(page, SESSION)).toBe(beforeIgnoredKeys);
+  await page.evaluate(() => {
+    window.pausedQuota = false;
+  });
+  await note(page).press("Enter");
+  await expect(note(page)).toHaveValue(multiline);
+  expect(await saved(page, SESSION)).toBe(beforeIgnoredKeys);
+  await expect(action(page, "work-draft-retry")).toBeVisible();
+  await action(page, "work-draft-retry").click();
+  await expect
+    .poll(async () => (await entry(page, "paused-4")).draftNote)
+    .toBe(multiline);
+  await expect(action(page, "work-draft-retry")).toBeHidden();
+  await expect(panel(page)).toHaveAttribute("data-phase", "running");
+  const outsideNote = page.locator('#nav [data-view="daily"]');
+  await outsideNote.focus();
+  await page.keyboard.press("Control+p");
+  await expect(panel(page)).toHaveAttribute("data-collapsed", "true");
+  await page.clock.runFor(32);
+  await noCardScroll(page);
+  await expect(note(page)).toHaveValue(multiline);
   expect(await rowIds(page)).toEqual(["paused-active", "paused-3"]);
   await expect(page.locator("#work-running-summary")).toBeHidden();
   expect(
     (await session(page)).entries.filter((item) => item.status === "running"),
   ).toHaveLength(0);
+  await action(page, "work-resume").focus();
+  await page.keyboard.press("Enter");
+  await expect(panel(page)).toHaveAttribute("data-phase", "running");
+  await expect(note(page)).toBeFocused();
+  await outsideNote.focus();
+  await page.keyboard.press("Control+p");
+  await expect(panel(page)).toHaveAttribute("data-collapsed", "true");
+  const beforeTitleOpen = await saved(page, SESSION);
+  await page.locator("#work-session-title").focus();
+  await page.keyboard.press("Enter");
+  await expect(panel(page)).toHaveAttribute("data-collapsed", "false");
+  await expect(note(page)).toBeFocused();
+  await expect(page.locator("#editor")).not.toBeVisible();
+  expect(await saved(page, SESSION)).toBe(beforeTitleOpen);
+  await outsideNote.focus();
+  await page.keyboard.press("Control+p");
+  await expect(panel(page)).toHaveAttribute("data-phase", "running");
+  await expect(note(page)).toHaveValue(multiline);
+  await page.clock.runFor(32);
+  await noCardScroll(page);
+
+  const beforeForeignForm = await saved(page, SESSION);
+  await page
+    .locator('.full-table [data-action="edit"][data-id="paused-1"]')
+    .first()
+    .click();
+  await expect(page.locator("#editor")).toBeVisible();
+  await page.keyboard.press("Control+p");
+  expect(await saved(page, SESSION)).toBe(beforeForeignForm);
+  await expect(panel(page)).toHaveAttribute("data-mode", "note");
+  await page.keyboard.press("Control+Enter");
+  await expect(page.locator("#editor")).toBeVisible();
+  expect(await saved(page, SESSION)).toBe(beforeForeignForm);
+  await page.keyboard.press("Escape");
+  await expect(page.locator("#editor")).not.toBeVisible();
+  expect(await saved(page, SESSION)).toBe(beforeForeignForm);
+  await expect(panel(page)).toHaveAttribute("data-mode", "note");
+  await unchangedPrimary(page, raw);
+  await outsideNote.focus();
+  await page.keyboard.press("Control+Enter");
+  await expect(panel(page)).toHaveAttribute("data-mode", "finish");
+  await expect(page.locator("#work-finish-form")).toBeVisible();
+  await expect(note(page)).toHaveValue(multiline);
+  await note(page).fill(" \n ");
+  await note(page).press("Control+Enter");
+  await expect
+    .poll(async () => (await entry(page, "paused-4")).status)
+    .toBe("finished");
+  expect(
+    (await session(page)).entries.filter(
+      (item) => item.sessionId === selected.sessionId,
+    ),
+  ).toHaveLength(1);
   await unchangedPrimary(page, raw);
 });
 
-test("failed drafts block paused-note switching and scrolled keyboard selection reveals the right persistent editor without moving fixed navigation", async ({
+test("failed drafts block paused-note switching and keyboard selection keeps the persistent editor visible without card or navigation scrolling", async ({
   page,
   context,
 }) => {
+  await page.setViewportSize({ width: 1536, height: 864 });
   const { raw } = await seed(page, context);
   const before = await saved(page, SESSION);
   await page.evaluate(() => {
@@ -334,113 +523,82 @@ test("failed drafts block paused-note switching and scrolled keyboard selection 
     .poll(async () => (await entry(page, "paused-active")).draftNote)
     .toBe("Kaydedilemeyen aktif notun kaybolmayacak yerel metni");
   const active = await entry(page, "paused-active");
-  let text = (await entry(page, "paused-2")).draftNote;
-  for (const viewport of [
-    { width: 1536, height: 864 },
-    { width: 1280, height: 400 },
-  ]) {
-    await page.setViewportSize(viewport);
-    if (
-      (await page.locator("#work-session-title").getAttribute("data-id")) !==
-      "paused-active"
-    )
-      await action(page, "work-running-open").click();
-    const navBefore = await page
-      .locator("#nav [data-view]")
-      .evaluateAll((nodes) =>
-        nodes.map((element) => {
-          const rect = element.getBoundingClientRect();
-          return {
-            id: element.dataset.view,
-            x: rect.x,
-            y: rect.y,
-            width: rect.width,
-            height: rect.height,
-          };
-        }),
-      );
-    const position = await page.evaluate(() => ({
-      x: scrollX,
-      y: scrollY,
-      nav: document.querySelector("#nav").scrollTop,
-    }));
-    const area = journal(page).locator(".work-note-area");
-    await area.evaluate((element) => {
-      element.scrollTop = element.scrollHeight;
-    });
-    const button = row(page, "paused-2").locator(
-      '[data-action="work-paused-open"]',
-    );
-    await button.scrollIntoViewIfNeeded();
-    if (viewport.height === 400)
-      expect(
-        await area.evaluate((element) => element.scrollTop),
-      ).toBeGreaterThan(0);
-    await button.focus();
-    await page.keyboard.press("Enter");
-    await expect(page.locator("#work-session-title")).toHaveAttribute(
-      "data-id",
-      "paused-2",
-    );
-    await expect(note(page)).toBeFocused();
-    await expect(note(page)).toBeInViewport({ ratio: 1 });
-    await expect(note(page)).toHaveValue(text);
-    await expect(page.locator("#work-session-note-label")).toBeHidden();
-    await expect(note(page)).toHaveAccessibleName("Çalışma notu");
-    await note(page).evaluate((textarea) => {
-      window.pausedTextarea = textarea;
-      textarea.setSelectionRange(3, 3);
-    });
-    await note(page).pressSequentially("X");
-    text = `${text.slice(0, 3)}X${text.slice(3)}`;
-    await expect
-      .poll(async () => (await entry(page, "paused-2")).draftNote)
-      .toBe(text);
-    await context.clock.runFor(1000);
-    expect(
-      await note(page).evaluate(
-        (textarea) => textarea === window.pausedTextarea,
-      ),
-    ).toBe(true);
-    expect(
-      await note(page).evaluate((textarea) => [
-        textarea.selectionStart,
-        textarea.selectionEnd,
-      ]),
-    ).toEqual([4, 4]);
-    expect((await entry(page, "paused-2")).status).toBe("paused");
-    expect((await session(page)).currentId).toBe("paused-active");
-    expect(await entry(page, "paused-active")).toEqual(active);
-    expect(await rowIds(page)).toEqual(["paused-4", "paused-3"]);
-    const navAfter = await page
-      .locator("#nav [data-view]")
-      .evaluateAll((nodes) =>
-        nodes.map((element) => {
-          const rect = element.getBoundingClientRect();
-          return {
-            id: element.dataset.view,
-            x: rect.x,
-            y: rect.y,
-            width: rect.width,
-            height: rect.height,
-          };
-        }),
-      );
-    expect(navAfter).toEqual(navBefore);
-    expect(
-      await page.evaluate(() => ({
-        x: scrollX,
-        y: scrollY,
-        nav: document.querySelector("#nav").scrollTop,
-      })),
-    ).toEqual(position);
-    expect(
-      await page
-        .locator("#nav")
-        .evaluate(
-          (element) => element.scrollHeight <= element.clientHeight + 1,
-        ),
-    ).toBe(true);
-    await unchangedPrimary(page, raw);
-  }
+  const initialText = (await entry(page, "paused-2")).draftNote;
+  const wideNav = await navRects(page);
+  const position = await documentPosition(page);
+  await choose(page, "paused-2", true);
+  await expect(note(page)).toBeInViewport({ ratio: 1 });
+  await expect(note(page)).toHaveValue(initialText);
+  await expect(page.locator("#work-session-note-label")).toBeHidden();
+  await expect(note(page)).toHaveAccessibleName("Çalışma notu");
+  await note(page).evaluate((textarea) => {
+    window.pausedTextarea = textarea;
+    textarea.setSelectionRange(3, 3);
+  });
+  await note(page).pressSequentially("X");
+  const editedText = `${initialText.slice(0, 3)}X${initialText.slice(3)}`;
+  await expect
+    .poll(async () => (await entry(page, "paused-2")).draftNote)
+    .toBe(editedText);
+  await context.clock.runFor(1000);
+  expect(
+    await note(page).evaluate((textarea) => textarea === window.pausedTextarea),
+  ).toBe(true);
+  expect(
+    await note(page).evaluate((textarea) => [
+      textarea.selectionStart,
+      textarea.selectionEnd,
+    ]),
+  ).toEqual([4, 4]);
+  expect(await rowIds(page)).toEqual(["paused-4", "paused-3"]);
+  expect(await navRects(page)).toEqual(wideNav);
+  expect(await documentPosition(page)).toEqual(position);
+  await noCardScroll(page);
+
+  const longText = Array.from(
+    { length: 80 },
+    (_, index) => `${index + 1}. satır: ${editedText}`,
+  ).join("\n");
+  await note(page).fill(longText);
+  await expect
+    .poll(async () => (await entry(page, "paused-2")).draftNote)
+    .toBe(longText);
+  await note(page).evaluate((textarea) => {
+    textarea.setSelectionRange(7, 7);
+    textarea.scrollTop = textarea.scrollHeight;
+  });
+  await page.setViewportSize({ width: 1280, height: 400 });
+  await context.clock.runFor(32);
+  const shortNav = await navRects(page);
+  await expect(note(page)).toBeFocused();
+  await expect(note(page)).toBeInViewport({ ratio: 1 });
+  await expect(note(page)).toHaveValue(longText);
+  expect(
+    await note(page).evaluate((textarea) => textarea === window.pausedTextarea),
+  ).toBe(true);
+  expect(
+    await note(page).evaluate((textarea) => [
+      textarea.selectionStart,
+      textarea.selectionEnd,
+    ]),
+  ).toEqual([7, 7]);
+  expect(await rows(page).count()).toBeLessThanOrEqual(2);
+  await noCardScroll(page);
+  await note(page).evaluate((textarea) => {
+    textarea.scrollTop = textarea.scrollHeight;
+  });
+  const textareaScroll = await note(page).evaluate((textarea) => ({
+    top: textarea.scrollTop,
+    content: textarea.scrollHeight,
+    height: textarea.clientHeight,
+  }));
+  expect(textareaScroll.content).toBeGreaterThan(textareaScroll.height);
+  expect(textareaScroll.top).toBeGreaterThan(0);
+  expect(await navRects(page)).toEqual(shortNav);
+  expect(await documentPosition(page)).toEqual(position);
+  await noCardScroll(page);
+  expect((await entry(page, "paused-2")).status).toBe("paused");
+  expect((await session(page)).currentId).toBe("paused-active");
+  expect(await entry(page, "paused-active")).toEqual(active);
+  await unchangedPrimary(page, raw);
 });

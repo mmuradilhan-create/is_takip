@@ -117,7 +117,7 @@ test("completion is left of the title and work start is at the far right of both
   expect(await readRecords(page)).toEqual(records);
 });
 
-test("quick status menus omit terminal completion and closed records can still be reopened", async ({
+test("quick status menus follow each type's completion rules and closed records can still be reopened", async ({
   page,
 }) => {
   const records = await seed(page);
@@ -127,11 +127,16 @@ test("quick status menus omit terminal completion and closed records can still b
     await item.locator(".status-trigger").click();
     await expect(
       page.locator('#status-menu [data-status="completed"]'),
-    ).toHaveCount(0);
+    ).toHaveCount(type === "meeting" ? 1 : 0);
+    if (type === "meeting") {
+      await expect(page.locator("#status-menu .status-option")).toHaveText([
+        "Planlanacak",
+        "Açık",
+        "Kapandı",
+      ]);
+    }
     await expect(
-      page.locator(
-        `#status-menu [data-status="${type === "meeting" ? "planned" : "in_progress"}"]`,
-      ),
+      page.locator('#status-menu [data-status="in_progress"]'),
     ).toHaveAttribute("aria-checked", "true");
     await page.keyboard.press("Escape");
     if (type === "meeting") {
@@ -152,18 +157,15 @@ test("quick status menus omit terminal completion and closed records can still b
     await selectListStatus(page, "completed");
     if (type === "meeting") {
       await expect(item.locator(".completion-mark")).toHaveCount(0);
-      await expect(item.locator(".meeting-archive-control")).toBeVisible();
+      await expect(item.locator(".status-trigger")).toHaveText("Kapandı");
+      await expect(item.locator(".meeting-archive-control")).toHaveCount(0);
     } else {
       await expect(
         item.locator(".task-title-cell > .completion-mark.is-completed"),
       ).toBeVisible();
     }
     await expect(item.locator(".quick-complete")).toHaveCount(0);
-    await item
-      .locator(
-        type === "meeting" ? ".meeting-archive-control" : ".status-trigger",
-      )
-      .click();
+    await item.locator(".status-trigger").click();
     await page.locator('#status-menu [data-status="planned"]').click();
     expect((await readRecords(page)).find((r) => r.type === type).status).toBe(
       "planned",
@@ -297,6 +299,7 @@ test("monthly and yearly plans share detail and child actions while preserving m
       .click();
     await expect(form.locator('[name="id"]')).toHaveValue(`arrange-${type}`);
     await expect(form.locator('[name="type"]')).toHaveValue(type);
+    await openCreationExtras(page);
     await form
       .locator('[name="description"]')
       .fill(`${original.description} Yenilenen not.`);

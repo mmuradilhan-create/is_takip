@@ -33,6 +33,8 @@ const peerMessage =
 export function createWorkSessionUI({
   root = document.querySelector("#app"),
   getRecords,
+  sessionStorage = null,
+  workspaceStorageKey = null,
   onCompleteSession,
   onHistory = () => {},
   onRunningChange = () => {},
@@ -49,7 +51,7 @@ export function createWorkSessionUI({
   journal.id = "sidebar-work-journal";
   journal.className = "sidebar-work-journal";
   journal.setAttribute("aria-label", "Çalışma notu ve geçmişi");
-  journal.innerHTML = `<div class="sidebar-journal-heading"><h2>${notesIcon}Çalışma notu</h2><span class="sidebar-journal-phase" hidden></span></div><section id="work-session-panel" class="work-session-panel" aria-label="Çalışma notu" hidden><form id="work-note-form" class="work-note-form" novalidate><button type="button" class="work-session-task-link" id="work-session-title" data-action="edit"></button><button type="button" id="work-note-expand" data-action="work-note-toggle" aria-controls="work-session-note" aria-expanded="false" hidden>Notu aç</button><div id="work-finish-summary" class="work-note-date" hidden><span>Sonuç kaydı</span><time id="work-finish-date"></time></div><label class="work-note-field"><span id="work-session-note-label">Çalışma notu</span><textarea id="work-session-note" name="resultNote" rows="5" maxlength="10000" aria-describedby="work-note-error work-finish-error" placeholder="Çalışırken notlarını buraya yaz…"></textarea></label><p id="work-note-error" class="work-note-error" role="alert" hidden></p><div id="work-note-conflict" class="work-note-conflict" hidden><details><summary>Diğer penceredeki not</summary><p id="work-note-peer"></p></details><div class="work-note-resolution"><button type="button" data-action="work-draft-use-current">Güncel notu yükle</button><button type="button" data-action="work-draft-save-local">Bu notu kaydet</button></div></div><button type="button" class="work-note-retry" data-action="work-draft-retry" hidden>Yeniden dene</button><p id="work-finish-error" class="work-note-error" role="alert" hidden></p><div id="work-note-controls" class="work-session-controls"><button type="button" class="work-session-toggle" data-action="work-pause">${pauseIcon}<span>Duraklat</span></button><button type="button" class="work-session-finish" data-action="work-finish" aria-label="Oturumu bitir">${stopIcon}<span>Bitir</span></button></div><div id="work-finish-controls" class="work-session-controls work-finish-controls" hidden><button type="button" data-action="work-finish-cancel">Vazgeç</button><button type="submit" class="work-note-save">Kaydet ve bitir</button></div></form></section><div class="sidebar-journal-footer"><button type="button" class="sidebar-journal-history" data-action="work-session-history">Çalışma geçmişi</button><small id="sidebar-saved-count" title="Toplam kaydedilmiş çalışma sayısı">0 kayıt</small></div>`;
+  journal.innerHTML = `<div class="sidebar-journal-heading"><h2>${notesIcon}Çalışma notu</h2><span class="sidebar-journal-phase" hidden></span></div><section id="work-session-panel" class="work-session-panel" aria-label="Çalışma notu" hidden><form id="work-note-form" class="work-note-form" novalidate><button type="button" class="work-session-task-link" id="work-session-title" data-action="edit"></button><div id="work-finish-summary" class="work-note-date" hidden><span>Sonuç kaydı</span><time id="work-finish-date"></time></div><label class="work-note-field"><span id="work-session-note-label">Çalışma notu</span><textarea id="work-session-note" name="resultNote" rows="5" maxlength="10000" aria-describedby="work-note-error work-finish-error" placeholder="Çalışırken notlarını buraya yaz…"></textarea></label><p id="work-note-error" class="work-note-error" role="alert" hidden></p><div id="work-note-conflict" class="work-note-conflict" hidden><details><summary>Diğer penceredeki not</summary><p id="work-note-peer"></p></details><div class="work-note-resolution"><button type="button" data-action="work-draft-use-current">Güncel notu yükle</button><button type="button" data-action="work-draft-save-local">Bu notu kaydet</button></div></div><button type="button" class="work-note-retry" data-action="work-draft-retry" hidden>Yeniden dene</button><p id="work-finish-error" class="work-note-error" role="alert" hidden></p><div id="work-note-controls" class="work-session-controls"><button type="button" class="work-session-toggle" data-action="work-pause">${pauseIcon}<span>Duraklat</span></button><button type="button" class="work-session-finish" data-action="work-finish" aria-label="Oturumu bitir">${stopIcon}<span>Bitir</span></button></div><div id="work-finish-controls" class="work-session-controls work-finish-controls" hidden><button type="button" data-action="work-finish-cancel">Vazgeç</button><button type="submit" class="work-note-save">Kaydet ve bitir</button></div></form></section><div class="sidebar-journal-footer"><button type="button" class="sidebar-journal-history" data-action="work-session-history">Çalışma geçmişi</button><small id="sidebar-saved-count" title="Toplam kaydedilmiş çalışma sayısı">0 kayıt</small></div>`;
   sidebar.append(journal);
   sidebar.classList.add("has-work-journal");
   const panel = journal.querySelector("#work-session-panel");
@@ -73,11 +75,6 @@ export function createWorkSessionUI({
   const pausedRows = new Map();
   const form = panel.querySelector("form");
   const note = panel.querySelector("#work-session-note");
-  const contextHint = document.createElement("p");
-  contextHint.id = "work-note-context";
-  contextHint.className = "work-note-help";
-  contextHint.hidden = true;
-  panel.querySelector("#work-note-controls").before(contextHint);
   const forkButton = document.createElement("button");
   forkButton.type = "button";
   forkButton.className = "work-note-retry";
@@ -104,9 +101,11 @@ export function createWorkSessionUI({
   let observedRunningId;
   let runningNotificationQueued = false;
   let store;
-  let storage;
+  let layoutFrame = null;
+  let fittedLayout = "";
+  let storage = sessionStorage;
   try {
-    storage = owner.localStorage;
+    if (!storage) storage = owner.localStorage;
   } catch {
     storage = {
       getItem() {
@@ -339,10 +338,97 @@ export function createWorkSessionUI({
     journal.dataset.expanded = String(
       !panel.hidden && panel.dataset.collapsed !== "true",
     );
-    journal.style.setProperty(
-      "--work-finish-space",
-      finishDraft ? "40px" : "0px",
-    );
+    const layout = JSON.stringify([
+      panel.hidden,
+      panel.dataset.mode,
+      panel.dataset.collapsed,
+      editorKey,
+      form.textContent,
+      pausedList.textContent,
+      runningSummary.hidden,
+      runningSummary.textContent,
+    ]);
+    if (layout !== fittedLayout) {
+      fittedLayout = layout;
+      // Mode changes must fit before controls can be activated, even before RAF.
+      fitNoteArea();
+    }
+    scheduleNoteFit();
+  }
+  function scheduleNoteFit() {
+    if (destroyed || layoutFrame !== null) return;
+    layoutFrame = owner.requestAnimationFrame(() => {
+      layoutFrame = null;
+      if (!destroyed) fitNoteArea();
+    });
+  }
+  function fitNoteArea() {
+    const rows = [...pausedList.children];
+    for (const row of rows) row.hidden = false;
+    pausedList.hidden = !rows.length;
+    const extra =
+      pausedList.getBoundingClientRect().height +
+      (runningSummary.hidden
+        ? 0
+        : runningSummary.getBoundingClientRect().height);
+    journal.style.setProperty("--work-extra-space", `${extra}px`);
+    const label = panel.querySelector("#work-session-note-label");
+    const summary = panel.querySelector("#work-finish-summary");
+    const gap = parseFloat(owner.getComputedStyle(form).rowGap) || 0;
+    const finishSpace = finishDraft
+      ? summary.getBoundingClientRect().height +
+        label.getBoundingClientRect().height +
+        gap * 2
+      : 0;
+    journal.style.setProperty("--work-finish-space", `${finishSpace}px`);
+    const hasNote = !panel.hidden && !note.closest(".work-note-field").hidden;
+    const oldScroll = note.scrollTop;
+    if (hasNote) note.style.height = "40px";
+    const area = noteArea.getBoundingClientRect();
+    const sidebarBounds = sidebar.getBoundingClientRect();
+    const paddingBottom =
+      parseFloat(owner.getComputedStyle(sidebar).paddingBottom) || 0;
+    const cardChrome = journal.getBoundingClientRect().height - area.height;
+    const cardGap = parseFloat(owner.getComputedStyle(journal).rowGap) || 0;
+    const compactCapacity =
+      sidebarBounds.bottom -
+      paddingBottom -
+      (nav?.getBoundingClientRect().bottom ?? sidebarBounds.top) -
+      cardGap -
+      cardChrome;
+    // A compact card hugs its content. Its current height is not the capacity
+    // available for restoring rows hidden by an earlier expanded-note fit.
+    const available = Math.max(0, hasNote ? area.height : compactCapacity);
+    const contentHeight = () => {
+      const top = noteArea.getBoundingClientRect().top;
+      let bottom = top;
+      for (const child of noteArea.children)
+        if (!child.hidden)
+          bottom = Math.max(bottom, child.getBoundingClientRect().bottom);
+      return Math.max(0, bottom - top);
+    };
+    // Keep complete rows and all actions visible. On tiny screens the oldest
+    // extra rows wait in the saved session list instead of creating a scrollbar.
+    while (rows.some((row) => !row.hidden) && contentHeight() > available + 1) {
+      const last = [...rows].reverse().find((row) => !row.hidden);
+      last.hidden = true;
+      pausedList.hidden = rows.every((row) => row.hidden);
+    }
+    if (hasNote) {
+      const chrome = contentHeight() - note.getBoundingClientRect().height;
+      const height = Math.max(24, Math.min(250, available - chrome));
+      note.style.height = `${height}px`;
+      journal.dataset.tight = String(height < 40);
+      note.scrollTop = oldScroll;
+    } else journal.dataset.tight = "false";
+    noteArea.scrollTop = 0;
+    const focusedRow = document.activeElement?.closest?.(".work-paused-row");
+    if (focusedRow?.hidden)
+      (
+        pausedList.querySelector(
+          ".work-paused-row:not([hidden]) .work-paused-title",
+        ) || panel.querySelector("#work-session-title")
+      )?.focus({ preventScroll: true });
   }
   function renderPausedWork(state) {
     const paused = store.snapshot.entries
@@ -422,10 +508,6 @@ export function createWorkSessionUI({
       control.dataset.sessionId = current.sessionId;
       control.disabled = finishing;
     }
-    journal.style.setProperty(
-      "--work-extra-space",
-      `${visible.length * 44 + (runningSummary.hidden ? 0 : 38)}px`,
-    );
   }
   function render() {
     if (destroyed || !store) return;
@@ -526,14 +608,6 @@ export function createWorkSessionUI({
     panel.dataset.mode = finishDraft ? "finish" : "note";
     panel.dataset.collapsed = String(collapsed);
     note.closest(".work-note-field").hidden = collapsed;
-    const expandNote = panel.querySelector("#work-note-expand");
-    expandNote.hidden =
-      status !== "paused" ||
-      Boolean(finishDraft) ||
-      Boolean(state.error) ||
-      state.conflict;
-    expandNote.textContent = collapsed ? "Notu aç" : "Notu küçült";
-    expandNote.setAttribute("aria-expanded", String(!collapsed));
     phase.hidden = false;
     phase.dataset.phase = status;
     phase.textContent = status === "running" ? "Çalışıyor" : "Duraklatıldı";
@@ -542,6 +616,14 @@ export function createWorkSessionUI({
     title.textContent = record?.title || "Çalışma notu";
     title.title = record?.title || "Çalışma notu";
     title.dataset.id = state.recordId;
+    title.dataset.action = finishDraft ? "edit" : "work-note-open";
+    if (!finishDraft) {
+      title.setAttribute("aria-expanded", String(!collapsed));
+      title.setAttribute("aria-controls", "work-session-note");
+    } else {
+      title.removeAttribute("aria-expanded");
+      title.removeAttribute("aria-controls");
+    }
     panel.querySelector("#work-session-note-label").textContent = finishDraft
       ? "Sonuç (isteğe bağlı)"
       : "Çalışma notu";
@@ -626,14 +708,6 @@ export function createWorkSessionUI({
       !isOpen(record) ||
       Boolean(savedLog) ||
       store.current?.recordId !== state.recordId;
-    contextHint.hidden =
-      Boolean(finishDraft) ||
-      !sameSession ||
-      !runningSummary.hidden ||
-      store.current?.recordId === state.recordId;
-    contextHint.textContent = contextHint.hidden
-      ? ""
-      : "Bu iş duraklatıldı. Devam et ile yeniden açabilirsin.";
     panel.querySelector('[data-action="work-finish-cancel"]').disabled =
       finishing;
     const submit = form.querySelector('[type="submit"]');
@@ -716,9 +790,19 @@ export function createWorkSessionUI({
     render();
     return saved;
   }
-  function flushDrafts() {
+  function flushDrafts({ allowDurable = false } = {}) {
     for (const state of drafts.values())
-      if (state.dirty && !flushState(state)) {
+      if (state.dirty) {
+        const entry = store.get(state.recordId);
+        // Reading or backing up can leave an already durable recovery unresolved.
+        if (
+          allowDurable &&
+          entry?.sessionId === state.sessionId &&
+          entry.status !== "finished" &&
+          draftText(entry) === state.text
+        )
+          continue;
+        if (flushState(state)) continue;
         editorState = state;
         render();
         focusNote();
@@ -879,7 +963,9 @@ export function createWorkSessionUI({
     render();
     if (!panel.hidden) {
       if (panel.dataset.collapsed === "true")
-        panel.querySelector("#work-note-expand").focus({ preventScroll: true });
+        panel
+          .querySelector("#work-session-title")
+          .focus({ preventScroll: true });
       else focusNote();
     }
   }
@@ -1008,7 +1094,8 @@ export function createWorkSessionUI({
       return;
     }
     rememberCaret();
-    if (!flushDrafts()) return;
+    store.synchronize();
+    if (!flushDrafts({ allowDurable: !resume })) return;
     store.synchronize();
     const entry = store.get(id);
     const record = find(id);
@@ -1057,7 +1144,7 @@ export function createWorkSessionUI({
         "work-draft-use-current",
         "work-draft-save-local",
         "work-draft-fork",
-        "work-note-toggle",
+        "work-note-open",
         "work-paused-open",
         "work-paused-resume",
         "work-running-open",
@@ -1076,13 +1163,11 @@ export function createWorkSessionUI({
       });
       return;
     }
-    if (action === "work-note-toggle") {
+    if (action === "work-note-open") {
       if (!editorState || finishing || finishDraft) return;
-      const expand = panel.dataset.collapsed === "true";
-      editorState.pausedExpanded = expand;
-      if (!expand) control.focus({ preventScroll: true });
+      editorState.pausedExpanded = true;
       render();
-      if (expand) focusNote();
+      focusNote();
       return;
     }
     if (action === "work-finish-cancel") {
@@ -1146,7 +1231,12 @@ export function createWorkSessionUI({
     }
   }
   function onStorage(event) {
-    if (event.key === KEY || event.key === null) refresh();
+    if (
+      event.key === KEY ||
+      event.key === workspaceStorageKey ||
+      event.key === null
+    )
+      refresh();
   }
   function onNoteKeydown(event) {
     if (
@@ -1158,10 +1248,109 @@ export function createWorkSessionUI({
       event.preventDefault();
       event.stopPropagation();
       cancelFinish();
+      return;
+    }
+    if (
+      event.target === note &&
+      !finishDraft &&
+      !finishing &&
+      !event.defaultPrevented &&
+      event.key === "Enter" &&
+      !event.shiftKey &&
+      !event.ctrlKey &&
+      !event.altKey &&
+      !event.metaKey &&
+      !event.isComposing &&
+      event.keyCode !== 229
+    ) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+  }
+  function onWorkShortcut(event) {
+    const pause = event.key.toLowerCase() === "p";
+    const finish = event.key === "Enter";
+    if (
+      destroyed ||
+      panel.hidden ||
+      !editorState ||
+      finishing ||
+      event.defaultPrevented ||
+      !event.ctrlKey ||
+      event.altKey ||
+      event.metaKey ||
+      event.shiftKey ||
+      event.isComposing ||
+      event.repeat ||
+      event.keyCode === 229 ||
+      (!pause && !finish)
+    )
+      return;
+    if (document.querySelector("dialog:modal, :popover-open")) return;
+    const target = event.target;
+    if (target.closest?.("dialog, [popover]")) return;
+    const targetForm = target.closest?.("form");
+    if (targetForm && targetForm !== form) return;
+    const control = pause
+      ? panel.querySelector(".work-session-toggle")
+      : finishDraft
+        ? form.querySelector('[type="submit"]')
+        : panel.querySelector('[data-action="work-finish"]');
+    if (
+      !control ||
+      control.matches(":disabled") ||
+      control.closest("[hidden]") ||
+      !control.getClientRects().length
+    )
+      return;
+    event.preventDefault();
+    event.stopPropagation();
+    if (finishDraft && finish) {
+      form.requestSubmit(control);
+      return;
+    }
+    const action = control.dataset.action;
+    control.click();
+    if (pause) {
+      const next = panel.querySelector(".work-session-toggle");
+      if (
+        action === "work-pause" &&
+        panel.dataset.collapsed === "true" &&
+        next?.dataset.action === "work-resume" &&
+        !next.disabled
+      )
+        next.focus({ preventScroll: true });
+      else if (!panel.hidden && document.activeElement !== note) focusNote();
     }
   }
   function onWheel(event) {
     event.stopPropagation();
+  }
+  function onCollapsedAreaClick(event) {
+    if (
+      panel.dataset.collapsed !== "true" ||
+      finishing ||
+      finishDraft ||
+      !editorState
+    )
+      return;
+    if (
+      event.target.closest?.(
+        ".sidebar-journal-footer, .work-paused-list, .work-running-summary",
+      )
+    )
+      return;
+    if (
+      event.target.closest?.(
+        'button, a, input, select, textarea, summary, [data-action], [role="button"], [role="link"]',
+      )
+    )
+      return;
+    event.preventDefault();
+    event.stopPropagation();
+    editorState.pausedExpanded = true;
+    render();
+    focusNote();
   }
   function onNavWheel(event) {
     if (nav.scrollHeight > nav.clientHeight) event.stopPropagation();
@@ -1194,16 +1383,21 @@ export function createWorkSessionUI({
     root.removeEventListener("click", onClick);
     form.removeEventListener("submit", completeFinish);
     form.removeEventListener("keydown", onNoteKeydown);
+    journal.removeEventListener("click", onCollapsedAreaClick);
+    noteArea.removeEventListener("toggle", scheduleNoteFit, true);
     note.removeEventListener("input", onNoteInput);
     note.removeEventListener("select", rememberCaret);
     note.removeEventListener("wheel", onWheel);
     noteArea.removeEventListener("wheel", onWheel);
     nav?.removeEventListener("wheel", onNavWheel);
     owner.removeEventListener("storage", onStorage);
+    owner.removeEventListener("keydown", onWorkShortcut);
     owner.removeEventListener("focus", refresh);
     owner.removeEventListener("resize", reserveSpace);
     owner.removeEventListener("beforeunload", onBeforeUnload);
     owner.removeEventListener("pagehide", destroy);
+    if (layoutFrame !== null) owner.cancelAnimationFrame(layoutFrame);
+    layoutObserver?.disconnect();
     contextDialog.remove();
     journal.remove();
     sidebar.classList.remove("has-work-journal");
@@ -1212,16 +1406,43 @@ export function createWorkSessionUI({
   root.addEventListener("click", onClick);
   form.addEventListener("submit", completeFinish);
   form.addEventListener("keydown", onNoteKeydown);
+  journal.addEventListener("click", onCollapsedAreaClick);
+  noteArea.addEventListener("toggle", scheduleNoteFit, true);
   note.addEventListener("input", onNoteInput);
   note.addEventListener("select", rememberCaret);
   note.addEventListener("wheel", onWheel, { passive: true });
   noteArea.addEventListener("wheel", onWheel, { passive: true });
   nav?.addEventListener("wheel", onNavWheel, { passive: true });
   owner.addEventListener("storage", onStorage);
+  owner.addEventListener("keydown", onWorkShortcut);
   owner.addEventListener("focus", refresh);
   owner.addEventListener("resize", reserveSpace);
   owner.addEventListener("beforeunload", onBeforeUnload);
   owner.addEventListener("pagehide", destroy, { once: true });
+  const layoutObserver =
+    typeof owner.ResizeObserver === "function"
+      ? new owner.ResizeObserver(scheduleNoteFit)
+      : null;
+  layoutObserver?.observe(sidebar);
   refresh();
-  return { button, refresh, getRunningRecordId, destroy };
+  return {
+    button,
+    refresh,
+    getRunningRecordId,
+    getDraftSnapshot() {
+      rememberCaret();
+      store.synchronize();
+      if (!flushDrafts({ allowDurable: true }))
+        throw new Error(
+          "Çalışma notlarından biri kaydedilemedi. Notun korunuyor; yedeklemeden önce hatayı çöz veya yeniden dene.",
+        );
+      store.synchronize();
+      if (store.readOnly)
+        throw new Error(
+          "Çalışma notları güvenle okunamadığı için yedek hazırlanamadı.",
+        );
+      return store.snapshot;
+    },
+    destroy,
+  };
 }

@@ -399,6 +399,11 @@ export function createGoalPanel({
       .join("")}</ol></section>`;
   }
 
+  function notesMarkup(record) {
+    if (!String(record.description || "").trim()) return "";
+    return `<section class="goal-panel-section goal-panel-notes" data-goal-section="notes"><h3>Notlar</h3><p>${esc(record.description)}</p></section>`;
+  }
+
   function render(force = false) {
     const record = goal();
     const records = getRecords();
@@ -447,7 +452,7 @@ export function createGoalPanel({
       const parentMarkup = parent
         ? `<button type="button" class="goal-parent-context" data-action="goal-open-child" data-id="${esc(parent.id)}"><span>↑ ${esc(TYPES[parent.type].label)}</span><strong>${esc(parent.title)}</strong></button>`
         : "";
-      panel.innerHTML = `<div class="goal-panel-shell"><div class="modal-header"><div><p class="goal-panel-period">${esc(type)} · ${esc(humanPeriod(record))}</p><h2 class="goal-panel-title">${esc(record.title)}</h2></div><button type="button" class="close-modal" data-action="goal-panel-close" aria-label="Pencereyi kapat">${closeIcon}</button></div><div class="modal-body goal-panel-body">${parentMarkup}${progressMarkup(record, records)}${childrenMarkup(record, records, children)}${transferReasonsMarkup(record)}</div><div class="modal-footer"><button type="button" class="btn" data-action="goal-edit-record" data-id="${esc(record.id)}">Hedefi düzenle</button><button type="button" class="btn primary" data-action="goal-panel-close">Kapat</button></div></div>`;
+      panel.innerHTML = `<div class="goal-panel-shell"><div class="modal-header"><div><p class="goal-panel-period">${esc(type)} · ${esc(humanPeriod(record))}</p><h2 class="goal-panel-title">${esc(record.title)}</h2></div><button type="button" class="close-modal" data-action="goal-panel-close" aria-label="Pencereyi kapat">${closeIcon}</button></div><div class="modal-body goal-panel-body">${parentMarkup}${progressMarkup(record, records)}${childrenMarkup(record, records, children)}${transferReasonsMarkup(record)}${notesMarkup(record)}</div><div class="modal-footer"><button type="button" class="btn" data-action="goal-edit-record" data-id="${esc(record.id)}">Hedefi düzenle</button><button type="button" class="btn primary" data-action="goal-panel-close">Kapat</button></div></div>`;
       const choice = panel.querySelector(
         '#goal-link-child-form [name="childId"]',
       );

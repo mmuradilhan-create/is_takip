@@ -3,6 +3,12 @@ import { readFile } from "node:fs/promises";
 import { createRecord, validateStore } from "../../src/model.js";
 import { cleanupMeetingContacts } from "../../src/meeting-contact-cleanup.js";
 import { openCreationExtras } from "./creation-support.js";
+import {
+  readEffectiveWorkSession,
+  readEffectiveWorkSessionRaw,
+  readWorkspaceDomainRaw,
+  sessionAwareStorageHooks,
+} from "./work-session-support.js";
 
 const KEY = "is-takip-v1";
 const SESSION_KEY = `${KEY}-work-session`;
@@ -87,8 +93,8 @@ async function seed(page, records = recordsFixture()) {
 
 const readRecords = (page) =>
   page.evaluate((key) => JSON.parse(localStorage.getItem(key)).records, KEY);
-const readSaved = (page) =>
-  page.evaluate((key) => localStorage.getItem(key), KEY);
+// Session-only persistence must leave records, history and preferences exact.
+const readSaved = readWorkspaceDomainRaw;
 const row = (page, id) =>
   page.locator(`.full-table > tbody > tr[data-record-row][data-id="${id}"]`);
 const panel = (page) => page.locator("#work-session-panel");
@@ -162,10 +168,7 @@ test("inline finishing with Enter saves only its result without a timer while pr
     updatedAt: originals[1].updatedAt,
     workLog: undefined,
   }).toEqual({ ...originals[1], workLog: undefined });
-  const state = await page.evaluate(
-    (key) => JSON.parse(localStorage.getItem(key)),
-    SESSION_KEY,
-  );
+  const state = await readEffectiveWorkSession(page);
   expect(state.currentId).toBeNull();
   expect(
     state.entries.find((entry) => entry.recordId === daily.id).status,
@@ -198,10 +201,7 @@ test("blank and whitespace inline finishes end separate working sessions without
   const sessionIds = [];
   for (const [index, result] of ["", "  \n "].entries()) {
     await beginFinish(page, (index + 1) * 10_000);
-    const paused = await page.evaluate(
-      (key) => JSON.parse(localStorage.getItem(key)),
-      SESSION_KEY,
-    );
+    const paused = await readEffectiveWorkSession(page);
     const session = paused.entries.find(
       (entry) => entry.recordId === "journal-daily",
     );
@@ -218,10 +218,7 @@ test("blank and whitespace inline finishes end separate working sessions without
     await expect(
       page.getByRole("button", { name: "Geri al", exact: true }),
     ).toBeDisabled();
-    const finished = await page.evaluate(
-      (key) => JSON.parse(localStorage.getItem(key)),
-      SESSION_KEY,
-    );
+    const finished = await readEffectiveWorkSession(page);
     expect(finished.currentId).toBeNull();
     expect(
       finished.entries.find((entry) => entry.sessionId === session.sessionId)
@@ -238,6 +235,7 @@ test("a failed Enter journal write retains its multiline result and paused draft
   page,
 }) => {
   const originals = await seed(page);
+  const before = await readSaved(page);
   await beginFinish(page);
   const field = sessionNote(page);
   await field.fill("Kaybolmayacak sonuç");
@@ -245,12 +243,16 @@ test("a failed Enter journal write retains its multiline result and paused draft
   await field.pressSequentially("İkinci sonuç satırı.");
   const note = "Kaybolmayacak sonuç\nİkinci sonuç satırı.";
   await expect(field).toHaveValue(note);
+  const pausedDraft = await readEffectiveWorkSessionRaw(page);
   await field.evaluate((field) => {
     for (const options of [
       { isComposing: true },
       { keyCode: 229 },
       { repeat: true },
-      { ctrlKey: true },
+      // Ctrl+Enter saves; extra modifiers must still leave the draft alone.
+      { ctrlKey: true, shiftKey: true },
+      { ctrlKey: true, altKey: true },
+      { ctrlKey: true, metaKey: true },
       { altKey: true },
       { metaKey: true },
       { prevented: true },
@@ -268,12 +270,23 @@ test("a failed Enter journal write retains its multiline result and paused draft
     }
   });
   await expect(finishForm(page)).toBeVisible();
+  await expect(field).toHaveValue(note);
+  expect(await readSaved(page)).toBe(before);
+  expect(await readEffectiveWorkSessionRaw(page)).toBe(pausedDraft);
   expect(await readRecords(page)).toEqual(originals);
   await page.evaluate((key) => {
     window.journalSetItem = Storage.prototype.setItem;
+    window.journalFailedWrites = 0;
     Storage.prototype.setItem = function (storageKey, value) {
-      if (storageKey === key)
+      if (
+        this === window.localStorage &&
+        storageKey === key &&
+        JSON.stringify(JSON.parse(value).records) !==
+          JSON.stringify(JSON.parse(this.getItem(key)).records)
+      ) {
+        window.journalFailedWrites++;
         throw new DOMException("Depolama dolu", "QuotaExceededError");
+      }
       return window.journalSetItem.call(this, storageKey, value);
     };
   }, KEY);
@@ -282,7 +295,10 @@ test("a failed Enter journal write retains its multiline result and paused draft
   await expect(panel(page).locator("#work-finish-error")).toBeVisible();
   await expect(field).toHaveValue(note);
   await expect(panel(page)).toHaveAttribute("data-phase", "paused");
+  expect(await readSaved(page)).toBe(before);
+  expect(await readEffectiveWorkSessionRaw(page)).toBe(pausedDraft);
   expect(await readRecords(page)).toEqual(originals);
+  expect(await page.evaluate(() => window.journalFailedWrites)).toBe(1);
   await page.evaluate(() => {
     Storage.prototype.setItem = window.journalSetItem;
   });
@@ -300,6 +316,7 @@ test("a failed Enter journal write retains its multiline result and paused draft
   expect(daily.nextAction).toBe(originals[1].nextAction);
   expect(JSON.parse(await readSaved(page)).odak.history).toHaveLength(1);
   await page.getByRole("button", { name: "Geri al", exact: true }).click();
+  expect(await readSaved(page)).toBe(before);
   expect(await readRecords(page)).toEqual(originals);
 });
 
@@ -324,6 +341,7 @@ test("a stale inline finish cannot erase a peer result or record the same workin
     await expect(panel(page).locator("#work-note-error")).toBeVisible();
     await expect(sessionNote(page)).toHaveValue(localResult);
     await expect(finishForm(page).locator('[type="submit"]')).toBeDisabled();
+    const peerDraft = await readEffectiveWorkSessionRaw(other);
     const staleEnter = () =>
       sessionNote(page).evaluate((textarea) => {
         textarea.dispatchEvent(
@@ -336,11 +354,13 @@ test("a stale inline finish cannot erase a peer result or record the same workin
       });
     await staleEnter();
     expect(await readSaved(page)).toBe(before);
+    expect(await readEffectiveWorkSessionRaw(page)).toBe(peerDraft);
     await finishForm(other)
       .getByRole("button", { name: "Kaydet ve bitir", exact: true })
       .click();
     await expect(panel(other)).not.toBeVisible();
     const saved = await readSaved(other);
+    const finishedSession = await readEffectiveWorkSessionRaw(other);
     const daily = (await readRecords(other)).find(
       (record) => record.id === "journal-daily",
     );
@@ -350,6 +370,7 @@ test("a stale inline finish cannot erase a peer result or record the same workin
     await expect(sessionNote(page)).toHaveValue(localResult);
     await staleEnter();
     expect(await readSaved(page)).toBe(saved);
+    expect(await readEffectiveWorkSessionRaw(page)).toBe(finishedSession);
     await other.reload();
     expect(
       (await readRecords(other)).find((record) => record.id === daily.id)
@@ -366,24 +387,20 @@ test("a saved result whose working-note retirement fails cannot resume and recov
   await seed(page);
   await beginFinish(page, 45_000);
   await sessionNote(page).fill("Önce kaydedilen gerçek sonuç");
-  const refuseSessionWrites = ({ sessionKey, flag }) => {
-    const original = Storage.prototype.setItem;
-    Storage.prototype.setItem = function (storageKey, value) {
-      if (storageKey === sessionKey && sessionStorage.getItem(flag))
-        throw new DOMException("Oturum yazılamadı", "QuotaExceededError");
-      return original.call(this, storageKey, value);
-    };
-  };
+  const persistentFlag = "journal-block-session-writes";
   const config = {
-    sessionKey: SESSION_KEY,
-    flag: "journal-block-session-writes",
+    primaryKey: KEY,
+    sessionQuotaFlag: "journalBlockSessionWrites",
   };
+  // Keep the failure through reload while allowing the journal/domain write.
+  const hookSource = `(${sessionAwareStorageHooks.toString()})(${JSON.stringify(config)});
+window.journalBlockSessionWrites = sessionStorage.getItem(${JSON.stringify(persistentFlag)}) === "true";`;
   await page.evaluate(
     (flag) => sessionStorage.setItem(flag, "true"),
-    config.flag,
+    persistentFlag,
   );
-  await page.addInitScript(refuseSessionWrites, config);
-  await page.evaluate(refuseSessionWrites, config);
+  await page.addInitScript({ content: hookSource });
+  await page.evaluate(hookSource);
   await finishForm(page)
     .getByRole("button", { name: "Kaydet ve bitir", exact: true })
     .click();
@@ -403,7 +420,10 @@ test("a saved result whose working-note retirement fails cannot resume and recov
   await page.reload();
   await page.locator('#nav [data-view="daily"]').click();
   await expect(row(page, daily.id).locator(".work-start")).toBeDisabled();
-  await page.evaluate((flag) => sessionStorage.removeItem(flag), config.flag);
+  await page.evaluate(
+    (flag) => sessionStorage.removeItem(flag),
+    persistentFlag,
+  );
   await page.reload();
   await page.locator('#nav [data-view="daily"]').click();
   await expect(row(page, daily.id).locator(".work-start")).toBeEnabled();
@@ -425,6 +445,14 @@ test("a journal backup survives reset and restores all records and journal field
   await beginFinish(page, 61_000);
   await finish(page, { note: NOTE });
   const records = await readRecords(page);
+  const beforeReset = await readSaved(page);
+  const savedSession = await readEffectiveWorkSession(page);
+  expect(savedSession.currentId).toBeNull();
+  expect(savedSession.entries).toHaveLength(1);
+  expect(savedSession.entries[0]).toMatchObject({
+    recordId: "journal-daily",
+    status: "finished",
+  });
   expect(records[1].workLog[0]).toEqual(originals[1].workLog[0]);
   expect(records[1].workLog[1].nextAction).toBe("");
   expect(records[1].nextAction).toBe(originals[1].nextAction);
@@ -436,9 +464,15 @@ test("a journal backup survives reset and restores all records and journal field
       .click(),
   ]);
   const bytes = await readFile(await download.path());
-  expect(validateStore(JSON.parse(bytes.toString("utf8"))).records).toEqual(
+  const backup = JSON.parse(bytes.toString("utf8"));
+  expect(validateStore(backup).records).toEqual(records);
+  expect(backup).toEqual({
+    version: 1,
     records,
-  );
+    workDrafts: { version: 1, entries: [] },
+  });
+  expect(await readSaved(page)).toBe(beforeReset);
+  expect(await readEffectiveWorkSession(page)).toEqual(savedSession);
   await page
     .getByRole("button", { name: "Çalışma alanını sıfırla", exact: true })
     .click();
@@ -448,6 +482,8 @@ test("a journal backup survives reset and restores all records and journal field
   await resetDialog.locator('[data-action="confirm-reset-workspace"]').click();
   await expect(resetDialog).not.toBeVisible();
   expect(await readRecords(page)).toEqual([]);
+  const afterReset = await readSaved(page);
+  expect(await readEffectiveWorkSession(page)).toEqual(savedSession);
   await expect(page.locator("#settings-dialog")).not.toBeVisible();
   await openBackup(page);
   page.once("dialog", (dialog) => dialog.accept());
@@ -457,8 +493,20 @@ test("a journal backup survives reset and restores all records and journal field
     buffer: bytes,
   });
   await expect.poll(() => readRecords(page)).toEqual(records);
+  await expect.poll(() => readEffectiveWorkSession(page)).toEqual(savedSession);
+  const restored = await readSaved(page);
   await page.reload();
+  expect(await readSaved(page)).toBe(restored);
   expect(await readRecords(page)).toEqual(records);
+  expect(await readEffectiveWorkSession(page)).toEqual(savedSession);
+  await page.getByRole("button", { name: "Geri al", exact: true }).click();
+  expect(await readSaved(page)).toBe(afterReset);
+  expect(await readRecords(page)).toEqual([]);
+  expect(await readEffectiveWorkSession(page)).toEqual(savedSession);
+  await page.getByRole("button", { name: "Geri al", exact: true }).click();
+  expect(await readSaved(page)).toBe(beforeReset);
+  expect(await readRecords(page)).toEqual(records);
+  expect(await readEffectiveWorkSession(page)).toEqual(savedSession);
 });
 
 test("a backup with malformed journal data is rejected before replacement and does not alter the workspace", async ({
@@ -548,11 +596,9 @@ test("the weekly report uses saved entry dates from Monday through Sunday and es
   await page.locator('[data-action="work-session-history"]').click();
   const report = page.locator("#work-week-dialog");
   await expect(report).toBeVisible();
-  await expect(report.locator(".work-journal-totals")).toContainText(
-    "Çalışma kaydı",
-  );
-  await expect(report.locator(".work-journal-totals")).not.toContainText(
-    "Kaydedilen süre",
+  await expect(report.locator(".work-journal-totals")).toHaveCount(0);
+  await expect(report.locator(".modal-header .work-history-count")).toHaveText(
+    "1 iş · 2 kayıt",
   );
   await expect(
     report.locator(".work-journal-entry-tools > strong"),
@@ -747,10 +793,7 @@ test("current work keeps saved and empty journal controls beside Play across des
   await seed(page, fixture);
   await page.locator('#nav [data-view="dashboard"]').click();
   const before = await readSaved(page);
-  const sessionBefore = await page.evaluate(
-    (key) => localStorage.getItem(key),
-    SESSION_KEY,
-  );
+  const sessionBefore = await readEffectiveWorkSessionRaw(page);
   const journal = page.locator("#work-journal-dialog");
 
   for (const width of [1280, 390]) {
@@ -821,9 +864,7 @@ test("current work keeps saved and empty journal controls beside Play across des
         await expect(page.locator("#editor")).not.toBeVisible();
         await expect(panel(page)).not.toBeVisible();
         expect(await readSaved(page)).toBe(before);
-        expect(
-          await page.evaluate((key) => localStorage.getItem(key), SESSION_KEY),
-        ).toBe(sessionBefore);
+        expect(await readEffectiveWorkSessionRaw(page)).toBe(sessionBefore);
         await journal
           .getByRole("button", { name: "Tamam", exact: true })
           .click();

@@ -600,7 +600,10 @@ test("lists open on current work and completed records remain available through 
     await expect(row(page, `done-${type}`)).toBeVisible();
     await expect(
       page.locator(".full-table > tbody > tr[data-record-row]"),
-    ).toHaveCount(1);
+    ).toHaveCount(type === "meeting" ? 2 : 1);
+    if (type === "meeting")
+      await expect(row(page, `cancelled-${type}`)).toBeVisible();
+    else await expect(row(page, `cancelled-${type}`)).toHaveCount(0);
     await selectListStatus(page, "all");
     await expect(
       page.locator(".full-table > tbody > tr[data-record-row]"),

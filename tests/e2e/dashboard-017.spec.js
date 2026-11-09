@@ -1,3 +1,4 @@
+import { readWorkspaceDomainRaw } from "./work-session-support.js";
 import { test, expect } from "@playwright/test";
 import { createRecord } from "../../src/model.js";
 
@@ -17,7 +18,7 @@ const envelope = (records) => ({
     history: [],
   },
 });
-const saved = (page) => page.evaluate((key) => localStorage.getItem(key), KEY);
+const saved = (page) => readWorkspaceDomainRaw(page);
 const records = async (page) => JSON.parse(await saved(page)).records;
 const view = (page, type) => page.locator(`#nav [data-view="${type}"]`).click();
 const goalPanel = (page) => page.locator("#goal-detail-panel");

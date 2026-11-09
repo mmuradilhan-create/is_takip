@@ -2,6 +2,11 @@ import { validateStore } from "./model.js";
 import { normalizePreferences, validPreferences } from "./preferences.js";
 import { normalizeNotes, notesFromBackup } from "./workspace-notes.js";
 import {
+  readPrimaryWorkSessionRaw,
+  readWorkSessionSnapshot,
+} from "./work-session-store.js";
+import { mergeWorkDrafts, normalizeWorkDrafts } from "./work-draft-backup.js";
+import {
   workspaceSignature,
   makeHistoryEntry,
   pushHistory,
@@ -36,10 +41,12 @@ export function createWorkspaceStore({
   storage,
   key,
   preferencesKey = `${key}-preferences`,
+  workSessionKey = `${key}-work-session`,
   initialRecords = [],
   initialPreferences = { density: "comfortable" },
   initialNotes,
   readOnly = false,
+  now = Date.now,
 }) {
   if (
     !storage ||
@@ -57,6 +64,27 @@ export function createWorkspaceStore({
   let lastRaw;
   let lastLegacyRaw;
   let hasPrimaryPreferences = false;
+  let lastEnvelope = null;
+
+  function draftConflict(message) {
+    const error = new Error(message);
+    error.name = "WorkDraftConflictError";
+    return error;
+  }
+
+  function effectiveSessionRaw(primaryRaw) {
+    const decoded = primaryRaw === null ? null : JSON.parse(primaryRaw);
+    const primarySessions =
+      decoded?.odak && Object.hasOwn(decoded.odak, "workSessions");
+    return readPrimaryWorkSessionRaw(
+      primaryRaw,
+      primarySessions ? null : storage.getItem(workSessionKey),
+    );
+  }
+
+  function readWorkSessionRaw() {
+    return effectiveSessionRaw(storage.getItem(key));
+  }
 
   function legacyPreferences() {
     const raw = storage.getItem(preferencesKey);
@@ -74,6 +102,8 @@ export function createWorkspaceStore({
       raw === null ? { version: 1, records: [] } : JSON.parse(raw);
     const records = validateStore(decoded).records;
     const metadata = decoded.odak;
+    if (metadata && Object.hasOwn(metadata, "workSessions"))
+      readPrimaryWorkSessionRaw(raw, null);
     const primaryPreferences =
       metadata?.version === 1 && validPreferences(metadata.preferences);
     let preferences;
@@ -93,7 +123,13 @@ export function createWorkspaceStore({
     };
     const history =
       metadata?.version === 1 ? readHistory(metadata.history, snapshot) : [];
-    return { snapshot, history, primaryPreferences, legacyRaw };
+    return {
+      snapshot,
+      history,
+      primaryPreferences,
+      legacyRaw,
+      envelope: decoded,
+    };
   }
 
   function adopt(parsed, raw) {
@@ -102,6 +138,7 @@ export function createWorkspaceStore({
     lastRaw = raw;
     lastLegacyRaw = parsed.legacyRaw;
     hasPrimaryPreferences = parsed.primaryPreferences;
+    lastEnvelope = parsed.envelope;
   }
 
   try {
@@ -148,23 +185,43 @@ export function createWorkspaceStore({
     }
   }
 
-  function persist(snapshot, history) {
+  function persist(snapshot, history, session = null) {
     let retained = [...history];
     let serialized;
     while (true) {
-      serialized = JSON.stringify({
+      const metadata = {
+        ...(lastEnvelope?.odak && typeof lastEnvelope.odak === "object"
+          ? lastEnvelope.odak
+          : {}),
+        version: 1,
+        preferences: snapshot.preferences,
+        history: retained,
+      };
+      if (Object.hasOwn(snapshot, "notes")) metadata.notes = snapshot.notes;
+      else delete metadata.notes;
+      if (session && session.write !== false)
+        metadata.workSessions = session.snapshot;
+      const envelope = {
+        ...(lastEnvelope || {}),
         version: 1,
         records: snapshot.records,
-        odak: {
-          version: 1,
-          preferences: snapshot.preferences,
-          ...(Object.hasOwn(snapshot, "notes")
-            ? { notes: snapshot.notes }
-            : {}),
-          history: retained,
-        },
-      });
+        odak: metadata,
+      };
+      // Native top-level notes become authoritative primary metadata here.
+      delete envelope.notes;
+      serialized = JSON.stringify(envelope);
       try {
+        const primaryRaw = storage.getItem(key);
+        if (primaryRaw !== lastRaw) {
+          adopt(parsePersistent(primaryRaw), primaryRaw);
+          const error = new Error(conflictMessage);
+          error.name = "WorkspaceConflictError";
+          throw error;
+        }
+        if (session && effectiveSessionRaw(primaryRaw) !== session.expectedRaw)
+          throw draftConflict(
+            "Çalışma notları başka bir pencerede değişti. Yedek yüklenmedi; güncel notları kontrol et.",
+          );
         storage.setItem(key, serialized);
         break;
       } catch (error) {
@@ -178,6 +235,7 @@ export function createWorkspaceStore({
     lastRaw = serialized;
     lastLegacyRaw = undefined;
     hasPrimaryPreferences = true;
+    lastEnvelope = JSON.parse(serialized);
     try {
       const mirrored = JSON.stringify(snapshot.preferences);
       storage.setItem(preferencesKey, mirrored);
@@ -187,16 +245,108 @@ export function createWorkspaceStore({
     }
   }
 
-  function commit(snapshot, label) {
+  function commit(snapshot, label, draftRestore = null) {
     assertWritable();
     assertCurrent();
-    const entry = makeHistoryEntry(current, snapshot, label);
+    let session = null;
+    let sessionChange;
+    if (draftRestore) {
+      const beforeRaw = readWorkSessionRaw();
+      if (draftRestore.hasExpected && beforeRaw !== draftRestore.expectedRaw)
+        throw draftConflict(
+          "Çalışma notları başka bir pencerede değişti. Yedek yüklenmedi; güncel notları kontrol et.",
+        );
+      const before = readWorkSessionSnapshot(beforeRaw);
+      const merged = mergeWorkDrafts(
+        before,
+        draftRestore.drafts,
+        snapshot.records,
+        { now },
+      ).snapshot;
+      session = { snapshot: merged, expectedRaw: beforeRaw, write: false };
+      if (JSON.stringify(before) !== JSON.stringify(merged)) {
+        session.write = true;
+        sessionChange = { version: 1, before, after: merged };
+      }
+    }
+    const entry = makeHistoryEntry(current, snapshot, label, {
+      sessionChange,
+    });
     if (!entry) return true;
-    persist(snapshot, pushHistory(entries, entry));
+    persist(snapshot, pushHistory(entries, entry), session);
     return true;
   }
 
+  function writeWorkSession(raw, expectedRaw) {
+    assertWritable();
+    if (typeof raw !== "string") throw new Error("Çalışma notları geçersiz.");
+    const next = readWorkSessionSnapshot(raw);
+    const primaryRaw = storage.getItem(key);
+    if (effectiveSessionRaw(primaryRaw) !== expectedRaw)
+      throw draftConflict(
+        "Çalışma notu başka bir pencerede değişti. Güncel not korunuyor.",
+      );
+    let envelope;
+    if (primaryRaw === null) {
+      // The embedded first workspace may never have had a primary write.
+      envelope = {
+        version: 1,
+        records: clone(current.records),
+        odak: {
+          version: 1,
+          preferences: clone(current.preferences),
+          ...(Object.hasOwn(current, "notes")
+            ? { notes: clone(current.notes) }
+            : {}),
+          history: clone(entries),
+        },
+      };
+    } else {
+      envelope = JSON.parse(primaryRaw);
+      validateStore(envelope);
+    }
+    envelope.odak = {
+      ...(envelope.odak && typeof envelope.odak === "object"
+        ? envelope.odak
+        : {}),
+      version: 1,
+      workSessions: next,
+    };
+    const serialized = JSON.stringify(envelope);
+    // Compare the context again immediately before the only durable write.
+    const latestRaw = storage.getItem(key);
+    if (
+      latestRaw !== primaryRaw ||
+      effectiveSessionRaw(latestRaw) !== expectedRaw
+    )
+      throw draftConflict(
+        "Çalışma notu başka bir pencerede değişti. Güncel not korunuyor.",
+      );
+    storage.setItem(key, serialized);
+    // Leave domain adoption to its normal CAS check: a session write must not
+    // silently acknowledge records changed in another window.
+    return true;
+  }
+
+  let expectedSessionRaw;
+  const sessionStorage = {
+    getItem(requestedKey) {
+      if (requestedKey !== workSessionKey)
+        throw new Error("Çalışma notu depolama anahtarı geçersiz.");
+      expectedSessionRaw = readWorkSessionRaw();
+      return expectedSessionRaw;
+    },
+    setItem(requestedKey, raw) {
+      if (requestedKey !== workSessionKey)
+        throw new Error("Çalışma notu depolama anahtarı geçersiz.");
+      writeWorkSession(raw, expectedSessionRaw);
+      expectedSessionRaw = JSON.stringify(readWorkSessionSnapshot(raw));
+    },
+  };
+
   return {
+    sessionStorage,
+    readWorkSessionRaw,
     get records() {
       return clone(current.records);
     },
@@ -264,6 +414,14 @@ export function createWorkspaceStore({
       const hasPreferences = Object.hasOwn(value, "preferences");
       if (hasPreferences && !validPreferences(value.preferences))
         throw new Error("Görünüm tercihi geçersiz.");
+      const hasDrafts = Object.hasOwn(value, "workDrafts");
+      const hasExpected = Object.hasOwn(value, "expectedWorkSessionRaw");
+      if (
+        hasExpected &&
+        value.expectedWorkSessionRaw !== null &&
+        typeof value.expectedWorkSessionRaw !== "string"
+      )
+        throw new Error("Çalışma notlarının denetim bilgisi geçersiz.");
       return commit(
         {
           records: canonicalRecords(value.records),
@@ -277,6 +435,13 @@ export function createWorkspaceStore({
               : {}),
         },
         label,
+        hasDrafts
+          ? {
+              drafts: normalizeWorkDrafts(value.workDrafts),
+              hasExpected,
+              expectedRaw: value.expectedWorkSessionRaw,
+            }
+          : null,
       );
     },
     undo() {
@@ -284,8 +449,20 @@ export function createWorkspaceStore({
       assertCurrent();
       const entry = entries.at(-1);
       if (!entry) return null;
-      const restored = undoEntry(current, entry);
-      persist(restored, entries.slice(0, -1));
+      const sessionRaw = entry.sessionChange ? readWorkSessionRaw() : null;
+      const restored = undoEntry(
+        entry.sessionChange
+          ? { ...current, workSessions: readWorkSessionSnapshot(sessionRaw) }
+          : current,
+        entry,
+      );
+      persist(
+        restored,
+        entries.slice(0, -1),
+        entry.sessionChange
+          ? { snapshot: restored.workSessions, expectedRaw: sessionRaw }
+          : null,
+      );
       return entry.label;
     },
     synchronize(rawValue) {

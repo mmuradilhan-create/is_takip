@@ -1,6 +1,6 @@
 # Odak
 
-PC kullanımına odaklanan, Türkçe kişisel iş ve hedef takibi. HTML/CSS/JavaScript tabanlıdır. Güncel sürüm: **0.21.30**.
+PC kullanımına odaklanan, Türkçe kişisel iş ve hedef takibi. HTML/CSS/JavaScript tabanlıdır. Güncel sürüm: **0.21.31**.
 
 ## Kullanım
 
@@ -8,7 +8,7 @@ Hazırlanan `.local/TAKIP.html` tek dosyadır; ek program kurulmadan modern tara
 
 - Sayfa başlığı ve **Yeni kayıt** düğmesi üst çubuktadır; tekrarlayan büyük başlık alanı yoktur. Sol menü sabittir ve kaydırılmaz; kısa ekranlarda menü aralıkları daralır.
 - **Yeni kayıt** ile iş veya hedef ekleyin; günlük işin satırına veya başlığına tıklayarak düzenleyin. Hedef, toplantı ve bekleyen konu başlıkları sağda ayrıntıları açar; sağdaki kalem kayıt formuna götürür. Sol baştaki boş tamamlama kutusu tek tıkla tamamlar; **✓** yalnız tamamlanmış kayıtlarda görünür. Tamamlanan başlıklar soluk renkte kalır; üstleri çizilmez. İptal edilen kaydın soldaki kutusunda çarpı görünür; başlığı soluk ve üstü çizilidir. İlerleme sütununda çubuk veya yüzde yerine — gösterilir; kaydedilmiş ölçümler ayrıntıda korunur. İptal edilen alt kayıt, üst hedefin ilerleme hesabına katılmaz. Günlük işlerin en sağındaki **▶ Çalışmaya başla** çalışma oturumunu başlatır. Durum etiketi kaydın bulunduğu listeye uygun durum seçeneklerini açar; toplantı dışındaki listelerin hızlı menüsünde tamamlama tekrarlanmaz. Durum, tarih, öncelik, sonraki aksiyon ve listeye özel alanlar saklanır.
-- Kayıt formunda yalnızca alanlar kaydırılır; başlık ve alttaki **Kaydı sil / Vazgeç / Değişiklikleri kaydet** çubuğu görünür kalır. Uzun formlarda kaydetmek için en alta inmek gerekmez. Mevcut kaydı düzenlerken de temel alanlar kayıt türüne göre öne çıkar; diğer alanlar temel bilgilerden sonra açık **Ek bilgiler** altında kalır; istersen kapatabilirsin.
+- Kayıt formunda yalnızca alanlar kaydırılır; başlık ve alttaki **Kaydı sil / Vazgeç / Değişiklikleri kaydet** çubuğu görünür kalır. Uzun formlarda kaydetmek için en alta inmek gerekmez. Mevcut kaydı düzenlerken de temel alanlar kayıt türüne göre öne çıkar; diğer alanlar temel bilgilerden sonra kapalı **Ek bilgiler** altında kalır; gerektiğinde açabilirsin.
 - Altı kayıt türünün formunda temel alanlar dengeli sütunlarda yer alır; dar ekranda tek sütuna iner. İsteğe bağlı alanlar **Ek bilgiler** altında toplanır; yalnız başlık zorunludur. Hedeflerde sayısal ölçüm kapalı başlar. Açıldığında hedef değer ve birim boş, mevcut değer **0** gelir; bunlar isteğe bağlıdır. Pozitif hedef girilirse kendi ölçümü önceliklidir; ölçüm olmadan ilerleme bağlı adımlardan hesaplanır.
 - İsterseniz günlük işleri haftalık, haftalık hedefleri aylık, aylık hedefleri senelik hedeflere bağlayın. Bu bağlantılar isteğe bağlıdır; önceki kayıtlara kendiliğinden eklenmez.
 - Uygulama adı **Odak** olarak sabittir. Sol menüde büyük harfli, geometrik **ODAK** marka yazısı bulunur; simge ve slogan kullanılmaz. **Ayarlar → Görünüm** altında **Açık / Koyu / Sistem** temaları vardır; seçim otomatik kaydedilir. Koyu tema siyaha yakın nötr zeminler kullanır; durum ve öncelik renkleri korunur. Sistem seçimi işletim sisteminin temasını izler. Listeler tek kompakt yerleşim kullanır; ayrı liste yoğunluğu seçimi kaldırılmıştır. Eski yoğunluk tercihleri ve geri alma geçmişi korunur.
@@ -123,19 +123,23 @@ Eski aktarımın **Kaç Gün Bekledi** satırı yalnız kaynak değeriyle doğru
 
 Günlük işin **▶ Çalışmaya başla** düğmesi sol altta o işe ait **Çalışma notu** alanını açar. Çalışırken bu alana yazabilirsiniz. Süre sayacı ve saat/dakika girişi yoktur. Notlar bağımsız **Notlar** kartından ayrıdır; her çalışma notu kendi işine ve çalışma kaydına aittir.
 
-Sol altta en fazla üç duraklatılmış iş görünür. İş adına tıklamak notunu açar; **Devam et** ayrıca çalışmayı sürdürür. Başka bir işin notunu okumak çalışan işi durdurmaz. Not açıldığında kart, sabit menünün altındaki boşluktan yukarı doğru yararlanır; aynı başlık iki kez gösterilmez.
+Sol altta yer olduğu ölçüde en fazla üç duraklatılmış iş görünür. İş adına tıklamak notunu açar; **Devam et** ayrıca çalışmayı sürdürür. Başka bir işin notunu okumak çalışan işi durdurmaz. Not açıldığında kart, sabit menünün altındaki boşluktan yukarı doğru yararlanır; aynı başlık iki kez gösterilmez. Kart kaydırılmaz; metin alanı kalan yüksekliğe sığar. Çok kısa pencerelerde ek duraklatılmış satırların sayısı azalır; kayıtlar ve taslaklar korunur.
 
-**Duraklat** sonuç istemez; yazılanları taslak olarak korur ve not alanını küçük özete indirir. **Notu aç** notu yeniden gösterir. **Devam et** aynı nottan sürdürür. Başka işe başlandığında önceki iş duraklatılır; geri dönüldüğünde taslağı açılır. Sayfa yenilendiğinde veya pencere kapandığında da kaydedilmiş taslak korunur. Kaydedilemeyen metin açık alanda tutulur ve hata gösterilir; yeniden denenebilir. Başka penceredeki notun üzerine sessizce yazılmaz.
+**Duraklat** sonuç istemez; yazılanları taslak olarak korur ve not alanını küçük özete indirir. Konu adına veya kartın boş alanına tıklamak notu yeniden gösterir. **Devam et** aynı nottan sürdürür. Başka işe başlandığında önceki iş duraklatılır; geri dönüldüğünde taslağı açılır. Sayfa yenilendiğinde veya pencere kapandığında da kaydedilmiş taslak korunur. Kaydedilemeyen metin açık alanda tutulur ve hata gösterilir; yeniden denenebilir. Başka penceredeki notun üzerine sessizce yazılmaz.
 
 Liste ve güncel iş filtreleri tek satırda kalır; yer daraldığında filtreler kendi satırında yatay kaydırılır. Alt satıra geçmez, sayfanın genişliğini büyütmez.
 
 Sol menüdeki sekmeler çalışma notu açıldığında da sabit kalır; menü kaydırılmaz ve başlıklar tek satırda gösterilir. Üst boşluklar ve not alanı ekran yüksekliğine göre sıkışır. Kartın alt satırında solda oksuz **Çalışma geçmişi**, sağda toplam kayıt sayısı bulunur.
 
+Çalışma kartı etkinken **Ctrl+P**, **Duraklat / Devam et** işlemini çalıştırır; **Ctrl+Enter** sonuç adımını açar. Notun içinde yazıyor olmak gerekmez. Normal notta Enter işlem yapmaz; Shift+Enter alt satır ekler. Sonuç adımında Enter veya Ctrl+Enter kaydeder. Ayrı formlar ve diğer pencerelerin klavye davranışı korunur.
+
+Çalışma geçmişi ve haftalık yapılanlar sağdaki ayrıntı panelinde açılır; kayıt sayıları başlıkta küçüktür. Liste görünür kalır. Sonuç düzenleme penceresi mevcut kaydetme ve Geri al davranışını korur.
+
 **Bitir**, aynı alanda **Sonuç** adımını açar; notunuz hazır gelir. Sonuç yazmak isteğe bağlıdır. Alan boşken **Kaydet ve bitir** çalışmayı kapatır, geçmişe kayıt eklemez. Sonuç yazılmışsa tarih ve saat bilgisiyle kaydedilir. Vazgeçmek taslağı korur. Kaydetme başarısız olursa metin korunur; yeniden denemek aynı kaydı çoğaltmaz. Bitirmek günlük işin durumunu değiştirmez. Kaydedilmiş çalışma tek **Geri al** adımıyla geri alınabilir.
 
 Sol alttaki **Çalışma geçmişi** haftalık geçmişi, günlük işin sağındaki geçmiş simgesi o işe ait kayıtları açar. Kayıtlar tarih ve sonuçla gösterilir; tarih ve sonuç düzenlenebilir, kayıt silinebilir. Eski boş sonuçlar, sonraki adımlar ve hassas süre değerleri kayıtta ve JSON yedeğinde korunur. Düzenleme ve silme tek **Geri al** adımıdır.
 
-Tamamlanmış, iptal edilmiş veya aktarılmış işte yeni çalışma başlatılamaz. Kaydedilmemiş taslaklar bu tarayıcıdaki çalışma alanında kalır; JSON yedeğine, sonuç bitirilip kaydedildikten sonra dahil olur.
+Tamamlanmış, iptal edilmiş veya aktarılmış işte yeni çalışma başlatılamaz. Bitmemiş çalışma notlarının boş olmayan taslakları da JSON yedeğine dahildir. Yükleme onayı taslak sayısını gösterir; yedekteki yeni taslaklar duraklatılmış olarak geri gelir. Aynı işe ait farklı bir yerel taslak varsa yükleme durur ve mevcut metin korunur. Taslak içermeyen eski yedekler çalışma taslaklarını korur. Kayıtlar ve taslakların birlikte geri yüklenmesi tek **Geri al** adımıdır; sonradan değişmiş taslak geri alınırken ezilmez.
 
 ## Toplantı kararından işe ve takibe
 
@@ -228,7 +232,7 @@ Sağ üstteki **Geri al** düğmesi son kayıt işlemlerini adım adım geri al�
 
 En fazla 30 son işlem tutulur; tarayıcı alanına göre eski adımlar budanabilir. Geçmiş sayfa yenilenince korunur. Metin kutularında ve açık formlarda kısayol tarayıcının normal metin geri almasını bozmaz; arama, gezinme, filtreleme ve pencere açma işlemleri kayıt geçmişine girmez. Yeni bir değişiklik geri alınmış adımların üzerine ilerler; yeniden yap düğmesi yoktur.
 
-Kayıtlar, görünüm tercihi ve geri alma geçmişi aynı `is-takip-v1` anahtarında tek bir atomik yazıyla saklanır: `{version:1, records, odak:{version:1, preferences, history}}`. Eski kayıt dosyaları desteklenir; eski görünüm anahtarı uyumluluk kopyasıdır. Bu zarfı uygulama kayıtlarında atmayın. JSON yedekleri geçerli kayıtları ve varsa `choiceLists` proje/iş türü listelerini taşır; görünüm tercihlerini, silinmiş geçmiş kayıtlarını ve geri alma geçmişini dışa aktarmaz. Yalnız kayıt içeren eski bir yedek yüklenince mevcut listeler korunur. Yedek yükleme, kayıtlar ve aktarılan listeler için tek bir **Geri al** adımıdır. Başka bir pencere kayıtları değiştirmişse eski geçmiş o değişikliği ezemez; güncel kayıtlar yüklenir.
+Kayıtlar, görünüm tercihi ve geri alma geçmişi aynı `is-takip-v1` anahtarında tek bir atomik yazıyla saklanır: `{version:1, records, odak:{version:1, preferences, history, workSessions}}`. `workSessions` çalışma notlarının isteğe bağlı birincil bağlamıdır; eski ayrı çalışma oturumu anahtarı ilk açık değişikliğe kadar salt okunur kaynak olarak desteklenir. Taslak yazmak kayıt alanlarını veya Geri al geçmişini değiştirmez. Eski kayıt dosyaları desteklenir; eski görünüm anahtarı uyumluluk kopyasıdır. Bu zarfı uygulama kayıtlarında atmayın. JSON yedekleri geçerli kayıtları, bağımsız notları, `workDrafts` çalışma taslaklarını ve varsa `choiceLists` proje/iş türü listelerini taşır; görünüm tercihlerini, silinmiş geçmiş kayıtlarını ve geri alma geçmişini dışa aktarmaz. Yalnız kayıt içeren eski bir yedek yüklenince mevcut listeler korunur. Yedek yükleme, kayıtlar ve aktarılan listeler için tek bir **Geri al** adımıdır. Başka bir pencere kayıtları değiştirmişse eski geçmiş o değişikliği ezemez; güncel kayıtlar yüklenir.
 
 ## Bir defalık eski liste aktarımı
 
@@ -303,11 +307,13 @@ Genel bakışın üç alt paneli önceki kompakt yüksekliğe döndü (masaüst�
 
 Takip kartlarındaki konu metni, durum ve tarih satırının üstündeki boşluğu kullanır. Kartın yüksekliği artmadan daha fazla satır okunabilir; Bekleme, Son takip ve Takip ettim alt bölümde kalır.
 
-Haftalık hedef kartındaki durum ve teslim tarihi de takip kartlarıyla aynı alt hizadadır. İlerleme ve düğmeler yerinde kalır; panel yüksekliği artmaz.
+Haftalık, aylık ve senelik hedef panellerinin en altında kaydın **Notlar** alanı gösterilir. Not boşsa bölüm görünmez; mevcut Hedefi düzenle işlemiyle düzenlenir.
+
+Haftalık hedef kartındaki durum ve teslim tarihi de takip kartlarıyla aynı alt hizadadır. Durum solda, tarih sağda tek satırdadır; dar kartlarda tam durum metni kendi düğmesi içinde iki satır olabilir. İlerleme ve düğmeler yerinde kalır; panel yüksekliği artmaz.
 
 Takip kartında Bekleme solda, Son takip başlığı ve tarihi sağ kenara hizalıdır.
 
-Takip kartının altında iki yazılı işlem vardır: **Takip ettim** ve bağlı günlük iş sayısını gösteren **Bağlı işler**. Bağlı işler, bekleyen konu panelindeki ilgili bölümü açar. Burada günlük işler hedef panelindekiyle aynı kompakt düzende listelenir; yeni adım oluşturulabilir, mevcut açık iş bağlanabilir veya yalnız kaynak bağlantısı kaldırılabilir. Bir bekleyen konuya birden fazla günlük iş bağlanabilir; işin hedef bağlantısı, durum, tarihler, notlar ve iş günlüğü korunur. Bağlama ve ayırma tek **Geri al** adımıdır. Günlük işlerin tamamlanması bekleyen konuyu kendiliğinden kapatmaz. Toplantılardaki her tür için tek akış kuralı korunur.
+Takip kartının altında iki yazılı işlem vardır: **Takip ettim** ve bağlı günlük iş sayısını gösteren **Bağlı işler**. Bağlı işler, bekleyen konu panelindeki ilgili bölümü açar. Burada günlük işler hedef panelindekiyle aynı kompakt düzende listelenir; yeni adım oluşturulabilir, mevcut açık iş bağlanabilir veya yalnız kaynak bağlantısı kaldırılabilir. Bir bekleyen konuya birden fazla günlük iş bağlanabilir; işin hedef bağlantısı, durum, tarihler, notlar ve iş günlüğü korunur. Bağlama ve ayırma tek **Geri al** adımıdır. Günlük işlerin tamamlanması bekleyen konuyu kendiliğinden kapatmaz. Toplantılardaki her tür için tek akış kuralı korunur. Toplantı ayrıntısındaki bağlı günlük iş ve takip bölümleri de sayılı, kompakt listeler kullanır. Oluşturma işlemi bölüm başlığındadır; var olan kayıt yanındaki açma düğmesiyle açılır.
 
 Yeni kayıt ve düzenleme formlarında **Ek bilgiler** kapalı başlar. Haftalık ve aylık hedeflerin **Teslim tarihi** ana bölümde, dönem bilgisinin ardından görünür. Düzenleme ekranında da **Adetle takip et**, **Hedef adet**, **Birim** ve ek bilgilerde **Mevcut adet** bulunur. Ölçümü kapatıp kaydetmek sayısal ölçümü kaldırır; açıp kapatmak taslaktaki sayıları silmez. Değişmemiş kayıt formunu kaydetmek kayıt veya geçmiş oluşturmaz.
 

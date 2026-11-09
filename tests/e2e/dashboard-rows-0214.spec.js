@@ -194,6 +194,63 @@ async function desktopGeometry(page) {
   }
 }
 
+async function expectCompactCardMeta(card, dateSelector) {
+  const metadata = await card.evaluate((element, dateSelector) => {
+    const box = element.getBoundingClientRect().toJSON();
+    return {
+      box,
+      controls: [
+        element.querySelector(".status-trigger"),
+        element.querySelector(dateSelector),
+      ].map((control) => {
+        const rects = [];
+        const lines = [];
+        const walker = document.createTreeWalker(control, NodeFilter.SHOW_TEXT);
+        while (walker.nextNode()) {
+          if (!walker.currentNode.textContent.trim()) continue;
+          const range = document.createRange();
+          range.selectNodeContents(walker.currentNode);
+          const textRects = [...range.getClientRects()];
+          lines.push(textRects.length);
+          rects.push(...textRects.map((rect) => rect.toJSON()));
+        }
+        const style = getComputedStyle(control);
+        return {
+          box: control.getBoundingClientRect().toJSON(),
+          fontSize: style.fontSize,
+          whiteSpace: style.whiteSpace,
+          overflow:
+            control.scrollWidth > control.clientWidth + 1 ||
+            control.scrollHeight > control.clientHeight + 1,
+          rects,
+          lines,
+        };
+      }),
+    };
+  }, dateSelector);
+  const [status, date] = metadata.controls;
+  expect(Math.abs(status.box.y - date.box.y)).toBeLessThanOrEqual(1);
+  expect(status.box.right).toBeLessThanOrEqual(date.box.left + 1);
+  expect(date.whiteSpace).toBe("nowrap");
+  for (const [index, control] of metadata.controls.entries()) {
+    expect(control.box.height).toBeCloseTo(28, 0);
+    expect(control.fontSize).toBe("10px");
+    expect(control.overflow).toBe(false);
+    expect(control.box.left).toBeGreaterThanOrEqual(metadata.box.left);
+    expect(control.box.right).toBeLessThanOrEqual(metadata.box.right + 1);
+    expect(control.box.top).toBeGreaterThanOrEqual(metadata.box.top);
+    expect(control.box.bottom).toBeLessThanOrEqual(metadata.box.bottom + 1);
+    expect(control.rects.length).toBeGreaterThan(0);
+    expect(control.lines.every((lines) => lines <= (index ? 1 : 2))).toBe(true);
+    for (const text of control.rects) {
+      expect(text.left).toBeGreaterThanOrEqual(control.box.left);
+      expect(text.right).toBeLessThanOrEqual(control.box.right);
+      expect(text.top).toBeGreaterThanOrEqual(control.box.top);
+      expect(text.bottom).toBeLessThanOrEqual(control.box.bottom);
+    }
+  }
+}
+
 test("dashboard keeps three compact desktop panels and moves notes below the two card panels in narrower windows", async ({
   page,
 }) => {
@@ -202,8 +259,11 @@ test("dashboard keeps three compact desktop panels and moves notes below the two
   for (const viewport of [
     { width: 1920, height: 1080 },
     { width: 1536, height: 864 },
+    { width: 1535, height: 900 },
+    { width: 1440, height: 900 },
     { width: 1280, height: 800 },
     { width: 1280, height: 720 },
+    { width: 1280, height: 700 },
     { width: 1100, height: 640 },
   ]) {
     await page.setViewportSize(viewport);
@@ -230,6 +290,7 @@ test("dashboard keeps three compact desktop panels and moves notes below the two
         card.locator('[data-action="waiting-followup"] svg:visible'),
       ).toHaveCount(0);
       await expect(card.locator(".followup-children-count")).toHaveText("0");
+      await expectCompactCardMeta(card, '[data-action="edit-next-followup"]');
     }
     const goals = weekly(page).locator(".dashboard-goal-row");
     await expect(goals).toHaveCount(2);
@@ -244,6 +305,7 @@ test("dashboard keeps three compact desktop panels and moves notes below the two
       await expect(
         goal.locator('.dashboard-goal-meta-controls [data-action="edit-date"]'),
       ).toHaveCount(1);
+      await expectCompactCardMeta(goal, '[data-action="edit-date"]');
       await expect(goal.locator("strong.dashboard-goal-title")).toBeVisible();
       await expect(goal.locator(".dashboard-goal-title")).not.toHaveAttribute(
         "data-action",

@@ -1,6 +1,7 @@
 import { createRecord, validateStore } from "./model.js";
 import { normalizePreferences, validPreferences } from "./preferences.js";
 import { normalizeNotes } from "./workspace-notes.js";
+import { readWorkSessionSnapshot } from "./work-session-store.js";
 
 const DEFAULT_MAX_ENTRIES = 30;
 const DEFAULT_MAX_BYTES = 1_500_000;
@@ -127,12 +128,33 @@ function actionLabel(value) {
   );
 }
 
-export function makeHistoryEntry(beforeInput, afterInput, label) {
+function sessionSnapshot(value) {
+  return readWorkSessionSnapshot(JSON.stringify(value));
+}
+
+function sessionChange(value) {
+  if (!plainObject(value) || value.version !== 1)
+    throw new Error("Çalışma notlarının geri alma kaydı geçersiz.");
+  const before = sessionSnapshot(value.before);
+  const after = sessionSnapshot(value.after);
+  if (same(before, after))
+    throw new Error("Çalışma notlarının geri alma kaydı değişiklik içermiyor.");
+  return { version: 1, before, after };
+}
+
+export function makeHistoryEntry(
+  beforeInput,
+  afterInput,
+  label,
+  { sessionChange: sessionInput } = {},
+) {
   const before = snapshot(beforeInput);
   const after = snapshot(afterInput);
   const beforeJSON = stableJSON(before);
   const afterJSON = stableJSON(after);
-  if (beforeJSON === afterJSON) return null;
+  const sessions =
+    sessionInput === undefined ? null : sessionChange(sessionInput);
+  if (beforeJSON === afterJSON && !sessions) return null;
 
   const beforeById = new Map(
     before.records.map((record) => [record.id, record]),
@@ -157,6 +179,7 @@ export function makeHistoryEntry(beforeInput, afterInput, label) {
     afterPreferences: after.preferences,
     ...(Object.hasOwn(before, "notes") ? { beforeNotes: before.notes } : {}),
     ...(Object.hasOwn(after, "notes") ? { afterNotes: after.notes } : {}),
+    ...(sessions ? { sessionChange: sessions } : {}),
     changes,
   };
 }
@@ -234,12 +257,16 @@ function parseEntry(input) {
   const hasAfterNotes = Object.hasOwn(input, "afterNotes");
   const beforeNotes = hasBeforeNotes ? normalizeNotes(input.beforeNotes) : null;
   const afterNotes = hasAfterNotes ? normalizeNotes(input.afterNotes) : null;
+  const sessions = Object.hasOwn(input, "sessionChange")
+    ? sessionChange(input.sessionChange)
+    : null;
   if (
     !changes.length &&
     same(beforeOrder, afterOrder) &&
     same(beforePreferences, afterPreferences) &&
     hasBeforeNotes === hasAfterNotes &&
-    same(beforeNotes, afterNotes)
+    same(beforeNotes, afterNotes) &&
+    !sessions
   ) {
     throw new Error("Geri alma kaydı herhangi bir değişiklik içermiyor.");
   }
@@ -254,13 +281,29 @@ function parseEntry(input) {
     afterPreferences,
     ...(hasBeforeNotes ? { beforeNotes } : {}),
     ...(hasAfterNotes ? { afterNotes } : {}),
+    ...(sessions ? { sessionChange: sessions } : {}),
     changes,
   };
 }
 
-export function undoEntry(currentInput, rawEntry) {
+function restoreEntry(currentInput, rawEntry, checkSession) {
   const current = snapshot(currentInput);
   const entry = parseEntry(rawEntry);
+  if (
+    checkSession &&
+    entry.sessionChange &&
+    (!Object.hasOwn(currentInput, "workSessions") ||
+      !same(
+        sessionSnapshot(currentInput.workSessions),
+        entry.sessionChange.after,
+      ))
+  ) {
+    const error = new Error(
+      "Çalışma notları yedek yüklendikten sonra değişti. Güncel notları korumak için bu işlem geri alınamadı.",
+    );
+    error.name = "WorkDraftConflictError";
+    throw error;
+  }
   if (signatureOfJSON(stableJSON(current)) !== entry.afterSignature) {
     throw new Error(staleMessage);
   }
@@ -296,7 +339,18 @@ export function undoEntry(currentInput, rawEntry) {
   if (signatureOfJSON(stableJSON(restored)) !== entry.beforeSignature) {
     throw new Error("Geri alma kaydındaki önceki durum doğrulanamadı.");
   }
-  return restored;
+  return {
+    ...restored,
+    ...(entry.sessionChange
+      ? { workSessions: clone(entry.sessionChange.before) }
+      : Object.hasOwn(currentInput, "workSessions")
+        ? { workSessions: sessionSnapshot(currentInput.workSessions) }
+        : {}),
+  };
+}
+
+export function undoEntry(currentInput, rawEntry) {
+  return restoreEntry(currentInput, rawEntry, true);
 }
 
 function jsonByteLength(value) {
@@ -337,7 +391,9 @@ export function readHistory(raw, current) {
     const retained = pushHistory(limited.slice(0, -1), limited.at(-1));
     let cursor = snapshot(current);
     for (let index = retained.length - 1; index >= 0; index--) {
-      cursor = undoEntry(cursor, retained[index]);
+      // Live typing intentionally does not invalidate ordinary record history.
+      // The session comparison belongs to the actual Undo action, not loading.
+      cursor = restoreEntry(cursor, retained[index], false);
     }
     return retained;
   } catch {

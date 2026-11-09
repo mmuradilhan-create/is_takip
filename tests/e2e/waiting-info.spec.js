@@ -556,6 +556,10 @@ test("long waiting text remains scrollable by keyboard in a narrow compact bubbl
         (element) => getComputedStyle(element).borderTopColor,
       ),
     );
+    const pagePosition = await page.evaluate(() => ({
+      x: window.scrollX,
+      y: window.scrollY,
+    }));
     await reason(page).press("PageDown");
     await expect
       .poll(() => reason(page).evaluate((element) => element.scrollTop))
@@ -569,6 +573,69 @@ test("long waiting text remains scrollable by keyboard in a narrow compact bubbl
         ),
       )
       .toBeLessThanOrEqual(1);
+    const bottom = await reason(page).evaluate((element) => element.scrollTop);
+    for (const key of ["PageDown", "End", "ArrowDown", "ArrowRight", "Space"])
+      await reason(page).press(key);
+    expect(await reason(page).evaluate((element) => element.scrollTop)).toBe(
+      bottom,
+    );
+    await reason(page).press("ArrowUp");
+    expect(
+      await reason(page).evaluate((element) => element.scrollTop),
+    ).toBeLessThan(bottom);
+    await reason(page).press("End");
+    await reason(page).press("Shift+Space");
+    const previousPage = await reason(page).evaluate(
+      (element) => element.scrollTop,
+    );
+    expect(previousPage).toBeGreaterThanOrEqual(0);
+    expect(previousPage).toBeLessThan(bottom);
+    await reason(page).press("PageUp");
+    expect(
+      await reason(page).evaluate((element) => element.scrollTop),
+    ).toBeLessThanOrEqual(previousPage);
+    await reason(page).press("Home");
+    for (const key of ["PageUp", "Home", "ArrowUp", "ArrowLeft", "Shift+Space"])
+      await reason(page).press(key);
+    expect(await reason(page).evaluate((element) => element.scrollTop)).toBe(0);
+    const untouchedKeys = await reason(page).evaluate((element) => {
+      const selection = window.getSelection();
+      const range = document.createRange();
+      range.setStart(element.firstChild, 0);
+      range.setEnd(element.firstChild, 12);
+      selection.removeAllRanges();
+      selection.addRange(range);
+      const selected = selection.toString();
+      const events = [
+        { key: "ArrowDown", shiftKey: true },
+        { key: "End", ctrlKey: true },
+        { key: "PageDown", altKey: true },
+        { key: "Home", metaKey: true },
+        { key: "End", isComposing: true },
+        { key: "PageDown", keyCode: 229 },
+      ].map((init) => {
+        const event = new KeyboardEvent("keydown", {
+          bubbles: true,
+          cancelable: true,
+          ...init,
+        });
+        element.dispatchEvent(event);
+        return event.defaultPrevented;
+      });
+      const unchanged = selection.toString() === selected;
+      selection.removeAllRanges();
+      return { events, unchanged };
+    });
+    expect(untouchedKeys).toEqual({
+      events: [false, false, false, false, false, false],
+      unchanged: true,
+    });
+    await page.clock.runFor(150);
+    expect(
+      await page.evaluate(() => ({ x: window.scrollX, y: window.scrollY })),
+    ).toEqual(pagePosition);
+    await expect(reason(page)).toBeFocused();
+    await expect(popup(page)).toBeVisible();
     await expect(popup(page).locator("img, script")).toHaveCount(0);
     expect(
       await page.evaluate(() => window.waitingInfoInjected),
@@ -581,4 +648,19 @@ test("long waiting text remains scrollable by keyboard in a narrow compact bubbl
     expect(await saved(page)).toBe(before);
     await row.locator(".focus-title").focus();
   }
+
+  await control.scrollIntoViewIfNeeded();
+  await page.mouse.move(1, 1);
+  await control.hover();
+  await page.clock.runFor(100);
+  await control.focus();
+  await page.keyboard.press("Tab");
+  await expect(reason(page)).toBeFocused();
+  await page.evaluate(() =>
+    window.scrollTo(0, document.scrollingElement.scrollHeight),
+  );
+  await expect(popup(page)).not.toBeVisible();
+  await expect(control).toBeFocused();
+  await expect(detail(page)).not.toBeVisible();
+  expect(await saved(page)).toBe(before);
 });

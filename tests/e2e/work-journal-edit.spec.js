@@ -1,5 +1,9 @@
 import { test, expect } from "@playwright/test";
 import { createRecord } from "../../src/model.js";
+import {
+  readEffectiveWorkSession,
+  readWorkspaceDomainRaw,
+} from "./work-session-support.js";
 
 const KEY = "is-takip-v1";
 const NOW = new Date("2026-11-07T12:00:00.000Z");
@@ -70,8 +74,7 @@ async function seed(page) {
 
 const readRecords = (page) =>
   page.evaluate((key) => JSON.parse(localStorage.getItem(key)).records, KEY);
-const readSaved = (page) =>
-  page.evaluate((key) => localStorage.getItem(key), KEY);
+const readSaved = readWorkspaceDomainRaw;
 const editDialog = (page) => page.locator("#work-log-edit-dialog");
 const entry = (page, id = "journal-edit-one") =>
   page.locator(`dialog[open] .work-journal-entry[data-log-id="${id}"]`).first();
@@ -84,16 +87,99 @@ async function openJournal(page) {
   await expect(page.locator("#work-journal-dialog")).toBeVisible();
 }
 
+async function expectHistoryPanel(page, id, count) {
+  const history = page.locator(`#${id}`);
+  await expect(history).toBeVisible();
+  await expect(history).toHaveClass(/work-history-panel/);
+  expect(await history.evaluate((element) => element.matches(":modal"))).toBe(
+    false,
+  );
+  await expect(history).not.toHaveAttribute("aria-modal", "true");
+  await expect(history.locator(".work-journal-totals")).toHaveCount(0);
+  const header = history.locator(".modal-header");
+  const caption = header.locator(".work-history-count");
+  await expect(caption).toHaveText(count);
+  const geometry = await history.evaluate((element) => {
+    const caption = element.querySelector(".work-history-count");
+    const range = document.createRange();
+    range.selectNodeContents(caption);
+    const viewport = document.documentElement.getBoundingClientRect();
+    return {
+      panel: element.getBoundingClientRect().toJSON(),
+      header: element
+        .querySelector(".modal-header")
+        .getBoundingClientRect()
+        .toJSON(),
+      count: range.getBoundingClientRect().toJSON(),
+      lines: range.getClientRects().length,
+      width: viewport.width,
+      right: viewport.right,
+      windowWidth: innerWidth,
+      height: innerHeight,
+    };
+  });
+  const narrow = geometry.windowWidth <= 760;
+  const gap = narrow ? 12 : 16;
+  expect(geometry.panel.x + geometry.panel.width).toBeCloseTo(
+    geometry.right - gap,
+    0,
+  );
+  expect(geometry.panel.y).toBeCloseTo(narrow ? 12 : 92, 0);
+  expect(geometry.panel.y + geometry.panel.height).toBeCloseTo(
+    geometry.height - gap,
+    0,
+  );
+  expect(geometry.panel.width).toBeCloseTo(
+    narrow ? geometry.width - 24 : 480,
+    0,
+  );
+  expect(geometry.header.height).toBeLessThanOrEqual(92);
+  expect(geometry.lines).toBe(1);
+  expect(geometry.count.left).toBeGreaterThanOrEqual(geometry.header.left);
+  expect(geometry.count.right).toBeLessThanOrEqual(geometry.header.right);
+  expect(geometry.count.top).toBeGreaterThanOrEqual(geometry.header.top);
+  expect(geometry.count.bottom).toBeLessThanOrEqual(geometry.header.bottom);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+}
+
+async function useUnderlyingList(page, historyId, saved) {
+  await expect(page.locator("#page-title")).toHaveText("Günlük işler");
+  await expect(page.locator(`#${historyId}`)).toBeVisible();
+  await page
+    .locator('[data-action="list-scope"][data-scope="completed"]')
+    .click();
+  await expect(page.locator(".full-table tr[data-record-row]")).toHaveCount(0);
+  await expect(page.locator(`#${historyId}`)).toBeVisible();
+  await page.locator('[data-action="list-scope"][data-scope="open"]').click();
+  await expect(page.locator(".full-table tr[data-record-row]")).toHaveCount(2);
+  expect(await readSaved(page)).toBe(saved);
+}
+
 test("weekly saved records can be edited across weeks while exact legacy duration and the task's current next step survive one Undo", async ({
   page,
 }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
   const original = await seed(page);
   const saved = await readSaved(page);
+  await page.locator('#nav [data-view="daily"]').click();
   await page.locator('[data-action="work-session-history"]').click();
-  await expect(page.locator("#work-week-dialog")).toBeVisible();
+  await expectHistoryPanel(page, "work-week-dialog", "1 iş · 2 kayıt");
+  await useUnderlyingList(page, "work-week-dialog", saved);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expectHistoryPanel(page, "work-week-dialog", "1 iş · 2 kayıt");
+  expect(await readSaved(page)).toBe(saved);
+  await page.setViewportSize({ width: 1440, height: 900 });
   await entry(page).locator('[data-action="work-log-edit"]').click();
   const dialog = editDialog(page);
   await expect(dialog).toBeVisible();
+  expect(await dialog.evaluate((element) => element.matches(":modal"))).toBe(
+    true,
+  );
+  await expect(page.locator("#work-week-dialog")).toBeVisible();
   await expect(dialog.locator('[name="workLogNextAction"]')).toHaveCount(0);
   const note = dialog.getByRole("textbox", { name: "Sonuç", exact: true });
   await expect(note).toHaveAccessibleDescription(
@@ -119,6 +205,7 @@ test("weekly saved records can be edited across weeks while exact legacy duratio
   expect(await readSaved(page)).toBe(saved);
   await note.press("Enter");
   await expect(dialog).not.toBeVisible();
+  await expectHistoryPanel(page, "work-week-dialog", "1 iş · 1 kayıt");
   await expect(
     page.locator('#work-week-dialog [data-log-id="journal-edit-one"]'),
   ).toHaveCount(0);
@@ -147,6 +234,9 @@ test("weekly saved records can be edited across weeks while exact legacy duratio
     .locator('#work-week-dialog [data-action="work-week-close"]')
     .last()
     .click();
+  await expect(
+    page.locator('[data-action="work-session-history"]'),
+  ).toBeFocused();
   await undo(page);
   expect(await readSaved(page)).toBe(saved);
   expect(await readRecords(page)).toEqual(original);
@@ -155,18 +245,29 @@ test("weekly saved records can be edited across weeks while exact legacy duratio
 test("per-task history preserves millisecond duration during text edits and can cancel or delete one record without touching an active working note", async ({
   page,
 }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
   const original = await seed(page);
   await page.locator('#nav [data-view="daily"]').click();
   await page
     .locator(`.full-table [data-record-row][data-id="${DAILY_ID}"] .work-start`)
     .click();
-  const timer = await page.evaluate(
-    (key) => JSON.parse(localStorage.getItem(`${key}-work-session`)),
-    KEY,
-  );
+  const timer = await readEffectiveWorkSession(page);
   const saved = await readSaved(page);
   await openJournal(page);
+  await expectHistoryPanel(page, "work-journal-dialog", "2 kayıt");
+  await expect(
+    page.locator("#work-journal-dialog .modal-header .work-journal-subtitle"),
+  ).toHaveText(original[0].title);
+  await useUnderlyingList(page, "work-journal-dialog", saved);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expectHistoryPanel(page, "work-journal-dialog", "2 kayıt");
+  expect(await readSaved(page)).toBe(saved);
+  await page.setViewportSize({ width: 1280, height: 800 });
   await entry(page).locator('[data-action="work-log-edit"]').click();
+  await expect(editDialog(page)).toBeVisible();
+  expect(
+    await editDialog(page).evaluate((element) => element.matches(":modal")),
+  ).toBe(true);
   await editDialog(page).locator('[name="workLogNote"]').press("Enter");
   await expect(editDialog(page)).not.toBeVisible();
   expect(await readSaved(page)).toBe(saved);
@@ -198,24 +299,9 @@ test("per-task history preserves millisecond duration during text edits and can 
   expect((await readRecords(page))[0].workLog).toEqual([
     original[0].workLog[1],
   ]);
-  const afterTimer = await page.evaluate(
-    (key) => JSON.parse(localStorage.getItem(`${key}-work-session`)),
-    KEY,
-  );
-  expect(afterTimer.currentId).toBe(timer.currentId);
-  expect(
-    afterTimer.entries.map(({ recordId, sessionId, status }) => ({
-      recordId,
-      sessionId,
-      status,
-    })),
-  ).toEqual(
-    timer.entries.map(({ recordId, sessionId, status }) => ({
-      recordId,
-      sessionId,
-      status,
-    })),
-  );
+  await expectHistoryPanel(page, "work-journal-dialog", "1 kayıt");
+  const afterTimer = await readEffectiveWorkSession(page);
+  expect(afterTimer).toEqual(timer);
   await page
     .locator('#work-journal-dialog [data-action="work-journal-close"]')
     .last()

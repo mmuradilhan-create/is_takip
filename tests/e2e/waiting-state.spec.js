@@ -1,3 +1,4 @@
+import { readWorkspaceDomainRaw } from "./work-session-support.js";
 import { test, expect } from "@playwright/test";
 import { createRecord } from "../../src/model.js";
 import { openCreationExtras } from "./creation-support.js";
@@ -13,7 +14,7 @@ const record = (input) =>
   createRecord({ createdAt: STAMP, updatedAt: STAMP, ...input });
 const readRecords = (page) =>
   page.evaluate((key) => JSON.parse(localStorage.getItem(key)).records, KEY);
-const saved = (page) => page.evaluate((key) => localStorage.getItem(key), KEY);
+const saved = (page) => readWorkspaceDomainRaw(page);
 const form = (page) => page.locator("#record-form");
 const detail = (page) => page.locator("#waiting-details-dialog");
 const row = (page, id) =>

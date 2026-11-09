@@ -730,6 +730,96 @@
   outline-offset: 2px;
 }
 
+/* History is a page-side panel; only the record editor remains modal. */
+:is(#work-journal-dialog, #work-week-dialog).work-history-panel {
+  position: fixed;
+  z-index: 18;
+  inset: 92px 16px 16px auto;
+  width: 480px;
+  max-width: calc(100vw - 32px);
+  height: calc(100dvh - 108px);
+  max-height: calc(100dvh - 108px);
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--theme-border, #d8e3d2);
+  border-radius: 14px;
+  background: var(--theme-surface, #fff);
+  color: var(--theme-ink, #405b49);
+  box-shadow: 0 12px 60px #1c3d2d2b;
+}
+
+.work-history-panel[open] {
+  display: flex;
+  flex-direction: column;
+}
+
+.work-history-panel::backdrop {
+  background: transparent;
+  backdrop-filter: none;
+}
+
+.work-history-panel .work-journal-shell {
+  flex: 1 1 auto;
+  height: 100%;
+  max-height: 100%;
+}
+
+.work-history-panel > .work-journal-shell > :is(.modal-header, .modal-footer) {
+  flex: 0 0 auto;
+  gap: 8px;
+  padding: 12px 16px;
+}
+
+.work-history-panel .modal-header {
+  align-items: flex-start;
+}
+
+.work-history-heading {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.work-history-heading-line {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+}
+
+.work-history-panel .modal-header h2 {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.work-history-count {
+  color: var(--theme-muted, #74836a);
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+.work-history-heading .work-journal-subtitle {
+  margin-top: 6px;
+  color: var(--theme-ink, #405b49);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.work-history-panel .work-journal-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 16px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.work-history-panel .work-week-navigation {
+  margin-bottom: 18px;
+}
+
 @media (max-width: 1100px) {
   .task-meta-line {
     flex-wrap: wrap;
@@ -769,5 +859,16 @@
   .work-week-record > header {
     flex-wrap: wrap;
     gap: 2px;
+  }
+}
+
+@media (max-width: 760px) {
+  :is(#work-journal-dialog, #work-week-dialog).work-history-panel {
+    inset: 12px;
+    width: auto;
+    max-width: none;
+    height: calc(100dvh - 24px);
+    max-height: calc(100dvh - 24px);
+    border-radius: 12px;
   }
 }

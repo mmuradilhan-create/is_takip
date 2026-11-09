@@ -1,3 +1,4 @@
+import { readWorkspaceDomainRaw } from "./work-session-support.js";
 import { test, expect } from "@playwright/test";
 import { createRecord } from "../../src/model.js";
 import { readAttentionCards } from "./attention-support.js";
@@ -151,7 +152,7 @@ async function seed(page) {
   return records;
 }
 
-const saved = (page) => page.evaluate((key) => localStorage.getItem(key), KEY);
+const saved = (page) => readWorkspaceDomainRaw(page);
 const focus = (page, id) => page.locator(`.focus-row[data-id="${id}"]`);
 const focusIds = (page) =>
   page

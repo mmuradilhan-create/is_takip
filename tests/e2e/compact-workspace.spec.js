@@ -1,3 +1,7 @@
+import {
+  readWorkspaceDomainRaw,
+  readEffectiveWorkSession,
+} from "./work-session-support.js";
 import { selectListStatus } from "./list-scope-helper.js";
 import { test, expect } from "@playwright/test";
 import { createRecord } from "../../src/model.js";
@@ -147,8 +151,7 @@ async function seed(page) {
 
 const readRecords = (page) =>
   page.evaluate((key) => JSON.parse(localStorage.getItem(key)).records, KEY);
-const readSaved = (page) =>
-  page.evaluate((key) => localStorage.getItem(key), KEY);
+const readSaved = (page) => readWorkspaceDomainRaw(page);
 const focusIds = (page) =>
   page
     .locator(".focus-list > .focus-row")
@@ -441,20 +444,21 @@ test("sidebar work notes keep history available and save only finished results w
       .evaluate((element) => getComputedStyle(element).paddingBottom),
   ).toBe(idlePadding);
   await panel.locator("#work-session-title").click();
-  await expect(page.locator('#record-form [name="title"]')).toHaveValue(
-    "Öncelikli inceleme",
+  await expect(draft).toBeFocused();
+  await expect(page.locator("#editor")).not.toBeVisible();
+  await expect(panel.locator("#work-session-title")).toHaveAttribute(
+    "data-action",
+    "work-note-open",
   );
-  await page.locator('#editor [data-action="close"]').last().click();
+  await expect(draft).toHaveValue("Kompakt panelden inceleme tamamlandı.");
+  expect(await readSaved(page)).toBe(before);
   await panel.getByRole("button", { name: "Duraklat", exact: true }).click();
   await page.clock.fastForward(120_000);
   await expect(panel).toHaveAttribute("data-collapsed", "true");
   await expect(draft).toBeHidden();
   expect(activeBounds.y).toBeLessThan((await control.boundingBox()).y);
   await expect(draft).toHaveValue("Kompakt panelden inceleme tamamlandı.");
-  const paused = await page.evaluate(
-    (key) => JSON.parse(localStorage.getItem(key)),
-    `${KEY}-work-session`,
-  );
+  const paused = await readEffectiveWorkSession(page);
   expect(
     paused.entries.find((entry) => entry.recordId === "compact-urgent"),
   ).toMatchObject({

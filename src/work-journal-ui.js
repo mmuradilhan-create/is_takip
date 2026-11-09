@@ -79,10 +79,6 @@ function entryMarkup(entry, actions = "") {
   return `<li><article class="work-journal-entry" data-log-id="${escapeHtml(entry.id)}"><div class="work-journal-entry-heading"><time datetime="${escapeHtml(entry.date)}">${escapeHtml(dateLabel(entry.date))}</time><div class="work-journal-entry-tools">${actions}</div></div>${entry.note ? `<section class="work-journal-field"><h3>Sonuç</h3><p>${escapeHtml(entry.note)}</p></section>` : '<p class="work-journal-hint">Sonuç notu eklenmemiş.</p>'}${entry.nextAction ? `<section class="work-journal-field"><h3>Sonraki adım</h3><p>${escapeHtml(entry.nextAction)}</p></section>` : ""}</article></li>`;
 }
 
-function totalsMarkup(items) {
-  return `<div class="work-journal-totals">${items.map(([label, value]) => `<div><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`).join("")}</div>`;
-}
-
 function emptyMarkup(title, text) {
   return `<div class="work-journal-empty"><strong>${escapeHtml(title)}</strong><p>${escapeHtml(text)}</p></div>`;
 }
@@ -93,6 +89,7 @@ export function createWorkJournalUI({
   getRecords,
   onUpdateEntry,
   onDeleteEntry,
+  onBeforeOpen = () => {},
   onError = () => {},
 } = {}) {
   if (!root || typeof getRecords !== "function")
@@ -101,11 +98,11 @@ export function createWorkJournalUI({
   const owner = document.defaultView;
   const journalDialog = document.createElement("dialog");
   journalDialog.id = "work-journal-dialog";
-  journalDialog.className = "modal work-journal-modal";
+  journalDialog.className = "modal work-journal-modal work-history-panel";
   journalDialog.setAttribute("aria-label", "Çalışma geçmişi");
   const weekDialog = document.createElement("dialog");
   weekDialog.id = "work-week-dialog";
-  weekDialog.className = "modal work-week-modal";
+  weekDialog.className = "modal work-week-modal work-history-panel";
   weekDialog.setAttribute("aria-label", "Haftalık yapılanlar");
   const editDialog = document.createElement("dialog");
   editDialog.id = "work-log-edit-dialog";
@@ -121,6 +118,43 @@ export function createWorkJournalUI({
   let deleting = null;
   let saving = false;
   let deletionError = "";
+  const historyTriggers = new WeakMap();
+  const skipRestore = new WeakSet();
+  let editOrigin = null;
+
+  function canActivate() {
+    return !destroyed && !saving && !editDialog.open;
+  }
+
+  function closeHistory(dialog, restoreFocus = true) {
+    if (!dialog.open) return;
+    if (!restoreFocus) skipRestore.add(dialog);
+    dialog.close();
+  }
+
+  function restoreHistoryFocus(event) {
+    const dialog = event.currentTarget;
+    if (dialog.open) return;
+    if (skipRestore.has(dialog)) {
+      skipRestore.delete(dialog);
+      return;
+    }
+    if (destroyed || document.querySelector("dialog:modal")) return;
+    const previous = historyTriggers.get(dialog);
+    const fallback =
+      dialog === journalDialog
+        ? [...root.querySelectorAll('[data-action="work-journal"]')].find(
+            (control) => control.dataset.id === recordId,
+          )
+        : root.querySelector('[data-action="work-session-history"]');
+    (previous?.isConnected ? previous : fallback)?.focus({
+      preventScroll: true,
+    });
+  }
+
+  function onHistoryCancel(event) {
+    if (saving) event.preventDefault();
+  }
 
   function find(id) {
     return getRecords().find((record) => record.id === id);
@@ -163,8 +197,8 @@ export function createWorkJournalUI({
     return `<button type="button" class="btn secondary work-week-trigger" data-action="work-week-report">${journalIcon}<span>Haftalık özet</span></button>`;
   }
 
-  function shell(title, body, closeAction) {
-    return `<div class="work-journal-shell"><div class="modal-header"><h2>${escapeHtml(title)}</h2><button type="button" class="close-modal" data-action="${closeAction}" aria-label="Pencereyi kapat">${closeIcon}</button></div><div class="modal-body work-journal-body">${body}</div><div class="modal-footer"><button type="button" class="btn primary" data-action="${closeAction}">Tamam</button></div></div>`;
+  function shell(title, body, closeAction, count, subtitle = "") {
+    return `<div class="work-journal-shell"><div class="modal-header"><div class="work-history-heading"><div class="work-history-heading-line"><h2>${escapeHtml(title)}</h2><span class="work-history-count">${escapeHtml(count)}</span></div>${subtitle ? `<p class="work-journal-subtitle">${escapeHtml(subtitle)}</p>` : ""}</div><button type="button" class="close-modal" data-action="${closeAction}" aria-label="Pencereyi kapat">${closeIcon}</button></div><div class="modal-body work-journal-body" tabindex="0" aria-label="Çalışma kayıtları">${body}</div><div class="modal-footer"><button type="button" class="btn primary" data-action="${closeAction}">Tamam</button></div></div>`;
   }
 
   function replaceContent(dialog, markup) {
@@ -197,7 +231,7 @@ export function createWorkJournalUI({
         "Kayıt silinmiş veya başka bir listeye taşınmış olabilir.",
       );
     } else {
-      body = `<p class="work-journal-subtitle">${escapeHtml(record.title)}</p>${totalsMarkup([["Çalışma kaydı", entries.length]])}${
+      body = `${
         entries.length
           ? `<ol class="work-journal-list">${latestFirst(entries)
               .map((entry) =>
@@ -212,7 +246,13 @@ export function createWorkJournalUI({
     }
     replaceContent(
       journalDialog,
-      shell("Çalışma geçmişi", body, "work-journal-close"),
+      shell(
+        "Çalışma geçmişi",
+        body,
+        "work-journal-close",
+        `${entries.length} kayıt`,
+        record?.type === "daily" ? record.title : "",
+      ),
     );
     journalKey = nextKey;
   }
@@ -241,13 +281,15 @@ export function createWorkJournalUI({
           "Bu hafta çalışma kaydı yok",
           "Günlük işlerde bitirip kaydettiğin sonuçlar burada toplanır. Önceki haftaları da inceleyebilirsin.",
         );
-    const body = `${navigation}${totalsMarkup([
-      ["Üzerinde çalışılan iş", summary.recordCount],
-      ["Çalışma kaydı", summary.sessionCount],
-    ])}${content}`;
+    const body = `${navigation}${content}`;
     replaceContent(
       weekDialog,
-      shell("Haftalık yapılanlar", body, "work-week-close"),
+      shell(
+        "Haftalık yapılanlar",
+        body,
+        "work-week-close",
+        `${summary.recordCount} iş · ${summary.sessionCount} kayıt`,
+      ),
     );
     weekKey = nextKey;
   }
@@ -295,6 +337,11 @@ export function createWorkJournalUI({
     const entry = findEntry(id, entryId);
     if (!entry) throw new Error("Düzenlenecek çalışma oturumu bulunamadı.");
     if (editDialog.open) return;
+    editOrigin = {
+      parent: journalDialog.open ? journalDialog : weekDialog,
+      recordId: id,
+      entryId,
+    };
     deleting = null;
     deletionError = "";
     refreshReports();
@@ -373,18 +420,21 @@ export function createWorkJournalUI({
 
   function close() {
     if (editDialog.open) editDialog.close();
-    if (journalDialog.open) journalDialog.close();
-    if (weekDialog.open) weekDialog.close();
+    closeHistory(journalDialog, false);
+    closeHistory(weekDialog, false);
   }
 
-  function openWeek() {
-    if (destroyed) return;
+  function openWeek(trigger = document.activeElement) {
+    if (!canActivate()) return;
     try {
-      if (journalDialog.open) journalDialog.close();
+      onBeforeOpen();
+      closeHistory(journalDialog, false);
+      if (!weekDialog.open) historyTriggers.set(weekDialog, trigger);
       selectedWeek = makePlanningPeriod("weekly", localDate());
       renderWeek(true);
-      if (!weekDialog.open) weekDialog.showModal();
+      if (!weekDialog.open) weekDialog.show();
       weekDialog.querySelector(".modal-body").scrollTop = 0;
+      weekDialog.querySelector(".close-modal")?.focus({ preventScroll: true });
     } catch (error) {
       onError(error instanceof Error ? error.message : String(error));
     }
@@ -456,17 +506,24 @@ export function createWorkJournalUI({
         deleting = null;
         deletionError = "";
         refreshReports();
-      } else if (action === "work-journal-close") journalDialog.close();
-      else if (action === "work-week-close") weekDialog.close();
-      else if (action === "work-journal") {
-        if (find(id)?.type !== "daily") return;
+      } else if (action === "work-journal-close") {
+        if (!saving) closeHistory(journalDialog);
+      } else if (action === "work-week-close") {
+        if (!saving) closeHistory(weekDialog);
+      } else if (action === "work-journal") {
+        if (!canActivate() || find(id)?.type !== "daily") return;
+        onBeforeOpen();
         recordId = id;
-        if (weekDialog.open) weekDialog.close();
+        closeHistory(weekDialog, false);
+        historyTriggers.set(journalDialog, control);
         renderJournal(true);
-        if (!journalDialog.open) journalDialog.showModal();
+        if (!journalDialog.open) journalDialog.show();
         journalDialog.querySelector(".modal-body").scrollTop = 0;
+        journalDialog
+          .querySelector(".close-modal")
+          ?.focus({ preventScroll: true });
       } else if (action === "work-week-report") {
-        openWeek();
+        openWeek(control);
       } else if (weekDialog.open) {
         selectedWeek =
           action === "work-week-current"
@@ -483,6 +540,26 @@ export function createWorkJournalUI({
     }
   }
 
+  function onEscape(event) {
+    if (
+      event.key !== "Escape" ||
+      event.defaultPrevented ||
+      saving ||
+      document.querySelector("dialog:modal, :popover-open")
+    )
+      return;
+    const dialog = weekDialog.open
+      ? weekDialog
+      : journalDialog.open
+        ? journalDialog
+        : null;
+    if (!dialog) return;
+    const focusedPanel = document.activeElement?.closest?.("dialog[open]");
+    if (focusedPanel && focusedPanel !== dialog) return;
+    event.preventDefault();
+    closeHistory(dialog);
+  }
+
   function destroy() {
     if (destroyed) return;
     destroyed = true;
@@ -490,6 +567,7 @@ export function createWorkJournalUI({
     root.removeEventListener("click", onClick);
     root.removeEventListener("submit", saveEdit);
     owner.removeEventListener("pagehide", destroy);
+    owner.removeEventListener("keydown", onEscape);
     journalDialog.remove();
     weekDialog.remove();
     editDialog.remove();
@@ -498,9 +576,36 @@ export function createWorkJournalUI({
   root.addEventListener("click", onClick);
   root.addEventListener("submit", saveEdit);
   editDialog.addEventListener("close", () => {
+    if (editDialog.open) return;
     releaseCalendar();
     editing = null;
+    const origin = editOrigin;
+    editOrigin = null;
+    if (destroyed || !origin?.parent.open) return;
+    const trigger = [
+      ...origin.parent.querySelectorAll('[data-action="work-log-edit"]'),
+    ].find(
+      (control) =>
+        control.dataset.recordId === origin.recordId &&
+        control.dataset.entryId === origin.entryId,
+    );
+    (trigger || origin.parent.querySelector(".close-modal"))?.focus({
+      preventScroll: true,
+    });
   });
+  for (const dialog of [journalDialog, weekDialog]) {
+    dialog.addEventListener("close", restoreHistoryFocus);
+    dialog.addEventListener("cancel", onHistoryCancel);
+  }
+  owner.addEventListener("keydown", onEscape);
   owner.addEventListener("pagehide", destroy, { once: true });
-  return { button, weeklyButton, openWeek, refresh, close, destroy };
+  return {
+    button,
+    weeklyButton,
+    openWeek,
+    refresh,
+    close,
+    canActivate,
+    destroy,
+  };
 }

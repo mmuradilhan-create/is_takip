@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { selectListStatus } from "./list-scope-helper.js";
 import { createRecord } from "../../src/model.js";
+import { readEffectiveWorkSession } from "./work-session-support.js";
 
 const KEY = "is-takip-v1";
 const SESSION_KEY = `${KEY}-work-session`;
@@ -342,13 +343,15 @@ test("closed records keep read-only marks and cancelled titles are muted and str
   );
 });
 
-test("quick completion pauses a running daily timer without changing the journal and undo preserves the paused time", async ({
+test("quick completion pauses an active daily working note without changing the journal and undo preserves its untimed draft", async ({
   page,
 }) => {
   const original = record("daily", { workLog: [oldLog] });
   await seed(page, [original]);
   await openList(page, "daily");
   await row(page, original.id).locator(".work-start").click();
+  const draftNote = "Tamamlanmadan önce korunan çalışma notu.";
+  await page.locator("#work-session-note").fill(draftNote);
   await page.clock.fastForward(30_000);
   await expect(page.locator("#work-session-panel")).toHaveAttribute(
     "data-phase",
@@ -356,15 +359,14 @@ test("quick completion pauses a running daily timer without changing the journal
   );
   await row(page, original.id).locator(".quick-complete").click();
   await expect(page.locator("#work-session-panel")).not.toBeVisible();
-  const session = await page.evaluate(
-    (key) => JSON.parse(localStorage.getItem(key)),
-    SESSION_KEY,
-  );
+  const session = await readEffectiveWorkSession(page);
   expect(session.currentId).toBeNull();
   expect(session.entries[0]).toMatchObject({
     recordId: original.id,
     status: "paused",
-    elapsedMs: 30_000,
+    elapsedMs: 0,
+    trackTime: false,
+    draftNote,
     startedAt: null,
     ownerId: null,
   });
@@ -375,11 +377,23 @@ test("quick completion pauses a running daily timer without changing the journal
     "data-phase",
     "paused",
   );
-  await expect(page.locator("#work-session-panel")).not.toBeVisible();
-  await page.clock.fastForward(60_000);
-  const after = await page.evaluate(
-    (key) => JSON.parse(localStorage.getItem(key)),
-    SESSION_KEY,
+  await expect(page.locator("#work-session-panel")).toBeVisible();
+  await expect(page.locator("#work-session-panel")).toHaveAttribute(
+    "data-phase",
+    "paused",
   );
-  expect(after.entries[0].elapsedMs).toBe(30_000);
+  await expect(page.locator("#work-session-panel")).toHaveAttribute(
+    "data-collapsed",
+    "true",
+  );
+  await expect(page.locator("#work-session-note")).toHaveValue(draftNote);
+  await page.clock.fastForward(60_000);
+  const after = await readEffectiveWorkSession(page);
+  expect(after.entries[0]).toMatchObject({
+    sessionId: session.entries[0].sessionId,
+    status: "paused",
+    trackTime: false,
+    draftNote,
+    elapsedMs: 0,
+  });
 });

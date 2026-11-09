@@ -182,7 +182,36 @@ async function expectTableProgress(page, type, id, percent) {
 test("weekly, monthly and yearly panels render human periods and readable child dates without rewriting saved goals", async ({
   page,
 }) => {
-  await seed(page);
+  const descriptions = {
+    "week-metric":
+      'Haftalık gerçek not.\n<img src=x onerror="window.goalNotesInjected=1">',
+    "month-metric": "Aylık gerçek not.\nİkinci satır da korunur.",
+    "year-metric":
+      "Senelik gerçek not.\n<svg onload=window.goalNotesInjected=1> güvenli metin",
+  };
+  const original = fixture().map((goal) =>
+    Object.hasOwn(descriptions, goal.id)
+      ? {
+          ...goal,
+          description: descriptions[goal.id],
+          ...(goal.id === "week-metric"
+            ? {
+                sourceFields: {
+                  ...goal.sourceFields,
+                  __weeklyMoves: [
+                    {
+                      from: "2026-W44",
+                      to: "2026-W45",
+                      reason: "Korunacak gerçek taşıma notu",
+                    },
+                  ],
+                },
+              }
+            : {}),
+        }
+      : goal,
+  );
+  await seed(page, original);
   const before = await saved(page);
   for (const [type, id, period] of [
     ["weekly", "week-metric", "2 – 8 Kasım 2026"],
@@ -206,9 +235,45 @@ test("weekly, monthly and yearly panels render human periods and readable child 
     await expect(
       panel(page).locator("#goal-next-step-form, [name=nextAction]"),
     ).toHaveCount(0);
+    await expect(
+      panel(page).locator('[data-action="goal-new-step"]'),
+    ).toBeEnabled();
+    await expect(panel(page).locator("#goal-link-child-form")).toBeVisible();
+    const notes = panel(page).locator(
+      '[data-goal-section="notes"].goal-panel-notes',
+    );
+    await expect(notes.locator("h3")).toHaveText("Notlar");
+    expect(await notes.locator("p").textContent()).toBe(descriptions[id]);
+    await expect(notes.locator("p")).toHaveCSS("white-space", "pre-wrap");
+    await expect(
+      notes.locator(
+        "input, textarea, select, button, [contenteditable], img, svg, script",
+      ),
+    ).toHaveCount(0);
+    await expect(
+      panel(page).locator(".goal-panel-body > :last-child"),
+    ).toHaveAttribute("data-goal-section", "notes");
+    if (type === "weekly") {
+      await expect(panel(page).locator(".goal-transfer-reason")).toHaveText(
+        "Korunacak gerçek taşıma notu",
+      );
+      expect(
+        await notes.evaluate(
+          (section) => section.previousElementSibling.dataset.goalSection,
+        ),
+      ).toBe("transfers");
+    }
+    expect(await page.evaluate(() => window.goalNotesInjected)).toBeUndefined();
     expect(await saved(page)).toBe(before);
   }
+  await openGoal(page, "monthly", "month-derived");
+  await expect(panel(page).locator('[data-goal-section="notes"]')).toHaveCount(
+    0,
+  );
   await openGoal(page, "weekly", "week-derived");
+  await expect(panel(page).locator('[data-goal-section="notes"]')).toHaveCount(
+    0,
+  );
   const openChildDate = panel(page).locator(
     '.goal-child-row[data-id="derived-open"] .goal-child-meta button[data-action="edit-date"]',
   );
@@ -248,6 +313,9 @@ test("weekly, monthly and yearly panels render human periods and readable child 
     await expect(title).toHaveCSS("text-decoration-line", /line-through/);
   }
   await openGoal(page, "yearly", "year-derived");
+  await expect(panel(page).locator('[data-goal-section="notes"]')).toHaveCount(
+    0,
+  );
   const cancelledGoal = panel(page).locator(
     '.goal-child-row[data-id="closed-month"]',
   );

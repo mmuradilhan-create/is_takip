@@ -3,6 +3,10 @@ import assert from "node:assert/strict";
 import { createRecord, validateStore } from "../src/model.js";
 import { createWorkspaceStore } from "../src/workspace-store.js";
 import { addChoice, removeChoice } from "../src/choice-catalogs.js";
+import {
+  createWorkSessionStore,
+  readWorkSessionSnapshot,
+} from "../src/work-session-store.js";
 
 const KEY = "test-workspace";
 const PREFS = `${KEY}-preferences`;
@@ -62,6 +66,19 @@ function setup(records = [record()], preferences) {
 }
 function stored(storage) {
   return JSON.parse(storage.getItem(KEY));
+}
+
+function sessions(store, ownerId = "owner") {
+  return createWorkSessionStore({
+    storage: store.sessionStorage,
+    key: `${KEY}-work-session`,
+    ownerId,
+    now: () => 1000,
+  });
+}
+
+function draft(recordId, text = "Taslak", sessionId = `session-${recordId}`) {
+  return { recordId, sessionId, draftNote: text, status: "running" };
 }
 
 test("legacy data opens without writes and the first change atomically stores records, preferences and history", () => {
@@ -369,6 +386,467 @@ test("absence does not seed fallback records, explicitly read-only stores never 
   assert.equal(store.undo(), null);
   assert.equal(storage.writes.length, 0);
   assert.equal(store.canUndo, false);
+});
+
+test("primary session adapter reads legacy context without migration and live drafts preserve domain data, unknown metadata and Undo", () => {
+  const original = record({
+    workLog: [
+      {
+        id: "old-log",
+        date: "2026-11-01",
+        endedAt: timestamp,
+        durationMs: 12345,
+        note: "Eski sonuç",
+      },
+    ],
+  });
+  const legacy = {
+    version: 1,
+    currentId: original.id,
+    entries: [
+      {
+        recordId: original.id,
+        sessionId: "legacy-note",
+        status: "paused",
+        elapsedMs: 98765,
+        startedAt: null,
+        ownerId: null,
+        updatedAt: 400,
+        draftNote: "  Eski taslak\n",
+        trackTime: false,
+      },
+    ],
+  };
+  const legacyRaw = JSON.stringify(legacy);
+  const storage = new MemoryStorage({
+    [KEY]: JSON.stringify({
+      version: 1,
+      records: [original],
+      extra: { preserved: true },
+      odak: {
+        version: 1,
+        preferences: { density: "compact" },
+        history: [],
+        future: { literal: "özel" },
+      },
+    }),
+    [`${KEY}-work-session`]: legacyRaw,
+  });
+  const store = createWorkspaceStore({ storage, key: KEY });
+  const session = sessions(store);
+  assert.equal(storage.writes.length, 0);
+  assert.equal(store.readWorkSessionRaw(), legacyRaw);
+  assert.equal(session.current.draftNote, "  Eski taslak\n");
+  assert.equal(
+    session.saveDraft(
+      original.id,
+      "legacy-note",
+      "Yeni not",
+      "  Eski taslak\n",
+    ),
+    true,
+  );
+  const envelope = stored(storage);
+  assert.deepEqual(envelope.records, [original]);
+  assert.deepEqual(envelope.odak.preferences, { density: "compact" });
+  assert.deepEqual(envelope.odak.history, []);
+  assert.deepEqual(envelope.odak.future, { literal: "özel" });
+  assert.deepEqual(envelope.extra, { preserved: true });
+  assert.equal(envelope.odak.workSessions.entries[0].elapsedMs, 98765);
+  assert.equal(envelope.odak.workSessions.entries[0].draftNote, "Yeni not");
+  assert.equal(storage.getItem(`${KEY}-work-session`), legacyRaw);
+  assert.equal(store.canUndo, false);
+  assert.deepEqual(
+    storage.writes.map((write) => write.key),
+    [KEY],
+  );
+});
+
+test("primary session input retains record Undo and primary authority ignores a malformed legacy key", () => {
+  const { storage, store } = setup();
+  const original = store.records;
+  store.saveRecords(
+    [{ ...original[0], description: "Düzenlenen açıklama" }],
+    "Düzenleme",
+  );
+  const beforeHistory = store.history;
+  const session = sessions(store);
+  session.start(original[0].id, { trackTime: false });
+  const id = session.current.sessionId;
+  session.saveDraft(original[0].id, id, "Çalışırken yazılan not", "");
+  storage.values.set(`${KEY}-work-session`, "broken legacy context");
+  assert.equal(
+    JSON.parse(store.readWorkSessionRaw()).entries[0].draftNote,
+    "Çalışırken yazılan not",
+  );
+  assert.deepEqual(store.history, beforeHistory);
+  assert.equal(store.undo(), "Düzenleme");
+  assert.deepEqual(store.records, original);
+  assert.equal(
+    readWorkSessionSnapshot(store.readWorkSessionRaw()).entries[0].draftNote,
+    "Çalışırken yazılan not",
+  );
+});
+
+test("session writes cannot overwrite a record edit that arrives between reading and writing the shared primary key", () => {
+  const { storage, store } = setup();
+  const session = sessions(store);
+  session.start("daily-one", { trackTime: false });
+  const previous = store.sessionStorage.getItem(`${KEY}-work-session`);
+  const next = JSON.parse(previous);
+  next.entries[0].draftNote = "Kaydedilmek istenen taslak";
+  let reads = 0;
+  let peerRaw;
+  storage.beforeGet = (key) => {
+    if (key !== KEY || ++reads !== 2) return;
+    const peer = JSON.parse(storage.values.get(KEY));
+    peer.records[0].description = "Tam arada gelen gerçek kayıt değişikliği";
+    peerRaw = JSON.stringify(peer);
+    storage.values.set(KEY, peerRaw);
+  };
+  assert.throws(
+    () =>
+      store.sessionStorage.setItem(`${KEY}-work-session`, JSON.stringify(next)),
+    { name: "WorkDraftConflictError" },
+  );
+  storage.beforeGet = null;
+  assert.equal(storage.getItem(KEY), peerRaw);
+  assert.equal(
+    readWorkSessionSnapshot(store.readWorkSessionRaw()).entries[0].draftNote,
+    undefined,
+  );
+  assert.equal(
+    stored(storage).records[0].description,
+    "Tam arada gelen gerçek kayıt değişikliği",
+  );
+});
+
+test("session adapter CAS refuses stale writes and an absent primary uses the current seeded workspace instead of empty records", () => {
+  const { storage, store } = setup([record(), record({ id: "second" })], {
+    density: "compact",
+  });
+  store.saveNotes([
+    {
+      id: "note",
+      text: "Bağımsız not",
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    },
+  ]);
+  const expectedRecords = store.records;
+  const expectedNotes = store.notes;
+  const expectedHistory = store.history;
+  storage.removeItem(KEY);
+  const session = sessions(store);
+  assert.equal(session.start("daily-one", { trackTime: false }), true);
+  assert.deepEqual(stored(storage).records, expectedRecords);
+  assert.deepEqual(stored(storage).odak.notes, expectedNotes);
+  assert.deepEqual(stored(storage).odak.history, expectedHistory);
+  assert.deepEqual(stored(storage).odak.preferences, { density: "compact" });
+  const stale = store.sessionStorage.getItem(`${KEY}-work-session`);
+  const other = createWorkspaceStore({ storage, key: KEY });
+  const peer = sessions(other, "peer");
+  peer.saveDraft(
+    "daily-one",
+    peer.current.sessionId,
+    "Diğer pencerenin notu",
+    "",
+  );
+  const peerRaw = storage.getItem(KEY);
+  assert.throws(
+    () => store.sessionStorage.setItem(`${KEY}-work-session`, stale),
+    { name: "WorkDraftConflictError" },
+  );
+  assert.equal(storage.getItem(KEY), peerRaw);
+  assert.equal(storage.getItem(`${KEY}-work-session`), null);
+});
+
+test("records, independent notes, preferences and imported paused drafts restore in one primary transaction and one reloadable Undo", () => {
+  const beforeRecords = [record(), record({ id: "local" })];
+  const { storage, store } = setup(beforeRecords);
+  store.saveNotes([
+    {
+      id: "before-note",
+      text: "Önceki bağımsız not",
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    },
+  ]);
+  const session = sessions(store);
+  session.start("local", { trackTime: false });
+  session.saveDraft(
+    "local",
+    session.current.sessionId,
+    "Yerel not korunacak",
+    "",
+  );
+  const before = stored(storage);
+  const beforeSessions = readWorkSessionSnapshot(store.readWorkSessionRaw());
+  const expectedRaw = store.readWorkSessionRaw();
+  const restoredRecords = [
+    record({ title: "Yedekteki iş" }),
+    record({ id: "incoming" }),
+    beforeRecords[1],
+  ];
+  const count = storage.writes.filter((write) => write.key === KEY).length;
+  assert.equal(
+    store.saveWorkspace(
+      {
+        records: restoredRecords,
+        preferences: { density: "compact" },
+        notes: [
+          {
+            id: "after-note",
+            text: "Yedekteki not",
+            createdAt: timestamp,
+            updatedAt: timestamp,
+          },
+        ],
+        workDrafts: {
+          version: 1,
+          entries: [draft("incoming", "  Çok satırlı\nYeni taslak  ")],
+        },
+        expectedWorkSessionRaw: expectedRaw,
+      },
+      "Taslaklı yedek",
+    ),
+    true,
+  );
+  assert.equal(
+    storage.writes.filter((write) => write.key === KEY).length,
+    count + 1,
+  );
+  assert.equal(store.history.length, before.odak.history.length + 1);
+  const after = readWorkSessionSnapshot(store.readWorkSessionRaw());
+  const imported = after.entries.find((entry) => entry.recordId === "incoming");
+  assert.equal(imported.status, "paused");
+  assert.equal(imported.draftNote, "  Çok satırlı\nYeni taslak  ");
+  assert.equal(imported.trackTime, false);
+  assert.equal(imported.elapsedMs, 0);
+  assert.equal(imported.ownerId, null);
+  assert.equal(imported.startedAt, null);
+  assert.deepEqual(
+    after.entries.find((entry) => entry.recordId === "local"),
+    beforeSessions.entries[0],
+  );
+  const reloaded = createWorkspaceStore({ storage, key: KEY });
+  assert.equal(reloaded.undo(), "Taslaklı yedek");
+  assert.deepEqual(stored(storage), before);
+});
+
+test("conflicting drafts, stale restore consent and quota failures preserve both storage keys and support an exact retry", () => {
+  const { storage, store } = setup([record(), record({ id: "incoming" })]);
+  const session = sessions(store);
+  session.start("daily-one", { trackTime: false });
+  const id = session.current.sessionId;
+  session.saveDraft("daily-one", id, "Güncel yerel not", "");
+  const before = storage.getItem(KEY);
+  const backup = {
+    records: store.records,
+    workDrafts: {
+      version: 1,
+      entries: [draft("daily-one", "Farklı yedek notu")],
+    },
+  };
+  assert.throws(() => store.saveWorkspace(backup), {
+    name: "WorkDraftConflictError",
+  });
+  assert.equal(storage.getItem(KEY), before);
+  const staleExpected = store.readWorkSessionRaw();
+  const peer = sessions(createWorkspaceStore({ storage, key: KEY }), "peer");
+  peer.saveDraft(
+    "daily-one",
+    id,
+    "Onay sırasında değişen not",
+    "Güncel yerel not",
+  );
+  const peerRaw = storage.getItem(KEY);
+  const incoming = {
+    records: store.records,
+    workDrafts: { version: 1, entries: [draft("incoming")] },
+    expectedWorkSessionRaw: staleExpected,
+  };
+  assert.throws(() => store.saveWorkspace(incoming), {
+    name: "WorkDraftConflictError",
+  });
+  assert.equal(storage.getItem(KEY), peerRaw);
+  incoming.expectedWorkSessionRaw = store.readWorkSessionRaw();
+  storage.beforeSet = (key) => {
+    if (key === KEY) throw quota();
+  };
+  assert.throws(() => store.saveWorkspace(incoming));
+  assert.equal(storage.getItem(KEY), peerRaw);
+  assert.equal(storage.getItem(`${KEY}-work-session`), null);
+  assert.equal(store.history.length, 0);
+  storage.beforeSet = null;
+  assert.equal(store.saveWorkspace(incoming, "Yeniden denenen yedek"), true);
+  assert.equal(store.history.length, 1);
+});
+
+test("post-restore draft edits block combined Undo without erasing text, while legacy record-only restores leave sessions unchanged", () => {
+  const { storage, store } = setup();
+  store.saveWorkspace(
+    {
+      records: store.records,
+      workDrafts: { version: 1, entries: [draft("daily-one")] },
+    },
+    "Yalnız taslak",
+  );
+  assert.equal(store.history.length, 1);
+  const session = sessions(store);
+  session.saveDraft(
+    "daily-one",
+    "session-daily-one",
+    "Yükleme sonrası değişiklik",
+    "Taslak",
+  );
+  const reloaded = createWorkspaceStore({ storage, key: KEY });
+  assert.equal(reloaded.canUndo, true);
+  const before = storage.getItem(KEY);
+  assert.throws(() => reloaded.undo(), { name: "WorkDraftConflictError" });
+  assert.equal(storage.getItem(KEY), before);
+  const contextRaw = reloaded.readWorkSessionRaw();
+  reloaded.saveWorkspace(
+    { records: [record({ title: "Eski yedekteki kayıt" })] },
+    "Eski yedek",
+  );
+  assert.equal(reloaded.readWorkSessionRaw(), contextRaw);
+  assert.equal(reloaded.undo(), "Eski yedek");
+  assert.equal(reloaded.readWorkSessionRaw(), contextRaw);
+  assert.equal(reloaded.history.length, 1);
+});
+
+test("present-draft restore normalizes a removed current job atomically so refresh is a no-op and one Undo restores its context", () => {
+  const { storage, store } = setup([record(), record({ id: "remaining" })]);
+  const session = sessions(store);
+  session.start("daily-one", { trackTime: false });
+  session.saveDraft(
+    "daily-one",
+    session.current.sessionId,
+    "Kaldırılan işin notu korunur",
+    "",
+  );
+  const before = stored(storage);
+  const oldEntry = session.current;
+  const expectedRaw = store.readWorkSessionRaw();
+  store.saveWorkspace(
+    {
+      records: [record({ id: "remaining" })],
+      workDrafts: { version: 1, entries: [] },
+      expectedWorkSessionRaw: expectedRaw,
+    },
+    "Etkin işi kaldıran yedek",
+  );
+  const after = readWorkSessionSnapshot(store.readWorkSessionRaw());
+  assert.equal(after.currentId, null);
+  assert.equal(after.entries[0].status, "paused");
+  assert.equal(after.entries[0].sessionId, oldEntry.sessionId);
+  assert.equal(after.entries[0].elapsedMs, oldEntry.elapsedMs);
+  assert.equal(after.entries[0].draftNote, oldEntry.draftNote);
+  assert.equal(after.entries[0].ownerId, null);
+  assert.equal(after.entries[0].startedAt, null);
+  const committedRaw = storage.getItem(KEY);
+  session.reconcile(["remaining"]);
+  assert.equal(storage.getItem(KEY), committedRaw);
+  assert.equal(
+    createWorkspaceStore({ storage, key: KEY }).undo(),
+    "Etkin işi kaldıran yedek",
+  );
+  assert.deepEqual(stored(storage), {
+    ...before,
+    odak: {
+      ...before.odak,
+      preferences: { density: "comfortable" },
+      history: [],
+    },
+  });
+});
+
+test("present restore settles semantically saved local contexts in its single Undo transaction and preserves different recovery text", () => {
+  const matching = record({
+    id: "matching",
+    workLog: [
+      {
+        id: "matching-session",
+        date: "2026-11-01",
+        endedAt: timestamp,
+        durationMs: 12345,
+        note: "Önceden kaydedilen sonuç",
+      },
+    ],
+  });
+  const recovery = record({
+    id: "recovery",
+    workLog: [
+      {
+        id: "recovery-session",
+        date: "2026-11-01",
+        endedAt: timestamp,
+        durationMs: 76543,
+        note: "Eski sonuç",
+      },
+    ],
+  });
+  const initial = {
+    version: 1,
+    currentId: "matching",
+    entries: [
+      {
+        recordId: "matching",
+        sessionId: "matching-session",
+        status: "running",
+        elapsedMs: 12345,
+        startedAt: 500,
+        ownerId: "legacy-owner",
+        updatedAt: 500,
+      },
+      {
+        recordId: "recovery",
+        sessionId: "recovery-session",
+        status: "paused",
+        elapsedMs: 76543,
+        startedAt: null,
+        ownerId: null,
+        updatedAt: 500,
+        draftNote: "  Sonuçtan daha yeni\nTaslak  ",
+        trackTime: false,
+      },
+    ],
+  };
+  const storage = new MemoryStorage({
+    [KEY]: JSON.stringify({
+      version: 1,
+      records: [matching, recovery],
+      odak: {
+        version: 1,
+        preferences: { density: "comfortable" },
+        history: [],
+        workSessions: initial,
+      },
+    }),
+  });
+  const store = createWorkspaceStore({ storage, key: KEY });
+  const before = stored(storage);
+  store.saveWorkspace(
+    { records: store.records, workDrafts: { version: 1, entries: [] } },
+    "Tamamlanmış bağlamı düzenleyen yedek",
+  );
+  const after = readWorkSessionSnapshot(store.readWorkSessionRaw());
+  assert.equal(after.currentId, null);
+  assert.equal(after.entries[0].status, "finished");
+  assert.equal(after.entries[0].sessionId, "matching-session");
+  assert.equal(after.entries[0].elapsedMs, 12345);
+  assert.equal(Object.hasOwn(after.entries[0], "draftNote"), false);
+  assert.equal(Object.hasOwn(after.entries[0], "trackTime"), false);
+  assert.deepEqual(after.entries[1], initial.entries[1]);
+  const raw = storage.getItem(KEY);
+  sessions(store).reconcile(["matching", "recovery"]);
+  assert.equal(storage.getItem(KEY), raw);
+  assert.equal(
+    createWorkspaceStore({ storage, key: KEY }).undo(),
+    "Tamamlanmış bağlamı düzenleyen yedek",
+  );
+  assert.deepEqual(stored(storage), before);
 });
 
 test("controller getters cannot mutate its live records, preferences, or persisted undo patches", () => {

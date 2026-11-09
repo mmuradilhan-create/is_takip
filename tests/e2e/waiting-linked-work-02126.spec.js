@@ -1,8 +1,11 @@
+import {
+  readWorkspaceDomainRaw,
+  readEffectiveWorkSession,
+} from "./work-session-support.js";
 import { test, expect } from "@playwright/test";
 import { createRecord } from "../../src/model.js";
 
 const KEY = "is-takip-v1";
-const SESSION = `${KEY}-work-session`;
 const NOW = new Date("2026-11-09T09:00:00.000Z");
 const STAMP = "2026-11-01T09:00:00.000Z";
 const panel = (page) => page.locator("#waiting-record-panel");
@@ -13,7 +16,7 @@ const child = (page, id) =>
   children(page).locator(`.waiting-record-child[data-id="${id}"]`);
 const attachForm = (page) => panel(page).locator("#waiting-link-daily-form");
 const attachSelect = (page) => panel(page).locator("#waiting-link-daily");
-const saved = (page) => page.evaluate((key) => localStorage.getItem(key), KEY);
+const saved = (page) => readWorkspaceDomainRaw(page);
 const stored = async (page) => JSON.parse(await saved(page));
 const undo = (page) =>
   page.getByRole("button", { name: "Geri al", exact: true }).click();
@@ -315,12 +318,7 @@ test("waiting details show every open and closed daily step and preserve exact c
     "data-phase",
     "running",
   );
-  expect(
-    await page.evaluate(
-      (key) => JSON.parse(localStorage.getItem(key)).currentId,
-      SESSION,
-    ),
-  ).toBe("linked-a");
+  expect((await readEffectiveWorkSession(page)).currentId).toBe("linked-a");
   await child(page, "linked-a").locator(".work-start").click();
   await expect(child(page, "linked-a").locator(".work-start")).toHaveAttribute(
     "data-phase",

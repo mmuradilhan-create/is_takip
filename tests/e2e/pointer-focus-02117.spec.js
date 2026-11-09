@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { createRecord } from "../../src/model.js";
+import { openCreationExtras } from "./creation-support.js";
 
 const KEY = "is-takip-v1";
 const NOW = new Date("2026-11-08T12:00:00.000Z");
@@ -115,6 +116,7 @@ test("goal rows return without a lingering underline after closing or saving whi
       .click();
     const editor = page.locator("#editor");
     const note = editor.locator('[name="description"]');
+    await openCreationExtras(page);
     await note.fill(`Kaydedilen ${theme} hedef notu`);
     await note.press("Enter");
     await expect(editor).not.toBeVisible();

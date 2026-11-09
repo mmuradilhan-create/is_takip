@@ -114,10 +114,12 @@ test("an unlinked daily draft defaults to ad hoc with a usable main parent choic
     await form(page)
       .locator("details.creation-advanced")
       .evaluate((element) => element.open),
-  ).toBe(true);
+  ).toBe(false);
   await expect(
     form(page).locator('.creation-main-fields [name="workContext"]'),
   ).toHaveCount(0);
+  await expect(field(page, "workContext")).toBeHidden();
+  await openCreationExtras(page);
   await expect(field(page, "workContext")).toBeVisible();
   await expect(field(page, "workContext")).toHaveValue("ad_hoc");
   await expect(field(page, "parentId")).toBeVisible();
@@ -271,6 +273,7 @@ test("opening and editing existing planned records preserves absent context fiel
     await expect(
       form(page).locator('[data-record-editor-basic] [name="workContext"]'),
     ).toHaveCount(0);
+    await openCreationExtras(page);
     await expect(field(page, "workContext")).toBeVisible();
     await expect(field(page, "workContext")).toHaveValue("");
     await expect(field(page, "parentId")).toBeVisible();

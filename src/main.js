@@ -59,6 +59,7 @@ import "./workspace-notes-ui.css";
 import "./compact-filter-row.css";
 import { createWorkspaceNotesUI } from "./workspace-notes-ui.js";
 import { normalizeNotes, notesFromBackup } from "./workspace-notes.js";
+import { exportWorkDrafts, workDraftsFromBackup } from "./work-draft-backup.js";
 import { createGoalTransferUI } from "./goal-transfer-ui.js";
 import { createWaitingRecordPanel } from "./waiting-record-panel.js";
 import { createMeetingRecordPanel } from "./meeting-record-panel.js";
@@ -330,6 +331,7 @@ export async function startMainApp() {
     /* Appearance preferences are independent of task records. */
   }
   let workspaceStore = null;
+  let renderedWorkspaceDomain = null;
   let workspaceResetConfirmation = null;
   let workspaceResetSaving = false;
   let summaryWidget = null;
@@ -510,7 +512,7 @@ export async function startMainApp() {
         )
         .join("")}</div><div id="settings-error" role="alert"></div></section>
       <details class="settings-backup" open><summary><span class="settings-summary-icon">${icon("download")}</span><span>Yedekleme</span><span class="settings-chevron">${icon("chevron")}</span></summary><div class="settings-backup-body"><div class="settings-backup-actions"><button type="button" class="btn" data-action="backup-records" aria-label="Kayıt yedeğini indir">${icon("download")}Yedeği indir</button><button type="button" class="btn" data-action="select-backup" aria-label="Kayıt yedeğini geri yükle">${icon("upload")}Yedeği yükle</button></div><input type="file" id="restore-file" accept=".json,application/json" aria-label="Kayıt yedeği seç" hidden><div id="settings-backup-error" role="alert"></div></div></details>
-      <details class="settings-help"><summary><span>Yardım</span><span class="settings-chevron">${icon("chevron")}</span></summary><div class="settings-help-body"><section class="settings-goal-rules" aria-label="Hedef ilerlemesi"><h3>Hedef ilerlemesi</h3><p>Günlük iş → Haftalık → Aylık → Senelik</p><p>Bağlantılar isteğe bağlıdır. Sayısal hedef varsa kendi ölçümü kullanılır; yoksa bağlı işlerin ilerlemesi hesaplanır. Hedefi tamamlamak ayrıca senin kararındır.</p></section><section><h3>Kayıtlar ve yedekleme</h3><p>Kayıtlar ve tercihler bu tarayıcıda otomatik saklanır; HTML dosyasının içine yazılmaz. Yedeği indir, kayıtlarını ve bağımsız notlarını JSON dosyası olarak saklar. Yedeği yükle, seçtiğin yedeği onayından sonra geri getirir.</p></section></div></details>
+      <details class="settings-help"><summary><span>Yardım</span><span class="settings-chevron">${icon("chevron")}</span></summary><div class="settings-help-body"><section class="settings-goal-rules" aria-label="Hedef ilerlemesi"><h3>Hedef ilerlemesi</h3><p>Günlük iş → Haftalık → Aylık → Senelik</p><p>Bağlantılar isteğe bağlıdır. Sayısal hedef varsa kendi ölçümü kullanılır; yoksa bağlı işlerin ilerlemesi hesaplanır. Hedefi tamamlamak ayrıca senin kararındır.</p></section><section><h3>Kayıtlar ve yedekleme</h3><p>Kayıtlar ve tercihler bu tarayıcıda otomatik saklanır; HTML dosyasının içine yazılmaz. Yedeği indir, kayıtlarını, bağımsız notlarını ve bitmemiş çalışma taslaklarını JSON dosyası olarak saklar. Yedeği yükle, seçtiğin yedeği onayından sonra geri getirir.</p></section></div></details>
       ${cleanupInfo.recordsChanged ? `<section class="settings-note-cleanup"><p>${cleanupInfo.recordsChanged} kayıtta eski Gün / Gecikme / Odak Sıra aktarım satırları var.</p><button type="button" class="btn" data-action="cleanup-import-notes">Aktarım notlarını temizle</button></section>` : ""}
       ${waitingCleanupInfo.recordsChanged ? `<section class="settings-note-cleanup"><p>${waitingCleanupInfo.recordsChanged} bekleyen konuda eski Son Durum / Kaç Gün Bekledi aktarım satırları var.</p><button type="button" class="btn" data-action="cleanup-waiting-notes">Bekleyen konu notlarını düzenle</button></section>` : ""}
       ${waitingStateInfo.recordsChanged ? `<section class="settings-note-cleanup"><p>Eski engel bilgilerini Beklemede durumuyla birleştirebilirsin. Nedenler ve geçmiş korunur.</p><button type="button" class="btn" data-action="migrate-waiting-state">Bekleme düzenine taşı</button></section>` : ""}
@@ -619,27 +621,40 @@ export async function startMainApp() {
     }
   }
   function backupRecords() {
-    const data = JSON.stringify(
-      {
-        ...validateStore({ version: 1, records: state.records }),
-        ...(Object.hasOwn(preferences, "choiceLists")
-          ? { choiceLists: normalizeChoiceLists(preferences.choiceLists) }
-          : {}),
-        ...(workspaceStore?.hasNotes ? { notes: workspaceStore.notes } : {}),
-      },
-      null,
-      2,
-    );
-    const blob = new Blob([data], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `kayit-yedegi-${today()}.json`;
-    document.body.append(link);
-    link.click();
-    link.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-    toast("Kayıt yedeği indirildi.");
+    try {
+      workspaceStore.synchronize(localStorage.getItem(STORAGE_KEY));
+      syncWorkspaceView();
+      const drafts = exportWorkDrafts(
+        workSessions.getDraftSnapshot(),
+        state.records,
+      );
+      const data = JSON.stringify(
+        {
+          ...validateStore({ version: 1, records: state.records }),
+          ...(Object.hasOwn(preferences, "choiceLists")
+            ? { choiceLists: normalizeChoiceLists(preferences.choiceLists) }
+            : {}),
+          ...(workspaceStore?.hasNotes ? { notes: workspaceStore.notes } : {}),
+          workDrafts: drafts,
+        },
+        null,
+        2,
+      );
+      const blob = new Blob([data], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `kayit-yedegi-${today()}.json`;
+      document.body.append(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      toast(
+        `Kayıt yedeği indirildi. ${drafts.entries.length} çalışma taslağı dahil.`,
+      );
+    } catch (error) {
+      toast(error.message || "Kayıt yedeği hazırlanamadı.", true);
+    }
   }
   async function restoreRecords(file, input) {
     if (!file) return;
@@ -653,6 +668,7 @@ export async function startMainApp() {
       const parsed = JSON.parse(await file.text());
       const store = validateStore(parsed);
       const restoredNotes = notesFromBackup(parsed);
+      const restoredDrafts = workDraftsFromBackup(parsed, store.records);
       const hasChoiceLists = Object.hasOwn(parsed, "choiceLists");
       if (hasChoiceLists && !validChoiceLists(parsed.choiceLists))
         throw new Error(
@@ -662,24 +678,53 @@ export async function startMainApp() {
         ? normalizeChoiceLists(parsed.choiceLists)
         : undefined;
       if (!input.isConnected || !dialog.open) return;
-      const contents = `${store.records.length} kayıt${restoredNotes.present ? ` ve ${restoredNotes.notes.length} not` : ""}${hasChoiceLists ? " ve seçenek listeleri" : ""}`;
+      workspaceStore.synchronize(localStorage.getItem(STORAGE_KEY));
+      syncWorkspaceView();
+      const currentDrafts = restoredDrafts.present
+        ? exportWorkDrafts(workSessions.getDraftSnapshot(), state.records)
+        : { entries: [] };
+      const expectedWorkSessionRaw = restoredDrafts.present
+        ? workspaceStore.readWorkSessionRaw()
+        : undefined;
+      const contents = `${store.records.length} kayıt${restoredNotes.present ? ` ve ${restoredNotes.notes.length} not` : ""}${restoredDrafts.present ? ` ve ${restoredDrafts.drafts.entries.length} çalışma taslağı` : ""}${hasChoiceLists ? " ve seçenek listeleri" : ""}`;
       if (
         !confirm(
-          `Yedekte ${contents} var. Mevcut ${state.records.length} kayıt${restoredNotes.present ? ` ve ${workspaceStore.notes.length} not` : ""}${hasChoiceLists ? " ve seçenek listeleri" : ""} bu yedekle değiştirilsin mi?${!restoredNotes.present && workspaceStore.notes.length ? " Bağımsız notların korunacak." : ""}`,
+          `Yedekte ${contents} var. Mevcut ${state.records.length} kayıt${restoredNotes.present ? ` ve ${workspaceStore.notes.length} not` : ""}${hasChoiceLists ? " ve seçenek listeleri" : ""} bu yedekle değiştirilsin mi?${restoredDrafts.present ? ` Bu tarayıcıda ${currentDrafts.entries.length} çalışma taslağı var; farklı metinli taslakların üzerine yazılmaz. Geri gelen taslaklar duraklatılmış olarak açılır.` : " Çalışma taslakların korunacak."}${restoredDrafts.ignoredCount ? ` Kaydı bulunmayan veya aktarılmaya uygun olmayan ${restoredDrafts.ignoredCount} taslak alınmayacak.` : ""}${!restoredNotes.present && workspaceStore.notes.length ? " Bağımsız notların korunacak." : ""}`,
         )
       )
         return;
+      // A native confirmation blocks this renderer's storage notifications.
+      // Let queued cross-window changes reach its localStorage cache before CAS.
+      await new Promise((resolve) => {
+        const channel = new MessageChannel();
+        channel.port1.onmessage = () => {
+          channel.port1.close();
+          channel.port2.close();
+          resolve();
+        };
+        channel.port2.postMessage(null);
+      });
+      if (!input.isConnected || !dialog.open) return;
       const restored = saveWorkspaceSnapshot(
         store.records,
         {
           ...(hasChoiceLists ? { choiceLists: restoredChoiceLists } : {}),
           ...(restoredNotes.present ? { notes: restoredNotes.notes } : {}),
+          ...(restoredDrafts.present
+            ? {
+                workDrafts: restoredDrafts.drafts,
+                expectedWorkSessionRaw,
+              }
+            : {}),
         },
         "Yedek yükleme",
+        { throwOnError: true },
       );
       if (restored) {
         dialog.close();
-        toast(`${store.records.length} kayıt geri yüklendi.`);
+        toast(
+          `${store.records.length} kayıt${restoredDrafts.present ? ` ve ${restoredDrafts.drafts.entries.length} çalışma taslağı` : ""} geri yüklendi.`,
+        );
       }
     } catch (error) {
       if (input.isConnected)
@@ -704,7 +749,9 @@ export async function startMainApp() {
             ? waitingRecordPanel
             : dialog.id === "meeting-record-panel"
               ? meetingRecordPanel
-              : null;
+              : ["work-journal-dialog", "work-week-dialog"].includes(dialog.id)
+                ? workJournal
+                : null;
       if (!preview?.canActivate()) return false;
       const control = event.target.closest?.(
         '[data-action], button, a[href], input, select, textarea, label, summary, [role="button"], [role="link"]',
@@ -750,6 +797,13 @@ export async function startMainApp() {
       preferences = workspaceStore.preferences;
     }
     render();
+  }
+  function workspaceDomainSnapshot(records, currentPreferences) {
+    return JSON.stringify({
+      records,
+      preferences: currentPreferences,
+      ...(workspaceStore?.hasNotes ? { notes: workspaceStore.notes } : {}),
+    });
   }
   function updateUndoButton() {
     const button = document.querySelector("#undo-button");
@@ -814,8 +868,10 @@ export async function startMainApp() {
     records,
     additions = {},
     label = "Yedek yükleme",
+    { throwOnError = false } = {},
   ) {
     if (storageError) {
+      if (throwOnError) throw new Error(storageError);
       toast(storageError, true);
       return false;
     }
@@ -834,6 +890,12 @@ export async function startMainApp() {
           ...(Object.hasOwn(additions, "notes")
             ? { notes: normalizeNotes(additions.notes) }
             : {}),
+          ...(Object.hasOwn(additions, "workDrafts")
+            ? {
+                workDrafts: additions.workDrafts,
+                expectedWorkSessionRaw: additions.expectedWorkSessionRaw,
+              }
+            : {}),
         },
         label,
       );
@@ -841,6 +903,7 @@ export async function startMainApp() {
       return true;
     } catch (error) {
       syncWorkspaceView();
+      if (throwOnError) throw error;
       toast(
         `Kaydedilemedi: ${error.message || "Tarayıcı depolamasını kontrol et."}`,
         true,
@@ -1806,6 +1869,10 @@ export async function startMainApp() {
     topbarClock.refresh();
     document.title = `${pageTitle()} · ${APP_NAME}`;
     renderContent();
+    renderedWorkspaceDomain = workspaceDomainSnapshot(
+      state.records,
+      preferences,
+    );
   }
   function renderContent() {
     const previousAgenda = document.querySelector(
@@ -2312,6 +2379,7 @@ export async function startMainApp() {
     if (except !== "meeting")
       meetingRecordPanel?.close({ restoreFocus: false });
     if (except !== "goal") goalPanel?.close();
+    if (except !== "history") workJournal?.close();
   }
   function openRecordPreview(type, id, trigger = null) {
     const preview =
@@ -2540,54 +2608,59 @@ export async function startMainApp() {
   });
   const topbarClock = createTopbarClock({ root: app });
   window.addEventListener("pagehide", topbarClock.destroy, { once: true });
-  workSessions = createWorkSessionUI({
-    root: app,
-    getRecords: () => state.records,
-    onRunningChange: refreshDashboardRunningOrder,
-    onHistory: () => workJournal?.openWeek(),
-    onCompleteSession: (recordId, draft) => {
-      const record = state.records.find((r) => r.id === recordId);
-      if (!record || record.type !== "daily") {
-        toast(
-          "Bu günlük iş artık bulunamıyor. İş günlüğü kaydedilemedi.",
-          true,
-        );
-        return false;
-      }
-      try {
-        if (record.workLog?.some((entry) => entry.id === draft.sessionId))
-          return saveRecords(state.records, "İş günlüğü kaydı");
-        if (["completed", "cancelled", "transferred"].includes(record.status))
-          throw new Error("Bu günlük iş kapanmış. Güncel kaydı kontrol et.");
-        if (
-          draft.note == null ||
-          (typeof draft.note === "string" && !draft.note.trim())
-        )
-          return true;
-        const updated = appendWorkLog(
-          record,
-          { ...draft, id: draft.sessionId },
-          { updatedAt: new Date().toISOString() },
-        );
-        // A second window or a retried finish must not duplicate an entry or
-        // change the first successful request's saved session.
-        if (updated === record)
-          return saveRecords(state.records, "İş günlüğü kaydı");
-        return saveRecords(
-          state.records.map((r) => (r.id === recordId ? updated : r)),
-          "İş günlüğü kaydı",
-        );
-      } catch (error) {
-        toast(error.message || "İş günlüğü kaydedilemedi.", true);
-        return false;
-      }
-    },
-    onError: (message) => toast(message, true),
-    onMessage: (message) => toast(message),
-  });
+  function initWorkSessions() {
+    workSessions = createWorkSessionUI({
+      root: app,
+      getRecords: () => state.records,
+      sessionStorage: workspaceStore.sessionStorage,
+      workspaceStorageKey: STORAGE_KEY,
+      onRunningChange: refreshDashboardRunningOrder,
+      onHistory: () => workJournal?.openWeek(),
+      onCompleteSession: (recordId, draft) => {
+        const record = state.records.find((r) => r.id === recordId);
+        if (!record || record.type !== "daily") {
+          toast(
+            "Bu günlük iş artık bulunamıyor. İş günlüğü kaydedilemedi.",
+            true,
+          );
+          return false;
+        }
+        try {
+          if (record.workLog?.some((entry) => entry.id === draft.sessionId))
+            return saveRecords(state.records, "İş günlüğü kaydı");
+          if (["completed", "cancelled", "transferred"].includes(record.status))
+            throw new Error("Bu günlük iş kapanmış. Güncel kaydı kontrol et.");
+          if (
+            draft.note == null ||
+            (typeof draft.note === "string" && !draft.note.trim())
+          )
+            return true;
+          const updated = appendWorkLog(
+            record,
+            { ...draft, id: draft.sessionId },
+            { updatedAt: new Date().toISOString() },
+          );
+          // A second window or a retried finish must not duplicate an entry or
+          // change the first successful request's saved session.
+          if (updated === record)
+            return saveRecords(state.records, "İş günlüğü kaydı");
+          return saveRecords(
+            state.records.map((r) => (r.id === recordId ? updated : r)),
+            "İş günlüğü kaydı",
+          );
+        } catch (error) {
+          toast(error.message || "İş günlüğü kaydedilemedi.", true);
+          return false;
+        }
+      },
+      onError: (message) => toast(message, true),
+      onMessage: (message) => toast(message),
+    });
+  }
   workJournal = createWorkJournalUI({
     root: app,
     getRecords: () => state.records,
+    onBeforeOpen: () => closeRecordPreviews("history"),
     onUpdateEntry: (id, entryId, patch) => {
       try {
         const record = state.records.find((item) => item.id === id);
@@ -3800,13 +3873,20 @@ export async function startMainApp() {
   window.addEventListener("storage", (event) => {
     if (![STORAGE_KEY, PREFERENCES_KEY].includes(event.key)) return;
     try {
-      workspaceStore.synchronize(
-        event.key === STORAGE_KEY
-          ? event.newValue
-          : localStorage.getItem(STORAGE_KEY),
-      );
-      syncWorkspaceView();
-      if (event.key === STORAGE_KEY)
+      const before = renderedWorkspaceDomain;
+      workspaceStore.synchronize(localStorage.getItem(STORAGE_KEY));
+      const changed =
+        before !==
+        workspaceDomainSnapshot(
+          workspaceStore.records,
+          workspaceStore.preferences,
+        );
+      if (changed) syncWorkspaceView();
+      else {
+        workSessions?.refresh();
+        updateUndoButton();
+      }
+      if (event.key === STORAGE_KEY && changed)
         toast("Çalışma alanı diğer penceredeki değişikliklerle güncellendi.");
     } catch (error) {
       toast(
@@ -3858,6 +3938,7 @@ export async function startMainApp() {
   });
   state.records = workspaceStore.records;
   preferences = workspaceStore.preferences;
+  initWorkSessions();
   function activateMainWindow(id = null) {
     window.focus();
     const record = state.records.find((item) => item.id === id);

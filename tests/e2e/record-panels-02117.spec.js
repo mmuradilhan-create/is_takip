@@ -165,9 +165,23 @@ async function expectPanel(page, type, id) {
   expect(await detail.evaluate((element) => element.matches(":modal"))).toBe(
     false,
   );
-  await expect(
-    detail.locator("input,textarea,select,button[type=submit]"),
-  ).toHaveCount(0);
+  const controls = detail.locator("input,textarea,select,button[type=submit]");
+  expect(
+    await controls.evaluateAll((elements) =>
+      elements
+        .filter((element) => !element.closest("#waiting-link-daily-form"))
+        .map((element) => element.outerHTML),
+    ),
+  ).toEqual([]);
+  if (type === "waiting") {
+    await expect(detail.locator("input,textarea")).toHaveCount(0);
+    await expect(
+      detail.locator('#waiting-link-daily-form select[name="childId"]'),
+    ).toHaveCount(1);
+    await expect(
+      detail.locator('#waiting-link-daily-form button[type="submit"]'),
+    ).toBeDisabled();
+  } else await expect(controls).toHaveCount(0);
   await expect(editor(page)).not.toBeVisible();
 }
 
@@ -410,7 +424,9 @@ test("detail routes use the real linked work and follow-up, preserve waiting con
   await sourceIcon(page, "panel-daily-waiting", "panel-waiting").click();
   await expectPanel(page, "waiting", "panel-waiting");
   await panel(page, "waiting")
-    .locator('[data-action="waiting-record-route"][data-route="daily"]')
+    .locator(
+      '[data-action="waiting-record-open-daily"][data-id="panel-daily-waiting"]',
+    )
     .click();
   await expect(form(page).locator('[name="id"]')).toHaveValue(
     "panel-daily-waiting",
@@ -429,7 +445,9 @@ test("detail routes use the real linked work and follow-up, preserve waiting con
     await row(page, id).locator(".task-name").click();
     await panel(page, type)
       .locator(
-        `[data-action="${type}-record-route"][data-route="${routeType}"]`,
+        type === "waiting"
+          ? '[data-action="waiting-record-create-daily"]'
+          : `[data-action="meeting-record-route"][data-route="${routeType}"]`,
       )
       .click();
     await expect(form(page)).toHaveAttribute("data-creation", "true");

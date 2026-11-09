@@ -1,3 +1,7 @@
+import {
+  readWorkspaceDomainRaw,
+  writeEffectiveWorkSessionRaw,
+} from "./work-session-support.js";
 import { test, expect } from "@playwright/test";
 import { createRecord } from "../../src/model.js";
 
@@ -34,8 +38,24 @@ const current = (status = "running", fields = {}) =>
       },
     ],
   });
-const read = (page, key = KEY) =>
-  page.evaluate((key) => localStorage.getItem(key), key);
+const read = async (page, key = KEY) => {
+  if (key === KEY) return readWorkspaceDomainRaw(page);
+  if (key === SESSION)
+    return page.evaluate(
+      ({ key, legacy }) => {
+        const primary = JSON.parse(localStorage.getItem(key));
+        if (Object.hasOwn(primary.odak || {}, "workSessions")) {
+          const context = primary.odak.workSessions;
+          return typeof context === "string"
+            ? context
+            : JSON.stringify(context);
+        }
+        return localStorage.getItem(legacy);
+      },
+      { key: KEY, legacy: SESSION },
+    );
+  return page.evaluate((key) => localStorage.getItem(key), key);
+};
 const ids = (page) =>
   page
     .locator("#widget-tasks > .widget-task")
@@ -110,11 +130,19 @@ async function peer(context) {
   return page;
 }
 async function write(page, key, value) {
+  if (key === SESSION) return writeEffectiveWorkSessionRaw(page, value);
   await page.evaluate(
-    ({ key, value }) =>
-      value === null
-        ? localStorage.removeItem(key)
-        : localStorage.setItem(key, value),
+    ({ key, value }) => {
+      if (value === null) return localStorage.removeItem(key);
+      const current = JSON.parse(localStorage.getItem(key));
+      const next = JSON.parse(value);
+      if (
+        Object.hasOwn(current.odak || {}, "workSessions") &&
+        !Object.hasOwn(next.odak || {}, "workSessions")
+      )
+        next.odak = { ...next.odak, workSessions: current.odak.workSessions };
+      localStorage.setItem(key, JSON.stringify(next));
+    },
     { key, value },
   );
 }
@@ -308,6 +336,9 @@ test("the session strip follows timed and untimed work without showing a clock o
   await expect(strip(page)).not.toBeVisible();
   await write(other, SESSION, null);
   await expect(strip(page)).not.toBeVisible();
+  expect(
+    await other.evaluate((key) => localStorage.getItem(key), SESSION),
+  ).toBe(session);
   await unchanged(page, raw);
 });
 
@@ -324,13 +355,7 @@ test("malformed or denied optional session storage never hides agenda work or re
   await open(page);
   const other = await peer(context);
   await expect(strip(page)).toBeVisible();
-  await write(other, SESSION, "broken-session-json");
-  await expect(strip(page)).not.toBeVisible();
-  expect(await read(other, SESSION)).toBe("broken-session-json");
-  await expect(page.locator("#widget-today-count")).toHaveText("1");
-  await expect(page.locator("#widget-status")).toBeEmpty();
-  await write(other, SESSION, session);
-  await expect(strip(page)).toBeVisible();
+  // Optional legacy storage can fail before any canonical context exists.
   await page.evaluate(() => {
     window.widgetSessionDenied = true;
     window.dispatchEvent(new Event("odak:refresh"));
@@ -345,6 +370,18 @@ test("malformed or denied optional session storage never hides agenda work or re
     window.dispatchEvent(new Event("odak:refresh"));
   });
   await expect(strip(page)).toBeVisible();
+  // Peer writes now exercise the authoritative primary context, including corruption.
+  await write(other, SESSION, "broken-session-json");
+  await expect(strip(page)).not.toBeVisible();
+  expect(await read(other, SESSION)).toBe("broken-session-json");
+  await expect(page.locator("#widget-today-count")).toHaveText("1");
+  await expect(page.locator("#widget-status")).toBeEmpty();
+  await write(other, SESSION, session);
+  await expect(strip(page)).toBeVisible();
+  expect(await read(other, SESSION)).toBe(session);
+  expect(
+    await other.evaluate((key) => localStorage.getItem(key), SESSION),
+  ).toBe(session);
   await unchanged(page, raw);
 });
 

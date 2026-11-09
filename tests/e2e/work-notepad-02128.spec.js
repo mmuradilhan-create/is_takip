@@ -1,5 +1,11 @@
 import { test, expect } from "@playwright/test";
 import { createRecord } from "../../src/model.js";
+import {
+  readEffectiveWorkSessionRaw,
+  readWorkspaceDomainRaw,
+  sessionAwareStorageHooks,
+  workspaceWithSessionRaw,
+} from "./work-session-support.js";
 
 const KEY = "is-takip-v1";
 const SESSION = `${KEY}-work-session`;
@@ -12,7 +18,9 @@ const finish = (page) => pad(page).locator("#work-finish-form");
 const work = (page, id = "pad-first") =>
   page.locator(`.full-table [data-record-row][data-id="${id}"] .work-start`);
 const saved = (page, key = KEY) =>
-  page.evaluate((key) => localStorage.getItem(key), key);
+  key === SESSION
+    ? readEffectiveWorkSessionRaw(page)
+    : readWorkspaceDomainRaw(page);
 const stored = async (page) => JSON.parse(await saved(page));
 const sessions = async (page) => JSON.parse(await saved(page, SESSION));
 const entry = async (page, id = "pad-first") =>
@@ -99,24 +107,14 @@ async function seed(page, context, { sessionRaw = null } = {}) {
         if (sessionRaw === null) localStorage.removeItem(sessionKey);
         else localStorage.setItem(sessionKey, sessionRaw);
       }
-      window.notepadQuota = false;
-      window.notepadSessionWrites = 0;
-      const set = Storage.prototype.setItem;
-      Storage.prototype.setItem = function (name, value) {
-        if (
-          this === window.localStorage &&
-          name === sessionKey &&
-          window.notepadQuota
-        )
-          throw new DOMException("Test depolaması dolu", "QuotaExceededError");
-        const result = set.call(this, name, value);
-        if (this === window.localStorage && name === sessionKey)
-          window.notepadSessionWrites++;
-        return result;
-      };
     },
     { key: KEY, sessionKey: SESSION, raw, sessionRaw },
   );
+  await context.addInitScript(sessionAwareStorageHooks, {
+    baselineRaw: raw,
+    sessionQuotaFlag: "notepadQuota",
+    sessionWriteCounter: "notepadSessionWrites",
+  });
   await page.goto("/");
   await page.locator('#nav [data-view="daily"]').click();
   return { records, raw };
@@ -155,7 +153,7 @@ test("starting work opens a focused untimed notepad whose durable drafts survive
   });
   const text = `${UNSAFE}\nÇalışırken yazılan gerçek taslak.`;
   await note(page).fill(text);
-  await note(page).press("Enter");
+  await note(page).press("Shift+Enter");
   await note(page).pressSequentially("Yeni satır kaybolmaz.");
   const draft = `${text}\nYeni satır kaybolmaz.`;
   await expectDraft(page, draft);
@@ -280,7 +278,7 @@ test("Bitir keeps a draft inline and permits an empty finish without changing sa
   ).toBeDisabled();
 });
 
-test("draft storage failure keeps the exact local text and caret until one explicit retry succeeds without a primary workspace write", async ({
+test("draft storage failure keeps the exact local text and caret until one explicit retry succeeds without changing records or history", async ({
   page,
   context,
 }) => {
@@ -487,13 +485,10 @@ test("a newer draft beside an already saved result survives reload and explicitl
       }),
     );
     await peer.goto("/notepad-recovery-peer.html");
-    await peer.evaluate(
-      ({ key, sessionKey, raw, sessionRaw }) => {
-        localStorage.setItem(key, raw);
-        localStorage.setItem(sessionKey, sessionRaw);
-      },
-      { key: KEY, sessionKey: SESSION, raw, sessionRaw },
-    );
+    await peer.evaluate(({ key, value }) => localStorage.setItem(key, value), {
+      key: KEY,
+      value: workspaceWithSessionRaw(raw, sessionRaw),
+    });
     await expect(note(page)).toHaveJSProperty("readOnly", true);
     await expect(note(page)).toHaveValue(oldResult);
     await expect(pad(page)).toHaveAttribute("data-mode", "finish");

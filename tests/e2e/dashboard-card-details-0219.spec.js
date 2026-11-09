@@ -513,6 +513,11 @@ test("goal body opens the panel at its top while nested goal, follow-up and date
   await expect(childTitle).toHaveCSS("outline-style", "none");
   await expect(childTitle).toHaveCSS("box-shadow", "none");
   await expect(childTitle).toHaveCSS("text-decoration-line", /underline/);
+  await page.keyboard.press("Shift+Tab");
+  await expect(childTitle).not.toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(childTitle).toBeFocused();
+  await expect(childTitle).toHaveCSS("text-decoration-line", /underline/);
   await closeGoal(page);
   await goal(page).locator('[data-action="edit-date"]').click();
   await expectQuickDatePicker(page, "2026-11-12");

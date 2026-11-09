@@ -196,7 +196,7 @@ test("waiting edits expose follow-up facts while hiding legacy delivery dates an
   const before = await saved(page);
   await open(page, "waiting");
   await expect(extras(page).locator("summary")).toHaveText("Ek bilgiler");
-  expect(await extras(page).evaluate((element) => element.open)).toBe(true);
+  expect(await extras(page).evaluate((element) => element.open)).toBe(false);
   for (const name of [
     "title",
     "status",
@@ -206,6 +206,9 @@ test("waiting edits expose follow-up facts while hiding legacy delivery dates an
     "latestUpdate",
   ])
     await expect(field(page, name)).toBeVisible();
+  for (const name of ["sourceDate", "description"])
+    await expect(field(page, name)).toBeHidden();
+  await openExtras(page);
   for (const name of ["sourceDate", "description"])
     await expect(field(page, name)).toBeVisible();
   await expect(field(page, "priority")).toBeHidden();
@@ -274,7 +277,7 @@ test("daily essentials remain visible while hidden legacy project, work type and
   for (const type of ["daily", "meeting"]) {
     const original = items.find((item) => item.id === `layout-${type}`);
     await open(page, type);
-    expect(await extras(page).evaluate((element) => element.open)).toBe(true);
+    expect(await extras(page).evaluate((element) => element.open)).toBe(false);
     for (const name of ["title", "status"])
       await expect(field(page, name)).toBeVisible();
     if (type === "daily") {

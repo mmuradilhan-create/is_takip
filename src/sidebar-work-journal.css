@@ -75,7 +75,7 @@
   max-height: 100%;
   margin-top: auto;
   padding: 10px;
-  overflow: hidden;
+  overflow: visible;
   border: 1px solid var(--theme-border, #dce6d8);
   border-radius: 11px;
   background: var(--theme-soft, #f7faf4);
@@ -98,7 +98,7 @@
   gap: 6px;
   min-width: 0;
   min-height: 0;
-  overflow-y: auto;
+  overflow: visible;
   overscroll-behavior: contain;
   scrollbar-width: thin;
 }
@@ -113,6 +113,10 @@
   margin: 0;
   padding: 0;
   list-style: none;
+}
+
+.work-paused-list > [hidden] {
+  display: none;
 }
 
 .work-paused-row {
@@ -247,7 +251,7 @@
   z-index: auto;
   display: flex;
   flex-direction: column;
-  flex: 1 0 auto;
+  flex: 0 0 auto;
   width: auto;
   max-width: 100%;
   min-width: 0;

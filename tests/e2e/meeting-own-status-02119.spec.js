@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { createRecord } from "../../src/model.js";
+import { openCreationExtras } from "./creation-support.js";
 
 const KEY = "is-takip-v1";
 const NOW = new Date("2026-11-09T09:00:00.000Z");
@@ -180,9 +181,61 @@ test("an unrouted meeting owns all three quick statuses and its preview while un
   );
   await expect(summary).toHaveText("Açık");
   await expect(summary).not.toHaveAttribute("data-target-id");
+  for (const [type, heading, label] of [
+    ["daily", "Bağlı günlük iş", "İş oluştur"],
+    ["waiting", "Bağlı takip", "Takip oluştur"],
+  ]) {
+    const section = panel(page).locator(`[data-meeting-route="${type}"]`);
+    await expect(
+      section.locator(".meeting-record-section-heading h3"),
+    ).toHaveText(`${heading} 0`);
+    await expect(section.locator("h3 small")).toHaveAttribute(
+      "aria-label",
+      "0 kayıt",
+    );
+    const create = section.locator(
+      `.meeting-record-section-heading > .meeting-record-create[data-action="meeting-record-route"][data-route="${type}"]`,
+    );
+    await expect(
+      section.locator('[data-action="meeting-record-route"]'),
+    ).toHaveCount(1);
+    await expect(create).toHaveText(label);
+    await expect(create.locator("svg")).toHaveCount(1);
+    await expect(
+      section.locator(".meeting-record-linked-list, .meeting-record-open"),
+    ).toHaveCount(0);
+    const headingBounds = await section
+      .locator(".meeting-record-section-heading h3")
+      .boundingBox();
+    const createBounds = await create.boundingBox();
+    expect(
+      Math.abs(
+        headingBounds.y +
+          headingBounds.height / 2 -
+          createBounds.y -
+          createBounds.height / 2,
+      ),
+    ).toBeLessThanOrEqual(1);
+    expect(createBounds.height).toBeLessThanOrEqual(30);
+    await create.click();
+    await expect(form(page)).toHaveAttribute("data-creation", "true");
+    await expect(form(page).locator('[name="type"]')).toHaveValue(type);
+    await expect(form(page).locator(".creation-source-context")).toContainText(
+      items[0].title,
+    );
+    expect(await saved(page)).toBe(afterOpen);
+    await page
+      .locator("#editor")
+      .getByRole("button", { name: "Vazgeç", exact: true })
+      .click();
+    await expect(panel(page)).toBeVisible();
+    await expect(create).toBeFocused();
+    expect(await saved(page)).toBe(afterOpen);
+  }
   await chooseStatus(page, summary, "own-source", "completed");
   await expect(panel(page)).toBeVisible();
   await expect(summary).toHaveText("Kapandı");
+  await expect(panel(page).locator("[data-meeting-route]")).toHaveCount(0);
   await expect(row(page, "own-source")).toHaveCount(0);
   const closedStore = await store(page);
   expect(closedStore.records).toEqual([
@@ -290,6 +343,7 @@ test("meeting forms and filters expose three states while unrelated edits preser
   await form(page)
     .locator('[name="title"]')
     .fill("Kendi durumu seçilmiş yeni toplantı");
+  await openCreationExtras(page);
   await form(page).locator('select[name="status"]').selectOption("in_progress");
   await form(page).locator('[type="submit"]').click();
   await expect(page.locator("#editor")).not.toBeVisible();
@@ -322,6 +376,65 @@ test("linked route closure and reopening derive the meeting summary with one ato
   ];
   const before = await seed(page, items);
   const snapshots = [before];
+  await row(page, "derived-source").locator(".task-name").click();
+  for (const [type, target, caption, status] of [
+    ["daily", items[1], "İşi aç", "Yapılacak"],
+    ["waiting", items[2], "Takibi aç", "Açık"],
+  ]) {
+    const section = panel(page).locator(`[data-meeting-route="${type}"]`);
+    await expect(
+      section.locator(".meeting-record-section-heading h3 small"),
+    ).toHaveText("1");
+    await expect(section.locator("h3 small")).toHaveAttribute(
+      "aria-label",
+      "1 kayıt",
+    );
+    await expect(section.locator(".meeting-record-create")).toHaveCount(0);
+    const linked = section.locator(
+      ".meeting-record-linked-list > .meeting-record-linked-row",
+    );
+    await expect(linked).toHaveCount(1);
+    await expect(linked.locator(".meeting-record-linked-title")).toHaveText(
+      target.title,
+    );
+    await expect(linked.locator(".meeting-record-route-facts")).toContainText(
+      status,
+    );
+    await expect(linked.locator("time")).toHaveAttribute(
+      "datetime",
+      "2026-11-12",
+    );
+    const open = linked.locator(
+      `.meeting-record-open[data-action="meeting-record-route"][data-route="${type}"]`,
+    );
+    await expect(
+      section.locator('[data-action="meeting-record-route"]'),
+    ).toHaveCount(1);
+    await expect(open).toHaveText(caption);
+  }
+  expect(await saved(page)).toBe(before);
+  const openDaily = panel(page).locator(
+    '.meeting-record-open[data-route="daily"]',
+  );
+  await openDaily.click();
+  await expect(form(page).locator('[name="id"]')).toHaveValue("derived-job");
+  await page
+    .locator("#editor")
+    .getByRole("button", { name: "Vazgeç", exact: true })
+    .click();
+  await expect(panel(page)).toBeVisible();
+  await expect(openDaily).toBeFocused();
+  await panel(page)
+    .locator('.meeting-record-open[data-route="waiting"]')
+    .click();
+  const waitingPanel = page.locator("#waiting-record-panel");
+  await expect(waitingPanel).toHaveAttribute("data-record-id", "derived-reply");
+  await expect(waitingPanel).toBeVisible();
+  await expect(panel(page)).not.toBeVisible();
+  expect(await saved(page)).toBe(before);
+  await waitingPanel
+    .getByRole("button", { name: "Kapat", exact: true })
+    .click();
   await expect(ownStatus(page, "derived-source")).toHaveText("Açık");
   await expect(ownStatus(page, "derived-source")).toHaveJSProperty(
     "tagName",

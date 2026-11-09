@@ -104,7 +104,7 @@ export function createWaitingInfoUI({
   function position() {
     if (!isOpen()) return;
     if (!trigger?.isConnected) {
-      close();
+      close({ restoreFocus: popup.contains(owner.activeElement) });
       return;
     }
     const viewport = win.visualViewport;
@@ -121,7 +121,7 @@ export function createWaitingInfoUI({
       anchor.right < leftEdge ||
       anchor.left > leftEdge + width
     ) {
-      close();
+      close({ restoreFocus: popup.contains(owner.activeElement) });
       return;
     }
     const bounds = popup.getBoundingClientRect();
@@ -335,6 +335,66 @@ export function createWaitingInfoUI({
       event.preventDefault();
       event.stopPropagation();
       close({ restoreFocus: true });
+      return;
+    }
+    if (
+      event.target === body &&
+      isOpen() &&
+      !event.defaultPrevented &&
+      !event.isComposing &&
+      event.keyCode !== 229 &&
+      !event.ctrlKey &&
+      !event.altKey &&
+      !event.metaKey &&
+      (!event.shiftKey || event.key === " " || event.key === "Spacebar")
+    ) {
+      const line =
+        Number.parseFloat(win.getComputedStyle(body).lineHeight) || 20;
+      const page = Math.max(line, body.clientHeight - line);
+      let top = body.scrollTop;
+      let left = body.scrollLeft;
+      switch (event.key) {
+        case "ArrowUp":
+          top -= line;
+          break;
+        case "ArrowDown":
+          top += line;
+          break;
+        case "ArrowLeft":
+          left -= line;
+          break;
+        case "ArrowRight":
+          left += line;
+          break;
+        case "PageUp":
+          top -= page;
+          break;
+        case "PageDown":
+          top += page;
+          break;
+        case "Home":
+          top = 0;
+          break;
+        case "End":
+          top = body.scrollHeight;
+          break;
+        case " ":
+        case "Spacebar":
+          top += event.shiftKey ? -page : page;
+          break;
+        default:
+          return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      body.scrollTop = Math.max(
+        0,
+        Math.min(top, body.scrollHeight - body.clientHeight),
+      );
+      body.scrollLeft = Math.max(
+        0,
+        Math.min(left, body.scrollWidth - body.clientWidth),
+      );
       return;
     }
     const control = event.target.closest?.('[data-action="waiting-info"]');

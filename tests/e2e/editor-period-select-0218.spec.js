@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { createRecord } from "../../src/model.js";
+import { openCreationExtras } from "./creation-support.js";
 
 const KEY = "is-takip-v1";
 const NOW = new Date("2026-11-08T12:00:00.000Z");
@@ -164,6 +165,7 @@ test("existing week, month and year edits show friendly selectors while unrelate
         field(page, second).locator('option[value="11"]'),
       ).toHaveText("Kasım");
     expect(await raw(page)).toBe(before);
+    await openCreationExtras(page);
     await field(page, "description").fill(
       `${original.description} Düzenlenen not.`,
     );
@@ -238,9 +240,11 @@ test("empty and legacy period text stays exact until an explicit selection, incl
     form(page).locator(".record-editor-period-field img"),
   ).toHaveCount(0);
   expect(await page.evaluate(() => window.periodInjected)).toBeUndefined();
+  await openCreationExtras(page);
   await form(page).locator('select[name="type"]').selectOption("daily");
   await expect(field(page, "periodKey")).toHaveValue(legacy.periodKey);
   await expect(field(page, "periodKey")).toBeDisabled();
+  await openCreationExtras(page);
   await form(page).locator('select[name="type"]').selectOption("monthly");
   await expect(field(page, "periodKey")).toHaveValue(legacy.periodKey);
   await expect(field(page, "editorPeriodYear")).toHaveValue("");
@@ -262,9 +266,11 @@ test("empty and legacy period text stays exact until an explicit selection, incl
   await cancel(page);
   expect(await raw(page)).toBe(before);
   await open(page, "daily", "period-daily");
+  await openCreationExtras(page);
   await form(page).locator('select[name="type"]').selectOption("weekly");
   await expect(field(page, "periodKey")).toHaveValue("Özgün eski alan");
   await expect(field(page, "editorPeriodYear")).toHaveValue("");
+  await openCreationExtras(page);
   await form(page).locator('select[name="type"]').selectOption("daily");
   await cancel(page);
   expect(await raw(page)).toBe(before);

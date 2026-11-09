@@ -8,7 +8,10 @@ import {
   windowPinSupported,
   windowSizingMode,
 } from "./window-size.js";
-import { WORK_SESSION_KEY } from "./work-session-store.js";
+import {
+  WORK_SESSION_KEY,
+  readPrimaryWorkSessionRaw,
+} from "./work-session-store.js";
 import {
   renderWidgetSession,
   widgetSessionSummary,
@@ -107,7 +110,10 @@ export function startStandaloneWidget() {
       try {
         summary = widgetSessionSummary(
           records,
-          window.localStorage.getItem(WORK_SESSION_KEY),
+          readPrimaryWorkSessionRaw(
+            window.localStorage.getItem(STORAGE_KEY),
+            window.localStorage.getItem(WORK_SESSION_KEY),
+          ),
           Date.now(),
         );
       } catch {

@@ -123,9 +123,10 @@ test("meeting creation keeps decision primary and source-only saves contain no i
   await expect(field(page, "nextAction")).toHaveValue("");
   await expect(field(page, "nextAction")).not.toBeVisible();
   const extra = form(page).locator("details.creation-advanced");
-  expect(await extra.evaluate((element) => element.open)).toBe(true);
-  await expect(field(page, "sourceDate")).toBeVisible();
+  expect(await extra.evaluate((element) => element.open)).toBe(false);
+  await expect(field(page, "sourceDate")).toBeHidden();
   await openCreationExtras(page);
+  await expect(field(page, "sourceDate")).toBeVisible();
   await expect(field(page, "sourceDate")).toHaveAttribute(
     "aria-label",
     "Toplantı tarihi",
@@ -475,6 +476,7 @@ test("meeting tables show derived source summaries beside independent route cont
     await expect(page.locator("#page-title")).toHaveText(
       "Toplantı aksiyonları",
     );
+    await openCreationExtras(page);
     await field(page, "description").fill(`${type} akışının kendi notu.`);
     await form(page)
       .getByRole("button", { name: "Değişiklikleri kaydet", exact: true })

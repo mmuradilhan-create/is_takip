@@ -572,36 +572,6 @@
   }
 }
 
-/* Status captions keep their full width beside the third panel. */
-@media (min-width: 1280px) and (max-width: 1535px) {
-  .dashboard-workspace.dashboard-rows
-    .dashboard-bottom-row
-    :is(.dashboard-goal-meta-controls, .followup-meta) {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: 20px 20px;
-    gap: 2px;
-  }
-
-  .dashboard-workspace.dashboard-rows
-    .dashboard-bottom-row
-    :is(.dashboard-goal-meta-controls, .followup-meta)
-    > :is(.badge, .deadline-tag, .dashboard-goal-date, .attention-date) {
-    justify-self: start;
-  }
-  .dashboard-workspace.dashboard-rows
-    .dashboard-bottom-row
-    :is(.dashboard-goal-meta-controls, .followup-meta)
-    > .badge,
-  .dashboard-workspace.dashboard-rows
-    .dashboard-bottom-row
-    :is(.dashboard-goal-meta-controls, .followup-meta)
-    .deadline-tag {
-    height: 20px;
-    min-height: 20px;
-    padding: 2px 4px;
-  }
-}
-
 @media (max-width: 760px) {
   .dashboard-rows
     .dashboard-bottom-row

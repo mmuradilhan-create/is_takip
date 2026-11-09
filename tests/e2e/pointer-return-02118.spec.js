@@ -70,7 +70,7 @@ async function theme(page, value) {
   }, value);
 }
 
-test("pointer closures restore goal and current-work focus without residual underlines while keyboard returns keep their cue", async ({
+test("pointer closures restore goal and current-work focus without residual underlines while fresh keyboard navigation keeps its cue", async ({
   page,
 }) => {
   const before = await seed(page);
@@ -122,14 +122,18 @@ test("pointer closures restore goal and current-work focus without residual unde
         expect(await saved(page)).toBe(before);
       }
 
+      await row.locator(".quick-complete").focus();
       await page.keyboard.press("Tab");
-      await title.focus();
       await expect(title).toBeFocused();
       await expect.poll(() => decoration(title)).toContain("underline");
       await page.keyboard.press("Enter");
       await expect(panel).toBeVisible();
       await page.keyboard.press("Escape");
       await expect(panel).not.toBeVisible();
+      await expect(title).toBeFocused();
+      await expect.poll(() => decoration(title)).toBe("none");
+      await page.keyboard.press("Shift+Tab");
+      await page.keyboard.press("Tab");
       await expect(title).toBeFocused();
       await expect.poll(() => decoration(title)).toContain("underline");
       expect(await saved(page)).toBe(before);
@@ -151,13 +155,20 @@ test("pointer closures restore goal and current-work focus without residual unde
     await current.hover();
     await expect.poll(() => decoration(current)).toBe("none");
 
+    await page
+      .locator('.focus-row[data-id="pointer-return-daily"] .day-focus-toggle')
+      .focus();
     await page.keyboard.press("Tab");
-    await current.focus();
+    await expect(current).toBeFocused();
     await expect.poll(() => decoration(current)).toContain("underline");
     await page.keyboard.press("Enter");
     await expect(editor).toBeVisible();
     await page.keyboard.press("Escape");
     await expect(editor).not.toBeVisible();
+    await expect(current).toBeFocused();
+    await expect.poll(() => decoration(current)).toBe("none");
+    await page.keyboard.press("Shift+Tab");
+    await page.keyboard.press("Tab");
     await expect(current).toBeFocused();
     await expect.poll(() => decoration(current)).toContain("underline");
     expect(await saved(page)).toBe(before);

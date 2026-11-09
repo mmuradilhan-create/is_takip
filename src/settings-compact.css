@@ -85,64 +85,6 @@
   grid-column: 1 / -1;
 }
 
-#settings-dialog .settings-choice-lists {
-  min-width: 0;
-  padding: 8px;
-  border-color: var(--theme-border, #dce5d5);
-  background: var(--theme-surface, #fff);
-}
-
-#settings-dialog .settings-choice-lists > h3 {
-  margin: 0 0 6px;
-  font-size: 11px;
-  line-height: 16px;
-}
-
-#settings-dialog .choice-catalog + .choice-catalog {
-  margin-top: 6px;
-}
-
-#settings-dialog .choice-catalog > summary {
-  min-height: 34px;
-  padding: 6px 8px;
-}
-
-#settings-dialog .choice-catalog-body {
-  padding: 7px;
-}
-
-#settings-dialog .choice-catalog button,
-#settings-dialog .choice-catalog input {
-  min-height: 32px;
-}
-
-#settings-dialog .choice-catalog-row {
-  min-height: 40px;
-}
-
-#settings-dialog .choice-catalog-row-actions {
-  gap: 4px;
-}
-
-#settings-dialog .choice-catalog-row-actions button {
-  padding: 4px 5px;
-  font-size: 9px;
-}
-
-#settings-dialog .choice-catalog-list {
-  max-height: min(160px, 26dvh);
-}
-
-#settings-dialog .choice-catalog-hidden-list {
-  max-height: min(100px, 18dvh);
-}
-
-#settings-dialog .choice-catalog-removed > summary {
-  display: flex;
-  align-items: center;
-  min-height: 32px;
-}
-
 #settings-dialog :is(.settings-backup, .settings-help) {
   min-width: 0;
   overflow: hidden;

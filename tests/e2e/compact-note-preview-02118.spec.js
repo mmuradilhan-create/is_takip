@@ -47,8 +47,12 @@ async function view(page, type) {
   await page.locator(`#nav [data-view="${type}"]`).click();
 }
 
-async function seed(page, description = NOTE) {
-  await page.clock.setFixedTime(NOW);
+async function seed(page, description = NOTE, { fakeClock = false } = {}) {
+  if (fakeClock) {
+    await page.clock.install({ time: NOW });
+    await page.clock.pauseAt(NOW);
+    await page.clock.setFixedTime(NOW);
+  } else await page.clock.setFixedTime(NOW);
   await page.addInitScript(
     ({ key, records }) => {
       if (sessionStorage.getItem("compact-note-preview-seeded")) return;
@@ -107,7 +111,7 @@ async function seed(page, description = NOTE) {
 test("note previews match compact connection bubbles without headings or inner frames while click editing and structured history stay separate", async ({
   page,
 }) => {
-  const before = await seed(page);
+  const before = await seed(page, NOTE, { fakeClock: true });
   const note = trigger(page);
   for (const theme of ["light", "dark"]) {
     await page.evaluate((value) => {
@@ -117,12 +121,14 @@ test("note previews match compact connection bubbles without headings or inner f
       ".record-parent-link",
     );
     await parent.hover();
+    await page.clock.runFor(100);
     const connection = page.locator("#record-link-tooltip");
     await expect(connection).toBeVisible({ timeout: 400 });
     const connectionStyle = await styles(connection);
     await page.keyboard.press("Escape");
     await page.mouse.move(10, 10);
     await note.hover();
+    await page.clock.runFor(100);
     await expect(popup(page)).toBeVisible({ timeout: 400 });
     await expect(popup(page)).toHaveAttribute("data-preview-kind", "note");
     await expect(popup(page).locator(".record-note-heading")).toBeHidden();
@@ -148,11 +154,15 @@ test("note previews match compact connection bubbles without headings or inner f
     await page.mouse.move(10, 10);
     await row(page, "compact-note-daily").locator(".task-name").focus();
     await note.focus();
+    await page.keyboard.press("Shift+Tab");
+    await page.keyboard.press("Tab");
+    await page.clock.runFor(100);
     await expect(popup(page)).toBeVisible({ timeout: 400 });
     await page.keyboard.press("Tab");
     await expect(
       row(page, "compact-note-daily").locator(".status-trigger"),
     ).toBeFocused();
+    await page.clock.runFor(150);
     await expect(popup(page)).not.toBeVisible();
     await note.click();
     await expect(page.locator("#record-note-editor")).toBeVisible();
@@ -162,6 +172,31 @@ test("note previews match compact connection bubbles without headings or inner f
     await expect(page.locator("#editor")).not.toBeVisible();
     await page.keyboard.press("Escape");
     await expect(page.locator("#record-note-editor")).not.toBeVisible();
+    await expect(note).toBeFocused();
+    await page.clock.runFor(250);
+    await expect(popup(page)).not.toBeVisible();
+    await row(page, "compact-note-daily").locator(".task-name").focus();
+    await note.focus();
+    await page.clock.runFor(250);
+    await expect(popup(page)).not.toBeVisible();
+    await page.mouse.move(10, 10);
+    await note.hover();
+    await page.clock.runFor(100);
+    await expect(note).toBeFocused();
+    await expect(popup(page)).toBeVisible();
+    await page.mouse.move(10, 10);
+    await page.clock.runFor(150);
+    await expect(note).toBeFocused();
+    await expect(popup(page)).not.toBeVisible();
+    await page.keyboard.press("Shift+Tab");
+    await page.keyboard.press("Tab");
+    await expect(note).toBeFocused();
+    await page.clock.runFor(250);
+    await expect(popup(page)).toBeVisible();
+    await expect(body(page)).toHaveText(NOTE);
+    await page.keyboard.press("Escape");
+    await page.clock.runFor(250);
+    await expect(popup(page)).not.toBeVisible();
     expect(await saved(page)).toBe(before);
   }
   await view(page, "waiting");
@@ -170,6 +205,7 @@ test("note previews match compact connection bubbles without headings or inner f
   );
   await page.mouse.move(10, 10);
   await history.focus();
+  await page.clock.runFor(180);
   await expect(popup(page)).toBeVisible();
   await expect(popup(page)).toHaveAttribute("data-preview-kind", "history");
   await expect(popup(page).locator(".record-note-heading")).toBeVisible();
@@ -200,6 +236,8 @@ test("a long compact note stays inside a short viewport and keyboard users can s
     }, theme);
     await page.mouse.move(1, 1);
     await note.focus();
+    await page.keyboard.press("Shift+Tab");
+    await page.keyboard.press("Tab");
     await expect(popup(page)).toBeVisible({ timeout: 400 });
     const bounds = await popup(page).boundingBox();
     expect(bounds.x).toBeGreaterThanOrEqual(8);

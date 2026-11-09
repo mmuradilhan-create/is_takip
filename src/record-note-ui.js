@@ -76,7 +76,7 @@ export function createRecordNoteUI({
     onSave: onSaveNote,
     onError,
     onRestoreFocus(control) {
-      dismissedControl = control;
+      dismiss(control);
       restoringFocus = true;
       control.focus({ preventScroll: true });
       restoringFocus = false;
@@ -102,11 +102,20 @@ export function createRecordNoteUI({
   let hideTimer = null;
   let destroyed = false;
   let restoringFocus = false;
-  let dismissedControl = null;
+  const dismissed = new Set();
+  let pointerPosition = null;
+  let keyboardNavigation = false;
+  let keyboardPreview = false;
+  const controlKey = (control) => `${kindFor(control)}:${control?.dataset.id}`;
+  const isDismissed = (control) => dismissed.has(controlKey(control));
+  function dismiss(control) {
+    if (control?.matches(triggerSelector)) dismissed.add(controlKey(control));
+  }
   const isOpen = () => popup.matches(":popover-open");
   const focusInside = () =>
-    trigger?.contains(owner.activeElement) ||
-    popup.contains(owner.activeElement);
+    keyboardPreview &&
+    (trigger?.contains(owner.activeElement) ||
+      popup.contains(owner.activeElement));
   const find = (id) => {
     try {
       return getRecord(id);
@@ -147,7 +156,7 @@ export function createRecordNoteUI({
 
   function close({ restoreFocus = false } = {}) {
     const previous = trigger;
-    dismissedControl = restoreFocus ? previous || dismissedControl : null;
+    if (restoreFocus) dismiss(previous);
     if (isOpen()) popup.hidePopover();
     reset();
     hoverControl = null;
@@ -233,6 +242,7 @@ export function createRecordNoteUI({
 
   function show(id, control, persistent) {
     if (destroyed || !control?.isConnected || !root.contains(control)) return;
+    if (!persistent && isDismissed(control)) return;
     const record = find(id);
     const requestedKind = kindFor(control);
     if (!eligible(record, requestedKind)) {
@@ -254,7 +264,7 @@ export function createRecordNoteUI({
     const hover = hoverControl;
     close();
     hoverControl = hover;
-    dismissedControl = null;
+    dismissed.delete(controlKey(control));
     trigger = control;
     recordId = id;
     kind = requestedKind;
@@ -276,13 +286,14 @@ export function createRecordNoteUI({
 
   function edit(id, control) {
     close();
+    dismiss(control);
     editor.open(id, control);
   }
 
   function scheduleOpen(control) {
     win.clearTimeout(hideTimer);
     hideTimer = null;
-    if (isOpen() && trigger === control) return;
+    if (isDismissed(control) || (isOpen() && trigger === control)) return;
     win.clearTimeout(openTimer);
     openTimer = win.setTimeout(
       () => {
@@ -326,10 +337,11 @@ export function createRecordNoteUI({
     if (
       !control ||
       !root.contains(control) ||
-      control.contains(event.relatedTarget) ||
-      control === dismissedControl
+      control.contains(event.relatedTarget)
     )
       return;
+    if (pointerMoved(event)) dismissed.delete(controlKey(control));
+    rememberPointer(event);
     hoverControl = control;
     scheduleOpen(control);
   }
@@ -349,23 +361,23 @@ export function createRecordNoteUI({
   }
 
   function onFocusIn(event) {
+    const navigation = keyboardNavigation;
+    keyboardNavigation = false;
     if (restoringFocus) return;
+    keyboardPreview = navigation;
     if (popup.contains(event.target)) {
       win.clearTimeout(hideTimer);
       hideTimer = null;
       return;
     }
     const control = event.target.closest?.(triggerSelector);
-    if (control && control !== dismissedControl && root.contains(control))
+    if (control && root.contains(control)) {
+      if (navigation) dismissed.delete(controlKey(control));
       scheduleOpen(control);
+    }
   }
 
   function onFocusOut(event) {
-    if (
-      dismissedControl?.contains(event.target) &&
-      !dismissedControl.contains(event.relatedTarget)
-    )
-      dismissedControl = null;
     if (
       popup.contains(event.relatedTarget) ||
       trigger?.contains(event.relatedTarget)
@@ -374,14 +386,63 @@ export function createRecordNoteUI({
     scheduleHide();
   }
 
+  function pointerMoved(event) {
+    return (
+      !pointerPosition ||
+      pointerPosition.x !== event.clientX ||
+      pointerPosition.y !== event.clientY
+    );
+  }
+
+  function rememberPointer(event) {
+    pointerPosition = { x: event.clientX, y: event.clientY };
+  }
+
   function onPointerMove(event) {
-    if (!dismissedControl) return;
-    dismissedControl = null;
+    const moved = pointerMoved(event);
+    rememberPointer(event);
+    if (moved) {
+      keyboardPreview = false;
+      if (isOpen() && !hoverPopup && hoverControl !== trigger) scheduleHide();
+    }
     const control = event.target.closest?.(triggerSelector);
-    if (control && root.contains(control)) {
+    if (moved && control && root.contains(control) && isDismissed(control)) {
+      dismissed.delete(controlKey(control));
       hoverControl = control;
       scheduleOpen(control);
     }
+  }
+
+  function onActivate(event) {
+    keyboardNavigation = false;
+    keyboardPreview = false;
+    if (event.type === "pointerdown") rememberPointer(event);
+    const control = event.target.closest?.(triggerSelector);
+    if (!control || !root.contains(control)) return;
+    close();
+    dismiss(control);
+  }
+
+  function onNavigation(event) {
+    keyboardNavigation =
+      [
+        "Tab",
+        "ArrowLeft",
+        "ArrowRight",
+        "ArrowUp",
+        "ArrowDown",
+        "Home",
+        "End",
+      ].includes(event.key) &&
+      !event.isComposing &&
+      !event.ctrlKey &&
+      !event.altKey &&
+      !event.metaKey;
+    if (["Enter", " "].includes(event.key)) onActivate(event);
+  }
+
+  function onKeyup() {
+    keyboardNavigation = false;
   }
 
   function onClick(event) {
@@ -396,7 +457,10 @@ export function createRecordNoteUI({
     if (event.key === "Escape" && isOpen()) {
       event.preventDefault();
       event.stopPropagation();
-      const restoreFocus = focusInside();
+      const restoreFocus =
+        trigger?.contains(owner.activeElement) ||
+        popup.contains(owner.activeElement);
+      dismiss(trigger);
       close({ restoreFocus });
       return;
     }
@@ -432,7 +496,10 @@ export function createRecordNoteUI({
     root.removeEventListener("pointerout", onPointerOut);
     root.removeEventListener("focusin", onFocusIn);
     root.removeEventListener("focusout", onFocusOut);
-    root.removeEventListener("pointermove", onPointerMove);
+    owner.removeEventListener("pointermove", onPointerMove, true);
+    owner.removeEventListener("pointerdown", onActivate, true);
+    owner.removeEventListener("keydown", onNavigation, true);
+    owner.removeEventListener("keyup", onKeyup, true);
     root.removeEventListener("click", onClick);
     root.removeEventListener("keydown", onKeydown, true);
     popup.removeEventListener("beforetoggle", onBeforeToggle);
@@ -446,7 +513,10 @@ export function createRecordNoteUI({
   root.addEventListener("pointerout", onPointerOut);
   root.addEventListener("focusin", onFocusIn);
   root.addEventListener("focusout", onFocusOut);
-  root.addEventListener("pointermove", onPointerMove);
+  owner.addEventListener("pointermove", onPointerMove, true);
+  owner.addEventListener("pointerdown", onActivate, true);
+  owner.addEventListener("keydown", onNavigation, true);
+  owner.addEventListener("keyup", onKeyup, true);
   root.addEventListener("click", onClick);
   root.addEventListener("keydown", onKeydown, true);
   popup.addEventListener("beforetoggle", onBeforeToggle);

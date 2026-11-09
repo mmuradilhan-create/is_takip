@@ -115,6 +115,7 @@ export function createGoalPanel({
   let progressSaving = false;
   let unlinking = null;
   let destroyed = false;
+  let returnFocus = null;
 
   const find = (id) => getRecords().find((record) => record.id === id);
   const goal = () => {
@@ -233,6 +234,12 @@ export function createGoalPanel({
   }
 
   function progressMarkup(record, records) {
+    if (record.status === "cancelled") {
+      const measurement = ownMetric(record)
+        ? `<p class="goal-panel-metric"><span>Kaydedilen ölçüm</span> ${esc(record.currentValue ?? 0)} / ${esc(record.targetValue)} ${esc(record.metric || "hedef değeri")}</p>`
+        : "";
+      return `<section class="goal-panel-section goal-panel-progress" data-goal-section="progress" data-progress-basis="excluded"><div class="goal-panel-section-heading"><h3 tabindex="-1" data-goal-section-heading="progress">İlerleme</h3><span class="goal-progress-excluded">İptal edildi</span></div>${measurement}<p class="goal-progress-hint">Bu hedef üst hedefin ilerlemesine dahil değil. İlerlemeyi değiştirmek için hedefi yeniden aç.</p></section>`;
+    }
     const progress = goalProgress(record, records);
     const basis = {
       metric: "Sayısal ölçüm",
@@ -288,11 +295,18 @@ export function createGoalPanel({
 
   function childMarkup(record, records) {
     const due = childDateMarkup(record);
+    const titleClass = ["completed", "cancelled"].includes(record.status)
+      ? ` ${record.status}`
+      : "";
     if (GOALS.has(record.type)) {
       const progress = goalProgress(record, records);
-      return `<li class="goal-child-row goal-child-goal" data-id="${esc(record.id)}">${renderComplete(record)}<div class="goal-child-main"><button type="button" class="goal-child-title${record.status === "completed" ? " completed" : ""}" data-action="goal-open-child" data-id="${esc(record.id)}">${esc(record.title)}</button><div class="goal-child-meta">${renderStatus(record)}${due}<span>${esc(humanPeriod(record))}</span></div><div class="goal-child-progress"><div class="progress-track" role="progressbar" aria-label="${esc(record.title)} ilerlemesi" aria-valuenow="${progress.percent}" aria-valuemin="0" aria-valuemax="100"><span style="width:${progress.percent}%"></span></div><strong>%${progress.percent}</strong></div></div><div class="goal-child-actions">${unlinkControl(record)}<button type="button" class="goal-child-open" data-action="goal-open-child" data-id="${esc(record.id)}" aria-label="${esc(record.title)}: hedef ayrıntılarını aç">→</button></div></li>`;
+      const progressMarkup =
+        record.status === "cancelled"
+          ? '<span class="goal-progress-excluded" aria-label="İptal edildi; üst hedefin ilerlemesine dahil değil.">—</span>'
+          : `<div class="progress-track" role="progressbar" aria-label="${esc(record.title)} ilerlemesi" aria-valuenow="${progress.percent}" aria-valuemin="0" aria-valuemax="100"><span style="width:${progress.percent}%"></span></div><strong>%${progress.percent}</strong>`;
+      return `<li class="goal-child-row goal-child-goal" data-id="${esc(record.id)}">${renderComplete(record)}<div class="goal-child-main"><div class="goal-child-heading"><button type="button" class="goal-child-title${titleClass}" data-action="goal-open-child" data-id="${esc(record.id)}">${esc(record.title)}</button><div class="goal-child-actions">${unlinkControl(record)}<button type="button" class="goal-child-open" data-action="goal-open-child" data-id="${esc(record.id)}" aria-label="${esc(record.title)}: hedef ayrıntılarını aç"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h16m-5-5 5 5-5 5"/></svg></button></div></div><div class="goal-child-meta">${renderStatus(record)}${due}<span>${esc(humanPeriod(record))}</span></div><div class="goal-child-progress">${progressMarkup}</div></div></li>`;
     }
-    const title = `<button type="button" class="goal-child-title${record.status === "completed" ? " completed" : ""}" data-action="edit" data-id="${esc(record.id)}">${esc(record.title)}</button>`;
+    const title = `<button type="button" class="goal-child-title${titleClass}" data-action="edit" data-id="${esc(record.id)}">${esc(record.title)}</button>`;
     const waiting = renderBlocked(record);
     const titleContent = waiting
       ? `<div class="goal-child-title-line">${title}${waiting}</div>`
@@ -476,6 +490,40 @@ export function createGoalPanel({
     if (panel.open) panel.close();
   }
 
+  function onClose() {
+    captureProgressDraft();
+    if (panel.open) return;
+    const previous = returnFocus;
+    returnFocus = null;
+    if (destroyed || !previous) return;
+    const active = document.activeElement;
+    if (
+      active &&
+      active !== document.body &&
+      active !== document.documentElement &&
+      !panel.contains(active) &&
+      active !== previous.trigger
+    )
+      return;
+    const available = (control) =>
+      control?.isConnected &&
+      !panel.contains(control) &&
+      !control.matches(":disabled") &&
+      control.getClientRects().length > 0;
+    const target = available(previous.trigger)
+      ? previous.trigger
+      : previous.action && previous.id
+        ? [...root.querySelectorAll("[data-action][data-id]")].find(
+            (control) =>
+              control.dataset.action === previous.action &&
+              control.dataset.id === previous.id &&
+              control.tagName === previous.tagName &&
+              available(control),
+          )
+        : null;
+    target?.focus({ preventScroll: true });
+  }
+
   function focusSection(section) {
     const targetSection = panel.querySelector(
       `[data-goal-section="${section}"]`,
@@ -503,6 +551,15 @@ export function createGoalPanel({
 
   function open(id, { section = null } = {}) {
     if (!canOpen(id)) return;
+    if (!panel.open) {
+      const trigger = document.activeElement;
+      returnFocus = {
+        trigger,
+        action: trigger?.dataset?.action,
+        id: trigger?.dataset?.id,
+        tagName: trigger?.tagName,
+      };
+    }
     captureProgressDraft();
     selectedId = id;
     renderKey = "";
@@ -821,7 +878,7 @@ export function createGoalPanel({
     panel.removeEventListener("input", onInput);
     panel.removeEventListener("submit", onSubmit);
     panel.removeEventListener("cancel", onCancel);
-    panel.removeEventListener("close", captureProgressDraft);
+    panel.removeEventListener("close", onClose);
     owner.removeEventListener("pagehide", destroy);
     owner.removeEventListener("keydown", onEscape);
     panel.remove();
@@ -833,7 +890,7 @@ export function createGoalPanel({
   panel.addEventListener("input", onInput);
   panel.addEventListener("submit", onSubmit);
   panel.addEventListener("cancel", onCancel);
-  panel.addEventListener("close", captureProgressDraft);
+  panel.addEventListener("close", onClose);
   owner.addEventListener("pagehide", destroy, { once: true });
   owner.addEventListener("keydown", onEscape);
   return { open, canOpen, canActivate, refresh, close, destroy };

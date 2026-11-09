@@ -82,7 +82,11 @@
   gap: 6px;
 }
 
-.meeting-table > tbody > tr > td:nth-child(2) > .status-trigger,
+.meeting-table
+  > tbody
+  > tr
+  > td:nth-child(2)
+  > :is(.status-trigger, .status-summary),
 .meeting-table .meeting-linked-cell .meeting-route {
   display: inline-flex;
   align-items: center;
@@ -100,7 +104,11 @@
   text-align: center;
 }
 
-.meeting-table > tbody > tr > td:nth-child(2) > .status-trigger {
+.meeting-table
+  > tbody
+  > tr
+  > td:nth-child(2)
+  > :is(.status-trigger, .status-summary) {
   white-space: nowrap;
 }
 

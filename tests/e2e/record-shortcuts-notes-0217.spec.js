@@ -316,6 +316,10 @@ test("each list previews genuine escaped notes on hover and focus while click or
     await focusBeforeHover.dispose();
     await row(page, original.id).locator(".task-name").focus();
     await trigger.focus();
+    await expect(popup(page)).not.toBeVisible();
+    await page.keyboard.press("Tab");
+    await page.keyboard.press("Shift+Tab");
+    await expect(trigger).toBeFocused();
     await expect(popup(page)).toBeVisible();
     await page.keyboard.press("Escape");
     await expect(popup(page)).not.toBeVisible();
@@ -570,6 +574,10 @@ test("waiting history icons keep actual saved contacts separate from note previe
   await page.keyboard.press("Escape");
   await expect(popup(page)).not.toBeVisible();
   await trigger.focus();
+  await expect(popup(page)).not.toBeVisible();
+  await page.keyboard.press("Tab");
+  await page.keyboard.press("Shift+Tab");
+  await expect(trigger).toBeFocused();
   await expect(popup(page)).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(trigger).toBeFocused();

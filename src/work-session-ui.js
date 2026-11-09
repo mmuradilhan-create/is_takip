@@ -431,7 +431,7 @@ export function createWorkSessionUI({
       durationMs: paused.elapsedMs,
       contextUpdatedAt: paused.updatedAt,
     };
-    finishDialog.innerHTML = `<form id="work-finish-form"><div class="modal-header"><h2>Çalışma oturumunu bitir</h2><button type="button" class="close-modal" data-action="work-finish-cancel" aria-label="Pencereyi kapat">${closeIcon}</button></div><div class="modal-body work-finish-body"><p class="work-finish-title">${escapeHtml(record.title)}</p><div class="work-finish-summary"><div><span>Tarih</span><time id="work-finish-date" datetime="${date}">${escapeHtml(ended.toLocaleDateString("tr-TR", { day: "numeric", month: "long", year: "numeric" }))}</time></div><div><span>Çalışma süresi</span><output id="work-finish-duration">${duration(paused.elapsedMs)}</output></div></div><label class="field">Ne yaptın? <span class="field-help">İsteğe bağlı · Kısa bir sonuç yazabilirsin.</span><textarea name="resultNote" rows="3" maxlength="10000" placeholder="Örn. Üç madde incelendi, ikisi tasarım yanıtını bekliyor."></textarea></label><label class="field">Sonraki adım<textarea name="nextAction" rows="3" maxlength="10000" placeholder="Bu işte sırada ne var?">${escapeHtml(record.nextAction || "")}</textarea></label><p id="work-finish-error" class="error-message" role="alert" hidden></p></div><div class="modal-footer"><button type="button" class="btn danger delete-record" data-action="work-finish-discard" title="Bu çalışma oturumunu kaydetmeden sil">Kaydı sil</button><button type="button" class="btn" data-action="work-finish-cancel">Vazgeç</button><button type="submit" class="btn primary">Kaydet ve bitir</button></div></form>`;
+    finishDialog.innerHTML = `<form id="work-finish-form"><div class="modal-header"><h2>Çalışma oturumunu bitir</h2><button type="button" class="close-modal" data-action="work-finish-cancel" aria-label="Pencereyi kapat">${closeIcon}</button></div><div class="modal-body work-finish-body"><p class="work-finish-title">${escapeHtml(record.title)}</p><div class="work-finish-summary"><div><span>Tarih</span><time id="work-finish-date" datetime="${date}">${escapeHtml(ended.toLocaleDateString("tr-TR", { day: "numeric", month: "long", year: "numeric" }))}</time></div><div><span>Çalışma süresi</span><output id="work-finish-duration">${duration(paused.elapsedMs)}</output></div></div><label class="field">Sonuç <span class="field-help">İsteğe bağlı · Kısa bir sonuç yazabilirsin.</span><textarea name="resultNote" rows="3" maxlength="10000" aria-describedby="work-finish-shortcuts" placeholder="Örn. Üç madde incelendi, ikisi tasarım yanıtını bekliyor."></textarea></label><p id="work-finish-shortcuts" class="field-help">Enter ile kaydet, Shift+Enter ile alt satıra geç.</p><p id="work-finish-error" class="error-message" role="alert" hidden></p></div><div class="modal-footer"><button type="button" class="btn danger delete-record" data-action="work-finish-discard" title="Bu çalışma oturumunu kaydetmeden sil">Kaydı sil</button><button type="button" class="btn" data-action="work-finish-cancel">Vazgeç</button><button type="submit" class="btn primary">Kaydet ve bitir</button></div></form>`;
     finishDialog.showModal();
   }
 
@@ -488,7 +488,6 @@ export function createWorkSessionUI({
     const pending = { ...finishDraft };
     const form = event.target;
     const note = form.elements.resultNote.value.trim();
-    const nextAction = form.elements.nextAction.value.trim();
     const error = finishDialog.querySelector("#work-finish-error");
     error.hidden = true;
     store.synchronize();
@@ -520,7 +519,6 @@ export function createWorkSessionUI({
           date: pending.date,
           durationMs: pending.durationMs,
           note,
-          nextAction,
         }));
       if (saved !== true) {
         finishError(

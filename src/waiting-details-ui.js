@@ -1,3 +1,5 @@
+import { isPlainSaveEnter } from "./record-form-shortcuts.js";
+
 const escapeHtml = (value) =>
   String(value ?? "").replace(
     /[&<>"']/g,
@@ -108,7 +110,7 @@ export function createWaitingDetailsUI({
       baseline = JSON.stringify(values);
       generation++;
       saving = false;
-      dialog.innerHTML = `<form id="waiting-details-form"><div class="modal-header"><h2>Bekleme bilgisi</h2><button type="button" class="close-modal" data-action="waiting-details-close" aria-label="Pencereyi kapat">${closeIcon}</button></div><div class="modal-body waiting-details-body"><p class="waiting-details-topic">${escapeHtml(record.title)}</p><p class="waiting-details-availability" aria-live="polite" hidden></p><fieldset class="waiting-details-fields"><label class="field">Neyi/kimi bekliyorum?<textarea name="waitingReason" maxlength="1000" rows="3" placeholder="Örn. Tasarım yanıtı veya malzeme bekleniyor.">${escapeHtml(values.waitingReason)}</textarea></label></fieldset><p id="waiting-details-error" class="error-message" role="alert" hidden></p></div><div class="modal-footer"><button type="button" class="btn secondary" data-action="waiting-details-close">Vazgeç</button><button type="submit" class="btn primary waiting-details-save">Bekleme bilgisini kaydet</button></div></form>`;
+      dialog.innerHTML = `<form id="waiting-details-form"><div class="modal-header"><h2>Bekleme bilgisi</h2><button type="button" class="close-modal" data-action="waiting-details-close" aria-label="Pencereyi kapat">${closeIcon}</button></div><div class="modal-body waiting-details-body"><p class="waiting-details-topic">${escapeHtml(record.title)}</p><p class="waiting-details-availability" aria-live="polite" hidden></p><fieldset class="waiting-details-fields"><label class="field"><span id="waiting-details-label">Neyi/kimi bekliyorum?</span><textarea name="waitingReason" maxlength="1000" rows="3" aria-labelledby="waiting-details-label" aria-describedby="waiting-details-shortcuts" placeholder="Örn. Tasarım yanıtı veya malzeme bekleniyor.">${escapeHtml(values.waitingReason)}</textarea><small id="waiting-details-shortcuts">Enter ile kaydet, Shift+Enter ile alt satıra geç.</small></label></fieldset><p id="waiting-details-error" class="error-message" role="alert" hidden></p></div><div class="modal-footer"><button type="button" class="btn secondary" data-action="waiting-details-close">Vazgeç</button><button type="submit" class="btn primary waiting-details-save">Bekleme bilgisini kaydet</button></div></form>`;
       dialog.showModal();
       dialog.querySelector(".modal-body").scrollTop = 0;
       dialog
@@ -172,6 +174,19 @@ export function createWaitingDetailsUI({
     }
   }
 
+  function onKeydown(event) {
+    if (destroyed || saving || !dialog.open || !isPlainSaveEnter(event)) return;
+    const field = dialog.querySelector('[name="waitingReason"]');
+    if (event.target !== field || field.readOnly || field.matches(":disabled"))
+      return;
+    const form = field.form;
+    const submitter = form?.querySelector('[type="submit"]');
+    if (!submitter || typeof form.requestSubmit !== "function") return;
+    event.preventDefault();
+    event.stopPropagation();
+    if (!submitter.matches(":disabled")) form.requestSubmit(submitter);
+  }
+
   function onClose() {
     // A queued close event can arrive after another waiting form is opened.
     if (dialog.open) return;
@@ -211,6 +226,7 @@ export function createWaitingDetailsUI({
     generation++;
     root.removeEventListener("click", onClick);
     root.removeEventListener("submit", onSubmit);
+    dialog.removeEventListener("keydown", onKeydown);
     owner.removeEventListener("pagehide", destroy);
     dialog.removeEventListener("close", onClose);
     dialog.remove();
@@ -218,6 +234,7 @@ export function createWaitingDetailsUI({
 
   root.addEventListener("click", onClick);
   root.addEventListener("submit", onSubmit);
+  dialog.addEventListener("keydown", onKeydown);
   dialog.addEventListener("close", onClose);
   owner.addEventListener("pagehide", destroy, { once: true });
   return { open, close, refresh, destroy };

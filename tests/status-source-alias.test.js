@@ -9,7 +9,7 @@ import {
 import { resolveActionSource, syncActionLinks } from "../src/action-links.js";
 import { createWorkspaceStore } from "../src/workspace-store.js";
 
-test("a meeting display alias preserves both raw legacy statuses through unrelated context edits and exact reload Undo", () => {
+test("linked status projection preserves raw legacy context edits until a lifecycle change and exact reload Undo", () => {
   const stamp = "2026-11-01T09:00:00.000Z";
   const record = (input) =>
     createRecord({ createdAt: stamp, updatedAt: stamp, ...input });
@@ -50,8 +50,8 @@ test("a meeting display alias preserves both raw legacy statuses through unrelat
   };
   const originalStore = values.get(key);
   const view = resolveActionSource(source, records);
-  assert.equal(view, source);
-  assert.equal(view.status, "partially_completed");
+  assert.deepEqual(view, { ...source, status: "in_progress" });
+  assert.equal(view.status, "in_progress");
   assert.equal(statusForDisplay(view.status, view.type), "in_progress");
   assert.equal(statusLabel(view.type, view.status), "Açık");
   assert.equal(JSON.stringify(records), originalRecords);
@@ -79,13 +79,36 @@ test("a meeting display alias preserves both raw legacy statuses through unrelat
   );
   workspace.saveRecords(transaction, "Toplantı bağlamı");
 
-  const reopened = createWorkspaceStore({ storage, key });
+  let reopened = createWorkspaceStore({ storage, key });
   assert.equal(reopened.records[0].status, "partially_completed");
   assert.equal(reopened.records[1].status, "partially_completed");
   assert.deepEqual(
     validateStore(JSON.parse(values.get(key))).records,
     transaction,
   );
+  const completedTarget = { ...reopened.records[1], status: "completed" };
+  const completed = syncActionLinks(reopened.records, [
+    reopened.records[0],
+    completedTarget,
+  ]);
+  assert.deepEqual(completed[0], { ...editedSource, status: "completed" });
+  assert.equal(completed[0].updatedAt, editedSource.updatedAt);
+  assert.equal(completed[1], completedTarget);
+  reopened.saveRecords(completed, "Bağlı işi tamamla");
+  assert.equal(reopened.history.length, 2);
+  assert.deepEqual(
+    validateStore(JSON.parse(values.get(key))).records,
+    completed,
+  );
+
+  reopened = createWorkspaceStore({ storage, key });
+  assert.deepEqual(reopened.records, completed);
+  assert.equal(reopened.undo(), "Bağlı işi tamamla");
+  assert.deepEqual(reopened.records, transaction);
+  assert.deepEqual(resolveActionSource(reopened.records[0], reopened.records), {
+    ...editedSource,
+    status: "in_progress",
+  });
   assert.equal(reopened.undo(), "Toplantı bağlamı");
   assert.equal(JSON.stringify(reopened.records), originalRecords);
   assert.equal(reopened.canUndo, false);

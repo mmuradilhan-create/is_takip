@@ -13,7 +13,7 @@ export function isPlainSaveEnter(event) {
   );
 }
 
-/** Enter saves record textareas; Shift+Enter keeps the native newline. */
+/** Enter saves record and journal textareas; Shift+Enter keeps the newline. */
 export function installRecordFormShortcuts(root) {
   if (!root?.addEventListener)
     throw new TypeError("Kayıt kısayolları için bir ekran kökü gereklidir.");
@@ -28,7 +28,9 @@ export function installRecordFormShortcuts(root) {
       field.matches(":disabled")
     )
       return;
-    const form = field.closest("form#record-form");
+    const form = field.closest(
+      "form#record-form, form#work-log-edit-form, form#work-finish-form",
+    );
     if (!form || typeof form.requestSubmit !== "function") return;
     const submitter = [
       ...form.querySelectorAll('button[type="submit"], input[type="submit"]'),

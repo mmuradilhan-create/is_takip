@@ -558,7 +558,7 @@ test("switching waiting and daily preserves drafts and dates without duplicate s
   expect(await saved(page)).toBe(before);
 });
 
-test("routed meeting statuses stay editable while legacy context and waiting follow-up history survive a later summary edit", async ({
+test("routed meetings show their derived status while legacy context and waiting follow-up history survive a later summary edit", async ({
   page,
 }) => {
   const items = fixture();
@@ -572,7 +572,11 @@ test("routed meeting statuses stay editable while legacy context and waiting fol
   const before = await saved(page);
   await open(page, "meeting");
   await openExtras(page);
-  await expect(field(page, "status")).toBeEnabled();
+  await expect(field(page, "status")).toBeDisabled();
+  await expect(field(page, "status")).toHaveValue("in_progress");
+  await expect(
+    form(page).locator("#meeting-derived-status-help"),
+  ).toContainText("bağlı iş ve takipten");
   await expect(field(page, "status").locator("option")).toHaveText([
     "Planlanacak",
     "Açık",

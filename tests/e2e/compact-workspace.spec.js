@@ -453,16 +453,13 @@ test("sidebar journal keeps idle history available and saves only finished work 
   await panel
     .getByRole("button", { name: "Oturumu bitir", exact: true })
     .click();
+  await expect(
+    page.locator('#work-finish-form [name="nextAction"]'),
+  ).toHaveCount(0);
   await page
     .locator('#work-finish-form [name="resultNote"]')
     .fill("Kompakt panelden inceleme tamamlandı.");
-  await page
-    .locator('#work-finish-form [name="nextAction"]')
-    .fill("Yanıt gelen maddeleri gözden geçir.");
-  await page
-    .locator("#work-finish-form")
-    .getByRole("button", { name: "Kaydet ve bitir", exact: true })
-    .click();
+  await page.locator('#work-finish-form [name="resultNote"]').press("Enter");
   await expect(panel).not.toBeVisible();
   await expect(control).toBeVisible();
   await expect(today).toHaveText("6 dk");
@@ -470,12 +467,15 @@ test("sidebar journal keeps idle history available and saves only finished work 
   const records = await readRecords(page);
   const changed = records.find((record) => record.id === "compact-urgent");
   expect(changed.status).toBe("in_progress");
+  const original = originals.find((record) => record.id === "compact-urgent");
+  expect(changed.nextAction).toBe(original.nextAction);
   expect(changed.workLog).toHaveLength(2);
+  expect(changed.workLog[0]).toEqual(original.workLog[0]);
   expect(changed.workLog[1]).toMatchObject({
     date: "2026-11-07",
     durationMs: 35_000,
     note: "Kompakt panelden inceleme tamamlandı.",
-    nextAction: "Yanıt gelen maddeleri gözden geçir.",
+    nextAction: "",
   });
   await control.locator('[data-action="work-session-history"]').click();
   await expect(page.locator("#work-week-dialog")).toContainText(

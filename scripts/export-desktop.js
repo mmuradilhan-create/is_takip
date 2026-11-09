@@ -34,6 +34,10 @@ geçişinde ve pencereye dönünce güncellenir. Kayıtları veya açık formlar
 
 LISTE DUZENI
 
+Ayarlar içindeki eski Listeler menüsü kaldırıldı; eski kayıt değerleri
+ve yedek uyumluluğu korunur. Bekleme bilgisi penceresinde Enter kaydeder,
+Shift+Enter alt satır ekler.
+
 Takip kartlarında tarih, sonuç ve sonraki takip tarihi gösterilir.
 
 Notu düzenle penceresinde Enter kaydeder, Shift+Enter alt satıra geçer.
@@ -50,7 +54,7 @@ kaynak bağlantısı korunur, tek Geri al ilişkiyi geri getirir.
 Not önizlemesi doğrudan metni gösteren kompakt beyaz/yeşil balondur;
 ayrı başlık ve iç çerçeve yoktur. Uzun not kaydırılabilir, tıklamak not
 editörünü açar. Panel kapanınca bağlantı balonu tekrar kendiliğinden açılmaz.
-Fareyle dönülen başlık altı çizili kalmaz; klavye odağı korunur. Formlarda
+Pencereden dönülen başlık altı çizili kalmaz; yeni klavye gezinmesi odağı gösterir. Formlarda
 kalın dış odak halkası yerine ince kenarlık kullanılır.
 İşlem sütunu düğme sayısına göre kompakt ve sola hizalıdır. Yeni günlük iş
 oluşturma simgesi + işaretidir. Bekleyen konu panelinde Takip ettim,
@@ -104,14 +108,17 @@ temel alanlar kayıt türüne göre öne çıkar; diğerleri sonradan gelen aç�
 Günlük, haftalık, aylık ve senelik ekranlar ortak liste düzenini kullanır.
 Tamamlama kutusu sol başta, günlük işlerde oynat düğmesi en sağdadır.
 Açık işlerin kutusu boştur; tik yalnız tamamlanmış kayıtta görünür.
+İptal edilen kayıtta kutu çarpı gösterir; başlık üstü çizili ve soluktur.
+İlerleme çubuğu ve yüzde yerine — görünür; eski ölçümler ayrıntıda korunur.
+İptal edilen alt kayıt üst hedefin ilerleme hesabına katılmaz.
 Toplantı dışındaki listelerin durum menüsünde tamamlama tekrarlanmaz; listede
 tamamlanmış kayıtlar ve formdaki durum seçenekleri korunur.
 
 Eski Kısmi tamamlandı artık seçilemez; mevcut kayıt Devam ediyor olarak
 gösterilir ve bu filtreye dahildir. Görüntüleme, filtreleme ve yedek alma
 özgün değeri değiştirmez; durum dışındaki doğrudan düzenlemelerde de korunur.
-Toplantıda eski açık durumlar Açık, kapalı durumlar Kapandı olarak gösterilir.
-Ham değer yalnız açıkça durum seçilince güncellenir; Geri al özgün değeri getirir.
+Bağlantısız toplantıda eski açık durumlar Açık, kapalı durumlar Kapandı görünür.
+Ham değer açıkça durum seçilince güncellenir; Geri al özgün değeri getirir.
 
 Senelik hedefte yıl/dönem yeterlidir. Teslim tarihi sütunu, Termin filtresi,
 teslim sıralaması ve form alanı kullanılmaz; senelik hedef takvimde tarih
@@ -520,9 +527,9 @@ Aynı anda tek sayaç çalışır; başka işe geçmek öncekini duraklatır.
 Bölümler arasında gezinirken süre devam eder. Başlatan pencere kapanır
 veya yenilenirse oturum duraklar; yeniden açınca devam edebilirsin.
 Oturumu bitir sayacı duraklatır. Açılan pencerede tarih ve süre otomatik
-gelir; istersen Ne yaptın? sonucunu yazıp mevcut Sonraki adım alanını
-güncelleyebilirsin. Kaydet ve bitir, iş günlüğünü ve sonraki adımı birlikte
-kaydeder. Bu işlem Geri al ile birlikte geri alınır. Vazgeç veya Escape
+gelir; istersen Sonuç yazabilirsin. Enter kaydeder, Shift+Enter alt satıra
+geçer. Kaydet ve bitir, iş günlüğünü tek işlemde kaydeder. Geri al oturumu
+geri alır. Vazgeç veya Escape
 kayıt oluşturmaz; sayaç duraklatılmış kalır. Not yazma süresi eklenmez.
 Kaydı sil, onaydan sonra yalnız kaydedilmemiş oturumu temizler; günlük iş
 ve önceki iş günlüğü kayıtları korunur.
@@ -541,8 +548,9 @@ Yalnız çalışan veya duraklatılmış sayaç bu işareti doldurmaz.
 
 İş günlüğündeki ve haftalık özetteki kaydedilmiş oturumlar Düzenle / Sil
 ile yönetilir. Tarih, süre (saat/dakika; değişmeyen ham süre korunur),
-sonuç ve Oturumdaki sonraki adım düzeltilebilir. Bu son alan geçmişe aittir;
-işin güncel sonraki adımını değiştirmez. Sil önce aynı satırda onay ister
+ve Sonuç düzeltilebilir. Sonuç alanında Enter kaydeder, Shift+Enter alt
+satıra geçer. Eski oturumların sonraki adım metinleri geçmişte korunur;
+işin güncel sonraki adımı değişmez. Sil önce aynı satırda onay ister
 ve yalnız o oturumu kaldırır. İkisi de tek Geri al adımıdır, toplam süreler
 yenilenir ve çalışmakta olan sayaç etkilenmez. Düzenleme formundaki hata
 alanı yalnızca gerçek bir hata mesajı varken görünür.
@@ -560,8 +568,10 @@ yanıtı takip eder. Formdan vazgeçmek kayıt oluşturmaz. İlgili türde kayı
 varsa düğme İşi aç / Takibi aç olur ve o kaydı açar; ikinci kopya oluşturmaz.
 
 Listede Aksiyon / Karar, Durum, Bağlı iş, Takip ve İşlem sütunları vardır.
-Açık / Kapalı / Tümü kapsamı seçilir. Toplantının kendi durumu
-Planlanacak / Açık / Kapandı olarak etiketinden ve kayıt formundan yönetilir.
+Açık / Kapalı / Tümü kapsamı seçilir. Bağlı iş veya takip varsa toplantı
+durumu bunlardan hesaplanır: biri açıksa Açık, hepsi tamamlanmış veya iptal
+edilmişse Kapandı. Durumu değiştirmek ilgili iş veya takip üzerinden yapılır.
+Bağlantısız toplantıda Planlanacak / Açık / Kapandı elle seçilir.
 Durum ve yönlendirme düğmeleri aynı ölçüdedir; sağ sütunlar kompakt ve sola
 hizalıdır. Toplantıda tamamlama kutusu yoktur.
 Bağlı iş ve takip kendi durumlarını kendi sütunlarında gösterir. Her akışın
@@ -583,8 +593,9 @@ Günlük iş kendi önceliği ve teslim tarihiyle yönetilir.
 Beklenen yanıtın kimden beklendiği, sonraki takip tarihi ve son gelişmesi vardır.
 Takip tarihi yanıtın teslim tarihi değildir; Son takip boş başlar.
 Yeni akışlar toplantının eski tarih, öncelik, sorumlu veya sonraki adımını devralmaz.
-Toplantı, günlük iş ve takip ayrı durumlar olarak yönetilir. Her durum işlemi
-yalnız seçilen kaydı günceller; eski tarih/öncelik/sorumlu/sonraki adım korunur.
+Günlük iş ve takip ayrı yönetilir; toplantı ortak sonucu gösterir. Bir akış
+yeniden açılırsa toplantı da Açık olur. Bağlı kayıtla toplantı özeti aynı
+Geri al adımında güncellenir; eski tarih/öncelik/sorumlu/sonraki adım korunur.
 Takvim, mini ajanda ve takip kartları toplantının eski teslimini kullanmaz;
 gerçek iş teslimini ve bekleyen konunun sonraki takip tarihini kullanır.
 

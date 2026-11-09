@@ -27,6 +27,18 @@
 
 .dashboard-rows
   .dashboard-bottom-row
+  .dashboard-detail-card
+  .followup-title:hover,
+:root[data-input-modality="pointer"]
+  .dashboard-rows
+  .dashboard-bottom-row
+  .dashboard-detail-card
+  .followup-title:focus {
+  text-decoration: none;
+}
+
+.dashboard-rows
+  .dashboard-bottom-row
   .dashboard-detail-card:focus-visible
   :is(.dashboard-goal-title, .followup-title),
 .dashboard-rows

@@ -1,5 +1,5 @@
 import { statusLabel, statusForDisplay } from "./model.js";
-import { linkedActions } from "./action-links.js";
+import { linkedActions, resolveActionSource } from "./action-links.js";
 import { createRecordPanelHandoff } from "./record-panel-handoff.js";
 
 const CLOSED = new Set(["completed", "cancelled", "transferred"]);
@@ -95,7 +95,9 @@ export function createMeetingRecordPanel({
   }
 
   function render(record, { resetScroll = false } = {}) {
-    const targets = linkedActions(record.id, getRecords());
+    const records = getRecords();
+    const targets = linkedActions(record.id, records);
+    record = resolveActionSource(record, records);
     const nextKey = JSON.stringify([record, targets]);
     if (renderKey === nextKey) return;
     const scrollTop = resetScroll
@@ -198,7 +200,10 @@ export function createMeetingRecordPanel({
     const target = linkedActions(record.id, getRecords()).find(
       (item) => item.type === type,
     );
-    if (!target && CLOSED.has(record.status)) {
+    if (
+      !target &&
+      CLOSED.has(resolveActionSource(record, getRecords()).status)
+    ) {
       refresh();
       return;
     }

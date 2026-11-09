@@ -116,23 +116,6 @@ async function newDaily(page, title) {
   return form(page);
 }
 
-async function openCatalog(page, kind) {
-  const settings = page.locator("#settings-dialog");
-  if (!(await settings.isVisible()))
-    await page.getByRole("button", { name: "Ayarlar", exact: true }).click();
-  const catalog = settings.locator(`[data-choice-catalog="${kind}"]`);
-  if (!(await catalog.evaluate((element) => element.open)))
-    await catalog.locator(":scope > summary").click();
-  return catalog;
-}
-
-async function closeSettings(page) {
-  await page
-    .locator("#settings-dialog")
-    .getByRole("button", { name: "Tamam", exact: true })
-    .click();
-}
-
 test("only proven imported metadata is removed from notes, and a single undo remains respected after reload", async ({
   page,
 }) => {
@@ -183,24 +166,48 @@ test("only proven imported metadata is removed from notes, and a single undo rem
   expect(await readRecords(page)).toEqual(cleaned);
 });
 
-test("catalogs learn completed legacy values while new daily work leaves retired fields empty and cancelled drafts never write", async ({
+test("legacy field values survive note edits and new daily work while cancelled drafts never write and undo is exact", async ({
   page,
 }) => {
-  const original = await seed(page);
+  const original = await seed(
+    page,
+    fixture().map((record) =>
+      record.id === "details-primary"
+        ? { ...record, projectCode: CUSTOM_PROJECT }
+        : record,
+    ),
+  );
   const before = await readSaved(page);
-  let catalog = await openCatalog(page, "projectCode");
-  await expect(
-    catalog
-      .locator(".choice-catalog-list")
-      .getByText("TST-42", { exact: true }),
-  ).toBeVisible();
-  catalog = await openCatalog(page, "workType");
-  await expect(
-    catalog
-      .locator(".choice-catalog-list")
-      .getByText("Prototip", { exact: true }),
-  ).toBeVisible();
-  await closeSettings(page);
+  const primary = original.find((record) => record.id === "details-primary");
+  await list(page);
+  await row(page).locator(".task-name").click();
+  for (const kind of ["projectCode", "workType"]) {
+    const field = form(page).locator(`[name="${kind}"]`);
+    await expect(field).toBeHidden();
+    await expect(field).toBeDisabled();
+    await expect(field).toHaveValue(primary[kind]);
+  }
+  await expect(page.locator("#record-choice-menu")).not.toBeVisible();
+  await expect(page.locator("#editor img, #editor script")).toHaveCount(0);
+  expect(await page.evaluate(() => window.detailsInjected)).toBeUndefined();
+  await form(page)
+    .locator('[name="description"]')
+    .fill("Düzenlenen gerçek not.");
+  await form(page)
+    .getByRole("button", { name: "Değişiklikleri kaydet", exact: true })
+    .click();
+  expect(await readRecords(page)).toEqual(
+    original.map((record) =>
+      record.id === primary.id
+        ? {
+            ...record,
+            description: "Düzenlenen gerçek not.",
+            updatedAt: NOW.toISOString(),
+          }
+        : record,
+    ),
+  );
+  await undo(page);
   expect(await readSaved(page)).toBe(before);
 
   const draft = await newDaily(page, "Yeni gerçek sonuç işi");
@@ -234,21 +241,8 @@ test("catalogs learn completed legacy values while new daily work leaves retired
   await closeEditor(page);
   await expect(page.locator("#editor")).not.toBeVisible();
   expect(await readSaved(page)).toBe(beforeDraft);
-  catalog = await openCatalog(page, "projectCode");
-  await expect(
-    catalog
-      .locator(".choice-catalog-list")
-      .getByText(CUSTOM_PROJECT, { exact: true }),
-  ).toHaveCount(0);
-  await expect(
-    catalog
-      .locator(".choice-catalog-list")
-      .getByText("TST-42", { exact: true }),
-  ).toBeVisible();
-  await expect(catalog.locator("img, script")).toHaveCount(0);
+  await expect(page.locator("#editor img, #editor script")).toHaveCount(0);
   expect(await page.evaluate(() => window.detailsInjected)).toBeUndefined();
-  await closeSettings(page);
-  expect(await readSaved(page)).toBe(beforeDraft);
   await undo(page);
   expect(await readSaved(page)).toBe(before);
   expect(await readRecords(page)).toEqual(original);

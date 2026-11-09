@@ -148,7 +148,7 @@
   .dashboard-goal-row
   .dashboard-goal-actions {
   flex: 0 0 auto;
-  margin-top: auto;
+  margin-top: 0;
   padding-top: 4px;
 }
 

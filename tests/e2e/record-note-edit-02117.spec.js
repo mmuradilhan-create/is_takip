@@ -35,12 +35,17 @@ const trigger = (page) =>
   page.locator(
     '[data-record-row][data-id="note-edit-daily"] [data-action="record-note"]',
   );
+const popup = (page) => page.locator("#record-note-popover");
 const undo = (page) =>
   page.getByRole("button", { name: "Geri al", exact: true }).click();
 
-async function seed(page, records = [original()]) {
+async function seed(page, records = [original()], { fakeClock = false } = {}) {
   const record = original();
-  await page.clock.setFixedTime(NOW);
+  if (fakeClock) {
+    await page.clock.install({ time: NOW });
+    await page.clock.pauseAt(NOW);
+    await page.clock.setFixedTime(NOW);
+  } else await page.clock.setFixedTime(NOW);
   await page.addInitScript(
     ({ key, records }) => {
       if (sessionStorage.getItem("note-edit-02117-seeded")) return;
@@ -65,6 +70,18 @@ async function seed(page, records = [original()]) {
   return record;
 }
 
+async function expectRestoredNoteStaysClosed(page) {
+  await expect(trigger(page)).toBeFocused();
+  await page.clock.runFor(250);
+  await expect(popup(page)).not.toBeVisible();
+  await trigger(page).evaluate((control) => {
+    control.blur();
+    control.focus({ preventScroll: true });
+  });
+  await page.clock.runFor(250);
+  await expect(popup(page)).not.toBeVisible();
+}
+
 async function confirmDiscard(page, action, accept) {
   const confirmation = page.waitForEvent("dialog");
   const pending = action();
@@ -79,7 +96,7 @@ async function confirmDiscard(page, action, accept) {
 test("direct note editing confirms dirty dismissal, preserves only the note on Save, and removes or restores its icon with exact Undo", async ({
   page,
 }) => {
-  const record = await seed(page);
+  const record = await seed(page, [original()], { fakeClock: true });
   const before = await saved(page);
   await trigger(page).click();
   await expect(editor(page)).toBeVisible();
@@ -110,7 +127,7 @@ test("direct note editing confirms dirty dismissal, preserves only the note on S
   }
   await confirmDiscard(page, () => page.mouse.click(4, 4), true);
   await expect(editor(page)).not.toBeVisible();
-  await expect(trigger(page)).toBeFocused();
+  await expectRestoredNoteStaysClosed(page);
   expect(await saved(page)).toBe(before);
 
   const unexpected = [];
@@ -123,11 +140,23 @@ test("direct note editing confirms dirty dismissal, preserves only the note on S
   await text(page).fill(record.description);
   await page.keyboard.press("Escape");
   await expect(editor(page)).not.toBeVisible();
+  await expectRestoredNoteStaysClosed(page);
   await trigger(page).click();
   await text(page).press("Enter");
   await expect(editor(page)).not.toBeVisible();
+  await expectRestoredNoteStaysClosed(page);
   expect(await saved(page)).toBe(before);
+  await page.mouse.move(4, 4);
+  await trigger(page).hover();
+  await page.clock.runFor(100);
+  await expect(popup(page)).toBeVisible();
+  await expect(popup(page).locator(".record-note-body")).toHaveText(
+    record.description,
+  );
+  await page.keyboard.press("Escape");
+  await expectRestoredNoteStaysClosed(page);
   await trigger(page).click();
+  const replacedTrigger = await trigger(page).elementHandle();
   await text(page).fill("Yeni ilk satır");
   await text(page).press("Shift+Enter");
   await text(page).pressSequentially("İkinci satır");
@@ -161,6 +190,32 @@ test("direct note editing confirms dirty dismissal, preserves only the note on S
   expect(await saved(page)).toBe(before);
   await text(page).press("Enter");
   await expect(editor(page)).not.toBeVisible();
+  expect(await replacedTrigger.evaluate((control) => control.isConnected)).toBe(
+    false,
+  );
+  await expectRestoredNoteStaysClosed(page);
+  await page.mouse.move(4, 4);
+  await trigger(page).hover();
+  await page.clock.runFor(100);
+  await expect(popup(page)).toBeVisible();
+  await expect(trigger(page)).toBeFocused();
+  await expect(popup(page).locator(".record-note-body")).toHaveText(
+    "Yeni ilk satır\nİkinci satır",
+  );
+  await page.mouse.move(4, 4);
+  await page.clock.runFor(150);
+  await expect(trigger(page)).toBeFocused();
+  await expect(popup(page)).not.toBeVisible();
+  await page.keyboard.press("Shift+Tab");
+  await page.keyboard.press("Tab");
+  await expect(trigger(page)).toBeFocused();
+  await page.clock.runFor(250);
+  await expect(popup(page)).toBeVisible();
+  await expect(popup(page).locator(".record-note-body")).toHaveText(
+    "Yeni ilk satır\nİkinci satır",
+  );
+  await page.keyboard.press("Escape");
+  await expectRestoredNoteStaysClosed(page);
   expect((await stored(page)).records).toEqual([
     {
       ...record,
@@ -176,6 +231,20 @@ test("direct note editing confirms dirty dismissal, preserves only the note on S
   await text(page).press("Enter");
   await expect(editor(page)).not.toBeVisible();
   await expect(trigger(page)).toHaveCount(0);
+  const fallbackTitle = page.locator(
+    '[data-record-row][data-id="note-edit-daily"] .task-name',
+  );
+  await expect(fallbackTitle).toBeFocused();
+  await page.clock.runFor(250);
+  await expect(popup(page)).not.toBeVisible();
+  await expect(fallbackTitle).not.toHaveCSS(
+    "text-decoration-line",
+    /underline/,
+  );
+  await page.keyboard.press("Shift+Tab");
+  await page.keyboard.press("Tab");
+  await expect(fallbackTitle).toBeFocused();
+  await expect(fallbackTitle).toHaveCSS("text-decoration-line", /underline/);
   expect((await stored(page)).records).toEqual([
     { ...record, description: "", updatedAt: NOW.toISOString() },
   ]);

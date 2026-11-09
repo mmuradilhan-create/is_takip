@@ -64,7 +64,8 @@
   .dashboard-bottom-row
   .dashboard-goal-row
   .dashboard-goal-progress {
-  margin-top: 4px;
+  margin-top: auto;
+  padding-top: 7px;
 }
 
 .dashboard-rows .dashboard-bottom-row .dashboard-goal-row .dashboard-goal-meta {

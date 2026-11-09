@@ -26,6 +26,73 @@ const closeWaiting = (page) =>
 const closeGoal = (page) =>
   goalPanel(page).locator('[data-action="goal-panel-close"]').last().click();
 
+async function expectBottomCardControls(page, sideBySide) {
+  const boxes = await page.evaluate(() => {
+    const card = document.querySelector(
+      '[data-goal-id="details-week"].dashboard-goal-row',
+    );
+    const waiting = document.querySelector(
+      '.attention-panel .followup-row[data-id="details-waiting"]',
+    );
+    const rect = (node) => {
+      const { left, right, top, bottom } = node.getBoundingClientRect();
+      return { left, right, top, bottom };
+    };
+    return {
+      goal: rect(card),
+      waiting: rect(waiting),
+      progress: rect(card.querySelector(".dashboard-goal-progress")),
+      facts: rect(waiting.querySelector(".followup-wait-info")),
+      goalButtons: [
+        ...card.querySelectorAll(".dashboard-goal-actions button"),
+      ].map(rect),
+      waitingButton: rect(
+        waiting.querySelector('[data-action="waiting-followup"]'),
+      ),
+      goalContents: [
+        ...card.querySelectorAll(
+          ".dashboard-goal-progress .progress-track, .goal-progress-label, .dashboard-goal-actions button",
+        ),
+      ].map(rect),
+      waitingContents: [
+        ...waiting.querySelectorAll(
+          ".followup-fact, [data-action=waiting-followup]",
+        ),
+      ].map(rect),
+      bodyFits: document.documentElement.scrollWidth <= innerWidth + 1,
+    };
+  });
+  const actionTop = Math.min(...boxes.goalButtons.map((box) => box.top));
+  const actionBottom = Math.max(...boxes.goalButtons.map((box) => box.bottom));
+  expect(actionTop - boxes.progress.bottom).toBeGreaterThanOrEqual(3);
+  expect(actionTop - boxes.progress.bottom).toBeLessThanOrEqual(5);
+  const goalInset = boxes.goal.bottom - actionBottom;
+  const waitingInset = boxes.waiting.bottom - boxes.waitingButton.bottom;
+  expect(goalInset).toBeGreaterThanOrEqual(8);
+  expect(goalInset).toBeLessThanOrEqual(10);
+  expect(Math.abs(goalInset - waitingInset)).toBeLessThanOrEqual(1);
+  if (sideBySide) {
+    expect(
+      Math.abs(actionBottom - boxes.waitingButton.bottom),
+    ).toBeLessThanOrEqual(1);
+    expect(
+      Math.abs(boxes.progress.bottom - boxes.facts.bottom),
+    ).toBeLessThanOrEqual(4);
+  }
+  for (const [card, controls] of [
+    [boxes.goal, boxes.goalContents],
+    [boxes.waiting, boxes.waitingContents],
+  ]) {
+    for (const control of controls) {
+      expect(control.left).toBeGreaterThanOrEqual(card.left);
+      expect(control.right).toBeLessThanOrEqual(card.right + 1);
+      expect(control.top).toBeGreaterThanOrEqual(card.top);
+      expect(control.bottom).toBeLessThanOrEqual(card.bottom);
+    }
+  }
+  expect(boxes.bodyFits).toBe(true);
+}
+
 function fixture() {
   return [
     make({
@@ -168,12 +235,40 @@ test("follow-up card bodies, titles and card keyboard actions open read-only det
   const items = await seed(page);
   const original = items.find((item) => item.id === "details-waiting");
   const before = await saved(page);
+  const title = waiting(page).locator(".followup-title");
+  const initialTheme = await page.locator("html").getAttribute("data-theme");
+  for (const theme of ["light", "dark"]) {
+    await page.locator("html").evaluate((node, value) => {
+      node.dataset.theme = value;
+    }, theme);
+    const hoverColor = await goal(page).evaluate((card) => {
+      const probe = document.createElement("span");
+      probe.style.position = "absolute";
+      probe.style.backgroundColor = "var(--theme-hover, #fafcf7)";
+      card.append(probe);
+      const color = getComputedStyle(probe).backgroundColor;
+      probe.remove();
+      return color;
+    });
+    await goal(page).locator(".dashboard-goal-title").hover();
+    await expect(goal(page)).toHaveCSS("background-color", hoverColor);
+    await expect(goal(page).locator(".dashboard-goal-title")).not.toHaveCSS(
+      "text-decoration-line",
+      /underline/,
+    );
+    await title.hover();
+    await expect(waiting(page)).toHaveCSS("background-color", hoverColor);
+    await expect(title).not.toHaveCSS("text-decoration-line", /underline/);
+  }
+  await page.locator("html").evaluate((node, value) => {
+    if (value === null) delete node.dataset.theme;
+    else node.dataset.theme = value;
+  }, initialTheme);
   await expect(waiting(page)).toHaveAttribute("role", "group");
   await expect(waiting(page)).toHaveAttribute("tabindex", "0");
   await waiting(page).locator(".waiting-age").click();
   await expectReadonlyWaiting(page, original);
   await closeWaiting(page);
-  const title = waiting(page).locator(".followup-title");
   const expectNoFocusRectangle = async (control) => {
     await expect(control).toHaveCSS("outline-style", "none");
     await expect(control).toHaveCSS("box-shadow", "none");
@@ -182,6 +277,7 @@ test("follow-up card bodies, titles and card keyboard actions open read-only det
   await expectReadonlyWaiting(page, original);
   await closeWaiting(page);
   await expect(title).toBeFocused();
+  await expect(title).not.toHaveCSS("text-decoration-line", /underline/);
   await expectNoFocusRectangle(title);
   await page.screenshot({
     path: testInfo.outputPath("followup-title-focused-no-rectangle.png"),
@@ -262,6 +358,21 @@ test("goal body opens the panel at its top while nested goal, follow-up and date
 }) => {
   await seed(page);
   const before = await saved(page);
+  for (const viewport of [
+    { width: 1280, height: 800 },
+    { width: 1920, height: 1080 },
+    { width: 390, height: 700 },
+  ]) {
+    await page.setViewportSize(viewport);
+    for (const theme of ["light", "dark"]) {
+      await page.locator("html").evaluate((node, value) => {
+        node.dataset.theme = value;
+      }, theme);
+      await expectBottomCardControls(page, viewport.width > 760);
+    }
+  }
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  expect(await saved(page)).toBe(before);
   await expect(goal(page)).toHaveAttribute("role", "group");
   await expect(goal(page)).toHaveAttribute("tabindex", "0");
   await goal(page).locator(".goal-progress-label").click();

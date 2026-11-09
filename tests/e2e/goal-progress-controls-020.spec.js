@@ -122,6 +122,7 @@ function fixture() {
     }),
     goal("closed-month", "monthly", {
       status: "cancelled",
+      goalParentId: "year-derived",
       targetValue: 4,
       currentValue: 2,
     }),
@@ -221,6 +222,50 @@ test("weekly, monthly and yearly panels render human periods and readable child 
     closedChild.locator(".goal-child-date .deadline-label"),
   ).toHaveText("6 Kas");
   await expect(closedChild.locator('[data-action="edit-date"]')).toHaveCount(0);
+  await expect(closedChild.locator(".goal-child-title")).not.toHaveCSS(
+    "text-decoration-line",
+    /line-through/,
+  );
+  const cancelledChild = panel(page).locator(
+    '.goal-child-row[data-id="derived-cancelled"]',
+  );
+  await expect(
+    cancelledChild.locator(".completion-mark.is-cancelled svg path"),
+  ).toHaveAttribute("d", "m6 6 12 12M6 18 18 6");
+  for (const [theme, muted] of [
+    ["light", "rgb(123, 137, 115)"],
+    ["dark", "rgb(150, 156, 165)"],
+  ]) {
+    await page.evaluate((value) => {
+      document.documentElement.dataset.theme = value;
+    }, theme);
+    const title = cancelledChild.locator(".goal-child-title");
+    await title.hover();
+    await expect(title).toHaveCSS("color", muted);
+    await expect(title).toHaveCSS("text-decoration-line", /line-through/);
+  }
+  await openGoal(page, "yearly", "year-derived");
+  const cancelledGoal = panel(page).locator(
+    '.goal-child-row[data-id="closed-month"]',
+  );
+  await expect(cancelledGoal.getByRole("progressbar")).toHaveCount(0);
+  await expect(cancelledGoal.locator(".goal-child-progress")).toHaveText("—");
+  await expect(
+    cancelledGoal.locator(".goal-progress-excluded"),
+  ).toHaveAttribute(
+    "aria-label",
+    "İptal edildi; üst hedefin ilerlemesine dahil değil.",
+  );
+  await cancelledGoal.locator(".goal-child-title").click();
+  await expect(panel(page)).toHaveAttribute("data-goal-id", "closed-month");
+  await expect(progressBar(page)).toHaveCount(0);
+  await expect(controls(page)).toHaveCount(0);
+  await expect(panel(page).locator(".goal-panel-progress")).not.toContainText(
+    "%",
+  );
+  await expect(panel(page).locator(".goal-panel-metric")).toHaveText(
+    "Kaydedilen ölçüm 2 / 4 hedef değeri",
+  );
   expect(await saved(page)).toBe(before);
 });
 

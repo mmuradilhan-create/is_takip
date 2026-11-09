@@ -219,7 +219,7 @@ test("goal quick completion displays full progress while preserving entered metr
   }
 });
 
-test("closed records have no quick completion control across every list", async ({
+test("closed records keep read-only marks and cancelled titles are muted and struck through across every list", async ({
   page,
 }) => {
   const types = ["daily", "weekly", "monthly", "yearly", "meeting", "waiting"];
@@ -229,6 +229,7 @@ test("closed records have no quick completion control across every list", async 
     ),
   );
   await seed(page, originals);
+  const before = await page.evaluate((key) => localStorage.getItem(key), KEY);
   for (const type of types) {
     await page.locator(`#nav [data-view="${type}"]`).click();
     await selectListStatus(page, "all");
@@ -245,6 +246,86 @@ test("closed records have no quick completion control across every list", async 
       await expect(
         row(page, original.id).locator(".status-trigger"),
       ).toBeVisible();
+      const title = row(page, original.id).locator(".task-name");
+      if (original.status === "cancelled") {
+        if (["weekly", "monthly", "yearly"].includes(type)) {
+          const progress = row(page, original.id).locator(".metric-cell");
+          await expect(progress).toHaveText("—");
+          await expect(progress.getByRole("progressbar")).toHaveCount(0);
+          await expect(progress).toHaveAttribute(
+            "aria-label",
+            "İptal edilen kayıt ilerlemeye dahil değil",
+          );
+        }
+        const mark = row(page, original.id).locator(
+          ".completion-mark.is-cancelled",
+        );
+        if (type === "meeting") await expect(mark).toHaveCount(0);
+        else {
+          await expect(mark).toHaveAttribute("role", "img");
+          await expect(mark).not.toHaveAttribute("tabindex");
+          await expect(mark).not.toHaveAttribute("data-action");
+          await expect(mark.locator("svg path")).toHaveAttribute(
+            "d",
+            "m6 6 12 12M6 18 18 6",
+          );
+        }
+        for (const [theme, muted] of [
+          ["light", "rgb(123, 137, 115)"],
+          ["dark", "rgb(150, 156, 165)"],
+        ]) {
+          await page.evaluate((value) => {
+            document.documentElement.dataset.theme = value;
+          }, theme);
+          await expect(title).toHaveCSS("color", muted);
+          await expect(title).toHaveCSS("text-decoration-line", /line-through/);
+          await title.hover();
+          await expect(title).toHaveCSS("color", muted);
+          await expect(title).toHaveCSS("text-decoration-line", /line-through/);
+        }
+        await title.press("Enter");
+        const preview = page.locator(
+          ["weekly", "monthly", "yearly"].includes(type)
+            ? "#goal-detail-panel"
+            : type === "meeting"
+              ? "#meeting-record-panel"
+              : type === "waiting"
+                ? "#waiting-record-panel"
+                : "#editor",
+        );
+        await expect(preview).toBeVisible();
+        if (["weekly", "monthly", "yearly"].includes(type)) {
+          const progress = preview.locator(".goal-panel-progress");
+          await expect(progress.getByRole("progressbar")).toHaveCount(0);
+          await expect(progress).not.toContainText("%");
+          await expect(progress.locator(".goal-progress-excluded")).toHaveText(
+            "İptal edildi",
+          );
+        }
+        await preview
+          .getByRole("button", {
+            name: type === "daily" ? "Vazgeç" : "Kapat",
+            exact: true,
+          })
+          .click();
+        await expect(preview).not.toBeVisible();
+        await expect(title).toHaveCSS("text-decoration-line", /line-through/);
+      } else if (original.status === "completed") {
+        await expect(title).not.toHaveCSS(
+          "text-decoration-line",
+          /line-through/,
+        );
+        if (type !== "meeting") {
+          const mark = row(page, original.id).locator(
+            ".completion-mark.is-completed",
+          );
+          await expect(mark).toHaveAttribute("role", "img");
+          await expect(mark.locator("svg path")).toHaveAttribute(
+            "d",
+            "m5 12 4 4L19 6",
+          );
+        }
+      }
       if (type === "meeting") {
         await expect(
           row(page, original.id).locator(".meeting-archive-control"),
@@ -256,6 +337,9 @@ test("closed records have no quick completion control across every list", async 
     }
   }
   expect(await readRecords(page)).toEqual(originals);
+  expect(await page.evaluate((key) => localStorage.getItem(key), KEY)).toBe(
+    before,
+  );
 });
 
 test("quick completion pauses a running daily timer without changing the journal and undo preserves the paused time", async ({

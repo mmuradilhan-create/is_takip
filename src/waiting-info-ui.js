@@ -46,11 +46,13 @@ export function createWaitingInfoUI({
   const dismissed = new Set();
   let pointerPosition = null;
   let keyboardNavigation = false;
+  let keyboardPreview = false;
 
   const isOpen = () => popup.matches(":popover-open");
   const focusInside = () =>
-    trigger?.contains(owner.activeElement) ||
-    popup.contains(owner.activeElement);
+    keyboardPreview &&
+    (trigger?.contains(owner.activeElement) ||
+      popup.contains(owner.activeElement));
 
   function button(record) {
     if (!eligible(record)) return "";
@@ -238,6 +240,7 @@ export function createWaitingInfoUI({
     const navigation = keyboardNavigation;
     keyboardNavigation = false;
     if (restoringFocus) return;
+    keyboardPreview = navigation;
     if (popup.contains(event.target)) {
       win.clearTimeout(hideTimer);
       hideTimer = null;
@@ -274,6 +277,10 @@ export function createWaitingInfoUI({
   function onPointerMove(event) {
     const moved = pointerMoved(event);
     rememberPointer(event);
+    if (moved) {
+      keyboardPreview = false;
+      if (isOpen() && !hoverPopup && hoverControl !== trigger) scheduleHide();
+    }
     const control = event.target.closest?.('[data-action="waiting-info"]');
     if (
       moved &&
@@ -294,6 +301,7 @@ export function createWaitingInfoUI({
     event.preventDefault();
     event.stopPropagation();
     keyboardNavigation = false;
+    keyboardPreview = false;
     const id = control.dataset.id;
     const record = getRecord(id);
     close();

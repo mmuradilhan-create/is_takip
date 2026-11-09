@@ -260,6 +260,10 @@ test("unlinking weekly or monthly subgoals leaves their own hierarchy and histor
 }) => {
   const items = fixture();
   items[2] = make({ ...items[2], status: "completed" });
+  items[1] = make({
+    ...items[1],
+    title: "Dar ekranda da okunacak aylık teslim ve doğrulama kapsamı",
+  });
   const raw = await seed(page, items);
   for (const [type, parentId, childId] of [
     ["monthly", "unlink-month", "unlink-week"],
@@ -270,6 +274,56 @@ test("unlinking weekly or monthly subgoals leaves their own hierarchy and histor
       "data-record-link-tooltip",
       "Üst hedef bağlantısını kaldır",
     );
+    const open = child(page, childId).locator(".goal-child-open");
+    await expect(open).toHaveAttribute("data-action", "goal-open-child");
+    await expect(open).toHaveAttribute("data-id", childId);
+    await expect(open.locator("svg")).toHaveCount(1);
+    for (const width of [1280, 390]) {
+      await page.setViewportSize({ width, height: 800 });
+      const layout = await child(page, childId).evaluate((element) => {
+        const box = (selector) => {
+          const { x, y, width, height } = element
+            .querySelector(selector)
+            .getBoundingClientRect();
+          return { x, y, width, height };
+        };
+        const heading = element.querySelector(".goal-child-heading");
+        return {
+          title: box(".goal-child-title"),
+          unlink: box(".goal-child-unlink"),
+          open: box(".goal-child-open"),
+          heading: box(".goal-child-heading"),
+          columns:
+            getComputedStyle(element).gridTemplateColumns.split(" ").length,
+          overflow: heading.scrollWidth - heading.clientWidth,
+        };
+      });
+      expect(layout.columns).toBe(2);
+      expect(layout.unlink.width).toBeCloseTo(22, 1);
+      expect(layout.unlink.height).toBeCloseTo(22, 1);
+      expect(layout.open.width).toBeCloseTo(22, 1);
+      expect(layout.open.height).toBeCloseTo(22, 1);
+      expect(layout.open.x - layout.unlink.x - layout.unlink.width).toBeCloseTo(
+        4,
+        1,
+      );
+      expect(layout.unlink.x - layout.title.x - layout.title.width).toBeCloseTo(
+        6,
+        1,
+      );
+      expect(Math.abs(layout.unlink.y - layout.open.y)).toBeLessThanOrEqual(1);
+      expect(layout.open.x + layout.open.width).toBeLessThanOrEqual(
+        layout.heading.x + layout.heading.width + 1,
+      );
+      expect(layout.overflow).toBeLessThanOrEqual(1);
+    }
+    await open.click();
+    await expect(panel(page)).toHaveAttribute("data-goal-id", childId);
+    expect(await saved(page)).toBe(raw);
+    await panel(page)
+      .getByRole("button", { name: "Kapat", exact: true })
+      .click();
+    await openGoal(page, type, parentId);
     await unlink(page, childId).click();
     await expect(panel(page)).toBeVisible();
     await expect(panel(page)).toHaveAttribute("data-goal-id", parentId);

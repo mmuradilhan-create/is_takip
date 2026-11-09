@@ -30,7 +30,7 @@ const fixture = () =>
     createdAt: STAMP,
     updatedAt: STAMP,
     workLog: [
-      entry("one", "2026-11-07", 65_000),
+      entry("one", "2026-11-07", 65_001),
       entry("two", "2026-11-06", 30_000),
     ],
   });
@@ -38,6 +38,29 @@ const fixture = () =>
 test("editing a saved session preserves its identity, finish timestamp, other history and current task fields", () => {
   const original = fixture();
   const copy = structuredClone(original);
+  const textPatch = { date: "2026-11-05", note: "Tarihi ve sonucu düzeltildi" };
+  const textOnly = updateWorkLogEntry(original, "one", textPatch, {
+    updatedAt: UPDATED,
+  });
+  assert.deepEqual(textOnly.workLog[0], {
+    ...original.workLog[0],
+    ...textPatch,
+  });
+  assert.equal(textOnly.workLog[0].durationMs, 65_001);
+  assert.equal(textOnly.workLog[0].nextAction, "Oturumdaki eski adım");
+  assert.equal(textOnly.workLog[0].id, original.workLog[0].id);
+  assert.equal(textOnly.workLog[0].endedAt, original.workLog[0].endedAt);
+  assert.deepEqual(textOnly.workLog[1], original.workLog[1]);
+  assert.deepEqual(
+    { ...textOnly, workLog: original.workLog, updatedAt: original.updatedAt },
+    original,
+  );
+  assert.deepEqual(
+    validateStore(
+      JSON.parse(JSON.stringify({ version: 1, records: [textOnly] })),
+    ).records,
+    [textOnly],
+  );
   const patch = {
     date: "2026-10-31",
     durationMs: 3_661_000,
@@ -143,10 +166,19 @@ test("edit and delete are independent atomic undo actions and failed persistence
   const edited = updateWorkLogEntry(
     original,
     "one",
-    { durationMs: 120_000, note: "Düzeltilmiş" },
+    { date: "2026-11-05", note: "Düzeltilmiş" },
     { updatedAt: UPDATED },
   );
   store.saveRecords([edited], "Oturum düzenleme");
+  assert.equal(store.history.length, 1);
+  assert.equal(store.records[0].workLog[0].durationMs, 65_001);
+  assert.equal(store.records[0].workLog[0].nextAction, "Oturumdaki eski adım");
+  assert.equal(store.records[0].nextAction, original.nextAction);
+  store.saveRecords(
+    [updateWorkLogEntry(edited, "one", { note: edited.workLog[0].note })],
+    "Değişmeyen oturum",
+  );
+  assert.equal(store.history.length, 1);
   const removed = removeWorkLogEntry(edited, "two", { updatedAt: UPDATED });
   store.saveRecords([removed], "Oturum silme");
   store = createWorkspaceStore({

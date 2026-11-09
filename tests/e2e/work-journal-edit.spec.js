@@ -94,6 +94,11 @@ test("weekly saved sessions can be edited across weeks without changing the task
   await entry(page).locator('[data-action="work-log-edit"]').click();
   const dialog = editDialog(page);
   await expect(dialog).toBeVisible();
+  await expect(dialog.locator('[name="workLogNextAction"]')).toHaveCount(0);
+  const note = dialog.getByRole("textbox", { name: "Sonuç", exact: true });
+  await expect(note).toHaveAccessibleDescription(
+    "Enter ile kaydet, Shift+Enter ile alt satıra geç.",
+  );
   await expect(dialog.locator("#work-log-edit-error")).toBeHidden();
   expect(
     await dialog
@@ -104,11 +109,13 @@ test("weekly saved sessions can be edited across weeks without changing the task
   await dialog.locator('[name="workLogHours"]').fill("1");
   await dialog.locator('[name="workLogMinutes"]').fill("2");
   await expect(dialog.locator('[name="workLogSeconds"]')).toHaveCount(0);
-  await dialog.locator('[name="workLogNote"]').fill(RESULT);
-  await dialog
-    .locator('[name="workLogNextAction"]')
-    .fill("Düzeltilen geçmiş adım");
-  await dialog.locator('button[type="submit"]').click();
+  await note.fill(RESULT);
+  await note.press("Shift+Enter");
+  await note.pressSequentially("İkinci sonuç satırı.");
+  const result = `${RESULT}\nİkinci sonuç satırı.`;
+  await expect(note).toHaveValue(result);
+  expect(await readSaved(page)).toBe(saved);
+  await note.press("Enter");
   await expect(dialog).not.toBeVisible();
   await expect(
     page.locator('#work-week-dialog [data-log-id="journal-edit-one"]'),
@@ -121,8 +128,7 @@ test("weekly saved sessions can be edited across weeks without changing the task
     ...original[0].workLog[0],
     date: "2026-10-31",
     durationMs: 3_720_000,
-    note: RESULT,
-    nextAction: "Düzeltilen geçmiş adım",
+    note: result,
   });
   expect(updated[0].nextAction).toBe(original[0].nextAction);
   expect(updated[0].status).toBe(original[0].status);
@@ -133,7 +139,7 @@ test("weekly saved sessions can be edited across weeks without changing the task
     .click();
   await expect(
     page.locator('#work-week-dialog [data-log-id="journal-edit-one"]'),
-  ).toContainText(RESULT);
+  ).toContainText(result);
   await expect(page.locator("#work-week-dialog img")).toHaveCount(0);
   expect(await page.evaluate(() => window.journalEditInjected)).toBeUndefined();
   await page
@@ -160,6 +166,10 @@ test("per-task history preserves millisecond duration during text edits and can 
   const saved = await readSaved(page);
   await openJournal(page);
   await entry(page).locator('[data-action="work-log-edit"]').click();
+  await editDialog(page).locator('[name="workLogNote"]').press("Enter");
+  await expect(editDialog(page)).not.toBeVisible();
+  expect(await readSaved(page)).toBe(saved);
+  await entry(page).locator('[data-action="work-log-edit"]').click();
   await expect(editDialog(page).locator('[name="workLogSeconds"]')).toHaveCount(
     0,
   );
@@ -170,10 +180,16 @@ test("per-task history preserves millisecond duration during text edits and can 
     "1",
   );
   await editDialog(page).locator('[name="workLogNote"]').fill(RESULT);
-  await editDialog(page).locator('button[type="submit"]').click();
+  await editDialog(page).locator('[name="workLogDate"]').fill("06.11.2026");
+  await editDialog(page).locator('[name="workLogNote"]').press("Enter");
   await expect(editDialog(page)).not.toBeVisible();
   const edited = await readSaved(page);
-  expect((await readRecords(page))[0].workLog[0].durationMs).toBe(65_001);
+  expect((await readRecords(page))[0].workLog[0]).toEqual({
+    ...original[0].workLog[0],
+    date: "2026-11-06",
+    note: RESULT,
+  });
+  expect(JSON.parse(edited).odak.history).toHaveLength(1);
   await entry(page).locator('[data-action="work-log-delete"]').click();
   await entry(page).locator('[data-action="work-log-delete-cancel"]').click();
   expect(await readSaved(page)).toBe(edited);
@@ -224,7 +240,7 @@ test("per-task history preserves millisecond duration during text edits and can 
   await editDialog(page)
     .locator('[name="workLogNote"]')
     .fill("Bir dakikadan kısa oturumun notu");
-  await editDialog(page).locator('button[type="submit"]').click();
+  await editDialog(page).locator('[name="workLogNote"]').press("Enter");
   await expect(editDialog(page)).not.toBeVisible();
   expect((await readRecords(page))[0].workLog[1].durationMs).toBe(30_000);
   await page
@@ -250,7 +266,7 @@ test("invalid duration, cancelled drafts and failed storage writes preserve the 
   await entry(page).locator('[data-action="work-log-edit"]').click();
   const dialog = editDialog(page);
   await dialog.locator('[name="workLogMinutes"]').fill("60");
-  await dialog.locator('button[type="submit"]').click();
+  await dialog.locator('[name="workLogNote"]').press("Enter");
   expect(
     await dialog
       .locator('[name="workLogMinutes"]')
@@ -261,6 +277,30 @@ test("invalid duration, cancelled drafts and failed storage writes preserve the 
   await dialog
     .locator('[name="workLogNote"]')
     .fill("Yazma hatasından korunan taslak");
+  await dialog.locator('[name="workLogNote"]').evaluate((field) => {
+    for (const options of [
+      { isComposing: true },
+      { keyCode: 229 },
+      { repeat: true },
+      { ctrlKey: true },
+      { altKey: true },
+      { metaKey: true },
+      { prevented: true },
+    ]) {
+      const event = new KeyboardEvent("keydown", {
+        key: "Enter",
+        bubbles: true,
+        cancelable: true,
+        ...options,
+      });
+      if (options.keyCode)
+        Object.defineProperty(event, "keyCode", { value: options.keyCode });
+      if (options.prevented) event.preventDefault();
+      field.dispatchEvent(event);
+    }
+  });
+  await expect(dialog).toBeVisible();
+  expect(await readSaved(page)).toBe(saved);
   await page.evaluate((key) => {
     window.journalEditOriginalSetItem = Storage.prototype.setItem;
     Storage.prototype.setItem = function (name, value) {
@@ -269,7 +309,7 @@ test("invalid duration, cancelled drafts and failed storage writes preserve the 
       return window.journalEditOriginalSetItem.call(this, name, value);
     };
   }, KEY);
-  await dialog.locator('button[type="submit"]').click();
+  await dialog.locator('[name="workLogNote"]').press("Enter");
   await expect(dialog.locator('[role="alert"]')).toContainText("kaydedilemedi");
   await expect(dialog.locator("#work-log-edit-error")).toBeVisible();
   await expect(dialog.locator('[name="workLogNote"]')).toHaveValue(
@@ -279,14 +319,79 @@ test("invalid duration, cancelled drafts and failed storage writes preserve the 
   await page.evaluate(() => {
     Storage.prototype.setItem = window.journalEditOriginalSetItem;
   });
-  await dialog.locator('button[type="submit"]').click();
+  await dialog.locator('[name="workLogNote"]').press("Enter");
   await expect(dialog).not.toBeVisible();
   const records = await readRecords(page);
   expect(records[0].workLog).toHaveLength(2);
   expect(records[0].workLog[0].note).toBe("Yazma hatasından korunan taslak");
   expect(records[0].workLog[0].durationMs).toBe(65_001);
   expect(records[0].nextAction).toBe("İşin güncel sonraki adımı");
+  expect(records[0].workLog[0].nextAction).toBe("Oturumdaki sonraki adım");
+  expect(JSON.parse(await readSaved(page)).odak.history).toHaveLength(1);
   await entry(page).locator('[data-action="work-log-edit"]').click();
   await expect(editDialog(page).locator("#work-log-edit-error")).toBeHidden();
   await page.keyboard.press("Escape");
+  await page
+    .locator('#work-journal-dialog [data-action="work-journal-close"]')
+    .last()
+    .click();
+  await undo(page);
+  expect(await readSaved(page)).toBe(saved);
+});
+
+test("a concurrent session correction disables stale Enter saves without losing the local result or adding another Undo", async ({
+  page,
+  context,
+}) => {
+  const original = await seed(page);
+  const before = await readSaved(page);
+  await openJournal(page);
+  await entry(page).locator('[data-action="work-log-edit"]').click();
+  const field = editDialog(page).locator('[name="workLogNote"]');
+  await field.fill("Korunacak yerel sonuç taslağı");
+
+  const other = await context.newPage();
+  await other.clock.setFixedTime(NOW);
+  await other.goto("/");
+  await openJournal(other);
+  await entry(other).locator('[data-action="work-log-edit"]').click();
+  await editDialog(other)
+    .locator('[name="workLogNote"]')
+    .fill("Diğer pencereden düzeltilen sonuç");
+  await editDialog(other).locator('[name="workLogNote"]').press("Enter");
+  await expect(editDialog(other)).not.toBeVisible();
+  const external = await readSaved(other);
+  await expect.poll(() => readSaved(page)).toBe(external);
+  await expect(field).toBeDisabled();
+  await expect(field).toHaveValue("Korunacak yerel sonuç taslağı");
+  await expect(editDialog(page).locator("#work-log-edit-error")).toContainText(
+    "başka bir pencerede değişti",
+  );
+  await field.evaluate((textarea) => {
+    textarea.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        key: "Enter",
+        bubbles: true,
+        cancelable: true,
+      }),
+    );
+  });
+  expect(await readSaved(page)).toBe(external);
+  const current = await readRecords(page);
+  expect(current[0].workLog[0]).toEqual({
+    ...original[0].workLog[0],
+    note: "Diğer pencereden düzeltilen sonuç",
+  });
+  expect(current[0].nextAction).toBe(original[0].nextAction);
+  expect(JSON.parse(external).odak.history).toHaveLength(1);
+  await editDialog(page)
+    .getByRole("button", { name: "Vazgeç", exact: true })
+    .click();
+  await other
+    .locator('#work-journal-dialog [data-action="work-journal-close"]')
+    .last()
+    .click();
+  await undo(other);
+  await expect.poll(() => readSaved(page)).toBe(before);
+  await other.close();
 });

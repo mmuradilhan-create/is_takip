@@ -121,6 +121,37 @@ test("append updates the journal and next step together without mutating the ori
   assert.equal(repeated.workLog[0].note, log.note);
   assert.equal(repeated.nextAction, log.nextAction);
   assert.equal(appendWorkLog(original, log).nextAction, original.nextAction);
+
+  const withHistory = record({ workLog: [log] });
+  const finishDraft = {
+    sessionId: "session-without-next-step",
+    date: "2026-11-07",
+    endedAt: "2026-11-07T09:00:00.000Z",
+    durationMs: 35_789,
+    note: "Yeni oturumun sonucu",
+  };
+  const draftSnapshot = structuredClone(finishDraft);
+  const finished = appendWorkLog(
+    withHistory,
+    { ...finishDraft, id: finishDraft.sessionId },
+    { updatedAt: finishDraft.endedAt },
+  );
+  assert.equal(finished.nextAction, withHistory.nextAction);
+  assert.deepEqual(finished.workLog[0], log);
+  assert.deepEqual(finished.workLog[1], {
+    id: finishDraft.sessionId,
+    date: finishDraft.date,
+    endedAt: finishDraft.endedAt,
+    durationMs: 35_789,
+    note: finishDraft.note,
+    nextAction: "",
+  });
+  assert.deepEqual(finishDraft, draftSnapshot);
+  assert.deepEqual(withHistory.workLog, [log]);
+  assert.equal(
+    appendWorkLog(finished, { ...finishDraft, id: finishDraft.sessionId }),
+    finished,
+  );
 });
 
 test("legacy record canonical form is unchanged and an explicit journal is independently validated and cloned", () => {
@@ -270,7 +301,7 @@ test("duration totals remain safe integers even for an unusually large imported 
   );
 });
 
-test("journal plus next step is one durable undo transaction and older canonical history survives reload", () => {
+test("legacy next-step updates and note-only finishing each use one durable Undo while older snapshots survive reload", () => {
   const original = record();
   const storage = new MemoryStorage([original]);
   const store = createWorkspaceStore({ storage, key });
@@ -284,11 +315,28 @@ test("journal plus next step is one durable undo transaction and older canonical
   assert.equal(store.history.length, 2);
   store.saveRecords([appendWorkLog(logged, log)], "Yinelenen oturum");
   assert.equal(store.history.length, 2);
+  const finishDraft = {
+    id: "note-only-session",
+    date: "2026-11-07",
+    endedAt: "2026-11-07T09:00:00.000Z",
+    durationMs: 65_001,
+    note: "Sonraki adımı değiştirmeyen sonuç",
+  };
+  const finished = appendWorkLog(logged, finishDraft);
+  assert.equal(finished.nextAction, logged.nextAction);
+  assert.deepEqual(finished.workLog[0], log);
+  assert.equal(finished.workLog[1].nextAction, "");
+  store.saveRecords([finished], "Sonuç notlu oturum");
+  assert.equal(store.history.length, 3);
+  store.saveRecords([appendWorkLog(finished, finishDraft)], "Yinelenen sonuç");
+  assert.equal(store.history.length, 3);
   const restoredBackup = validateStore(
     JSON.parse(JSON.stringify({ version: 1, records: store.records })),
   );
-  assert.deepEqual(restoredBackup.records, [logged]);
+  assert.deepEqual(restoredBackup.records, [finished]);
   const reopened = createWorkspaceStore({ storage, key });
+  assert.deepEqual(reopened.records, [finished]);
+  assert.equal(reopened.undo(), "Sonuç notlu oturum");
   assert.deepEqual(reopened.records, [logged]);
   assert.equal(reopened.undo(), "Çalışma oturumu");
   assert.deepEqual(reopened.records, [beforeJournal]);
@@ -299,13 +347,26 @@ test("journal plus next step is one durable undo transaction and older canonical
 });
 
 test("failed journal persistence leaves both next step and history untouched", () => {
-  const original = record();
+  const original = record({ workLog: [entry({ id: "historic-session" })] });
   const storage = new MemoryStorage([original]);
   const store = createWorkspaceStore({ storage, key });
   const raw = storage.getItem(key);
   const logged = appendWorkLog(original, entry(), { nextAction: "Yeni adım" });
+  const noteOnly = appendWorkLog(original, {
+    id: "note-only-failure",
+    date: "2026-11-07",
+    endedAt: "2026-11-07T09:00:00.000Z",
+    durationMs: 65_001,
+    note: "Yeniden denenecek sonuç",
+  });
+  assert.equal(noteOnly.nextAction, original.nextAction);
+  assert.deepEqual(noteOnly.workLog[0], original.workLog[0]);
   storage.failWrite = true;
   assert.throws(() => store.saveRecords([logged], "Çalışma oturumu"), /full/);
+  assert.throws(
+    () => store.saveRecords([noteOnly], "Sonuç notlu oturum"),
+    /full/,
+  );
   assert.equal(storage.getItem(key), raw);
   assert.deepEqual(store.records, [original]);
   assert.equal(store.canUndo, false);

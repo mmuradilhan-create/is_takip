@@ -94,12 +94,65 @@
 /* Returning pointer focus must not leave a record looking like a link selection. */
 :root[data-input-modality="pointer"]
   #app
-  :is(.full-table, .focus-list)
-  :is(.task-name, .focus-title):focus,
+  :is(.task-name, .focus-title, .goal-child-title, .dashboard-goal-title):not(
+    .cancelled
+  ):focus,
 :root[data-input-modality="pointer"]
   #app
   :is(.full-table, .focus-list)
   [data-record-row]:focus
-  :is(.task-name, .focus-title) {
+  :is(.task-name, .focus-title):not(.cancelled) {
   text-decoration-line: none;
+}
+
+:root[data-input-modality="pointer"]
+  #app
+  :is(
+    .task-name,
+    .focus-title,
+    .goal-child-title,
+    .dashboard-goal-title
+  ).cancelled:focus {
+  text-decoration-line: line-through;
+}
+
+#app
+  :is(
+    .task-name,
+    .focus-title,
+    .goal-child-title,
+    .dashboard-goal-title
+  ).cancelled:focus-visible {
+  text-decoration-line: underline line-through;
+}
+
+#app
+  :is(
+    .task-name,
+    .focus-title,
+    .goal-child-title,
+    .dashboard-goal-title
+  )[data-focus-restored]:focus,
+#app
+  [data-record-row][data-focus-restored]
+  :is(.task-name, .focus-title, .goal-child-title, .dashboard-goal-title) {
+  text-decoration-line: none;
+}
+
+#app
+  :is(
+    .task-name,
+    .focus-title,
+    .goal-child-title,
+    .dashboard-goal-title
+  ).cancelled[data-focus-restored]:focus,
+#app
+  [data-record-row][data-focus-restored]
+  :is(
+    .task-name,
+    .focus-title,
+    .goal-child-title,
+    .dashboard-goal-title
+  ).cancelled {
+  text-decoration-line: line-through;
 }

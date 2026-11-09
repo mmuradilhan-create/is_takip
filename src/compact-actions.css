@@ -78,6 +78,25 @@
   color: #46734a;
 }
 
+.completion-mark.is-cancelled {
+  color: var(--theme-faint, #7b8973);
+}
+
+.full-table td.cancelled-progress {
+  color: var(--theme-muted, var(--muted));
+}
+
+#app
+  :is(
+    .task-name,
+    .focus-title,
+    .goal-child-title,
+    .dashboard-goal-title
+  ).cancelled {
+  color: var(--theme-faint, #7b8973);
+  text-decoration-line: line-through;
+}
+
 .completion-mark svg {
   width: 12px;
   height: 12px;

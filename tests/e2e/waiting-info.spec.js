@@ -143,6 +143,7 @@ function fixture() {
 async function seed(page, records = fixture()) {
   await page.clock.install({ time: NOW });
   await page.clock.pauseAt(NOW);
+  await page.clock.setFixedTime(NOW);
   await page.addInitScript(
     ({ key, records }) => {
       if (sessionStorage.getItem("waiting-info-seeded")) return;
@@ -304,6 +305,34 @@ test("click and keyboard activation open the waiting editor directly while previ
   await expect(popup(page)).not.toBeVisible();
   expect(await saved(page)).toBe(before);
 
+  // Restored trigger focus must not keep a fresh pointer preview open.
+  await page.mouse.move(1, 1);
+  await control.hover();
+  await page.clock.runFor(100);
+  await expect(popup(page)).toBeVisible();
+  await expect(control).toBeFocused();
+  await popup(page).hover();
+  await page.clock.runFor(150);
+  await expect(popup(page)).toBeVisible();
+  await page.mouse.move(1, 1);
+  await page.clock.runFor(150);
+  await expect(popup(page)).not.toBeVisible();
+  await expect(control).toBeFocused();
+
+  // Real keyboard navigation retains the preview until focus leaves it.
+  await page.keyboard.press("Tab");
+  await page.keyboard.press("Shift+Tab");
+  await expect(control).toBeFocused();
+  await expect(popup(page)).toBeVisible();
+  await page.clock.runFor(250);
+  await expect(popup(page)).toBeVisible();
+  await control.hover();
+  await page.mouse.move(1, 1);
+  await page.clock.runFor(150);
+  await expect(popup(page)).not.toBeVisible();
+  await expect(control).toBeFocused();
+  expect(await saved(page)).toBe(before);
+
   const empty = focusButton(page, "waiting-info-empty");
   await empty.focus();
   await expect(empty).toBeFocused();
@@ -313,9 +342,7 @@ test("click and keyboard activation open the waiting editor directly while previ
   await expect(popup(page)).not.toBeVisible();
   await expect(detail(page)).toBeVisible();
   await expect(detail(page).locator('[name="waitingReason"]')).toHaveValue("");
-  await detail(page)
-    .getByRole("button", { name: "Vazgeç", exact: true })
-    .click();
+  await detail(page).locator('[name="waitingReason"]').press("Enter");
   await expect(detail(page)).not.toBeVisible();
   await expect(empty).toBeFocused();
   await page.clock.runFor(250);
@@ -327,30 +354,86 @@ test("click and keyboard activation open the waiting editor directly while previ
   await expect(popup(page)).not.toBeVisible();
   await expect(detail(page)).toBeVisible();
   await expect(page.locator("#editor")).not.toBeVisible();
-  await expect(detail(page).locator('[name="waitingReason"]')).toHaveValue(
-    UNSAFE_REASON,
+  const field = detail(page).getByRole("textbox", {
+    name: "Neyi/kimi bekliyorum?",
+    exact: true,
+  });
+  await expect(field).toHaveAccessibleDescription(
+    "Enter ile kaydet, Shift+Enter ile alt satıra geç.",
   );
-  await detail(page)
-    .locator('[name="waitingReason"]')
-    .fill("Ölçüm sonucu bekleniyor.");
-  await detail(page).locator('button[type="submit"]').click();
+  await expect(
+    detail(page).locator("#waiting-details-shortcuts"),
+  ).toBeVisible();
+  await expect(field).toHaveValue(UNSAFE_REASON);
+  await field.fill("Ölçüm sonucu bekleniyor.");
+  await field.press("Shift+Enter");
+  await field.pressSequentially("Tedarikçi yanıtı da bekleniyor.");
+  const updatedReason =
+    "Ölçüm sonucu bekleniyor.\nTedarikçi yanıtı da bekleniyor.";
+  await expect(field).toHaveValue(updatedReason);
+  expect(await saved(page)).toBe(before);
+  await field.evaluate((textarea) => {
+    for (const options of [
+      { isComposing: true },
+      { keyCode: 229 },
+      { repeat: true },
+      { ctrlKey: true },
+      { altKey: true },
+      { metaKey: true },
+      { shiftKey: true },
+      { prevented: true },
+    ]) {
+      const event = new KeyboardEvent("keydown", {
+        key: "Enter",
+        bubbles: true,
+        cancelable: true,
+        ...options,
+      });
+      if (options.keyCode)
+        Object.defineProperty(event, "keyCode", { value: options.keyCode });
+      if (options.prevented) event.preventDefault();
+      textarea.dispatchEvent(event);
+    }
+  });
+  await expect(detail(page)).toBeVisible();
+  await expect(field).toHaveValue(updatedReason);
+  expect(await saved(page)).toBe(before);
+  await page.evaluate((key) => {
+    const originalSetItem = Storage.prototype.setItem;
+    window.restoreWaitingInfoStorage = () => {
+      Storage.prototype.setItem = originalSetItem;
+    };
+    Storage.prototype.setItem = function (name, value) {
+      if (name === key)
+        throw new DOMException("Test depolaması dolu", "QuotaExceededError");
+      return originalSetItem.call(this, name, value);
+    };
+  }, KEY);
+  await field.press("Enter");
+  await expect(detail(page)).toBeVisible();
+  await expect(detail(page).locator("#waiting-details-error")).not.toBeEmpty();
+  await expect(field).toHaveValue(updatedReason);
+  expect(await saved(page)).toBe(before);
+  await page.evaluate(() => window.restoreWaitingInfoStorage());
+  await field.press("Enter");
   await expect(detail(page)).not.toBeVisible();
   await expect(control).toBeFocused();
   await page.clock.runFor(250);
   await expect(popup(page)).not.toBeVisible();
-  const edited = await page.evaluate(
-    (key) => JSON.parse(localStorage.getItem(key)).records,
-    KEY,
+  const edited = JSON.parse(await saved(page));
+  expect(edited.records).toEqual(
+    original.map((item) =>
+      item.id === "waiting-info-primary"
+        ? {
+            ...item,
+            waitingReason: updatedReason,
+            blocked: false,
+            updatedAt: NOW.toISOString(),
+          }
+        : item,
+    ),
   );
-  expect(
-    edited.find((item) => item.id === "waiting-info-primary"),
-  ).toMatchObject({
-    status: "waiting",
-    waitingReason: "Ölçüm sonucu bekleniyor.",
-    nextAction: original[1].nextAction,
-    description: original[1].description,
-    sourceFields: original[1].sourceFields,
-  });
+  expect(edited.odak.history).toHaveLength(1);
   await page.getByRole("button", { name: "Geri al", exact: true }).click();
   expect(await saved(page)).toBe(before);
   await page.mouse.move(1, 1);

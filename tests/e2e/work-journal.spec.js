@@ -104,13 +104,9 @@ async function beginFinish(page, durationMs = 65_000) {
   await expect(panel(page)).toHaveAttribute("data-phase", "paused");
 }
 
-async function finish(page, { note = "", nextAction } = {}) {
+async function finish(page, { note = "" } = {}) {
   await finishDialog(page).locator('[name="resultNote"]').fill(note);
-  if (nextAction !== undefined)
-    await finishDialog(page).locator('[name="nextAction"]').fill(nextAction);
-  await finishDialog(page)
-    .getByRole("button", { name: "Kaydet ve bitir", exact: true })
-    .click();
+  await finishDialog(page).locator('[name="resultNote"]').press("Enter");
   await expect(finishDialog(page)).not.toBeVisible();
   await expect(panel(page)).not.toBeVisible();
 }
@@ -122,18 +118,23 @@ async function openBackup(page) {
     await backup.locator(":scope > summary").click();
 }
 
-test("finishing freezes the session, saves one dated journal entry with the next step, and reload undo restores the exact old record", async ({
+test("finishing with Enter freezes the session and saves only its result while preserving the task's next step and exact reload Undo", async ({
   page,
 }) => {
   const originals = await seed(page);
   await beginFinish(page);
-  await expect(finishDialog(page).locator('[name="nextAction"]')).toHaveValue(
-    originals[1].nextAction,
+  await expect(finishDialog(page).locator('[name="nextAction"]')).toHaveCount(
+    0,
+  );
+  await expect(
+    finishDialog(page).locator('[name="resultNote"]'),
+  ).toHaveAccessibleDescription(
+    "Enter ile kaydet, Shift+Enter ile alt satıra geç.",
   );
   await page.clock.fastForward(120_000);
   await expect(page.locator("#work-session-time")).toHaveText("00:01:05");
   expect(await readRecords(page)).toEqual(originals);
-  await finish(page, { note: NOTE, nextAction: NEXT });
+  await finish(page, { note: NOTE });
   const saved = await readRecords(page);
   expect(saved[0]).toEqual(originals[0]);
   const daily = saved.find((record) => record.id === "journal-daily");
@@ -144,9 +145,10 @@ test("finishing freezes the session, saves one dated journal entry with the next
     endedAt: "2026-11-07T12:01:05.000Z",
     durationMs: 65_000,
     note: NOTE,
-    nextAction: NEXT,
+    nextAction: "",
   });
-  expect(daily.nextAction).toBe(NEXT);
+  expect(daily.nextAction).toBe(originals[1].nextAction);
+  expect(JSON.parse(await readSaved(page)).odak.history).toHaveLength(1);
   expect({
     ...daily,
     nextAction: originals[1].nextAction,
@@ -170,7 +172,7 @@ test("finishing freezes the session, saves one dated journal entry with the next
   await expect(journal).toBeVisible();
   await expect(journal.locator(".work-journal-entry")).toHaveCount(1);
   await expect(journal).toContainText(NOTE);
-  await expect(journal).toContainText(NEXT);
+  await expect(journal).not.toContainText("Sonraki adım");
   await expect(journal.locator("img, script")).toHaveCount(0);
   expect(await page.evaluate(() => window.journalInjected)).toBeUndefined();
   await journal.getByRole("button", { name: "Tamam", exact: true }).click();
@@ -188,7 +190,7 @@ test("results are optional and successive sessions have separate durable entries
   await beginFinish(page, 10_000);
   await finish(page);
   await beginFinish(page, 20_000);
-  await finish(page, { nextAction: "Son kontrolü yap" });
+  await finish(page);
   const daily = (await readRecords(page)).find(
     (record) => record.id === "journal-daily",
   );
@@ -198,23 +200,47 @@ test("results are optional and successive sessions have separate durable entries
   ]);
   expect(new Set(daily.workLog.map((entry) => entry.id)).size).toBe(2);
   expect(daily.workLog.map((entry) => entry.note)).toEqual(["", ""]);
-  expect(daily.workLog.map((entry) => entry.nextAction)).toEqual([
-    originals[1].nextAction,
-    "Son kontrolü yap",
-  ]);
+  expect(daily.workLog.map((entry) => entry.nextAction)).toEqual(["", ""]);
+  expect(daily.nextAction).toBe(originals[1].nextAction);
 });
 
-test("a failed journal write retains the paused draft and retry saves the log and next step once", async ({
+test("a failed Enter journal write retains its multiline result and paused draft while retry saves exactly once without changing the task's next step", async ({
   page,
 }) => {
   const originals = await seed(page);
   await beginFinish(page);
-  await finishDialog(page)
-    .locator('[name="resultNote"]')
-    .fill("Kaybolmayacak sonuç");
-  await finishDialog(page)
-    .locator('[name="nextAction"]')
-    .fill("Kaybolmayacak sonraki adım");
+  const field = finishDialog(page).getByRole("textbox", {
+    name: "Sonuç",
+  });
+  await field.fill("Kaybolmayacak sonuç");
+  await field.press("Shift+Enter");
+  await field.pressSequentially("İkinci sonuç satırı.");
+  const note = "Kaybolmayacak sonuç\nİkinci sonuç satırı.";
+  await expect(field).toHaveValue(note);
+  await field.evaluate((field) => {
+    for (const options of [
+      { isComposing: true },
+      { keyCode: 229 },
+      { repeat: true },
+      { ctrlKey: true },
+      { altKey: true },
+      { metaKey: true },
+      { prevented: true },
+    ]) {
+      const event = new KeyboardEvent("keydown", {
+        key: "Enter",
+        bubbles: true,
+        cancelable: true,
+        ...options,
+      });
+      if (options.keyCode)
+        Object.defineProperty(event, "keyCode", { value: options.keyCode });
+      if (options.prevented) event.preventDefault();
+      field.dispatchEvent(event);
+    }
+  });
+  await expect(finishDialog(page)).toBeVisible();
+  expect(await readRecords(page)).toEqual(originals);
   await page.evaluate((key) => {
     window.journalSetItem = Storage.prototype.setItem;
     Storage.prototype.setItem = function (storageKey, value) {
@@ -223,25 +249,16 @@ test("a failed journal write retains the paused draft and retry saves the log an
       return window.journalSetItem.call(this, storageKey, value);
     };
   }, KEY);
-  await finishDialog(page)
-    .getByRole("button", { name: "Kaydet ve bitir", exact: true })
-    .click();
+  await field.press("Enter");
   await expect(finishDialog(page)).toBeVisible();
   await expect(finishDialog(page).locator('[role="alert"]')).toBeVisible();
-  await expect(finishDialog(page).locator('[name="resultNote"]')).toHaveValue(
-    "Kaybolmayacak sonuç",
-  );
-  await expect(finishDialog(page).locator('[name="nextAction"]')).toHaveValue(
-    "Kaybolmayacak sonraki adım",
-  );
+  await expect(field).toHaveValue(note);
   await expect(panel(page)).toHaveAttribute("data-phase", "paused");
   expect(await readRecords(page)).toEqual(originals);
   await page.evaluate(() => {
     Storage.prototype.setItem = window.journalSetItem;
   });
-  await finishDialog(page)
-    .getByRole("button", { name: "Kaydet ve bitir", exact: true })
-    .click();
+  await field.press("Enter");
   await expect(finishDialog(page)).not.toBeVisible();
   const daily = (await readRecords(page)).find(
     (record) => record.id === "journal-daily",
@@ -249,10 +266,13 @@ test("a failed journal write retains the paused draft and retry saves the log an
   expect(daily.workLog).toHaveLength(1);
   expect(daily.workLog[0]).toMatchObject({
     durationMs: 65_000,
-    note: "Kaybolmayacak sonuç",
-    nextAction: "Kaybolmayacak sonraki adım",
+    note,
+    nextAction: "",
   });
-  expect(daily.nextAction).toBe("Kaybolmayacak sonraki adım");
+  expect(daily.nextAction).toBe(originals[1].nextAction);
+  expect(JSON.parse(await readSaved(page)).odak.history).toHaveLength(1);
+  await page.getByRole("button", { name: "Geri al", exact: true }).click();
+  expect(await readRecords(page)).toEqual(originals);
 });
 
 test("finishing the same session from two open windows records its duration only once", async ({
@@ -350,10 +370,17 @@ test("a saved journal whose timer finalization fails cannot resume and recovers 
 test("a journal backup survives reset and restores all records and journal fields losslessly", async ({
   page,
 }) => {
-  await seed(page);
+  const originals = recordsFixture();
+  originals[1].workLog = [
+    log("historical-next-step", "2026-11-06", 65_001, "Önceki sonuç", NEXT),
+  ];
+  await seed(page, originals);
   await beginFinish(page, 61_000);
-  await finish(page, { note: NOTE, nextAction: NEXT });
+  await finish(page, { note: NOTE });
   const records = await readRecords(page);
+  expect(records[1].workLog[0]).toEqual(originals[1].workLog[0]);
+  expect(records[1].workLog[1].nextAction).toBe("");
+  expect(records[1].nextAction).toBe(originals[1].nextAction);
   await openBackup(page);
   const [download] = await Promise.all([
     page.waitForEvent("download"),
@@ -554,7 +581,7 @@ for (const type of ["meeting", "waiting"]) {
       type === "meeting"
         ? {
             ...source,
-            status: daily.status,
+            status: "in_progress",
           }
         : source,
     );
@@ -635,7 +662,7 @@ test("two already-open source forms do not create duplicate daily tasks across w
     .toBe(1);
   expect(
     (await readRecords(other)).find((record) => record.id === source.id),
-  ).toEqual(source);
+  ).toEqual({ ...source, status: "in_progress" });
 });
 
 test("current work keeps saved and empty journal controls beside Play across desktop and narrow themes without starting a session or changing records", async ({

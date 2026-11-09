@@ -37,6 +37,8 @@ const row = (page, id) =>
   page.locator(`.full-table tr[data-record-row][data-id="${id}"]`);
 const routeStatus = (page, id, targetId) =>
   row(page, id).locator(`.status-trigger[data-target-id="${targetId}"]`);
+const sourceStatus = (page, id) =>
+  row(page, id).locator(".meeting-source-status-col > .status-summary");
 const menu = (page) => page.locator("#status-menu");
 const group = (page, name) =>
   menu(page).getByRole("group", { name, exact: true });
@@ -161,10 +163,16 @@ test("a linked meeting exposes independent job and follow-up badges and changes 
   expect(after.records.find((item) => item.id === "unrelated")).toEqual(
     items[3],
   );
-  expect(after.records.find((item) => item.id === "dual")).toEqual(items[0]);
+  expect(after.records.find((item) => item.id === "dual")).toEqual({
+    ...items[0],
+    status: "in_progress",
+  });
+  await expect(sourceStatus(page, "dual")).toHaveText("Açık");
   await expect(
-    row(page, "dual").locator(".status-col > .status-trigger"),
-  ).toHaveText("Planlanacak");
+    row(page, "dual").locator(
+      '.meeting-source-status-col [data-action="status-menu"]',
+    ),
+  ).toHaveCount(0);
   expect(after.odak.history).toHaveLength(1);
   await expect(page.locator("#editor")).not.toBeVisible();
   await expect(page).toHaveURL(url);
@@ -195,7 +203,7 @@ test("a linked meeting exposes independent job and follow-up badges and changes 
   expect((await store(page)).records).toEqual(items);
 });
 
-test("closing both targets leaves the meeting unchanged until its own explicit closure and each Undo restores the exact prior state", async ({
+test("closing the last target closes the linked meeting in the same transaction and each Undo restores the exact prior state", async ({
   page,
 }) => {
   const items = [
@@ -217,10 +225,12 @@ test("closing both targets leaves the meeting unchanged until its own explicit c
     "completed",
   );
   expect(first.records.find((item) => item.id === "reply")).toEqual(items[2]);
-  expect(first.records.find((item) => item.id === "completion")).toEqual(
-    items[0],
-  );
+  expect(first.records.find((item) => item.id === "completion")).toEqual({
+    ...items[0],
+    status: "in_progress",
+  });
   await expect(row(page, "completion")).toBeVisible();
+  await expect(sourceStatus(page, "completion")).toHaveText("Açık");
   await expect(routeStatus(page, "completion", "own")).toHaveText("Tamamlandı");
   await expect(routeStatus(page, "completion", "reply")).toHaveText("Açık");
   await openMenu(page, "completion", "reply");
@@ -237,42 +247,24 @@ test("closing both targets leaves the meeting unchanged until its own explicit c
   expect(complete.records.find((item) => item.id === "reply").status).toBe(
     "completed",
   );
-  expect(complete.records.find((item) => item.id === "completion")).toEqual(
-    items[0],
-  );
-  expect(complete.odak.history).toHaveLength(2);
-  await expect(row(page, "completion")).toBeVisible();
-  await expect(
-    row(page, "completion").locator(".status-col > .status-trigger"),
-  ).toHaveText("Planlanacak");
-  const afterBothTargets = await saved(page);
-  await openMenu(page, "completion");
-  await expect(menu(page).locator(".status-option")).toHaveText([
-    "Planlanacak",
-    "Açık",
-    "Kapandı",
-  ]);
-  await option(page, "completion", "completed").click();
-  const manuallyClosed = await store(page);
-  expect(
-    manuallyClosed.records.find((item) => item.id === "completion"),
-  ).toEqual({
+  expect(complete.records.find((item) => item.id === "completion")).toEqual({
     ...items[0],
     status: "completed",
-    updatedAt: NOW.toISOString(),
   });
-  expect(manuallyClosed.records.find((item) => item.id === "own")).toEqual(
-    complete.records.find((item) => item.id === "own"),
-  );
-  expect(manuallyClosed.records.find((item) => item.id === "reply")).toEqual(
-    complete.records.find((item) => item.id === "reply"),
-  );
-  expect(manuallyClosed.odak.history).toHaveLength(3);
+  expect(complete.odak.history).toHaveLength(2);
+  const afterBothTargets = await saved(page);
   await expect(row(page, "completion")).toHaveCount(0);
   await expect(page.locator("#editor")).not.toBeVisible();
-  await page.reload();
-  await undo(page);
+  await page
+    .locator('[data-action="list-scope"][data-scope="completed"]')
+    .click();
+  await expect(sourceStatus(page, "completion")).toHaveText("Kapandı");
+  await expect(sourceStatus(page, "completion")).toHaveJSProperty(
+    "tagName",
+    "SPAN",
+  );
   expect(await saved(page)).toBe(afterBothTargets);
+  await page.reload();
   await undo(page);
   expect(await saved(page)).toBe(afterFirst);
   await undo(page);

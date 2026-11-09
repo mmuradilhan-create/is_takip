@@ -274,7 +274,7 @@ test("an unlinked meeting opens and closes through its own status column with ex
   ).toBeDisabled();
 });
 
-test("linked meetings keep independent source and target status menus while source context edits preserve legacy fields", async ({
+test("linked meetings derive their read-only source status from target lifecycles while context edits preserve legacy fields", async ({
   page,
 }) => {
   const context = source("linked-context", "in_progress");
@@ -311,6 +311,16 @@ test("linked meetings keep independent source and target status menus while sour
     );
   await expect(dailyStatus()).toHaveText("Devam ediyor");
   await expect(waitingStatus()).toHaveText("Cevap bekleniyor");
+  await expect(
+    row(page, context.id).locator(
+      ".meeting-source-status-col > .status-summary",
+    ),
+  ).toHaveText("Açık");
+  await expect(
+    row(page, context.id).locator(
+      '.meeting-source-status-col [data-action="status-menu"]',
+    ),
+  ).toHaveCount(0);
   await waitingStatus().click();
   await expect(
     menu(page).getByRole("group", { name: "İşin durumu", exact: true }),
@@ -341,7 +351,10 @@ test("linked meetings keep independent source and target status menus while sour
   const followedBytes = await saved(page);
 
   await row(page, context.id).locator(".record-edit-trigger").click();
-  await expect(form(page).locator('[name="status"]')).toBeEnabled();
+  await expect(form(page).locator('[name="status"]')).toBeDisabled();
+  await expect(form(page).locator("#meeting-derived-status-help")).toHaveText(
+    "Durum bağlı iş ve takipten hesaplanır.",
+  );
   await expectAssignmentChoices(page);
   await expect(form(page).locator('[name="status"]')).toHaveValue(
     "in_progress",
@@ -378,7 +391,9 @@ test("linked meetings keep independent source and target status menus while sour
   await expect(dailyStatus()).toHaveText("Tamamlandı");
   await expect(waitingStatus()).toHaveText("Takipte");
   await expect(
-    row(page, context.id).locator(".status-col > .status-trigger"),
+    row(page, context.id).locator(
+      ".meeting-source-status-col > .status-summary",
+    ),
   ).toHaveText("Açık");
   expect(await records(page)).toEqual([
     context,

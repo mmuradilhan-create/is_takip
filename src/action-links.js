@@ -1,4 +1,5 @@
 const SOURCE_TYPES = new Set(["meeting", "waiting"]);
+const CLOSED = new Set(["completed", "cancelled", "transferred"]);
 
 function relation(record) {
   const link = record?.sourceFields?.__followupSource;
@@ -107,12 +108,21 @@ export function sourceForTarget(target, records) {
   return source;
 }
 
-/** Meeting status belongs to the meeting; routes are validated, not projected. */
+function projectMeeting(source, index) {
+  const targets = directTargets(source.id, index);
+  if (!targets.length) return source;
+  const status = targets.every((target) => CLOSED.has(target.status))
+    ? "completed"
+    : "in_progress";
+  return source.status === status ? source : { ...source, status };
+}
+
+/** Read linked status without migrating or rewriting saved meeting context. */
 export function resolveActionSource(source, records) {
   if (!source || source.type !== "meeting") return source;
   const index = indexRecords(records);
   checkPath(source.id, index);
-  return source;
+  return projectMeeting(source, index);
 }
 
 function sameRecord(first, second) {
@@ -120,7 +130,8 @@ function sameRecord(first, second) {
 }
 
 /**
- * Validate affected action relationships without changing either lifecycle.
+ * Validate affected relationships and persist direct-route lifecycle changes
+ * with their source in the same transaction. Unrelated context stays exact.
  */
 export function syncActionLinks(before, after) {
   if (!Array.isArray(before) || !Array.isArray(after))
@@ -137,17 +148,43 @@ export function syncActionLinks(before, after) {
   if (!changed.size) return after;
 
   const validate = new Set();
+  const affected = new Set();
   for (const id of changed) {
     const current = index.byId.get(id);
+    const beforeRecord = previous.get(id);
     if (index.bySource.has(id)) validate.add(id);
-    for (const record of [current, previous.get(id)]) {
+    if (
+      current?.type === "meeting" &&
+      (beforeRecord?.type !== "meeting" ||
+        current.status !== beforeRecord.status)
+    )
+      affected.add(id);
+    const routeChanged =
+      !current ||
+      !beforeRecord ||
+      current.type !== beforeRecord.type ||
+      current.status !== beforeRecord.status ||
+      relation(current)?.recordId !== relation(beforeRecord)?.recordId;
+    for (const record of [current, beforeRecord]) {
       const parentId = relation(record)?.recordId;
       if (parentId) validate.add(parentId);
+      if (routeChanged && index.byId.get(parentId)?.type === "meeting")
+        affected.add(parentId);
     }
   }
 
   for (const id of validate) checkPath(id, index);
-  return after;
+  const replacements = new Map();
+  for (const id of affected) {
+    const source = index.byId.get(id);
+    if (!source) continue;
+    checkPath(id, index);
+    const projected = projectMeeting(source, index);
+    if (projected !== source) replacements.set(id, projected);
+  }
+  return replacements.size
+    ? after.map((record) => replacements.get(record.id) || record)
+    : after;
 }
 import { createRecord, localDate, validateStore } from "./model.js";
 import { normalizeFollowUpDate } from "./waiting-followup.js";

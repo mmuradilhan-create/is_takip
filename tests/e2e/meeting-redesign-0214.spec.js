@@ -225,7 +225,7 @@ test("creating both routes saves the daily work's own priority and delivery sepa
     lastFollowUpDate: "",
   });
   expect(meeting).toMatchObject({
-    status: "planned",
+    status: "in_progress",
     priority: "normal",
     dueDate: "",
     nextAction: "",
@@ -352,7 +352,7 @@ test("existing meeting edits and new routes preserve remaining legacy source fie
   expect(await saved(page)).toBe(before);
 });
 
-test("meeting tables keep their own status separate from route statuses, omit missing dates and keep route changes reversible", async ({
+test("meeting tables show derived source summaries beside independent route controls, omit missing dates and keep route changes reversible", async ({
   page,
 }) => {
   const items = [
@@ -397,14 +397,14 @@ test("meeting tables keep their own status separate from route statuses, omit mi
     row(page, "none").locator(".status-col > .status-trigger"),
   ).toHaveText("Açık");
   await expect(
-    row(page, "both").locator(".status-col > .status-trigger"),
-  ).toHaveText("Planlanacak");
+    row(page, "both").locator(".status-col > .status-summary"),
+  ).toHaveText("Açık");
   await expect(
     row(page, "both").locator(".status-col > .status-trigger"),
-  ).toHaveAttribute("data-id", "both");
+  ).toHaveCount(0);
   await expect(
-    row(page, "both").locator(".status-col > .status-trigger"),
-  ).not.toHaveAttribute("data-target-id", /./);
+    row(page, "both").locator(".status-col > .status-summary"),
+  ).not.toHaveAttribute("data-action");
   await expect(
     page.locator(".meeting-title-state, .meeting-archive-control"),
   ).toHaveCount(0);
@@ -512,7 +512,10 @@ test("meeting tables keep their own status separate from route statuses, omit mi
     "in_progress",
   );
   expect(after.find((item) => item.id === "both-reply")).toEqual(items[7]);
-  expect(after.find((item) => item.id === "both")).toEqual(items[3]);
+  expect(after.find((item) => item.id === "both")).toEqual({
+    ...items[3],
+    status: "in_progress",
+  });
   await page.reload();
   await undo(page);
   expect(await saved(page)).toBe(before);

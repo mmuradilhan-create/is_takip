@@ -463,6 +463,7 @@ test("meeting creation optionally saves no route, one route or both routes atomi
     );
     const types = mode === "both" ? ["daily", "waiting"] : mode ? [mode] : [];
     expect(targets.map((record) => record.type).sort()).toEqual(types);
+    expect(source.status).toBe(types.length ? "in_progress" : "planned");
     if (types.includes("daily"))
       expect(targets.find((record) => record.type === "daily")).toMatchObject({
         title: `${title}: benim işim`,
@@ -487,13 +488,22 @@ test("meeting creation optionally saves no route, one route or both routes atomi
     await expect(page.locator("#editor")).toBeVisible();
     await expect(field(page, "id")).toHaveValue(source.id);
     await expect(form(page)).not.toHaveAttribute("data-creation", "true");
+    await expect(field(page, "status")).toHaveValue(
+      types.length ? "in_progress" : "planned",
+    );
     if (types.length) {
+      await expect(field(page, "status")).toBeDisabled();
+      await expect(
+        form(page).locator("#meeting-derived-status-help"),
+      ).toContainText("bağlı iş ve takipten");
       for (const type of types)
         await expect(
           form(page).locator(
             `[data-action="open-linked-action"][data-route="${type}"]`,
           ),
         ).toHaveCount(1);
+    } else {
+      await expect(field(page, "status")).toBeEnabled();
     }
     await close(page);
     expect(await saved(page)).toBe(afterSaved);

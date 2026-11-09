@@ -54,7 +54,9 @@ const store = async (page) => JSON.parse(await saved(page));
 const row = (page, id) =>
   page.locator(`.full-table tr[data-record-row][data-id="${id}"]`);
 const ownStatus = (page, id) =>
-  row(page, id).locator("td.status-col > .status-trigger");
+  row(page, id).locator(
+    "td.status-col > .status-trigger, td.status-col > .status-summary",
+  );
 const routeStatus = (page, id, targetId) =>
   row(page, id).locator(`.status-trigger[data-target-id="${targetId}"]`);
 const panel = (page) => page.locator("#meeting-record-panel");
@@ -125,21 +127,24 @@ async function expectThreeChoices(select) {
   await expect(select.locator("option")).toHaveText(CAPTIONS);
 }
 
-test("a meeting owns all three quick statuses and its preview while linked work and one-step Undo retain their exact records", async ({
+test("an unrouted meeting owns all three quick statuses and its preview while unrelated routes and one-step Undo retain their exact records", async ({
   page,
 }) => {
   const items = [
     meeting("own-source"),
-    child("own-daily", "own-source", "daily", { status: "in_progress" }),
-    child("own-waiting", "own-source", "waiting", { status: "follow_up" }),
+    meeting("unrelated-source"),
+    child("own-daily", "unrelated-source", "daily", { status: "in_progress" }),
+    child("own-waiting", "unrelated-source", "waiting", {
+      status: "follow_up",
+    }),
     make({ id: "own-unrelated", title: "İlişkisiz günlük iş" }),
   ];
   const before = await seed(page, items);
   await expect(ownStatus(page, "own-source")).toHaveText("Planlanacak");
-  await expect(routeStatus(page, "own-source", "own-daily")).toHaveText(
+  await expect(routeStatus(page, "unrelated-source", "own-daily")).toHaveText(
     "Devam ediyor",
   );
-  await expect(routeStatus(page, "own-source", "own-waiting")).toHaveText(
+  await expect(routeStatus(page, "unrelated-source", "own-waiting")).toHaveText(
     "Takipte",
   );
   await ownStatus(page, "own-source").click();
@@ -208,7 +213,6 @@ test("meeting forms and filters expose three states while unrelated edits preser
   ];
   const items = [
     ...historical.map(([status]) => meeting(`legacy-${status}`, { status })),
-    child("legacy-linked-job", "legacy-waiting", "daily"),
   ];
   const before = await seed(page, items);
   await scope(page, "all");
@@ -308,33 +312,61 @@ test("meeting forms and filters expose three states while unrelated edits preser
   expect(await saved(page)).toBe(before);
 });
 
-test("closing or reopening linked actions never changes the meeting state and every lifecycle action has an exact atomic Undo", async ({
+test("linked route closure and reopening derive the meeting summary with one atomic Undo and failed writes change neither source nor target", async ({
   page,
 }) => {
   const items = [
-    meeting("independent-source", { status: "in_progress" }),
-    child("independent-job", "independent-source", "daily"),
-    child("independent-reply", "independent-source", "waiting"),
+    meeting("derived-source", { status: "in_progress" }),
+    child("derived-job", "derived-source", "daily"),
+    child("derived-reply", "derived-source", "waiting"),
   ];
   const before = await seed(page, items);
   const snapshots = [before];
+  await expect(ownStatus(page, "derived-source")).toHaveText("Açık");
+  await expect(ownStatus(page, "derived-source")).toHaveJSProperty(
+    "tagName",
+    "SPAN",
+  );
+  await expect(ownStatus(page, "derived-source")).not.toHaveAttribute(
+    "data-action",
+  );
+  await expect(
+    row(page, "derived-source").locator("td.status-col > .status-trigger"),
+  ).toHaveCount(0);
+  await row(page, "derived-source").locator(".record-edit-trigger").click();
+  await expect(form(page).locator('[name="status"]')).toBeDisabled();
+  await expect(form(page).locator('[name="status"]')).toHaveValue(
+    "in_progress",
+  );
+  await expect(
+    form(page).locator("#meeting-derived-status-help"),
+  ).toContainText("bağlı iş ve takipten");
+  await page
+    .locator("#editor")
+    .getByRole("button", { name: "Vazgeç", exact: true })
+    .click();
+  expect(await saved(page)).toBe(before);
+
   await navigate(page, "daily");
-  await row(page, "independent-job").locator(".quick-complete").click();
+  await row(page, "derived-job").locator(".quick-complete").click();
   snapshots.push(await saved(page));
   expect(
-    (await store(page)).records.find(
-      (item) => item.id === "independent-source",
-    ),
+    (await store(page)).records.find((item) => item.id === "derived-source"),
   ).toEqual(items[0]);
+  await navigate(page, "meeting");
+  await expect(ownStatus(page, "derived-source")).toHaveText("Açık");
+  await expect(routeStatus(page, "derived-source", "derived-job")).toHaveText(
+    "Tamamlandı",
+  );
   await navigate(page, "waiting");
-  await row(page, "independent-reply").locator(".quick-complete").click();
+  await row(page, "derived-reply").locator(".quick-complete").click();
   snapshots.push(await saved(page));
   const bothClosed = await store(page);
   expect(
-    bothClosed.records.find((item) => item.id === "independent-source"),
-  ).toEqual(items[0]);
+    bothClosed.records.find((item) => item.id === "derived-source"),
+  ).toEqual({ ...items[0], status: "completed" });
   expect(
-    bothClosed.records.find((item) => item.id === "independent-reply"),
+    bothClosed.records.find((item) => item.id === "derived-reply"),
   ).toEqual({
     ...items[2],
     status: "completed",
@@ -350,52 +382,65 @@ test("closing or reopening linked actions never changes the meeting state and ev
   });
   expect(bothClosed.odak.history).toHaveLength(2);
   await navigate(page, "meeting");
-  await expect(ownStatus(page, "independent-source")).toHaveText("Açık");
+  await expect(row(page, "derived-source")).toHaveCount(0);
+  await scope(page, "completed");
+  await expect(ownStatus(page, "derived-source")).toHaveText("Kapandı");
+  await row(page, "derived-source").locator(".task-name").click();
   await expect(
-    routeStatus(page, "independent-source", "independent-job"),
-  ).toHaveText("Tamamlandı");
-  await expect(
-    routeStatus(page, "independent-source", "independent-reply"),
+    panel(page).locator(".meeting-record-summary .status-summary"),
   ).toHaveText("Kapandı");
-  await chooseStatus(
-    page,
-    ownStatus(page, "independent-source"),
-    "independent-source",
-    "completed",
-  );
-  snapshots.push(await saved(page));
-  const closedSource = await store(page);
-  expect(closedSource.records).toEqual(
-    bothClosed.records.map((item) =>
-      item.id === "independent-source"
-        ? { ...item, status: "completed", updatedAt: NOW.toISOString() }
-        : item,
-    ),
-  );
-  expect(closedSource.odak.history).toHaveLength(3);
+  await expect(
+    panel(page).locator(".meeting-record-summary .status-trigger"),
+  ).toHaveCount(0);
+  await panel(page).getByRole("button", { name: "Kapat", exact: true }).click();
   await scope(page, "all");
+
+  await page.evaluate((key) => {
+    const originalSetItem = Storage.prototype.setItem;
+    window.restoreMeetingStorage = () => {
+      Storage.prototype.setItem = originalSetItem;
+    };
+    Storage.prototype.setItem = function (name, value) {
+      if (name === key)
+        throw new DOMException("Test depolaması dolu", "QuotaExceededError");
+      return originalSetItem.call(this, name, value);
+    };
+  }, KEY);
   await chooseStatus(
     page,
-    routeStatus(page, "independent-source", "independent-job"),
-    "independent-job",
+    routeStatus(page, "derived-source", "derived-job"),
+    "derived-job",
     "planned",
   );
-  const reopenedChild = await store(page);
-  expect(
-    reopenedChild.records.find((item) => item.id === "independent-source"),
-  ).toEqual(
-    closedSource.records.find((item) => item.id === "independent-source"),
+  await expect(page.locator("#toast")).toContainText(/kaydedilemedi/i);
+  expect(await saved(page)).toBe(snapshots[2]);
+  await expect(ownStatus(page, "derived-source")).toHaveText("Kapandı");
+  await expect(routeStatus(page, "derived-source", "derived-job")).toHaveText(
+    "Tamamlandı",
   );
-  expect(
-    reopenedChild.records.find((item) => item.id === "independent-reply"),
-  ).toEqual(
-    closedSource.records.find((item) => item.id === "independent-reply"),
+  await page.evaluate(() => window.restoreMeetingStorage());
+  await chooseStatus(
+    page,
+    routeStatus(page, "derived-source", "derived-job"),
+    "derived-job",
+    "planned",
   );
-  expect(
-    reopenedChild.records.find((item) => item.id === "independent-job"),
-  ).toEqual({ ...items[1], status: "planned", updatedAt: NOW.toISOString() });
-  expect(reopenedChild.odak.history).toHaveLength(4);
-  await expect(ownStatus(page, "independent-source")).toHaveText("Kapandı");
+  const reopened = await store(page);
+  expect(reopened.records.find((item) => item.id === "derived-source")).toEqual(
+    items[0],
+  );
+  expect(reopened.records.find((item) => item.id === "derived-reply")).toEqual(
+    bothClosed.records.find((item) => item.id === "derived-reply"),
+  );
+  expect(reopened.records.find((item) => item.id === "derived-job")).toEqual({
+    ...items[1],
+    updatedAt: NOW.toISOString(),
+  });
+  expect(reopened.odak.history).toHaveLength(3);
+  await expect(ownStatus(page, "derived-source")).toHaveText("Açık");
+  await page.reload();
+  await navigate(page, "meeting");
+  await scope(page, "all");
   for (const snapshot of snapshots.reverse()) {
     await undo(page);
     expect(await saved(page)).toBe(snapshot);
@@ -458,7 +503,11 @@ test("meeting source status, routes and pencil share compact left-aligned column
         return entries.map((entry) => {
           const cells = [...entry.querySelectorAll(":scope > td")];
           const controlSets = [
-            [...cells[1].querySelectorAll(":scope > .status-trigger")],
+            [
+              ...cells[1].querySelectorAll(
+                ":scope > .status-trigger, :scope > .status-summary",
+              ),
+            ],
             [...cells[2].querySelectorAll(".meeting-route")],
             [...cells[3].querySelectorAll(".meeting-route")],
             [...cells[4].querySelectorAll(".row-end-actions > button")],
@@ -533,7 +582,7 @@ test("meeting source status, routes and pencil share compact left-aligned column
           "layout-linked",
         );
         await expect(
-          panel(page).locator(".meeting-record-summary .status-trigger"),
+          panel(page).locator(".meeting-record-summary .status-summary"),
         ).toHaveText("Açık");
         const bounds = await panel(page).boundingBox();
         expect(bounds.x).toBeGreaterThanOrEqual(0);
@@ -547,7 +596,9 @@ test("meeting source status, routes and pencil share compact left-aligned column
         await expect(form(page).locator('[name="id"]')).toHaveValue(
           "layout-linked",
         );
-        await expect(form(page).locator('select[name="status"]')).toBeEnabled();
+        await expect(
+          form(page).locator('select[name="status"]'),
+        ).toBeDisabled();
         await expectThreeChoices(form(page).locator('select[name="status"]'));
         await page
           .locator("#editor")

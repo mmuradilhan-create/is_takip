@@ -166,7 +166,65 @@
 .goal-link-child-controls .btn {
   min-height: 30px;
   padding: 6px 10px;
+  color: var(--theme-ink, #405b49);
   font-size: 11px;
+}
+
+/* Linked sections share the waiting panel's plain list and attach layout. */
+#goal-detail-panel .goal-panel-children {
+  min-width: 0;
+  margin-top: 20px;
+  padding-top: 15px;
+  border-top: 1px solid var(--theme-border, #e1e8da);
+}
+
+#goal-detail-panel .goal-panel-children > .goal-panel-section-heading {
+  margin-bottom: 0;
+}
+
+#goal-detail-panel .goal-panel-children h3 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--theme-ink, #405b49);
+  font-weight: 600;
+}
+
+#goal-detail-panel .goal-panel-children h3 small {
+  color: var(--theme-muted, #74836a);
+  font-size: 11px;
+  font-weight: 400;
+}
+
+#goal-detail-panel .goal-panel-children .goal-new-step {
+  flex: 0 0 auto;
+  min-height: 0;
+  padding: 4px 0;
+}
+
+#goal-detail-panel .goal-panel-children .goal-new-step > svg {
+  width: 12px;
+  height: 12px;
+}
+
+#goal-detail-panel .goal-panel-children > .goal-panel-empty {
+  margin: 10px 0 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--theme-muted, #74836a);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+#goal-detail-panel .goal-panel-children .goal-child-list {
+  margin-top: 8px;
+}
+
+#goal-detail-panel .goal-panel-children .goal-link-child-form {
+  margin-bottom: 0;
+  border-color: var(--theme-border, #dce5d5);
 }
 
 #goal-link-child-error:empty {

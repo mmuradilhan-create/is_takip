@@ -179,6 +179,156 @@ async function expectTableProgress(page, type, id, percent) {
   ).toHaveAttribute("aria-valuenow", String(percent));
 }
 
+test("empty weekly, monthly and yearly child sections match waiting attach controls and keep conditional notes last without writes", async ({
+  context,
+}) => {
+  for (const [type, empty, caption, description] of [
+    [
+      "weekly",
+      "Henüz bağlı günlük iş yok.",
+      "Mevcut günlük işi bağla",
+      "Haftalık not.\n<img src=x onerror=window.goalFormatInjected=1>",
+    ],
+    [
+      "monthly",
+      "Henüz bağlı haftalık hedef yok.",
+      "Mevcut haftalık hedefi bağla",
+      "",
+    ],
+    [
+      "yearly",
+      "Henüz bağlı aylık hedef yok.",
+      "Mevcut aylık hedefi bağla",
+      "Senelik not.\nİkinci satır korunur.",
+    ],
+  ]) {
+    const page = await context.newPage();
+    try {
+      await seed(page, [
+        record({
+          id: "format-goal",
+          type,
+          title: "Biçimi korunacak boş hedef",
+          status: "in_progress",
+          periodKey: { weekly: "2026-W45", monthly: "2026-11", yearly: "2026" }[
+            type
+          ],
+          description,
+        }),
+        record({
+          id: "format-waiting",
+          type: "waiting",
+          title: "Ortak bağlama biçimi",
+          status: "waiting_response",
+        }),
+      ]);
+      const before = await saved(page);
+      const appearance = async (section, selectors) =>
+        section.evaluate((node, selectors) => {
+          const properties = [
+            "fontSize",
+            "fontWeight",
+            "lineHeight",
+            "color",
+            "backgroundColor",
+            "paddingTop",
+            "paddingRight",
+            "paddingBottom",
+            "paddingLeft",
+            "borderTopWidth",
+            "borderTopStyle",
+            "borderTopColor",
+            "borderRadius",
+          ];
+          return selectors.map((selector) => {
+            const style = getComputedStyle(node.querySelector(selector));
+            return Object.fromEntries(
+              properties.map((property) => [property, style[property]]),
+            );
+          });
+        }, selectors);
+      for (const theme of ["light", "dark"]) {
+        await page.locator("html").evaluate((node, value) => {
+          node.dataset.theme = value;
+        }, theme);
+        await list(page, "waiting");
+        await row(page, "format-waiting")
+          .locator('.task-name[data-action="waiting-record-details"]')
+          .click();
+        const waitingPanel = page.locator("#waiting-record-panel");
+        const reference = await appearance(
+          waitingPanel.locator(".waiting-record-children"),
+          [
+            "h3",
+            "h3 small",
+            ".waiting-record-empty",
+            ".waiting-record-new-step",
+            ".goal-link-child-form > label",
+            ".goal-link-child-controls select",
+            '.goal-link-child-controls [type="submit"]',
+          ],
+        );
+        await waitingPanel
+          .locator('[data-action="waiting-record-close"]')
+          .last()
+          .click();
+        await openGoal(page, type, "format-goal");
+        const children = panel(page).locator(".goal-panel-children");
+        await expect(children.locator(".goal-panel-empty")).toHaveText(empty);
+        await expect(children).not.toContainText("Bu hedef için ilk bağlı");
+        await expect(children.locator("#goal-link-child-empty")).toHaveCount(0);
+        await expect(children.locator("#goal-link-child-form")).toHaveCSS(
+          "border-top-style",
+          "dashed",
+        );
+        const choice = children.getByRole("combobox", { name: caption });
+        await expect(choice).toBeDisabled();
+        await expect(choice).not.toHaveAttribute("aria-describedby");
+        const attach = children.getByRole("button", {
+          name: "Bağla",
+          exact: true,
+        });
+        await expect(attach).toBeDisabled();
+        expect(
+          await appearance(children, [
+            "h3",
+            "h3 small",
+            ".goal-panel-empty",
+            ".goal-new-step",
+            ".goal-link-child-form > label",
+            ".goal-link-child-controls select",
+            '.goal-link-child-controls [type="submit"]',
+          ]),
+        ).toEqual(reference);
+        const selectBounds = await choice.boundingBox();
+        const buttonBounds = await attach.boundingBox();
+        expect(Math.abs(selectBounds.y - buttonBounds.y)).toBeLessThanOrEqual(
+          1,
+        );
+        expect(
+          Math.abs(selectBounds.height - buttonBounds.height),
+        ).toBeLessThanOrEqual(1);
+        expect(buttonBounds.x - selectBounds.x - selectBounds.width).toBe(7);
+        const notes = panel(page).locator(".goal-panel-notes");
+        if (description) {
+          expect(await notes.locator("p").textContent()).toBe(description);
+          await expect(
+            panel(page).locator(".goal-panel-body > :last-child"),
+          ).toHaveAttribute("data-goal-section", "notes");
+          await expect(notes.locator("img, script")).toHaveCount(0);
+        } else await expect(notes).toHaveCount(0);
+        expect(
+          await page.evaluate(() => window.goalFormatInjected),
+        ).toBeUndefined();
+        expect(await saved(page)).toBe(before);
+        await closePanel(page);
+      }
+    } finally {
+      await page.close();
+    }
+  }
+});
+
 test("weekly, monthly and yearly panels render human periods and readable child dates without rewriting saved goals", async ({
   page,
 }) => {

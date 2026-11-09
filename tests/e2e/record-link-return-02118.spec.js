@@ -183,12 +183,20 @@ test("revealing a covered connection icon under a stationary pointer does not un
   page,
 }) => {
   const original = await seed(page);
-  await page.setViewportSize({ width: 1100, height: 720 });
+  await page.locator('#nav [data-view="weekly"]').click();
+  // The dashboard preview omits this shortcut. In the weekly list, the narrow
+  // panel genuinely covers the still-supported monthly-parent icon.
+  await page.setViewportSize({ width: 640, height: 600 });
   const control = page.locator(
-    '.dashboard-goal-row[data-id="return-week"] .record-parent-link[data-id="return-month"]',
+    '.full-table [data-record-row][data-id="return-week"] .record-parent-link[data-id="return-month"]',
   );
   const bubble = page.locator("#record-link-tooltip");
   const panel = page.locator("#goal-detail-panel");
+  // Real scrolling keeps the icon inside the panel's inset, rather than only
+  // barely inside the viewport where hover's minimal scrolling would leave it.
+  await control.evaluate((element) =>
+    element.scrollIntoView({ block: "center", inline: "nearest" }),
+  );
   await control.hover();
   await expect(bubble).toBeVisible({ timeout: 400 });
   await control.click();
@@ -202,6 +210,9 @@ test("revealing a covered connection icon under a stationary pointer does not un
   const iconBounds = await control.boundingBox();
   const panelBounds = await panel.boundingBox();
   expect(iconBounds.x + iconBounds.width / 2).toBeGreaterThan(panelBounds.x);
+  expect(iconBounds.x + iconBounds.width / 2).toBeLessThan(
+    panelBounds.x + panelBounds.width,
+  );
   expect(iconBounds.y + iconBounds.height / 2).toBeGreaterThan(panelBounds.y);
   expect(iconBounds.y + iconBounds.height / 2).toBeLessThan(
     panelBounds.y + panelBounds.height,

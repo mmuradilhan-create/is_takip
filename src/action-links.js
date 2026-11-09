@@ -210,6 +210,96 @@ function actionTimestamp(value) {
   throw new Error("Aksiyonların kayıt zamanı geçersiz.");
 }
 
+function meetingActionContext(records, meetingId, type) {
+  if (!["daily", "waiting"].includes(type))
+    throw new Error("Bağlantı için geçerli bir takip akışı seç.");
+  const index = indexRecords(records);
+  const source = index.byId.get(meetingId);
+  if (source?.type !== "meeting")
+    throw new Error("Bağlantı için toplantı kaydı bulunamadı.");
+  checkPath(source.id, index);
+  const originId = relation(source)?.recordId;
+  if (originId && index.byId.has(originId)) checkPath(originId, index);
+  // Validate the complete store without replacing any raw, historical fields
+  // with the canonical objects returned by the ordinary store validator.
+  validateStore({ version: 1, records });
+  return { index, source, targets: directTargets(source.id, index) };
+}
+
+/** Read eligible, unowned records; a meeting keeps one action per route. */
+export function meetingActionCandidates(records, meetingId, type) {
+  const { index, source, targets } = meetingActionContext(
+    records,
+    meetingId,
+    type,
+  );
+  if (
+    CLOSED.has(projectMeeting(source, index).status) ||
+    targets.some((target) => target.type === type)
+  )
+    return [];
+  return records
+    .filter(
+      (record) =>
+        record.type === type &&
+        !CLOSED.has(record.status) &&
+        !Object.hasOwn(record.sourceFields || {}, "__followupSource"),
+    )
+    .sort(
+      (first, second) =>
+        first.title.localeCompare(second.title, "tr") ||
+        first.id.localeCompare(second.id),
+    );
+}
+
+/** Attach existing work without taking it from another source or editing it. */
+export function attachMeetingAction(
+  records,
+  meetingId,
+  targetId,
+  type,
+  { now = new Date() } = {},
+) {
+  const { index, source, targets } = meetingActionContext(
+    records,
+    meetingId,
+    type,
+  );
+  const target = index.byId.get(targetId);
+  if (target?.type !== type)
+    throw new Error(
+      `Bağlantı için ${type === "daily" ? "günlük iş" : "bekleyen konu"} bulunamadı veya türü değişmiş.`,
+    );
+  if (targets.some((item) => item.id === target.id)) return records;
+  if (CLOSED.has(projectMeeting(source, index).status))
+    throw new Error("Kapalı toplantıya yeni kayıt bağlanamaz.");
+  if (CLOSED.has(target.status))
+    throw new Error("Yalnızca açık kayıtlar toplantıya bağlanabilir.");
+  if (targets.some((item) => item.type === type))
+    throw new Error(
+      "Toplantının bu takip akışına zaten bir kayıt bağlı. Mevcut kayıt korunuyor.",
+    );
+  if (Object.hasOwn(target.sourceFields || {}, "__followupSource"))
+    throw new Error(
+      "Bu kayıt zaten bir kaynağa bağlı. Mevcut kaynak bağlantısı korunuyor.",
+    );
+  const updated = {
+    ...target,
+    sourceFields: {
+      ...target.sourceFields,
+      __followupSource: { recordId: source.id, type: "meeting" },
+    },
+    updatedAt: actionTimestamp(now),
+  };
+  const result = syncActionLinks(
+    records,
+    records.map((record) => (record.id === target.id ? updated : record)),
+  );
+  checkPath(source.id, indexRecords(result));
+  validateStore({ version: 1, records: result });
+  return result;
+}
+
 function waitingWorkContext(records, waitingId, dailyId) {
   const index = indexRecords(records);
   const source = index.byId.get(waitingId);

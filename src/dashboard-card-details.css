@@ -77,3 +77,25 @@
   text-decoration: underline;
   text-underline-offset: 3px;
 }
+
+/* A click or a returned card focus must not turn its subject into a link. */
+:root[data-input-modality="pointer"]
+  #app
+  .dashboard-detail-card
+  :is(.dashboard-goal-title, .followup-title):not(.cancelled),
+#app
+  .dashboard-detail-card[data-focus-restored]
+  :is(.dashboard-goal-title, .followup-title):not(.cancelled),
+#app .dashboard-detail-card .followup-title[data-focus-restored]:focus {
+  text-decoration-line: none;
+}
+
+:root[data-input-modality="pointer"]
+  #app
+  .dashboard-detail-card
+  .dashboard-goal-title.cancelled,
+#app
+  .dashboard-detail-card[data-focus-restored]
+  .dashboard-goal-title.cancelled {
+  text-decoration-line: line-through;
+}

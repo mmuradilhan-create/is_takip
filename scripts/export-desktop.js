@@ -56,6 +56,11 @@ Takip kartlarında konu metni üstteki boş alanı kullanır; durum ve tarih
 alt bölüme yaklaşır. Panel yüksekliği artmadan daha fazla satır okunur.
 Haftalık hedefin durum/teslim tarihi takip kartlarıyla aynı alt hizadadır.
 Durum solda, tarih sağda tek satırda kalır; dar kartta durum düğmesi iki satır olabilir.
+Genel bakış haftalık kartında aylık üst hedef simgesi gösterilmez; bağlantı
+ve haftalık listedeki simge korunur. Kart başlığına tıklamak veya ayrıntıdan
+dönmek alt çizgi bırakmaz; yeni klavye gezinmesinin odağı görünür kalır.
+Bekleyen konu listesindeki + sabittir ve her zaman yeni günlük adım açar.
+Bağlı işler konu ayrıntısından açılır; listede ayrı sayaç gösterilmez.
 
 Ayarlar içindeki eski Listeler menüsü kaldırıldı; eski kayıt değerleri
 ve yedek uyumluluğu korunur. Bekleme bilgisi penceresinde Enter kaydeder,
@@ -445,7 +450,9 @@ ve senelik hedefler takvimde gösterilmez. Yalnız hafta/ay dönemi olan hedefe
 tarih uydurulmaz. Kapalı kayıtlar gösterilmez; bağlı akışlar kendi
 tarihlerinde görünür.
 
-Gün seçince kayıtları açılır. Ay gezinmesi, gün ızgarası, seçili gün başlığı
+Gün seçince kayıtları açılır. Küçük ajandada başlık kesilmeden satıra bölünür;
+kayıt türü altında küçük görünür. Teslim/takip tarihi satırda tekrarlanmaz.
+Ay gezinmesi, gün ızgarası, seçili gün başlığı
 ve ekleme kontrolü yerinde kalır; yalnız seçili günün kayıtları kendi
 alanında kaydırılır. Büyüt, başlıkları gösteren Ay / Hafta
 görünümünü açar; Escape kapatır. Büyük ay görünümünde her günün ilk iki
@@ -528,8 +535,12 @@ uygula düğmesine bas. Öneriyi görmek veya pencereyi açmak bağlantı kurmaz
 Yalnız işaretlenen kayıtlar değişir; işlem tek Geri al adımıdır. Durum,
 teslim tarihi ve çalışma geçmişi korunur.
 
-Toplantı ayrıntısında bağlı günlük iş ve takipler sayılı kompakt bölümlerdir.
-Oluşturma işlemi başlık hizasındadır; mevcut kayıt yanındaki açma düğmesinden açılır.
+Toplantı ayrıntısında bağlı günlük işler ve takipler sayılı kompakt bölümlerdir.
+Oluşturma başlık hizasındadır. Boş akışa mevcut açık ve başka kaynağa bağlı olmayan
+günlük iş veya takip de bağlanabilir; işlem tek Geri al adımıdır. Hedef, durum,
+tarihler ve geçmiş korunur. Mevcut kayıt yanındaki açma düğmesinden açılır.
+Notlar boş değilse bağlantılardan sonra en sonda görünür. Toplantı, bekleyen konu
+ve hedef panellerinde boş listeler ve kayıt bağlama alanları aynı biçimdedir.
 
 Haftalık, aylık ve senelik hedef panellerinin sonunda mevcut Notlar alanı görünür.
 Boşsa bölüm açılmaz; Hedefi düzenle ile düzenlenir.
@@ -547,7 +558,8 @@ açar. Çalışırken yazabilirsin; süre sayacı veya saat/dakika girişi yoktu
 Sol menü sekmeleri sabittir; kaydırılmaz ve adları tek satırda kalır.
 Üst boşluklar ve not alanı ekran yüksekliğine göre sıkışır.
 Duraklat sonuç istemez, taslağı koruyup alanı küçük özete indirir. Konu adına
-veya kartın boş alanına tıklamak notu gösterir. Kart kaydırılmaz; metin alanı
+veya kartın boş alanına tıklamak notu gösterir; açık duraklatılmış notta tekrar
+tıklamak taslağı koruyarak küçültür. Kart kaydırılmaz; metin alanı
 kalan yüksekliğe sığar. Çok kısa pencerelerde ek duraklatılmış satırlar azalır.
 Altta çalışma geçmişi ve toplam kayıt sayısı tek satırdadır.
 Devam et aynı nottan

@@ -25,7 +25,7 @@ export function installInputModality(document = globalThis.document) {
   let restoreFrame = null;
   let restoredFocus = null;
   const returnTargets =
-    ".task-name, .focus-title, .goal-child-title, .dashboard-goal-title, [data-record-row]";
+    ".task-name, .focus-title, .goal-child-title, .dashboard-goal-title, .followup-title, .dashboard-detail-card, [data-record-row]";
   const set = (value) => {
     modality = value;
     if (root.getAttribute("data-input-modality") !== value)

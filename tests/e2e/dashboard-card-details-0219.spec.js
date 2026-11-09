@@ -440,6 +440,62 @@ test("follow-up card bodies, titles and card keyboard actions open read-only det
   expect(await saved(page)).toBe(before);
 });
 
+test("dashboard subject clicks and every detail close keep titles plain while fresh keyboard navigation remains visible", async ({
+  page,
+}) => {
+  await seed(page, { linked: true });
+  const before = await saved(page);
+  for (const theme of ["light", "dark"]) {
+    await page.locator("html").evaluate((node, value) => {
+      node.dataset.theme = value;
+    }, theme);
+    for (const [card, title, panel, returnedFocus] of [
+      [
+        goal(page),
+        goal(page).locator(".dashboard-goal-title"),
+        goalPanel(page),
+        goal(page),
+      ],
+      [
+        waiting(page),
+        waiting(page).locator(".followup-title"),
+        waitingPanel(page),
+        waiting(page).locator(".followup-title"),
+      ],
+    ]) {
+      for (const method of ["header", "footer", "Escape"]) {
+        await card.focus();
+        await page.keyboard.press("Shift+Tab");
+        await page.keyboard.press("Tab");
+        await expect(card).toBeFocused();
+        await expect(title).toHaveCSS("text-decoration-line", /underline/);
+        await title.click();
+        await expect(panel).toBeVisible();
+        await expect(page.locator("html")).toHaveAttribute(
+          "data-input-modality",
+          "pointer",
+        );
+        await expect(title).not.toHaveCSS("text-decoration-line", /underline/);
+        if (method === "Escape") await page.keyboard.press("Escape");
+        else {
+          const buttons = panel.locator(
+            '[data-action="goal-panel-close"], [data-action="waiting-record-close"]',
+          );
+          await (
+            method === "header" ? buttons.first() : buttons.last()
+          ).click();
+        }
+        await expect(panel).not.toBeVisible();
+        await expect(returnedFocus).toBeFocused();
+        await expect(title).not.toHaveCSS("text-decoration-line", /underline/);
+        await title.hover();
+        await expect(title).not.toHaveCSS("text-decoration-line", /underline/);
+        expect(await saved(page)).toBe(before);
+      }
+    }
+  }
+});
+
 test("goal body opens the panel at its top while nested goal, follow-up and date actions keep their own destinations", async ({
   page,
 }) => {
@@ -528,8 +584,12 @@ test("goal body opens the panel at its top while nested goal, follow-up and date
     .click();
   await expect(datePicker(page)).not.toBeVisible();
   await expect(goal(page).locator('[data-action="edit-date"]')).toBeFocused();
-  await goal(page)
-    .locator('.record-context-link[data-id="details-month"]')
+  await expect(goal(page).locator(".record-parent-link")).toHaveCount(0);
+  await page.locator('#nav [data-view="weekly"]').click();
+  await page
+    .locator(
+      '.full-table [data-record-row][data-id="details-week"] .record-context-link[data-id="details-month"]',
+    )
     .click();
   await expect(goalPanel(page)).toHaveAttribute(
     "data-goal-id",
@@ -539,6 +599,7 @@ test("goal body opens the panel at its top while nested goal, follow-up and date
     "Bağlı aylık hedef",
   );
   await closeGoal(page);
+  await page.locator('#nav [data-view="dashboard"]').click();
   await waiting(page).locator('[data-action="edit-next-followup"]').click();
   await expectQuickDatePicker(page, "2026-11-08");
   await expect(waitingPanel(page)).not.toBeVisible();

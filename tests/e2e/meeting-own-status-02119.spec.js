@@ -182,8 +182,8 @@ test("an unrouted meeting owns all three quick statuses and its preview while un
   await expect(summary).toHaveText("Açık");
   await expect(summary).not.toHaveAttribute("data-target-id");
   for (const [type, heading, label] of [
-    ["daily", "Bağlı günlük iş", "İş oluştur"],
-    ["waiting", "Bağlı takip", "Takip oluştur"],
+    ["daily", "Bağlı günlük işler", "Yeni adım ekle"],
+    ["waiting", "Bağlı takipler", "Yeni takip ekle"],
   ]) {
     const section = panel(page).locator(`[data-meeting-route="${type}"]`);
     await expect(
@@ -557,6 +557,340 @@ test("linked route closure and reopening derive the meeting summary with one ato
   for (const snapshot of snapshots.reverse()) {
     await undo(page);
     expect(await saved(page)).toBe(snapshot);
+  }
+});
+
+test("existing daily work and waiting topics attach to their meeting with exact context, real destinations and one Undo per link", async ({
+  page,
+}) => {
+  const items = [
+    meeting("attach-source"),
+    make({
+      id: "attach-goal",
+      type: "weekly",
+      title: "Günlük işin mevcut haftalık hedefi",
+      periodKey: "2026-W46",
+    }),
+    child("attach-job", "unused-origin", "daily", {
+      title: "Mevcut günlük işin özgün başlığı",
+      parentId: "attach-goal",
+      nextAction: "Özgün sonraki adım",
+      sourceFields: { original: { value: "Günlük işin ham kaynak alanı" } },
+    }),
+    child("attach-reply", "unused-origin", "waiting", {
+      title: "Mevcut bekleyen konunun özgün başlığı",
+      status: "waiting_response",
+      sourceFields: { original: { value: "Takibin ham kaynak alanı" } },
+      followUpLog: [
+        {
+          id: "original-contact",
+          date: "2026-11-06",
+          note: "Özgün takip geçmişi değişmez.",
+          nextFollowUpDate: "2026-11-12",
+        },
+      ],
+    }),
+    meeting("attach-unrelated"),
+    make({ id: "attach-other", title: "İlişkisiz kayıt değişmez." }),
+  ];
+  const before = await seed(page, items);
+  await row(page, "attach-source").locator(".task-name").click();
+  const snapshots = [before];
+  const expected = structuredClone(items);
+  for (const [type, targetId, targetIndex] of [
+    ["daily", "attach-job", 2],
+    ["waiting", "attach-reply", 3],
+  ]) {
+    const link = panel(page).locator(`#meeting-link-${type}-form`);
+    await link.locator("select").selectOption(targetId);
+    await link.getByRole("button", { name: "Bağla", exact: true }).click();
+    const section = panel(page).locator(`[data-meeting-route="${type}"]`);
+    await expect(section.locator("h3 small")).toHaveText("1");
+    await expect(section.locator("form, .meeting-record-create")).toHaveCount(
+      0,
+    );
+    const open = section.locator(".meeting-record-open");
+    await expect(open).toBeFocused();
+    await expect(section.locator(".meeting-record-linked-title")).toHaveText(
+      items[targetIndex].title,
+    );
+    expected[0] = { ...items[0], status: "in_progress" };
+    expected[targetIndex] = {
+      ...items[targetIndex],
+      updatedAt: NOW.toISOString(),
+      sourceFields: {
+        ...items[targetIndex].sourceFields,
+        __followupSource: { recordId: "attach-source", type: "meeting" },
+      },
+    };
+    const current = await store(page);
+    expect(current.records).toEqual(expected);
+    expect(current.odak.preferences).toEqual({
+      density: "compact",
+      theme: "light",
+    });
+    expect(current.odak.history).toHaveLength(snapshots.length);
+    snapshots.push(await saved(page));
+    await expect(
+      panel(page).locator(".meeting-record-summary .status-summary"),
+    ).toHaveText("Açık");
+  }
+  const openDaily = panel(page).locator(
+    '.meeting-record-open[data-route="daily"]',
+  );
+  await openDaily.click();
+  await expect(form(page).locator('[name="id"]')).toHaveValue("attach-job");
+  await page
+    .locator("#editor")
+    .getByRole("button", { name: "Vazgeç", exact: true })
+    .click();
+  await expect(openDaily).toBeFocused();
+  expect(await saved(page)).toBe(snapshots[2]);
+  await panel(page)
+    .locator('.meeting-record-open[data-route="waiting"]')
+    .click();
+  await expect(page.locator("#waiting-record-panel")).toHaveAttribute(
+    "data-record-id",
+    "attach-reply",
+  );
+  expect(await saved(page)).toBe(snapshots[2]);
+  await page.reload();
+  await navigate(page, "meeting");
+  await row(page, "attach-source").locator(".task-name").click();
+  await expect(panel(page).locator(".meeting-record-linked-row")).toHaveCount(
+    2,
+  );
+  await panel(page).getByRole("button", { name: "Kapat", exact: true }).click();
+  await undo(page);
+  expect(await saved(page)).toBe(snapshots[1]);
+  await undo(page);
+  expect(await saved(page)).toBe(before);
+});
+
+test("meeting attach filters owned and closed records, retains failed selections and rejects a stale peer choice without a write", async ({
+  page,
+}) => {
+  const items = [
+    meeting("link-source"),
+    meeting("other-source"),
+    make({ id: "link-job", title: "A uygun günlük iş" }),
+    child("link-reply", "unused", "waiting", {
+      title: "A uygun takip",
+      sourceFields: { original: "Özgün alan korunur." },
+    }),
+    child("other-reply", "unused", "waiting", {
+      title: "B uygun takip",
+      sourceFields: {},
+    }),
+    make({ id: "closed-job", title: "Kapalı iş", status: "completed" }),
+    child("owned-job", "other-source", "daily"),
+    make({
+      id: "malformed-job",
+      title: "Tarihi kaynak işaretçisi korunur.",
+      sourceFields: { __followupSource: {} },
+    }),
+    child("orphan-reply", "deleted-source", "waiting"),
+  ];
+  const before = await seed(page, items);
+  await row(page, "link-source").locator(".task-name").click();
+  const daily = panel(page).locator("#meeting-link-daily");
+  const waiting = panel(page).locator("#meeting-link-waiting");
+  const values = (select) =>
+    select
+      .locator("option")
+      .evaluateAll((options) => options.map((option) => option.value));
+  expect(await values(daily)).toEqual(["", "link-job"]);
+  expect(await values(waiting)).toEqual(["", "link-reply", "other-reply"]);
+  await daily.selectOption("link-job");
+  await page.evaluate((key) => {
+    const original = Storage.prototype.setItem;
+    window.restoreMeetingLinkStorage = () => {
+      Storage.prototype.setItem = original;
+    };
+    Storage.prototype.setItem = function (name, value) {
+      if (name === key)
+        throw new DOMException("Test depolaması dolu", "QuotaExceededError");
+      return original.call(this, name, value);
+    };
+  }, KEY);
+  await panel(page)
+    .locator("#meeting-link-daily-form")
+    .getByRole("button", { name: "Bağla", exact: true })
+    .click();
+  await expect(panel(page)).toBeVisible();
+  await expect(daily).toHaveValue("link-job");
+  await expect(daily).toBeFocused();
+  await expect(panel(page).locator("#meeting-link-daily-error")).toContainText(
+    "Bağlantı kaydedilemedi",
+  );
+  expect(await saved(page)).toBe(before);
+  await page.evaluate(() => window.restoreMeetingLinkStorage());
+  await panel(page)
+    .locator("#meeting-link-daily-form")
+    .getByRole("button", { name: "Bağla", exact: true })
+    .click();
+  await expect(panel(page).locator("#meeting-link-daily-form")).toHaveCount(0);
+  expect((await store(page)).odak.history).toHaveLength(1);
+
+  await waiting.selectOption("link-reply");
+  const peer = await page.context().newPage();
+  await peer.clock.setFixedTime(NOW);
+  await peer.goto("/");
+  await navigate(peer, "waiting");
+  await row(peer, "link-reply").locator(".quick-complete").click();
+  const peerSaved = await saved(peer);
+  await expect(waiting.locator('option[value="link-reply"]')).toHaveCount(0);
+  await expect(waiting).toHaveValue("");
+  expect(await values(waiting)).toEqual(["", "other-reply"]);
+  // A stale submitted option still has to pass the live candidate check.
+  await waiting.evaluate((select) => {
+    select.add(new Option("Eski seçilmiş takip", "link-reply", true, true));
+    select.dispatchEvent(new Event("change", { bubbles: true }));
+    select.form.requestSubmit();
+  });
+  await expect(panel(page)).toBeVisible();
+  await expect(
+    panel(page).locator("#meeting-link-waiting-error"),
+  ).toContainText("artık bağlanmaya uygun değil");
+  await expect(waiting.locator('option[value="link-reply"]')).toHaveCount(0);
+  expect(await saved(page)).toBe(peerSaved);
+  const current = await store(page);
+  expect(current.records).toEqual(JSON.parse(peerSaved).records);
+  expect(current.records.find((record) => record.id === "link-reply")).toEqual({
+    ...items[3],
+    status: "completed",
+    updatedAt: NOW.toISOString(),
+    sourceFields: {
+      ...items[3].sourceFields,
+      __waitingClosure: {
+        version: 1,
+        closedDate: "2026-11-09",
+        closedAt: NOW.toISOString(),
+      },
+    },
+  });
+  expect(current.odak.history).toHaveLength(2);
+  await peer.close();
+});
+
+test("meeting route forms share compact rows and plain empty states while only real notes appear last in both themes and narrow panels", async ({
+  page,
+}) => {
+  const literal =
+    '  Özgün not\n<img src=x onerror="window.meetingNoteInjected=1"> & sonuç  ';
+  const items = [
+    { ...meeting("note-source"), description: literal },
+    { ...meeting("empty-note-source"), description: " \n\t " },
+    meeting("closed-note-source", { status: "completed", description: "" }),
+  ];
+  const normalizedNote = createRecord(items[0]).description;
+  const before = await seed(page, items);
+  for (const theme of ["light", "dark"]) {
+    for (const viewport of [
+      { width: 1280, height: 800 },
+      { width: 390, height: 700 },
+    ]) {
+      await page.setViewportSize(viewport);
+      await navigate(page, "meeting");
+      await scope(page, "all");
+      await page.locator("html").evaluate((element, value) => {
+        element.dataset.theme = value;
+      }, theme);
+      await row(page, "note-source").locator(".task-name").click();
+      const body = panel(page).locator(".meeting-record-body");
+      const notes = body.locator(".meeting-record-note");
+      await expect(notes).toHaveCount(1);
+      expect(await notes.locator("p").textContent()).toBe(normalizedNote);
+      expect(
+        await notes
+          .locator("p")
+          .evaluate((node) => getComputedStyle(node).whiteSpace),
+      ).toBe("pre-wrap");
+      expect(
+        await body.locator(":scope > :last-child").getAttribute("class"),
+      ).toBe("meeting-record-note");
+      for (const [type, caption, empty] of [
+        ["daily", "Mevcut günlük işi bağla", "Uygun günlük iş yok"],
+        ["waiting", "Mevcut takibi bağla", "Uygun takip yok"],
+      ]) {
+        const section = panel(page).locator(`[data-meeting-route="${type}"]`);
+        const link = section.locator(`#meeting-link-${type}-form`);
+        const select = link.getByRole("combobox", {
+          name: caption,
+          exact: true,
+        });
+        const submit = link.getByRole("button", { name: "Bağla", exact: true });
+        await expect(link).toHaveClass("goal-link-child-form");
+        await expect(select).toBeDisabled();
+        await expect(select.locator("option")).toHaveText([empty]);
+        await expect(submit).toBeDisabled();
+        const geometry = await link.evaluate((form) => {
+          const bounds = (element) => {
+            const box = element.getBoundingClientRect();
+            return {
+              left: box.left,
+              right: box.right,
+              top: box.top,
+              bottom: box.bottom,
+              height: box.height,
+            };
+          };
+          return {
+            select: bounds(form.querySelector("select")),
+            button: bounds(form.querySelector("button")),
+            body: bounds(form.closest(".meeting-record-body")),
+          };
+        });
+        expect(
+          Math.abs(geometry.select.top - geometry.button.top),
+        ).toBeLessThanOrEqual(1);
+        expect(
+          Math.abs(geometry.select.bottom - geometry.button.bottom),
+        ).toBeLessThanOrEqual(1);
+        expect(geometry.select.left).toBeGreaterThanOrEqual(geometry.body.left);
+        expect(geometry.button.right).toBeLessThanOrEqual(geometry.body.right);
+        expect(geometry.button.height).toBeLessThanOrEqual(36);
+        const emptyStyle = await section
+          .locator(".meeting-record-empty")
+          .evaluate((node) => {
+            const style = getComputedStyle(node);
+            return {
+              border: style.borderTopWidth,
+              background: style.backgroundColor,
+              padding: style.padding,
+            };
+          });
+        expect(emptyStyle).toEqual({
+          border: "0px",
+          background: "rgba(0, 0, 0, 0)",
+          padding: "0px",
+        });
+      }
+      await expect(panel(page).locator("img, script")).toHaveCount(0);
+      expect(
+        await page.evaluate(() => window.meetingNoteInjected),
+      ).toBeUndefined();
+      expect(
+        await body.evaluate((node) => node.scrollWidth <= node.clientWidth + 1),
+      ).toBe(true);
+      await panel(page)
+        .getByRole("button", { name: "Kapat", exact: true })
+        .click();
+      for (const id of ["empty-note-source", "closed-note-source"]) {
+        await row(page, id).locator(".task-name").click();
+        await expect(panel(page).locator(".meeting-record-note")).toHaveCount(
+          0,
+        );
+        if (id === "closed-note-source")
+          await expect(
+            panel(page).locator("form, [data-meeting-route]"),
+          ).toHaveCount(0);
+        await panel(page)
+          .getByRole("button", { name: "Kapat", exact: true })
+          .click();
+      }
+      expect(await saved(page)).toBe(before);
+    }
   }
 });
 

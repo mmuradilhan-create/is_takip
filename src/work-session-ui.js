@@ -1126,6 +1126,27 @@ export function createWorkSessionUI({
     render();
     focusNote();
   }
+  function toggleWorkNote() {
+    if (!editorState || panel.hidden || finishing || finishDraft) return;
+    rememberCaret();
+    const collapse =
+      panel.dataset.phase === "paused" && panel.dataset.collapsed !== "true";
+    // Keep failed or conflicting drafts and their recovery controls visible.
+    // This visual toggle must never flush another job's pending note.
+    if (
+      collapse &&
+      (editorState.dirty || editorState.error || editorState.conflict)
+    ) {
+      focusNote();
+      return;
+    }
+    editorState.pausedExpanded = !collapse;
+    if (collapse && document.activeElement === note) note.blur();
+    render();
+    if (panel.dataset.collapsed === "true")
+      panel.querySelector("#work-session-title").focus({ preventScroll: true });
+    else focusNote();
+  }
   function onClick(event) {
     const control = event.target.closest?.("[data-action]");
     if (!control || !root.contains(control)) return;
@@ -1164,10 +1185,7 @@ export function createWorkSessionUI({
       return;
     }
     if (action === "work-note-open") {
-      if (!editorState || finishing || finishDraft) return;
-      editorState.pausedExpanded = true;
-      render();
-      focusNote();
+      toggleWorkNote();
       return;
     }
     if (action === "work-finish-cancel") {
@@ -1326,17 +1344,11 @@ export function createWorkSessionUI({
   function onWheel(event) {
     event.stopPropagation();
   }
-  function onCollapsedAreaClick(event) {
-    if (
-      panel.dataset.collapsed !== "true" ||
-      finishing ||
-      finishDraft ||
-      !editorState
-    )
-      return;
+  function onNoteAreaClick(event) {
+    if (panel.hidden || finishing || finishDraft || !editorState) return;
     if (
       event.target.closest?.(
-        ".sidebar-journal-footer, .work-paused-list, .work-running-summary",
+        ".sidebar-journal-footer, .work-paused-list, .work-running-summary, .work-note-field",
       )
     )
       return;
@@ -1348,9 +1360,7 @@ export function createWorkSessionUI({
       return;
     event.preventDefault();
     event.stopPropagation();
-    editorState.pausedExpanded = true;
-    render();
-    focusNote();
+    toggleWorkNote();
   }
   function onNavWheel(event) {
     if (nav.scrollHeight > nav.clientHeight) event.stopPropagation();
@@ -1383,7 +1393,7 @@ export function createWorkSessionUI({
     root.removeEventListener("click", onClick);
     form.removeEventListener("submit", completeFinish);
     form.removeEventListener("keydown", onNoteKeydown);
-    journal.removeEventListener("click", onCollapsedAreaClick);
+    journal.removeEventListener("click", onNoteAreaClick);
     noteArea.removeEventListener("toggle", scheduleNoteFit, true);
     note.removeEventListener("input", onNoteInput);
     note.removeEventListener("select", rememberCaret);
@@ -1406,7 +1416,7 @@ export function createWorkSessionUI({
   root.addEventListener("click", onClick);
   form.addEventListener("submit", completeFinish);
   form.addEventListener("keydown", onNoteKeydown);
-  journal.addEventListener("click", onCollapsedAreaClick);
+  journal.addEventListener("click", onNoteAreaClick);
   noteArea.addEventListener("toggle", scheduleNoteFit, true);
   note.addEventListener("input", onNoteInput);
   note.addEventListener("select", rememberCaret);

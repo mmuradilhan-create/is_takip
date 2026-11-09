@@ -106,6 +106,7 @@ import {
   resolveActionSource,
   syncActionLinks,
   buildMeetingActions,
+  attachMeetingAction,
   attachWaitingWork,
   unlinkWaitingWork,
 } from "./action-links.js";
@@ -972,10 +973,8 @@ export async function startMainApp() {
   function workControl(record) {
     if (record.type === "daily") return workSessions?.button(record) || "";
     if (record.type === "meeting") return meetingRouteControls(record, true);
-    if (!["meeting", "waiting"].includes(record.type)) return "";
-    const linked = dailyForSource(record.id);
-    const actionLabel = linked ? "bağlı günlük işi aç" : "günlük iş oluştur";
-    return `<button type="button" class="daily-source-control${linked ? " is-linked" : ""}" data-action="daily-from-source" data-id="${esc(record.id)}" aria-label="${esc(record.title)}: ${actionLabel}" title="${linked ? "Bağlı günlük işi aç" : "Bu konu için günlük iş oluştur"}">${icon(linked ? "link" : "plus")}</button>`;
+    if (record.type !== "waiting") return "";
+    return `<button type="button" class="daily-source-control" data-action="waiting-create-daily" data-id="${esc(record.id)}" aria-label="${esc(record.title)}: yeni günlük adım ekle" title="Bu konu için yeni günlük iş oluştur"${active(record) ? "" : " disabled"}>${icon("plus")}</button>`;
   }
   function meetingTarget(record) {
     return meetingTargets(record)[0] || null;
@@ -1024,13 +1023,6 @@ export async function startMainApp() {
         label: formatDate(record.dueDate),
         today: today(),
       })
-    );
-  }
-  function dailyForSource(sourceId) {
-    return state.records.find(
-      (record) =>
-        record.type === "daily" &&
-        record.sourceFields?.__followupSource?.recordId === sourceId,
     );
   }
   function rowIconAction(record, action, symbol, text, className = "") {
@@ -1549,7 +1541,7 @@ export async function startMainApp() {
                   (item) =>
                     item.type === "daily" && item.parentId === record.id,
                 );
-                return `<li class="dashboard-goal-row dashboard-detail-card" role="group" tabindex="0" data-action="goal-card-details" data-id="${esc(record.id)}" data-goal-id="${esc(record.id)}" aria-label="${esc(record.title)}: ayrıntıları aç" aria-keyshortcuts="Enter Space"><div class="dashboard-goal-title-line"><strong class="dashboard-goal-title${record.status === "cancelled" ? " cancelled" : ""}" title="${esc(record.title)}">${esc(record.title)}</strong>${parentTitleControl(record)}</div><div class="dashboard-goal-meta-controls">${statusBadge(record)}${lifecycleDateControl(record)}</div><div class="dashboard-goal-progress"><div class="progress-track" role="progressbar" aria-label="${esc(record.title)} ilerlemesi" aria-valuenow="${progress.percent}" aria-valuemin="0" aria-valuemax="100" aria-valuetext="%${progress.percent} · ${esc(progressDescription(record, progress))}"><span style="width:${progress.percent}%"></span></div><span class="goal-progress-label" title="${esc(progressDescription(record, progress))}">%${progress.percent}${esc(progressCount)}</span></div><div class="dashboard-goal-actions"><button type="button" class="btn small dashboard-goal-progress-action" data-action="goal-progress-open" data-id="${esc(record.id)}" aria-label="${esc(record.title)}: ilerleme">İlerleme</button><button type="button" class="btn small dashboard-goal-children-action" data-action="goal-children-open" data-id="${esc(record.id)}" aria-label="${esc(record.title)}: bağlı işler, ${children.length} adım">Bağlı işler <span class="dashboard-goal-count">${children.length}</span></button></div></li>`;
+                return `<li class="dashboard-goal-row dashboard-detail-card" role="group" tabindex="0" data-action="goal-card-details" data-id="${esc(record.id)}" data-goal-id="${esc(record.id)}" aria-label="${esc(record.title)}: ayrıntıları aç" aria-keyshortcuts="Enter Space"><div class="dashboard-goal-title-line"><strong class="dashboard-goal-title${record.status === "cancelled" ? " cancelled" : ""}" title="${esc(record.title)}">${esc(record.title)}</strong></div><div class="dashboard-goal-meta-controls">${statusBadge(record)}${lifecycleDateControl(record)}</div><div class="dashboard-goal-progress"><div class="progress-track" role="progressbar" aria-label="${esc(record.title)} ilerlemesi" aria-valuenow="${progress.percent}" aria-valuemin="0" aria-valuemax="100" aria-valuetext="%${progress.percent} · ${esc(progressDescription(record, progress))}"><span style="width:${progress.percent}%"></span></div><span class="goal-progress-label" title="${esc(progressDescription(record, progress))}">%${progress.percent}${esc(progressCount)}</span></div><div class="dashboard-goal-actions"><button type="button" class="btn small dashboard-goal-progress-action" data-action="goal-progress-open" data-id="${esc(record.id)}" aria-label="${esc(record.title)}: ilerleme">İlerleme</button><button type="button" class="btn small dashboard-goal-children-action" data-action="goal-children-open" data-id="${esc(record.id)}" aria-label="${esc(record.title)}: bağlı işler, ${children.length} adım">Bağlı işler <span class="dashboard-goal-count">${children.length}</span></button></div></li>`;
               })
               .join("")}</ul>`
           : `<div class="weekly-dashboard-empty"><p>${state.search ? "Eşleşen haftalık hedef yok." : "Bu hafta için açık hedef yok."}</p><button type="button" class="btn" data-action="dashboard-weekly">Hedef seç</button></div>`
@@ -2373,6 +2365,16 @@ export async function startMainApp() {
   function openDailyFromSource(id) {
     openLinkedAction(id, "daily");
   }
+  function createWaitingDaily(id, { keepRecordPanel = false } = {}) {
+    const source = state.records.find((record) => record.id === id);
+    if (source?.type !== "waiting" || !active(source))
+      throw new Error("Yeni iş eklemek için bekleyen konuyu yeniden aç.");
+    openEditor(null, "", id, "daily", {
+      keepRecordPanel,
+      forceNewSourceAction: true,
+      values: { title: "", dueDate: "", nextAction: "" },
+    });
+  }
   function closeRecordPreviews(except = null) {
     if (except !== "waiting")
       waitingRecordPanel?.close({ restoreFocus: false });
@@ -3068,16 +3070,7 @@ export async function startMainApp() {
     onEdit: (id) => openEditor(id, "", "", "daily", { keepRecordPanel: true }),
     onFollowUp: (id) => waitingFollowUps?.open(id),
     onRoute: openPanelRoute,
-    onCreateDaily: (id) => {
-      const source = state.records.find((record) => record.id === id);
-      if (source?.type !== "waiting" || !active(source))
-        throw new Error("Yeni iş eklemek için bekleyen konuyu yeniden aç.");
-      openEditor(null, "", id, "daily", {
-        keepRecordPanel: true,
-        forceNewSourceAction: true,
-        values: { title: "", dueDate: "", nextAction: "" },
-      });
-    },
+    onCreateDaily: (id) => createWaitingDaily(id, { keepRecordPanel: true }),
     onOpenDaily: (dailyId, waitingId) => {
       const linked = linkedActions(waitingId, state.records).some(
         (record) => record.id === dailyId && record.type === "daily",
@@ -3112,6 +3105,18 @@ export async function startMainApp() {
       record.type === "meeting" ? statusBadge(record) : statusSummary(record),
     onEdit: (id) => openEditor(id, "", "", "daily", { keepRecordPanel: true }),
     onRoute: openPanelRoute,
+    onLinkAction: (meetingId, targetId, type) => {
+      const next = attachMeetingAction(
+        state.records,
+        meetingId,
+        targetId,
+        type,
+      );
+      if (next === state.records) return true;
+      const saved = saveRecords(next, "Toplantıya kayıt bağlama");
+      if (saved) toast("Kayıt bağlandı. Geri alınabilir.");
+      return saved;
+    },
     onError: (message) => toast(message, true),
   });
   window.addEventListener("pagehide", meetingRecordPanel.destroy, {
@@ -3380,6 +3385,13 @@ export async function startMainApp() {
         break;
       case "daily-from-source":
         openDailyFromSource(id);
+        break;
+      case "waiting-create-daily":
+        try {
+          createWaitingDaily(id);
+        } catch (error) {
+          toast(error.message || "Yeni günlük adım açılamadı.", true);
+        }
         break;
       case "migrate-daily-inbox":
         migrateInbox();

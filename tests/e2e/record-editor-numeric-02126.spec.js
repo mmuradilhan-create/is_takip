@@ -147,13 +147,8 @@ async function expectEmptyBinder(page, caption) {
     "",
   );
   await expect(childSelect(page).locator("option")).toHaveText(caption);
-  await expect(childSelect(page)).toHaveAttribute(
-    "aria-describedby",
-    "goal-link-child-empty",
-  );
-  await expect(binder(page).locator("#goal-link-child-empty")).toHaveText(
-    "Yalnız açık ve üst hedefe bağlı olmayan kayıtlar listelenir.",
-  );
+  await expect(childSelect(page)).not.toHaveAttribute("aria-describedby");
+  await expect(binder(page).locator("#goal-link-child-empty")).toHaveCount(0);
   await expect(
     binder(page).getByRole("button", { name: "Bağla", exact: true }),
   ).toBeDisabled();

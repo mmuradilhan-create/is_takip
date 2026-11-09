@@ -389,7 +389,7 @@ test("waiting details show every open and closed daily step and preserve exact c
   expect(await saved(page)).toBe(raw);
 });
 
-test("an explicit waiting step creates a new daily record while the legacy route still reuses its first linked job", async ({
+test("waiting list plus always creates a blank new daily step while details keep every linked job accessible", async ({
   page,
   context,
 }) => {
@@ -442,14 +442,90 @@ test("an explicit waiting step creates a new daily record while the legacy route
   await undo(page);
   expect(await saved(page)).toBe(raw);
   await panel(page).getByRole("button", { name: "Kapat", exact: true }).click();
-  await page
-    .locator('.waiting-table [data-id="waiting"] .daily-source-control')
-    .click();
-  await expect(page.locator('#record-form [name="id"]')).toHaveValue(
-    "linked-a",
+  const listPlus = page.locator(
+    '.waiting-table [data-id="waiting"] .daily-source-control',
   );
+  for (const id of ["waiting", "other-waiting"]) {
+    const control = page.locator(
+      `.waiting-table [data-id="${id}"] .daily-source-control`,
+    );
+    await expect(control).toHaveAttribute(
+      "data-action",
+      "waiting-create-daily",
+    );
+    await expect(control).not.toHaveClass(/is-linked/);
+    await expect(control.locator("svg path")).toHaveAttribute(
+      "d",
+      "M12 5v14M5 12h14",
+    );
+  }
+  await listPlus.click();
+  await expect(form).toHaveAttribute("data-creation", "true");
+  await expect(form.locator('[name="id"]')).toHaveValue("");
+  await expect(form.locator('[name="type"]')).toHaveValue("daily");
+  for (const name of ["title", "dueDate", "nextAction"])
+    await expect(form.locator(`[name="${name}"]`)).toHaveValue("");
   expect(await saved(page)).toBe(raw);
   await closeEditor(page);
+  expect(await saved(page)).toBe(raw);
+
+  await listPlus.click();
+  await form
+    .locator('[name="title"]')
+    .fill("Listeden eklenen yeni günlük adım");
+  await form.locator('[type="submit"]').click();
+  await expect(page.locator("#editor")).not.toBeVisible();
+  const afterListCreate = await stored(page);
+  const listCreated = afterListCreate.records.find(
+    (record) => !records.some((original) => original.id === record.id),
+  );
+  expect(listCreated).toMatchObject({
+    type: "daily",
+    title: "Listeden eklenen yeni günlük adım",
+    status: "planned",
+    dueDate: "",
+    nextAction: "",
+    sourceFields: sourceFields("waiting"),
+  });
+  expect(
+    afterListCreate.records.filter((record) =>
+      records.some((original) => original.id === record.id),
+    ),
+  ).toEqual(records);
+  expect(afterListCreate.odak.history).toHaveLength(1);
+  expect(linked(afterListCreate.records)).toHaveLength(5);
+  await expect(listPlus).not.toHaveClass(/is-linked/);
+  await expect(listPlus.locator("svg path")).toHaveAttribute(
+    "d",
+    "M12 5v14M5 12h14",
+  );
+  const afterListRaw = await saved(page);
+  // The topic title remains the route to all existing and newly added jobs.
+  await open(page);
+  await revealChildren(page);
+  await expect(children(page).locator(".waiting-record-child")).toHaveCount(5);
+  for (const job of linked(afterListCreate.records)) {
+    await child(page, job.id).locator(".goal-child-title").click();
+    await expect(form.locator('[name="id"]')).toHaveValue(job.id);
+    expect(await saved(page)).toBe(afterListRaw);
+    await closeEditor(page);
+    await expect(panel(page)).toBeVisible();
+    expect(await saved(page)).toBe(afterListRaw);
+  }
+  await undo(page);
+  expect(await saved(page)).toBe(raw);
+  await panel(page).getByRole("button", { name: "Kapat", exact: true }).click();
+  await page.locator('[data-action="list-scope"][data-scope="all"]').click();
+  const closedPlus = page.locator(
+    '.waiting-table [data-id="closed-waiting"] .daily-source-control',
+  );
+  await expect(closedPlus).toBeDisabled();
+  await expect(closedPlus).not.toHaveClass(/is-linked/);
+  await expect(closedPlus.locator("svg path")).toHaveAttribute(
+    "d",
+    "M12 5v14M5 12h14",
+  );
+  expect(await saved(page)).toBe(raw);
 });
 
 test("attach and unlink are single reversible changes that retain goals, lifecycle, dates, raw context and millisecond work logs", async ({

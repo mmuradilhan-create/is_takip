@@ -341,7 +341,7 @@ export function createGoalPanel({
         : record.type === "monthly"
           ? "Bağlanabilecek haftalık hedef yok"
           : "Bağlanabilecek aylık hedef yok";
-    return `<form id="goal-link-child-form" class="goal-link-child-form" data-id="${esc(record.id)}"><label for="goal-link-child">${caption}</label><div class="goal-link-child-controls"><select name="childId" id="goal-link-child" aria-label="${caption}"${hasCandidates ? "" : ' disabled aria-describedby="goal-link-child-empty"'}><option value="">${hasCandidates ? "Kayıt seç" : emptyCaption}</option>${candidates.map((child) => `<option value="${esc(child.id)}">${esc(child.title)}${GOALS.has(child.type) ? ` · ${esc(humanPeriod(child))}` : ""}</option>`).join("")}</select><button type="submit" class="btn" disabled>Bağla</button></div>${hasCandidates ? "" : '<p id="goal-link-child-empty" class="field-help">Yalnız açık ve üst hedefe bağlı olmayan kayıtlar listelenir.</p>'}${errorMarkup(record, "#goal-link-child-error")}</form>`;
+    return `<form id="goal-link-child-form" class="goal-link-child-form" data-id="${esc(record.id)}"><label for="goal-link-child">${caption}</label><div class="goal-link-child-controls"><select name="childId" id="goal-link-child" aria-label="${caption}"${hasCandidates ? "" : " disabled"}><option value="">${hasCandidates ? "Kayıt seç" : emptyCaption}</option>${candidates.map((child) => `<option value="${esc(child.id)}">${esc(child.title)}${GOALS.has(child.type) ? ` · ${esc(humanPeriod(child))}` : ""}</option>`).join("")}</select><button type="submit" class="btn" disabled>Bağla</button></div>${errorMarkup(record, "#goal-link-child-error")}</form>`;
   }
 
   function childrenMarkup(record, records, children) {
@@ -356,6 +356,11 @@ export function createGoalPanel({
       : record.type === "monthly"
         ? "Yeni haftalık hedef"
         : "Yeni aylık hedef";
+    const empty = weekly
+      ? "Henüz bağlı günlük iş yok."
+      : record.type === "monthly"
+        ? "Henüz bağlı haftalık hedef yok."
+        : "Henüz bağlı aylık hedef yok.";
     const excluded = children.filter((child) =>
       ["cancelled", "transferred"].includes(child.status),
     ).length;
@@ -363,7 +368,7 @@ export function createGoalPanel({
     const secondary = summary
       ? `<div class="goal-panel-summary goal-panel-secondary" aria-label="Haftalık özet"><div><span>Günlük iş ilerlemesi</span><strong>${summary.completed}/${summary.total} tamamlandı</strong></div></div>`
       : "";
-    return `<section class="goal-panel-section goal-panel-children goal-hierarchy-section" data-goal-section="children"><div class="goal-panel-section-heading"><h3 tabindex="-1" data-goal-section-heading="children">Bağlı ${childName} <small>${children.length}</small></h3><button type="button" class="text-btn goal-new-step" data-action="goal-new-step" data-id="${esc(record.id)}">${plusIcon}${action}</button></div>${children.length ? `${excluded ? `<p class="field-help goal-child-order">${excluded} iptal veya arşiv kaydı ilerlemeye dahil değil.</p>` : ""}<ul class="goal-child-list">${children.map((child) => childMarkup(child, records)).join("")}</ul>` : '<p class="goal-panel-empty">Bu hedef için ilk bağlı adımı ekleyebilirsin.</p>'}${typeof onUnlinkChild === "function" ? errorMarkup(record, "#goal-unlink-child-error") : ""}${linkChildMarkup(record, records)}${secondary}</section>`;
+    return `<section class="goal-panel-section goal-panel-children goal-hierarchy-section" data-goal-section="children"><div class="goal-panel-section-heading"><h3 tabindex="-1" data-goal-section-heading="children">Bağlı ${childName} <small>${children.length}</small></h3><button type="button" class="text-btn goal-new-step" data-action="goal-new-step" data-id="${esc(record.id)}">${plusIcon}${action}</button></div>${children.length ? `${excluded ? `<p class="field-help goal-child-order">${excluded} iptal veya arşiv kaydı ilerlemeye dahil değil.</p>` : ""}<ul class="goal-child-list">${children.map((child) => childMarkup(child, records)).join("")}</ul>` : `<p class="goal-panel-empty">${empty}</p>`}${typeof onUnlinkChild === "function" ? errorMarkup(record, "#goal-unlink-child-error") : ""}${linkChildMarkup(record, records)}${secondary}</section>`;
   }
 
   function transferReasonsMarkup(record) {

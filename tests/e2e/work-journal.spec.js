@@ -646,7 +646,7 @@ for (const type of ["meeting", "waiting"]) {
     const trigger = page.locator(
       type === "meeting"
         ? `[data-action="meeting-route"][data-route="daily"][data-id="${source.id}"]`
-        : `[data-action="daily-from-source"][data-id="${source.id}"]`,
+        : `[data-action="waiting-create-daily"][data-id="${source.id}"]`,
     );
     const saved = await readSaved(page);
     await trigger.click();
@@ -655,26 +655,26 @@ for (const type of ["meeting", "waiting"]) {
     await expect(editor).toBeVisible();
     await openCreationExtras(page);
     for (const name of ["title", "description"]) {
-      await expect(form.locator(`[name="${name}"]`)).toHaveValue(source[name]);
+      await expect(form.locator(`[name="${name}"]`)).toHaveValue(
+        type === "waiting" && name === "title" ? "" : source[name],
+      );
     }
     await expect(form.locator('[name="priority"]')).toHaveValue(
       type === "meeting" ? "normal" : source.priority,
     );
-    await expect(form.locator('[name="nextAction"]')).toHaveValue(
-      type === "meeting" ? "" : source.nextAction,
-    );
+    await expect(form.locator('[name="nextAction"]')).toHaveValue("");
     await expect(form.locator('[name="owner"]')).toHaveValue(
       type === "meeting" ? "" : source.owner,
     );
-    await expect(form.locator('[name="dueDate"]')).toHaveValue(
-      type === "meeting" ? "" : "10.11.2026",
-    );
+    await expect(form.locator('[name="dueDate"]')).toHaveValue("");
     await expect(form.locator('select[name="type"]')).toHaveValue("daily");
     await expect(form.locator('[name="status"]')).toHaveValue("planned");
     expect(await readSaved(page)).toBe(saved);
     await editor.getByRole("button", { name: "Vazgeç", exact: true }).click();
     expect(await readSaved(page)).toBe(saved);
     await trigger.click();
+    if (type === "waiting")
+      await form.locator('[name="title"]').fill(`${source.title} günlük adımı`);
     await form.locator('[name="parentId"]').selectOption("journal-weekly");
     await editor
       .getByRole("button", { name: "Kaydı ekle", exact: true })
@@ -697,15 +697,23 @@ for (const type of ["meeting", "waiting"]) {
       recordId: source.id,
       type,
     });
+    const createdRaw = await readSaved(page);
     await page.locator(`#nav [data-view="${type}"]`).click();
-    await page
-      .locator(
-        type === "meeting"
-          ? `[data-action="open-linked-action"][data-id="${source.id}"]`
-          : `[data-action="daily-from-source"][data-id="${source.id}"]`,
-      )
-      .last()
-      .click();
+    if (type === "meeting")
+      await page
+        .locator(`[data-action="open-linked-action"][data-id="${source.id}"]`)
+        .last()
+        .click();
+    else {
+      await row(page, source.id).locator(".task-name").click();
+      const waitingPanel = page.locator("#waiting-record-panel");
+      await expect(waitingPanel).toHaveAttribute("data-record-id", source.id);
+      await waitingPanel
+        .locator(
+          `[data-action="waiting-record-open-daily"][data-id="${daily.id}"]`,
+        )
+        .click();
+    }
     await expect(
       editor.getByRole("button", {
         name: "Değişiklikleri kaydet",
@@ -718,6 +726,7 @@ for (const type of ["meeting", "waiting"]) {
     expect(
       (await readRecords(page)).filter((record) => record.type === "daily"),
     ).toHaveLength(1);
+    expect(await readSaved(page)).toBe(createdRaw);
   });
 }
 

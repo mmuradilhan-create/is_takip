@@ -524,6 +524,22 @@ test("legacy contact work stays independent and concurrent drafts allow opposite
   await list(page, "waiting");
   const beforeOpening = await saved(page);
   await row(page, waiting.id).locator(".daily-source-control").click();
+  await expect(form(page)).toHaveAttribute("data-creation", "true");
+  await expect(form(page).locator('[name="type"]')).toHaveValue("daily");
+  await expect(form(page).locator('[name="title"]')).toHaveValue("");
+  await expect(form(page).locator(".creation-source-context")).toContainText(
+    waiting.title,
+  );
+  await closeEditor(page);
+  expect(await saved(page)).toBe(beforeOpening);
+  await row(page, waiting.id).locator(".task-name").click();
+  const waitingPanel = page.locator("#waiting-record-panel");
+  await expect(waitingPanel).toHaveAttribute("data-record-id", waiting.id);
+  await waitingPanel
+    .locator(
+      `[data-action="waiting-record-open-daily"][data-id="${contact.id}"]`,
+    )
+    .click();
   await expect(form(page).locator('[name="id"]')).toHaveValue(contact.id);
   await closeEditor(page);
   expect(await saved(page)).toBe(beforeOpening);

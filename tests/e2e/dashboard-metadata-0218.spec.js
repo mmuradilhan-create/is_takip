@@ -340,9 +340,8 @@ test("Dashboard metadata explains follow-up age, offers reversible type-specific
   const dailyParent = focus.locator(
     '.focus-title-line .record-parent-link[data-id="metadata-goal"]',
   );
-  await expect(goalParent).toBeVisible();
+  await expect(goalParent).toHaveCount(0);
   await expect(dailyParent).toBeVisible();
-  await expect(goalParent.locator("svg")).toHaveCount(1);
   await expect(dailyParent.locator("svg")).toHaveCount(1);
   const focusSource = focus.locator(
     '.focus-title-line .record-source-link[data-context-kind="source"][data-action="meeting-record-details"][data-id="metadata-source"]',
@@ -409,12 +408,6 @@ test("Dashboard metadata explains follow-up age, offers reversible type-specific
   await expect(page.locator("#page-title")).toHaveText("Genel bakış");
   expect(await saved(page)).toBe(before);
   const goalParentText = "Aylık hedef: Aylık teknik hedef";
-  await expect(goalParent).toHaveText("");
-  await expect(goalParent).toHaveAttribute(
-    "data-record-link-tooltip",
-    goalParentText,
-  );
-  await expect(goalParent).not.toHaveAttribute("title");
   const dailyParentText = "Haftalık hedef: Haftalık ölçümlü hedef";
   await expect(dailyParent).toHaveText("");
   await expect(dailyParent).toHaveAttribute(
@@ -426,23 +419,13 @@ test("Dashboard metadata explains follow-up age, offers reversible type-specific
     "aria-label",
     `${dailyParentText}: üst hedefi aç`,
   );
-  const goalTitleBox = await goal(page)
-    .locator(".dashboard-goal-title")
-    .boundingBox();
   const goalTitleLineBox = await goal(page)
     .locator(".dashboard-goal-title-line")
     .boundingBox();
-  const goalParentBox = await goalParent.boundingBox();
   const goalMetadataBox = await goal(page)
     .locator(".dashboard-goal-meta-controls")
     .boundingBox();
   await expect(goal(page).locator(".dashboard-goal-context")).toHaveCount(0);
-  expect(goalParentBox.x).toBeGreaterThanOrEqual(
-    goalTitleBox.x + goalTitleBox.width + 4,
-  );
-  expect(Math.abs(goalParentBox.y - goalTitleBox.y)).toBeLessThanOrEqual(1);
-  expect(goalParentBox.width).toBe(18);
-  expect(goalParentBox.height).toBe(18);
   expect(goalMetadataBox.y).toBeGreaterThanOrEqual(
     goalTitleLineBox.y + goalTitleLineBox.height - 1,
   );
@@ -463,10 +446,6 @@ test("Dashboard metadata explains follow-up age, offers reversible type-specific
     expect(box.height).toBe(18);
     previousRight = box.x + box.width;
   }
-  await goalParent.focus();
-  await page.keyboard.press("Enter");
-  await expect(panel(page)).toHaveAttribute("data-goal-id", "metadata-month");
-  await closePanel(page);
   await dailyParent.focus();
   await page.keyboard.press("Enter");
   await expect(panel(page)).toHaveAttribute("data-goal-id", "metadata-goal");
@@ -1144,22 +1123,9 @@ test("dense previews keep two shared cards beside independent notes and every go
         if (viewport.width >= 1100)
           await expect(control).toBeInViewport({ ratio: 1 });
       }
-      for (const parent of await item
-        .locator(".dashboard-goal-title-line .record-parent-link")
-        .all()) {
-        const box = await parent.boundingBox();
-        await expect(parent).toBeVisible();
-        expect(box.x).toBeGreaterThanOrEqual(bounds.x);
-        expect(box.x + box.width).toBeLessThanOrEqual(
-          bounds.x + bounds.width + 1,
-        );
-        expect(box.y).toBeGreaterThanOrEqual(bounds.y);
-        expect(box.y + box.height).toBeLessThanOrEqual(
-          bounds.y + bounds.height + 1,
-        );
-        if (viewport.width >= 1100)
-          await expect(parent).toBeInViewport({ ratio: 1 });
-      }
+      await expect(
+        item.locator(".dashboard-goal-title-line .record-parent-link"),
+      ).toHaveCount(0);
     }
     expect(
       await page.evaluate(

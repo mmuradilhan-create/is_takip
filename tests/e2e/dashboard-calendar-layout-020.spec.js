@@ -442,6 +442,123 @@ for (const viewport of [
   }
 }
 
+test("compact calendar wraps complete record titles above type-only metadata while its grid stays fixed and expanded details remain available", async ({
+  page,
+}) => {
+  const dailyTitle =
+    "00358163, 00358162, 00357789 VE 00357778 sipariş durumu; MASTAR, KOMPLE, PARÇA: TÜP/R94153091 teknik çizimleri, tedarikçi revizyonları ve satın alma değerlendirmesindeki bütün kalemleri birlikte kontrol et";
+  const waitingTitle =
+    "Tasarım ekibinden beklenen ölçüm sonuçları, bütün prototip parçalarının güncel çizim onayları ve tedarikçi değerlendirme raporları için ayrıntılı açıklamayı eksiksiz incele ve sonraki görüşmenin kapsamını netleştir";
+  const dailyId = "calendar-020-day-0";
+  const waitingId = "calendar-020-long-waiting";
+  const original = await seed(page, {
+    inputRecords: [
+      ...fixture().map((item) =>
+        item.id === dailyId ? { ...item, title: dailyTitle } : item,
+      ),
+      record({
+        id: waitingId,
+        type: "waiting",
+        title: waitingTitle,
+        sourceDate: "2026-11-01",
+        nextFollowUpDate: "2026-11-07",
+      }),
+    ],
+  });
+  for (const viewport of [
+    { width: 1920, height: 1080 },
+    { width: 1280, height: 720 },
+  ]) {
+    await page.setViewportSize(viewport);
+    for (const theme of ["light", "dark"]) {
+      await page.locator("html").evaluate((element, value) => {
+        element.dataset.theme = value;
+      }, theme);
+      const entries = compact(page).locator(".calendar-agenda-entries");
+      const before = await fixedCalendarBoxes(page);
+      for (const [id, title, type] of [
+        [dailyId, dailyTitle, "Günlük iş"],
+        [waitingId, waitingTitle, "Bekleyen konu"],
+      ]) {
+        const entry = entries.locator(`[data-calendar-record-id="${id}"]`);
+        const subject = entry.locator("strong");
+        await expect(subject).toHaveText(title);
+        await expect(entry.locator(".calendar-entry-kind")).toHaveText(type);
+        const layout = await entry.evaluate((button) => {
+          const title = button.querySelector("strong");
+          const type = button.querySelector(".calendar-entry-kind");
+          const range = document.createRange();
+          range.selectNodeContents(title);
+          return {
+            title: title.getBoundingClientRect().toJSON(),
+            type: type.getBoundingClientRect().toJSON(),
+            lines: [...range.getClientRects()].map((rect) => rect.toJSON()),
+          };
+        });
+        expect(layout.lines.length).toBeGreaterThanOrEqual(3);
+        for (const line of layout.lines) {
+          expect(line.left).toBeGreaterThanOrEqual(layout.title.left);
+          expect(line.right).toBeLessThanOrEqual(layout.title.right);
+          expect(line.top).toBeGreaterThanOrEqual(layout.title.top);
+          expect(line.bottom).toBeLessThanOrEqual(layout.title.bottom);
+        }
+        expect(layout.type.top).toBeGreaterThanOrEqual(layout.title.bottom);
+        expect(layout.type.left).toBe(layout.title.left);
+        await entry.scrollIntoViewIfNeeded();
+      }
+      expect(await entries.evaluate((list) => list.scrollTop)).toBeGreaterThan(
+        0,
+      );
+      expect(await fixedCalendarBoxes(page)).toEqual(before);
+      expect(await compact(page).evaluate((panel) => panel.scrollTop)).toBe(0);
+      const daily = entries.locator(`[data-calendar-record-id="${dailyId}"]`);
+      await daily.focus();
+      await page.keyboard.press("Enter");
+      await expect(page.locator('#record-form [name="id"]')).toHaveValue(
+        dailyId,
+      );
+      await expect(page.locator('#record-form [name="title"]')).toHaveValue(
+        dailyTitle,
+      );
+      await page
+        .locator("#editor")
+        .getByRole("button", { name: "Vazgeç", exact: true })
+        .click();
+      const waiting = entries.locator(
+        `[data-calendar-record-id="${waitingId}"]`,
+      );
+      await waiting.focus();
+      await page.keyboard.press("Space");
+      await expect(page.locator("#editor")).toBeVisible();
+      await expect(page.locator('#record-form [name="id"]')).toHaveValue(
+        waitingId,
+      );
+      await expect(page.locator('#record-form [name="title"]')).toHaveValue(
+        waitingTitle,
+      );
+      await page
+        .locator("#editor")
+        .getByRole("button", { name: "Vazgeç", exact: true })
+        .click();
+      await compact(page).locator(".calendar-expand").click();
+      await expect(
+        expanded(page).locator(
+          `[data-calendar-record-id="${dailyId}"].calendar-entry .calendar-entry-kind`,
+        ),
+      ).toHaveText("Günlük iş · Teslim 7 Kas");
+      await expect(
+        expanded(page).locator(
+          `[data-calendar-record-id="${waitingId}"].calendar-entry .calendar-entry-kind`,
+        ),
+      ).toHaveText("Bekleyen konu · Takip 7 Kas");
+      await page.keyboard.press("Escape");
+      await expect(expanded(page)).not.toBeVisible();
+      await fitsViewport(page);
+      expect(await saved(page)).toBe(original);
+    }
+  }
+});
+
 test("actual dashboard panel bottoms align when current-work filters shorten or empty the list", async ({
   page,
 }) => {

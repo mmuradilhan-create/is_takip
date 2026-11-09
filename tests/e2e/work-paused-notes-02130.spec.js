@@ -264,6 +264,176 @@ const documentPosition = (page) =>
     y: scrollY,
     nav: document.querySelector("#nav").scrollTop,
   }));
+const rawStorage = (page) =>
+  page.evaluate(() =>
+    Object.fromEntries(
+      Object.keys(localStorage)
+        .sort()
+        .map((key) => [key, localStorage.getItem(key)]),
+    ),
+  );
+
+test("paused note title and blank card toggle preserve empty and literal drafts and caret without resuming another running job", async ({
+  page,
+  context,
+}) => {
+  await page.setViewportSize({ width: 1536, height: 864 });
+  const { raw } = await seed(page, context);
+  const active = await entry(page, "paused-active");
+  const title = page.locator("#work-session-title");
+  await choose(page, "paused-4");
+  await note(page).fill("");
+  await expect
+    .poll(async () => (await entry(page, "paused-4")).draftNote)
+    .toBe("");
+  const emptyStorage = await rawStorage(page);
+  await title.click();
+  await expect(panel(page)).toHaveAttribute("data-collapsed", "true");
+  await expect(title).toHaveAttribute("aria-expanded", "false");
+  await expect(note(page)).toBeHidden();
+  await expect(title).toBeFocused();
+  expect(await rawStorage(page)).toEqual(emptyStorage);
+  await page.keyboard.press("Enter");
+  await expect(title).toHaveAttribute("aria-expanded", "true");
+  await expect(note(page)).toBeFocused();
+  await expect(note(page)).toHaveValue("");
+  await expect(page.locator("#editor")).not.toBeVisible();
+  expect(await rawStorage(page)).toEqual(emptyStorage);
+
+  const literal =
+    '  Özgün çalışma notu: 0024594\n\t<img src=x onerror="window.pausedInjected=1"> & sonuç  ';
+  await note(page).fill(literal);
+  await expect
+    .poll(async () => (await entry(page, "paused-4")).draftNote)
+    .toBe(literal);
+  await note(page).click();
+  await expect(panel(page)).toHaveAttribute("data-collapsed", "false");
+  await page.locator("#sidebar-saved-count").click();
+  await expect(panel(page)).toHaveAttribute("data-collapsed", "false");
+  await note(page).evaluate((textarea) => {
+    window.pausedTextarea = textarea;
+    textarea.setSelectionRange(7, 18);
+  });
+  const persisted = await rawStorage(page);
+  const nav = await navRects(page);
+  const position = await documentPosition(page);
+  for (const toggle of [
+    () => title.click(),
+    () => journal(page).click({ position: { x: 5, y: 15 } }),
+    () => journal(page).locator(".sidebar-journal-heading").click(),
+  ]) {
+    await toggle();
+    await expect(panel(page)).toHaveAttribute("data-collapsed", "true");
+    await expect(title).toHaveAttribute("aria-expanded", "false");
+    await expect(note(page)).toBeHidden();
+    await expect(note(page)).toHaveValue(literal);
+    await expect(title).toHaveAttribute("data-action", "work-note-open");
+    await page.clock.runFor(32);
+    await noCardScroll(page);
+    await toggle();
+    await expect(panel(page)).toHaveAttribute("data-collapsed", "false");
+    await expect(title).toHaveAttribute("aria-expanded", "true");
+    await expect(note(page)).toBeFocused();
+    await expect(note(page)).toHaveValue(literal);
+    expect(
+      await note(page).evaluate((textarea) => ({
+        same: textarea === window.pausedTextarea,
+        selection: [textarea.selectionStart, textarea.selectionEnd],
+      })),
+    ).toEqual({ same: true, selection: [7, 18] });
+    expect(await rawStorage(page)).toEqual(persisted);
+    expect(await navRects(page)).toEqual(nav);
+    expect(await documentPosition(page)).toEqual(position);
+    await page.clock.runFor(32);
+    await noCardScroll(page);
+  }
+  expect((await session(page)).currentId).toBe("paused-active");
+  expect(await entry(page, "paused-active")).toEqual(active);
+  await expect(page.locator("#work-running-summary")).toBeVisible();
+  await expect(journal(page).getByText(/^Notu (aç|küçült)$/)).toHaveCount(0);
+  await expect(journal(page).locator("img, script")).toHaveCount(0);
+  expect(await page.evaluate(() => window.pausedInjected)).toBeUndefined();
+  await unchangedPrimary(page, raw);
+
+  await page.reload();
+  await page.clock.runFor(32);
+  await choose(page, "paused-4", true);
+  await expect(note(page)).toHaveValue(literal);
+  const reloaded = await rawStorage(page);
+  await title.focus();
+  await page.keyboard.press("Enter");
+  await expect(note(page)).toBeHidden();
+  await expect(title).toHaveAttribute("aria-expanded", "false");
+  await page.keyboard.press("Enter");
+  await expect(note(page)).toBeFocused();
+  await expect(note(page)).toHaveValue(literal);
+  expect(await rawStorage(page)).toEqual(reloaded);
+  expect(await entry(page, "paused-active")).toEqual(active);
+  expect((await session(page)).currentId).toBe("paused-active");
+  await unchangedPrimary(page, raw);
+});
+
+test("failed paused drafts stay expanded through title and blank card clicks until an explicit successful retry", async ({
+  page,
+  context,
+}) => {
+  await page.setViewportSize({ width: 1536, height: 864 });
+  const { raw } = await seed(page, context);
+  const active = await entry(page, "paused-active");
+  await choose(page, "paused-4");
+  const title = page.locator("#work-session-title");
+  const durable = await rawStorage(page);
+  const local = "  Kaydedilemeyen yerel not\nİkinci satır & değişiklik  ";
+  await page.evaluate(() => {
+    window.pausedQuota = true;
+  });
+  await note(page).fill(local);
+  await note(page).evaluate((textarea) => textarea.setSelectionRange(5, 16));
+  await expect(action(page, "work-draft-retry")).toBeVisible();
+  for (const quota of [true, false]) {
+    await page.evaluate((value) => {
+      window.pausedQuota = value;
+    }, quota);
+    for (const toggle of [
+      () => title.click(),
+      () => journal(page).click({ position: { x: 5, y: 15 } }),
+      async () => {
+        await title.focus();
+        await page.keyboard.press("Enter");
+      },
+    ]) {
+      await toggle();
+      await expect(panel(page)).toHaveAttribute("data-collapsed", "false");
+      await expect(title).toHaveAttribute("aria-expanded", "true");
+      await expect(note(page)).toBeFocused();
+      await expect(note(page)).toHaveValue(local);
+      await expect(page.locator("#work-note-error")).toBeVisible();
+      await expect(action(page, "work-draft-retry")).toBeVisible();
+      expect(
+        await note(page).evaluate((textarea) => [
+          textarea.selectionStart,
+          textarea.selectionEnd,
+        ]),
+      ).toEqual([5, 16]);
+      expect(await rawStorage(page)).toEqual(durable);
+    }
+  }
+  await action(page, "work-draft-retry").click();
+  await expect
+    .poll(async () => (await entry(page, "paused-4")).draftNote)
+    .toBe(local);
+  await expect(action(page, "work-draft-retry")).toBeHidden();
+  const recovered = await rawStorage(page);
+  await title.click();
+  await expect(panel(page)).toHaveAttribute("data-collapsed", "true");
+  await journal(page).click({ position: { x: 5, y: 15 } });
+  await expect(note(page)).toBeFocused();
+  await expect(note(page)).toHaveValue(local);
+  expect(await rawStorage(page)).toEqual(recovered);
+  expect(await entry(page, "paused-active")).toEqual(active);
+  expect((await session(page)).currentId).toBe("paused-active");
+  await unchangedPrimary(page, raw);
+});
 
 test("only the latest three eligible paused notes are shown and selecting one never resumes or duplicates it before an explicit resume", async ({
   page,

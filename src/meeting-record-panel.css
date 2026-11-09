@@ -123,6 +123,11 @@ body[data-work-session] #meeting-record-panel {
   border-top: 1px solid var(--theme-border, #e1e8da);
 }
 
+.meeting-record-note > h3 {
+  color: var(--theme-ink, #405b49);
+  font-size: 12px;
+}
+
 .meeting-record-routes {
   display: grid;
   gap: 20px;
@@ -229,6 +234,17 @@ body[data-work-session] #meeting-record-panel {
   margin-top: 10px;
 }
 
+.meeting-record-route .goal-link-child-form {
+  margin-top: 15px;
+  padding-top: 12px;
+}
+
+.meeting-record-body .meeting-record-link-error {
+  margin: 8px 0 0;
+  color: var(--theme-danger, #b23a2f);
+  font-size: 11px;
+}
+
 #meeting-record-panel > .modal-footer {
   flex-wrap: wrap;
 }
@@ -239,7 +255,13 @@ body[data-work-session] #meeting-record-panel {
   font-size: 11px;
 }
 
-#meeting-record-panel :is(button, .meeting-record-body):focus-visible {
+#meeting-record-panel
+  :is(
+    button,
+    select,
+    .meeting-record-body,
+    [data-meeting-section-heading]
+  ):focus-visible {
   outline: 2px solid var(--theme-accent, #80b8a6);
   outline-offset: 2px;
 }

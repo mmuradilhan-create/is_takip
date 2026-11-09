@@ -166,22 +166,69 @@ async function expectPanel(page, type, id) {
     false,
   );
   const controls = detail.locator("input,textarea,select,button[type=submit]");
+  const allowedForms =
+    type === "waiting"
+      ? "#waiting-link-daily-form"
+      : "#meeting-link-daily-form,#meeting-link-waiting-form";
   expect(
-    await controls.evaluateAll((elements) =>
-      elements
-        .filter((element) => !element.closest("#waiting-link-daily-form"))
-        .map((element) => element.outerHTML),
+    await controls.evaluateAll(
+      (elements, selector) =>
+        elements
+          .filter((element) => !element.closest(selector))
+          .map((element) => element.outerHTML),
+      allowedForms,
     ),
   ).toEqual([]);
+  await expect(detail.locator("input,textarea")).toHaveCount(0);
   if (type === "waiting") {
-    await expect(detail.locator("input,textarea")).toHaveCount(0);
     await expect(
       detail.locator('#waiting-link-daily-form select[name="childId"]'),
     ).toHaveCount(1);
     await expect(
       detail.locator('#waiting-link-daily-form button[type="submit"]'),
     ).toBeDisabled();
-  } else await expect(controls).toHaveCount(0);
+  } else if (id === "panel-meeting-archived") {
+    await expect(detail.locator("form")).toHaveCount(0);
+    await expect(controls).toHaveCount(0);
+    await expect(
+      detail.locator('[data-action="meeting-record-route"]'),
+    ).toHaveCount(0);
+  } else {
+    const items = await records(page);
+    const meeting = items.find((item) => item.id === id);
+    const targets = items.filter(
+      (item) =>
+        ["daily", "waiting"].includes(item.type) &&
+        item.sourceFields?.__followupSource?.recordId === id &&
+        item.sourceFields.__followupSource.type === "meeting",
+    );
+    const closed = new Set(["completed", "cancelled", "transferred"]);
+    const open = targets.length
+      ? targets.some((item) => !closed.has(item.status))
+      : !closed.has(meeting.status);
+    const emptyRoutes = open
+      ? ["daily", "waiting"].filter(
+          (route) => !targets.some((item) => item.type === route),
+        )
+      : [];
+    await expect(detail.locator("form")).toHaveCount(emptyRoutes.length);
+    for (const route of ["daily", "waiting"]) {
+      const attach = detail.locator(`#meeting-link-${route}-form`);
+      if (!emptyRoutes.includes(route)) {
+        await expect(attach).toHaveCount(0);
+        continue;
+      }
+      const select = attach.locator(`#meeting-link-${route}[name="childId"]`);
+      await expect(attach).toHaveCount(1);
+      await expect(attach).toHaveAttribute("data-route", route);
+      await expect(select).toHaveCount(1);
+      await expect(select).toHaveValue("");
+      await expect(attach.locator('button[type="submit"]')).toBeDisabled();
+      if (await select.locator('option:not([value=""])').count())
+        await expect(select).toBeEnabled();
+      else await expect(select).toBeDisabled();
+    }
+  }
   await expect(editor(page)).not.toBeVisible();
 }
 
@@ -472,10 +519,15 @@ test("detail routes use the real linked work and follow-up, preserve waiting con
     .getByRole("button", { name: "Vazgeç", exact: true })
     .click();
   await waitingRow.locator(".daily-source-control").click();
-  await expect(form(page).locator('[name="id"]')).toHaveValue(
-    "panel-daily-waiting",
+  await expect(form(page)).toHaveAttribute("data-creation", "true");
+  await expect(form(page).locator('[name="type"]')).toHaveValue("daily");
+  await expect(form(page).locator('[name="title"]')).toHaveValue("");
+  await expect(form(page).locator(".creation-source-context")).toContainText(
+    items.find((item) => item.id === "panel-waiting").title,
   );
+  expect(await saved(page)).toBe(before);
   await closeEditor(page);
+  expect(await saved(page)).toBe(before);
   await view(page, "meeting");
   await page.locator('.list-scope-tabs [data-scope="all"]').click();
   await row(page, "panel-meeting-archived").locator(".task-name").click();

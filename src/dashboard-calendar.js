@@ -180,8 +180,8 @@ export function createDashboardCalendar({
     return `<div class="calendar-legend"><span class="calendar-due">${icon("calendar")}Teslim</span><span class="calendar-followup">${icon("clock")}Takip</span></div>`;
   }
 
-  function entryMarkup(entry, small = false) {
-    return `<button type="button" class="${small ? "calendar-cell-entry" : "calendar-entry"} calendar-${entry.kind === "due" ? "due" : "followup"}" data-calendar-action="open-record" data-calendar-record-id="${esc(entry.record.id)}" title="${esc(`${entry.record.title} · ${TYPES[entry.record.type] || entry.record.type} · ${entry.kind === "due" ? "Teslim" : "Takip"}: ${format(entry.date, "short")}`)}">${small ? '<i aria-hidden="true"></i>' : icon(entry.kind === "due" ? "calendar" : "clock")}<span><strong>${esc(entry.record.title)}</strong>${small ? "" : `<small class="calendar-entry-kind">${esc(TYPES[entry.record.type] || entry.record.type)} · ${entry.kind === "due" ? "Teslim" : "Takip"} ${esc(format(entry.date, "short"))}</small>`}</span></button>`;
+  function entryMarkup(entry, small = false, fullDetails = true) {
+    return `<button type="button" class="${small ? "calendar-cell-entry" : "calendar-entry"} calendar-${entry.kind === "due" ? "due" : "followup"}" data-calendar-action="open-record" data-calendar-record-id="${esc(entry.record.id)}" title="${esc(`${entry.record.title} · ${TYPES[entry.record.type] || entry.record.type} · ${entry.kind === "due" ? "Teslim" : "Takip"}: ${format(entry.date, "short")}`)}">${small ? '<i aria-hidden="true"></i>' : icon(entry.kind === "due" ? "calendar" : "clock")}<span><strong>${esc(entry.record.title)}</strong>${small ? "" : `<small class="calendar-entry-kind">${esc(TYPES[entry.record.type] || entry.record.type)}${fullDetails ? ` · ${entry.kind === "due" ? "Teslim" : "Takip"} ${esc(format(entry.date, "short"))}` : ""}</small>`}</span></button>`;
   }
 
   function agenda(entries, expanded = false) {
@@ -192,7 +192,7 @@ export function createDashboardCalendar({
             .map((kind) => {
               const values = records.filter((entry) => entry.kind === kind);
               if (!values.length) return "";
-              return `<div class="calendar-agenda-group"><h4>${kind === "due" ? "Teslimler" : "Takipler"}</h4><ul>${values.map((entry) => `<li>${entryMarkup(entry)}</li>`).join("")}</ul></div>`;
+              return `<div class="calendar-agenda-group"><h4>${kind === "due" ? "Teslimler" : "Takipler"}</h4><ul>${values.map((entry) => `<li>${entryMarkup(entry, false, expanded)}</li>`).join("")}</ul></div>`;
             })
             .join("")
         : `<p class="calendar-empty">${readQuery() ? "Bu gün aramanla eşleşen kayıt yok." : "Bu güne planlı teslim veya takip yok."}</p>`

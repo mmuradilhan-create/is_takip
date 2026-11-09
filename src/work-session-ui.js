@@ -1,6 +1,5 @@
 import { createWorkSessionStore } from "./work-session-store.js";
 import { localDate } from "./model.js";
-import { weekWorkSummary } from "./work-journal.js";
 
 const KEY = "is-takip-v1-work-session";
 const CLOSED = new Set(["completed", "cancelled", "transferred"]);
@@ -50,7 +49,7 @@ export function createWorkSessionUI({
   journal.id = "sidebar-work-journal";
   journal.className = "sidebar-work-journal";
   journal.setAttribute("aria-label", "Çalışma notu ve geçmişi");
-  journal.innerHTML = `<div class="sidebar-journal-heading"><h2>${notesIcon}Çalışma notu</h2><span class="sidebar-journal-phase" hidden></span></div><section id="work-session-panel" class="work-session-panel" aria-label="Çalışma notu" hidden><form id="work-note-form" class="work-note-form" novalidate><button type="button" class="work-session-task-link" id="work-session-title" data-action="edit"></button><div id="work-finish-summary" class="work-note-date" hidden><span>Sonuç kaydı</span><time id="work-finish-date"></time></div><label class="work-note-field"><span id="work-session-note-label">Çalışma notu</span><textarea id="work-session-note" name="resultNote" rows="5" maxlength="10000" aria-describedby="work-note-error work-finish-shortcuts work-finish-error" placeholder="Çalışırken notlarını buraya yaz…"></textarea></label><p id="work-note-error" class="work-note-error" role="alert" hidden></p><div id="work-note-conflict" class="work-note-conflict" hidden><details><summary>Diğer penceredeki not</summary><p id="work-note-peer"></p></details><div class="work-note-resolution"><button type="button" data-action="work-draft-use-current">Güncel notu yükle</button><button type="button" data-action="work-draft-save-local">Bu notu kaydet</button></div></div><button type="button" class="work-note-retry" data-action="work-draft-retry" hidden>Yeniden dene</button><p id="work-finish-shortcuts" class="work-note-help" hidden>Enter ile kaydet, Shift+Enter ile alt satıra geç.</p><p id="work-finish-error" class="work-note-error" role="alert" hidden></p><div id="work-note-controls" class="work-session-controls"><button type="button" class="work-session-toggle" data-action="work-pause">${pauseIcon}<span>Duraklat</span></button><button type="button" class="work-session-finish" data-action="work-finish" aria-label="Oturumu bitir">${stopIcon}<span>Bitir</span></button></div><div id="work-finish-controls" class="work-session-controls work-finish-controls" hidden><button type="button" data-action="work-finish-cancel">Vazgeç</button><button type="submit" class="work-note-save">Kaydet ve bitir</button></div></form></section><div class="sidebar-journal-saved"><span>Bugün</span><span aria-hidden="true">·</span><small id="sidebar-saved-count">0 kayıt</small></div><button type="button" class="sidebar-journal-history" data-action="work-session-history">Çalışma geçmişi <span aria-hidden="true">→</span></button>`;
+  journal.innerHTML = `<div class="sidebar-journal-heading"><h2>${notesIcon}Çalışma notu</h2><span class="sidebar-journal-phase" hidden></span></div><section id="work-session-panel" class="work-session-panel" aria-label="Çalışma notu" hidden><form id="work-note-form" class="work-note-form" novalidate><button type="button" class="work-session-task-link" id="work-session-title" data-action="edit"></button><button type="button" id="work-note-expand" data-action="work-note-toggle" aria-controls="work-session-note" aria-expanded="false" hidden>Notu aç</button><div id="work-finish-summary" class="work-note-date" hidden><span>Sonuç kaydı</span><time id="work-finish-date"></time></div><label class="work-note-field"><span id="work-session-note-label">Çalışma notu</span><textarea id="work-session-note" name="resultNote" rows="5" maxlength="10000" aria-describedby="work-note-error work-finish-error" placeholder="Çalışırken notlarını buraya yaz…"></textarea></label><p id="work-note-error" class="work-note-error" role="alert" hidden></p><div id="work-note-conflict" class="work-note-conflict" hidden><details><summary>Diğer penceredeki not</summary><p id="work-note-peer"></p></details><div class="work-note-resolution"><button type="button" data-action="work-draft-use-current">Güncel notu yükle</button><button type="button" data-action="work-draft-save-local">Bu notu kaydet</button></div></div><button type="button" class="work-note-retry" data-action="work-draft-retry" hidden>Yeniden dene</button><p id="work-finish-error" class="work-note-error" role="alert" hidden></p><div id="work-note-controls" class="work-session-controls"><button type="button" class="work-session-toggle" data-action="work-pause">${pauseIcon}<span>Duraklat</span></button><button type="button" class="work-session-finish" data-action="work-finish" aria-label="Oturumu bitir">${stopIcon}<span>Bitir</span></button></div><div id="work-finish-controls" class="work-session-controls work-finish-controls" hidden><button type="button" data-action="work-finish-cancel">Vazgeç</button><button type="submit" class="work-note-save">Kaydet ve bitir</button></div></form></section><div class="sidebar-journal-footer"><button type="button" class="sidebar-journal-history" data-action="work-session-history">Çalışma geçmişi</button><small id="sidebar-saved-count" title="Toplam kaydedilmiş çalışma sayısı">0 kayıt</small></div>`;
   sidebar.append(journal);
   sidebar.classList.add("has-work-journal");
   const panel = journal.querySelector("#work-session-panel");
@@ -84,8 +83,6 @@ export function createWorkSessionUI({
   let destroyed = false;
   let refreshing = false;
   let errorMessage = "";
-  let summaryRecords = null;
-  let summaryDate = "";
   let observedRunningId;
   let runningNotificationQueued = false;
   let store;
@@ -171,6 +168,7 @@ export function createWorkSessionUI({
         conflict: false,
         remote: null,
         error: "",
+        pausedExpanded: false,
         selectionStart: null,
         selectionEnd: null,
       });
@@ -185,6 +183,10 @@ export function createWorkSessionUI({
     editorState.scrollTop = note.scrollTop;
   }
   function focusNote() {
+    if (editorState && panel.dataset.collapsed === "true") {
+      editorState.pausedExpanded = true;
+      render();
+    }
     if (owner.matchMedia?.("(max-width: 760px)").matches) {
       sidebar.classList.add("open");
       root.querySelector(".mobile-backdrop")?.classList.add("open");
@@ -316,18 +318,20 @@ export function createWorkSessionUI({
     document.documentElement.style.removeProperty("--work-session-height");
     journal.dataset.phase = panel.hidden ? "idle" : panel.dataset.phase;
   }
-  function updateDailySummary() {
-    const records = getRecords();
-    const date = localDate();
-    if (records === summaryRecords && date === summaryDate) return;
-    journal.querySelector("#sidebar-saved-count").textContent =
-      `${weekWorkSummary(records, { start: date, end: date }).sessionCount} kayıt`;
-    summaryRecords = records;
-    summaryDate = date;
-  }
   function render() {
     if (destroyed || !store) return;
-    updateDailySummary();
+    const count = getRecords().reduce(
+      (total, record) =>
+        total +
+        (record.type === "daily" && Array.isArray(record.workLog)
+          ? record.workLog.length
+          : 0),
+      0,
+    );
+    const countLabel = `${count} kayıt`;
+    const countControl = journal.querySelector("#sidebar-saved-count");
+    if (countControl.textContent !== countLabel)
+      countControl.textContent = countLabel;
     if (
       editorState &&
       document.activeElement === note &&
@@ -400,8 +404,26 @@ export function createWorkSessionUI({
     panel.hidden = false;
     const status =
       sameSession && entry.status === "running" ? "running" : "paused";
+    if (status === "paused" && document.activeElement === note)
+      state.pausedExpanded = true;
+    const collapsed =
+      status === "paused" &&
+      !finishDraft &&
+      !state.pausedExpanded &&
+      !state.error &&
+      !state.conflict;
     panel.dataset.phase = status;
     panel.dataset.mode = finishDraft ? "finish" : "note";
+    panel.dataset.collapsed = String(collapsed);
+    note.closest(".work-note-field").hidden = collapsed;
+    const expandNote = panel.querySelector("#work-note-expand");
+    expandNote.hidden =
+      status !== "paused" ||
+      Boolean(finishDraft) ||
+      Boolean(state.error) ||
+      state.conflict;
+    expandNote.textContent = collapsed ? "Notu aç" : "Notu küçült";
+    expandNote.setAttribute("aria-expanded", String(!collapsed));
     phase.hidden = false;
     phase.dataset.phase = status;
     phase.textContent = status === "running" ? "Çalışıyor" : "Duraklatıldı";
@@ -411,9 +433,12 @@ export function createWorkSessionUI({
     title.title = record?.title || "Çalışma notu";
     title.dataset.id = state.recordId;
     panel.querySelector("#work-session-note-label").textContent = finishDraft
-      ? "Sonuç"
+      ? "Sonuç (isteğe bağlı)"
       : "Çalışma notu";
-    note.required = Boolean(finishDraft);
+    note.required = false;
+    note.placeholder = finishDraft
+      ? "İstersen kısa bir sonuç yaz…"
+      : "Çalışırken notlarını buraya yaz…";
     const nextKey = draftKey(state);
     if (editorKey !== nextKey || note.value !== state.text) {
       const focused = document.activeElement === note;
@@ -469,7 +494,6 @@ export function createWorkSessionUI({
     panel.querySelector("#work-note-controls").hidden = Boolean(finishDraft);
     panel.querySelector("#work-finish-controls").hidden = !finishDraft;
     panel.querySelector("#work-finish-summary").hidden = !finishDraft;
-    panel.querySelector("#work-finish-shortcuts").hidden = !finishDraft;
     const finishError = panel.querySelector("#work-finish-error");
     finishError.textContent = finishMessage;
     finishError.hidden = !finishMessage;
@@ -734,8 +758,14 @@ export function createWorkSessionUI({
     finishDraft = null;
     finishMessage = "";
     note.setCustomValidity("");
+    if (editorState) editorState.pausedExpanded = false;
+    if (document.activeElement === note) note.blur();
     render();
-    if (!panel.hidden) focusNote();
+    if (!panel.hidden) {
+      if (panel.dataset.collapsed === "true")
+        panel.querySelector("#work-note-expand").focus({ preventScroll: true });
+      else focusNote();
+    }
   }
   function beginFinish(id) {
     if (finishing || finishDraft || !isOpen(find(id)) || !flushDrafts()) return;
@@ -772,12 +802,6 @@ export function createWorkSessionUI({
     const state = editorState;
     const rawNote = state.text;
     const result = rawNote.trim();
-    if (!result) {
-      note.setCustomValidity("Çalışmayı bitirmek için bir sonuç yaz.");
-      finishError("Çalışmayı bitirmek için bir sonuç yaz.");
-      focusNote();
-      return;
-    }
     if (!flushState(state)) return;
     store.synchronize();
     const record = find(pending.recordId);
@@ -802,6 +826,7 @@ export function createWorkSessionUI({
     render();
     try {
       const saved =
+        !result ||
         Boolean(existingLog) ||
         (typeof onCompleteSession === "function" &&
           (await onCompleteSession(pending.recordId, {
@@ -819,7 +844,11 @@ export function createWorkSessionUI({
           expectedDraft: rawNote,
         })
       ) {
-        finishError("Sonuç kaydedildi; çalışma kapatılamadı. Yeniden dene.");
+        finishError(
+          result || existingLog
+            ? "Sonuç kaydedildi; çalışma kapatılamadı. Yeniden dene."
+            : "Çalışma kapatılamadı. Yeniden dene.",
+        );
         return;
       }
       drafts.delete(draftKey(state));
@@ -828,7 +857,9 @@ export function createWorkSessionUI({
       finishDraft = null;
       finishMessage = "";
       try {
-        onMessage("Sonuç çalışma geçmişine kaydedildi.");
+        onMessage(
+          result ? "Sonuç çalışma geçmişine kaydedildi." : "Çalışma bitirildi.",
+        );
       } catch {
         /* Already committed. */
       }
@@ -868,10 +899,20 @@ export function createWorkSessionUI({
         "work-draft-use-current",
         "work-draft-save-local",
         "work-draft-fork",
+        "work-note-toggle",
       ].includes(action)
     )
       return;
     event.preventDefault();
+    if (action === "work-note-toggle") {
+      if (!editorState || finishing || finishDraft) return;
+      const expand = panel.dataset.collapsed === "true";
+      editorState.pausedExpanded = expand;
+      if (!expand) control.focus({ preventScroll: true });
+      render();
+      if (expand) focusNote();
+      return;
+    }
     if (action === "work-finish-cancel") {
       cancelFinish();
       return;
@@ -918,6 +959,8 @@ export function createWorkSessionUI({
         store.current?.recordId === id &&
         store.current.status === "running")
     ) {
+      if (editorState) editorState.pausedExpanded = false;
+      if (document.activeElement === note) note.blur();
       store.pause(id, store.current?.sessionId);
       render();
       return;

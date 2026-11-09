@@ -372,13 +372,14 @@ test("sidebar work notes keep history available and save only finished results w
   await expect(
     control.locator("#sidebar-saved-time, #work-session-time"),
   ).toHaveCount(0);
-  await expect(control.locator("#sidebar-saved-count")).toHaveText("2 kayıt");
+  await expect(control.locator(".sidebar-journal-saved")).toHaveCount(0);
+  await expect(control.locator("#sidebar-saved-count")).toHaveText("3 kayıt");
+  await expect(
+    control.locator('[data-action="work-session-history"]'),
+  ).toHaveText("Çalışma geçmişi");
   await expect(control.locator(".sidebar-journal-idle")).toHaveCount(0);
   const idleBounds = await control.boundingBox();
   expect(idleBounds.height).toBeLessThanOrEqual(110);
-  expect(
-    (await control.locator(".sidebar-journal-saved").boundingBox()).height,
-  ).toBeLessThanOrEqual(18);
   await control.screenshot({
     path: testInfo.outputPath("mini-journal-idle.png"),
   });
@@ -442,6 +443,8 @@ test("sidebar work notes keep history available and save only finished results w
   await page.locator('#editor [data-action="close"]').last().click();
   await panel.getByRole("button", { name: "Duraklat", exact: true }).click();
   await page.clock.fastForward(120_000);
+  await expect(panel).toHaveAttribute("data-collapsed", "true");
+  await expect(draft).toBeHidden();
   await expect(draft).toHaveValue("Kompakt panelden inceleme tamamlandı.");
   const paused = await page.evaluate(
     (key) => JSON.parse(localStorage.getItem(key)),
@@ -474,7 +477,8 @@ test("sidebar work notes keep history available and save only finished results w
   await expect(
     control.locator("#sidebar-saved-time, #work-session-time"),
   ).toHaveCount(0);
-  await expect(control.locator("#sidebar-saved-count")).toHaveText("3 kayıt");
+  await expect(control.locator(".sidebar-journal-saved")).toHaveCount(0);
+  await expect(control.locator("#sidebar-saved-count")).toHaveText("4 kayıt");
   const records = await readRecords(page);
   const changed = records.find((record) => record.id === "compact-urgent");
   expect(changed.status).toBe("in_progress");
@@ -496,4 +500,5 @@ test("sidebar work notes keep history available and save only finished results w
   await page.getByRole("button", { name: "Geri al", exact: true }).click();
   expect(await readRecords(page)).toEqual(originals);
   expect(await readSaved(page)).toBe(before);
+  await expect(control.locator("#sidebar-saved-count")).toHaveText("3 kayıt");
 });

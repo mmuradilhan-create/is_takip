@@ -2553,10 +2553,13 @@ export async function startMainApp() {
       try {
         if (record.workLog?.some((entry) => entry.id === draft.sessionId))
           return saveRecords(state.records, "İş günlüğü kaydı");
-        if (typeof draft.note !== "string" || !draft.note.trim())
-          throw new Error("Çalışmayı bitirmek için bir sonuç yaz.");
         if (["completed", "cancelled", "transferred"].includes(record.status))
           throw new Error("Bu günlük iş kapanmış. Güncel kaydı kontrol et.");
+        if (
+          draft.note == null ||
+          (typeof draft.note === "string" && !draft.note.trim())
+        )
+          return true;
         const updated = appendWorkLog(
           record,
           { ...draft, id: draft.sessionId },

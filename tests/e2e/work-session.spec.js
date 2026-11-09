@@ -179,6 +179,8 @@ test("inline work notes pause and resume without timing while finishing saves on
   await page.keyboard.press("Enter");
   await expect(panel(page)).toHaveAttribute("data-phase", "paused");
   await expect(panel(page)).toHaveAttribute("data-mode", "note");
+  await expect(panel(page)).toHaveAttribute("data-collapsed", "true");
+  await expect(draft(page)).toBeHidden();
   await expect(toggle).toBeFocused();
   await expect(finish(page)).not.toBeVisible();
   expect(await currentEntry(page)).toMatchObject({
@@ -190,6 +192,7 @@ test("inline work notes pause and resume without timing while finishing saves on
   await page.clock.fastForward(120_000);
   await page.keyboard.press("Space");
   await expect(panel(page)).toHaveAttribute("data-phase", "running");
+  await expect(panel(page)).toHaveAttribute("data-collapsed", "false");
   await expect(draft(page)).toBeFocused();
   await panel(page).locator('[data-action="work-finish"]').click();
   await expect(finish(page)).toBeVisible();

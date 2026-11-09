@@ -531,13 +531,17 @@ CALISMAYA BASLA
 
 Günlük işin Çalışmaya başla düğmesi sol altta o işe ait Çalışma notu alanını
 açar. Çalışırken yazabilirsin; süre sayacı veya saat/dakika girişi yoktur.
-Duraklat sonuç istemez, yazılanları taslakta tutar. Devam et aynı nottan
+Sol menü sekmeleri sabittir; kaydırılmaz ve adları tek satırda kalır.
+Üst boşluklar ve not alanı ekran yüksekliğine göre sıkışır.
+Duraklat sonuç istemez, taslağı koruyup alanı küçük özete indirir. Notu aç
+notu gösterir. Altta çalışma geçmişi ve toplam kayıt sayısı tek satırdadır.
+Devam et aynı nottan
 sürdürür. Başka işe geçmek öncekini duraklatır; geri dönünce notu açılır.
 Kaydedilen taslak yenileme ve pencere kapanışında korunur. Kaydetme hatası
 veya başka pencereyle çakışma metni sessizce silmez; hata gösterilir.
 
-Bitir, aynı not alanında Sonuç adımını açar. Notun hazır gelir; boş olmayan
-sonucu Kaydet ve bitir ile tarih/saat bilgisiyle geçmişe ekle. Vazgeçmek
+Bitir, aynı not alanında Sonuç adımını açar. Notun hazır gelir; sonuç yazmak
+isteğe bağlıdır. Boşsa çalışma kapanır ve geçmişe kayıt eklenmez. Vazgeçmek
 taslağı korur. Kaydetme hatasında yeniden deneyebilirsin; kayıt çoğalmaz.
 Bitirmek işin durumunu değiştirmez. Kaydedilmiş çalışma tek Geri al adımıdır.
 

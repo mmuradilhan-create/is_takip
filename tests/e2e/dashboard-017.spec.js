@@ -458,11 +458,14 @@ test("the overview distinguishes idle work notes, an active untimed draft and ma
     "Toplantı aksiyonları",
   );
   await expect(page.locator(".sidebar-journal-idle")).toHaveCount(0);
-  await expect(page.locator(".sidebar-journal-saved")).toContainText("Bugün");
+  await expect(page.locator(".sidebar-journal-saved")).toHaveCount(0);
+  await expect(page.locator("#sidebar-saved-count")).toHaveText("1 kayıt");
+  await expect(page.locator('[data-action="work-session-history"]')).toHaveText(
+    "Çalışma geçmişi",
+  );
   await expect(
     page.locator("#sidebar-saved-time, #work-session-time"),
   ).toHaveCount(0);
-  await expect(page.locator("#sidebar-saved-count")).toHaveText("0 kayıt");
   await expect(page.locator("#work-session-panel")).not.toBeVisible();
   await expect(page.locator(".sidebar-journal-phase")).not.toBeVisible();
   await expect(focusFilter(page, "focus")).toContainText("Bugünün odağı");
@@ -494,6 +497,14 @@ test("the overview distinguishes idle work notes, an active untimed draft and ma
   await expect(page.locator("#work-session-panel")).toHaveAttribute(
     "data-mode",
     "note",
+  );
+  await expect(page.locator("#work-session-panel")).toHaveAttribute(
+    "data-collapsed",
+    "true",
+  );
+  await expect(page.locator("#work-session-note")).toBeHidden();
+  await expect(page.locator("#work-session-note")).toHaveValue(
+    "Görünüm değişse de korunacak çalışma notu",
   );
   expect(await saved(page)).toBe(original);
   await view(page, "meeting");

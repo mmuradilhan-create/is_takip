@@ -124,9 +124,10 @@ test("inline finishing with Enter saves only its result without a timer while pr
   const originals = await seed(page);
   await beginFinish(page);
   await expect(finishForm(page).locator('[name="nextAction"]')).toHaveCount(0);
-  await expect(sessionNote(page)).toHaveAccessibleDescription(
-    "Enter ile kaydet, Shift+Enter ile alt satıra geç.",
-  );
+  await expect(page.locator("#work-finish-shortcuts")).toHaveCount(0);
+  expect(
+    (await sessionNote(page).getAttribute("aria-describedby")) || "",
+  ).not.toContain("work-finish-shortcuts");
   await page.clock.fastForward(120_000);
   await expect(
     page.locator(
@@ -134,7 +135,13 @@ test("inline finishing with Enter saves only its result without a timer while pr
     ),
   ).toHaveCount(0);
   expect(await readRecords(page)).toEqual(originals);
-  await finish(page, { note: NOTE });
+  await sessionNote(page).fill(NOTE);
+  await sessionNote(page).press("Shift+Enter");
+  await sessionNote(page).pressSequentially("İkinci sonuç satırı.");
+  const result = `${NOTE}\nİkinci sonuç satırı.`;
+  await expect(sessionNote(page)).toHaveValue(result);
+  await sessionNote(page).press("Enter");
+  await expect(panel(page)).not.toBeVisible();
   const saved = await readRecords(page);
   expect(saved[0]).toEqual(originals[0]);
   const daily = saved.find((record) => record.id === "journal-daily");
@@ -144,7 +151,7 @@ test("inline finishing with Enter saves only its result without a timer while pr
     date: "2026-11-07",
     endedAt: "2026-11-07T12:01:05.000Z",
     durationMs: 0,
-    note: NOTE,
+    note: result,
     nextAction: "",
   });
   expect(daily.nextAction).toBe(originals[1].nextAction);
@@ -183,37 +190,48 @@ test("inline finishing with Enter saves only its result without a timer while pr
   ).toBeDisabled();
 });
 
-test("an inline result is required and successive notes have separate durable entries without completing the task", async ({
+test("blank and whitespace inline finishes end separate working sessions without a record, history or Undo write", async ({
   page,
 }) => {
   const originals = await seed(page);
   const before = await readSaved(page);
-  await beginFinish(page, 10_000);
-  await sessionNote(page).fill("  \n ");
-  await finishForm(page).locator('[type="submit"]').click();
-  await expect(panel(page).locator("#work-finish-error")).toBeVisible();
-  await expect(panel(page).locator("#work-finish-error")).toContainText(
-    "bir sonuç yaz",
-  );
-  await expect(panel(page)).toHaveAttribute("data-mode", "finish");
-  expect(await readSaved(page)).toBe(before);
-  expect(JSON.parse(await readSaved(page)).odak.history).toHaveLength(0);
-  expect(await readRecords(page)).toEqual(originals);
-  await finish(page, { note: "İlk çalışma sonucu" });
-  await beginFinish(page, 20_000);
-  await finish(page, { note: "İkinci çalışma sonucu" });
-  const daily = (await readRecords(page)).find(
-    (record) => record.id === "journal-daily",
-  );
-  expect(daily.status).toBe(originals[1].status);
-  expect(daily.workLog.map((entry) => entry.durationMs)).toEqual([0, 0]);
-  expect(new Set(daily.workLog.map((entry) => entry.id)).size).toBe(2);
-  expect(daily.workLog.map((entry) => entry.note)).toEqual([
-    "İlk çalışma sonucu",
-    "İkinci çalışma sonucu",
-  ]);
-  expect(daily.workLog.map((entry) => entry.nextAction)).toEqual(["", ""]);
-  expect(daily.nextAction).toBe(originals[1].nextAction);
+  const sessionIds = [];
+  for (const [index, result] of ["", "  \n "].entries()) {
+    await beginFinish(page, (index + 1) * 10_000);
+    const paused = await page.evaluate(
+      (key) => JSON.parse(localStorage.getItem(key)),
+      SESSION_KEY,
+    );
+    const session = paused.entries.find(
+      (entry) => entry.recordId === "journal-daily",
+    );
+    sessionIds.push(session.sessionId);
+    await sessionNote(page).fill(result);
+    await expect(sessionNote(page)).toHaveJSProperty("required", false);
+    await expect(sessionNote(page)).toHaveJSProperty("validationMessage", "");
+    if (index) await sessionNote(page).press("Enter");
+    else await finishForm(page).locator('[type="submit"]').click();
+    await expect(panel(page)).not.toBeVisible();
+    expect(await readSaved(page)).toBe(before);
+    expect(await readRecords(page)).toEqual(originals);
+    expect(JSON.parse(await readSaved(page)).odak.history).toHaveLength(0);
+    await expect(
+      page.getByRole("button", { name: "Geri al", exact: true }),
+    ).toBeDisabled();
+    const finished = await page.evaluate(
+      (key) => JSON.parse(localStorage.getItem(key)),
+      SESSION_KEY,
+    );
+    expect(finished.currentId).toBeNull();
+    expect(
+      finished.entries.find((entry) => entry.sessionId === session.sessionId)
+        .status,
+    ).toBe("finished");
+    await page.reload();
+    await page.locator('#nav [data-view="daily"]').click();
+    expect(await readSaved(page)).toBe(before);
+  }
+  expect(new Set(sessionIds).size).toBe(2);
 });
 
 test("a failed Enter journal write retains its multiline result and paused draft while retry saves exactly once without changing the task's next step", async ({

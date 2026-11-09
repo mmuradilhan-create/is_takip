@@ -321,15 +321,153 @@ test("sidebar working notes keep idle compact and inline finish controls bounded
 }) => {
   const original = await seed(page);
   const originalBytes = await saved(page);
+  const savedCount = original
+    .filter((record) => record.type === "daily")
+    .reduce((count, record) => count + (record.workLog?.length || 0), 0);
+  const labels = [
+    "Genel bakış",
+    "Günlük işler",
+    "Haftalık plan",
+    "Aylık hedefler",
+    "Senelik hedefler",
+    "Toplantı aksiyonları",
+    "Bekleyen konular",
+  ];
+  async function navigationGeometry(baseline) {
+    const geometry = await page.locator("#nav").evaluate((nav) => {
+      const rect = (box) => ({
+        x: box.x,
+        y: box.y,
+        width: box.width,
+        height: box.height,
+      });
+      return {
+        clientHeight: nav.clientHeight,
+        scrollHeight: nav.scrollHeight,
+        clientWidth: nav.clientWidth,
+        scrollWidth: nav.scrollWidth,
+        scrollTop: nav.scrollTop,
+        box: rect(nav.getBoundingClientRect()),
+        buttons: [...nav.querySelectorAll("button[data-view]")].map(
+          (button) => {
+            const node = [...button.childNodes].find(
+              (child) =>
+                child.nodeType === Node.TEXT_NODE && child.textContent.trim(),
+            );
+            const range = document.createRange();
+            range.selectNodeContents(node);
+            const style = getComputedStyle(button);
+            const count = button.querySelector(".count");
+            return {
+              view: button.dataset.view,
+              label: node.textContent.trim(),
+              box: rect(button.getBoundingClientRect()),
+              textOverflow: style.textOverflow,
+              lines: [...range.getClientRects()].map(rect),
+              count: count ? rect(count.getBoundingClientRect()) : null,
+            };
+          },
+        ),
+      };
+    });
+    expect(geometry.scrollHeight).toBeLessThanOrEqual(
+      geometry.clientHeight + 1,
+    );
+    expect(geometry.scrollWidth).toBeLessThanOrEqual(geometry.clientWidth + 1);
+    expect(geometry.scrollTop).toBe(0);
+    expect(geometry.buttons.map((button) => button.label)).toEqual(labels);
+    for (const [index, button] of geometry.buttons.entries()) {
+      expect(button.box.x).toBeGreaterThanOrEqual(geometry.box.x - 0.5);
+      expect(button.box.y).toBeGreaterThanOrEqual(geometry.box.y - 0.5);
+      expect(button.box.x + button.box.width).toBeLessThanOrEqual(
+        geometry.box.x + geometry.box.width + 0.5,
+      );
+      expect(button.box.y + button.box.height).toBeLessThanOrEqual(
+        geometry.box.y + geometry.box.height + 0.5,
+      );
+      expect(button.box.y).toBeGreaterThanOrEqual(0);
+      expect(button.box.y + button.box.height).toBeLessThanOrEqual(
+        page.viewportSize().height,
+      );
+      expect(button.textOverflow).not.toBe("ellipsis");
+      expect(button.lines).toHaveLength(1);
+      const line = button.lines[0];
+      expect(line.x).toBeGreaterThanOrEqual(button.box.x - 0.5);
+      expect(line.y).toBeGreaterThanOrEqual(button.box.y - 0.5);
+      expect(line.x + line.width).toBeLessThanOrEqual(
+        button.box.x + button.box.width + 0.5,
+      );
+      expect(line.y + line.height).toBeLessThanOrEqual(
+        button.box.y + button.box.height + 0.5,
+      );
+      if (button.count) {
+        expect(line.x + line.width).toBeLessThanOrEqual(button.count.x + 0.5);
+        expect(button.count.x + button.count.width).toBeLessThanOrEqual(
+          button.box.x + button.box.width + 0.5,
+        );
+      }
+      if (baseline) {
+        expect(button.view).toBe(baseline.buttons[index].view);
+        for (const dimension of ["x", "y", "width", "height"])
+          expect(
+            Math.abs(
+              button.box[dimension] - baseline.buttons[index].box[dimension],
+            ),
+          ).toBeLessThanOrEqual(0.5);
+      }
+    }
+    return geometry;
+  }
+  async function noteControls(journal, workingNote, baseline, expanded = true) {
+    await navigationGeometry(baseline);
+    await expect(journal).toBeInViewport({ ratio: 1 });
+    if (expanded) {
+      await expect(workingNote).toBeInViewport({ ratio: 1 });
+      expect((await workingNote.boundingBox()).height).toBeGreaterThan(0);
+    } else await expect(workingNote).toBeHidden();
+    const pad = await journal.boundingBox();
+    const nav = await page.locator("#nav").boundingBox();
+    expect(nav.y + nav.height).toBeLessThanOrEqual(pad.y + 1);
+    for (const control of await journal
+      .locator("#work-session-panel button:visible")
+      .all())
+      await expect(control).toBeInViewport({ ratio: 1 });
+    await expect(
+      journal.locator("#work-session-time, #sidebar-saved-time"),
+    ).toHaveCount(0);
+    await expect(journal.locator(".sidebar-journal-saved")).toHaveCount(0);
+    await expect(journal.locator("#sidebar-saved-count")).toHaveText(
+      `${savedCount} kayıt`,
+    );
+    await expect(
+      journal.locator('[data-action="work-session-history"]'),
+    ).toHaveText("Çalışma geçmişi");
+    const history = await journal
+      .locator('[data-action="work-session-history"]')
+      .boundingBox();
+    const count = await journal.locator("#sidebar-saved-count").boundingBox();
+    const footer = await journal
+      .locator(".sidebar-journal-footer")
+      .boundingBox();
+    expect(history.x).toBeGreaterThanOrEqual(footer.x - 0.5);
+    expect(history.x + history.width).toBeLessThanOrEqual(count.x + 0.5);
+    expect(count.x + count.width).toBeLessThanOrEqual(
+      footer.x + footer.width + 0.5,
+    );
+    expect(
+      Math.abs(history.y + history.height / 2 - count.y - count.height / 2),
+    ).toBeLessThanOrEqual(1);
+    expect(await saved(page)).toBe(originalBytes);
+  }
   for (const viewport of [
-    { width: 1280, height: 720 },
-    { width: 1440, height: 900 },
-    { width: 1280, height: 600 },
+    { width: 1536, height: 864 },
+    { width: 1280, height: 700 },
     { width: 1280, height: 400 },
     { width: 850, height: 480 },
   ]) {
     await page.setViewportSize(viewport);
     await navigate(page, "dashboard");
+    const baseline = await navigationGeometry();
     const journal = page.locator("#sidebar-work-journal");
     const idle = await journal.boundingBox();
     expect(idle.height).toBeLessThanOrEqual(110);
@@ -338,111 +476,51 @@ test("sidebar working notes keep idle compact and inline finish controls bounded
     const active = await journal.boundingBox();
     expect(active.height).toBeGreaterThan(idle.height + 30);
     expect(active.y + active.height).toBeCloseTo(idle.y + idle.height, 1);
-    await expect(journal).toBeInViewport({ ratio: 1 });
     const workingNote = journal.locator("#work-session-note");
     await expect(workingNote).toBeFocused();
-    expect((await workingNote.boundingBox()).height).toBeGreaterThanOrEqual(
-      100,
-    );
-    await expect(
-      journal.locator("#work-session-time, #sidebar-saved-time"),
-    ).toHaveCount(0);
-    const nav = await page.locator("#nav").boundingBox();
-    expect(nav.y + nav.height).toBeLessThanOrEqual(active.y + 1);
-    expect(active.y + active.height).toBeLessThanOrEqual(viewport.height);
+    await noteControls(journal, workingNote, baseline);
     const sidebar = await page.locator(".sidebar").boundingBox();
     expect(sidebar.y).toBeGreaterThanOrEqual(0);
     expect(sidebar.y + sidebar.height).toBeLessThanOrEqual(viewport.height);
-    const navScroll = await page.locator("#nav").evaluate((element) => ({
-      clientHeight: element.clientHeight,
-      scrollHeight: element.scrollHeight,
-      overflowY: getComputedStyle(element).overflowY,
-    }));
-    if (navScroll.scrollHeight > navScroll.clientHeight)
-      expect(["auto", "scroll"]).toContain(navScroll.overflowY);
-    for (const link of await page.locator("#nav [data-view]").all()) {
-      await link.scrollIntoViewIfNeeded();
-      const geometry = await link.evaluate((element) => {
-        const nav = element.closest("#nav").getBoundingClientRect();
-        const box = element.getBoundingClientRect();
-        const clip = {
-          left: Math.max(0, nav.left),
-          top: Math.max(0, nav.top),
-          right: Math.min(innerWidth, nav.right),
-          bottom: Math.min(innerHeight, nav.bottom),
-        };
-        const texts = [];
-        const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
-        let text;
-        while ((text = walker.nextNode())) {
-          if (!text.textContent.trim()) continue;
-          const range = document.createRange();
-          range.selectNodeContents(text);
-          const bounds = range.getBoundingClientRect();
-          if (bounds.width && bounds.height)
-            texts.push({
-              left: bounds.left,
-              top: bounds.top,
-              right: bounds.right,
-              bottom: bounds.bottom,
-            });
-        }
-        return {
-          clip,
-          button: {
-            left: box.left,
-            top: box.top,
-            right: box.right,
-            bottom: box.bottom,
-          },
-          texts,
-        };
-      });
-      expect(geometry.button.left).toBeGreaterThanOrEqual(
-        geometry.clip.left - 1,
-      );
-      expect(geometry.button.top).toBeGreaterThanOrEqual(geometry.clip.top - 1);
-      expect(geometry.button.right).toBeLessThanOrEqual(
-        geometry.clip.right + 1,
-      );
-      expect(geometry.button.bottom).toBeLessThanOrEqual(
-        geometry.clip.bottom + 1,
-      );
-      expect(geometry.texts.length).toBeGreaterThan(0);
-      for (const text of geometry.texts) {
-        expect(text.left).toBeGreaterThanOrEqual(geometry.clip.left);
-        expect(text.top).toBeGreaterThanOrEqual(geometry.clip.top);
-        expect(text.right).toBeLessThanOrEqual(geometry.clip.right);
-        expect(text.bottom).toBeLessThanOrEqual(geometry.clip.bottom);
-      }
-      await expect(workingNote).toBeInViewport({ ratio: 1 });
-      await expect(
-        journal.locator('[aria-label="Oturumu bitir"]'),
-      ).toBeInViewport({ ratio: 1 });
-      const pad = await journal.boundingBox();
-      const navBox = await page.locator("#nav").boundingBox();
-      expect(navBox.y + navBox.height).toBeLessThanOrEqual(pad.y + 1);
-    }
-    await expect(journal.locator("#work-session-panel")).toBeVisible();
-    await expect(
-      journal.locator('[aria-label="Oturumu bitir"]'),
-    ).toBeInViewport({ ratio: 1 });
-    await expect(journal.locator('[data-action="work-pause"]')).toBeInViewport({
-      ratio: 1,
-    });
     const result = `Dar pencerede kaydedilen gerçek sonuç ${viewport.width}×${viewport.height}`;
     await workingNote.fill(result);
-    await page.clock.fastForward(5000);
-    expect(await saved(page)).toBe(originalBytes);
-    await journal
-      .getByRole("button", { name: "Oturumu bitir", exact: true })
-      .click();
+    await journal.locator('[data-action="work-pause"]').click();
+    await expect(journal.locator("#work-session-panel")).toHaveAttribute(
+      "data-phase",
+      "paused",
+    );
+    await expect(journal.locator("#work-session-panel")).toHaveAttribute(
+      "data-collapsed",
+      "true",
+    );
+    await expect(workingNote).toHaveValue(result);
+    expect((await journal.boundingBox()).height).toBeLessThan(active.height);
+    await noteControls(journal, workingNote, baseline, false);
+    await journal.locator("#work-note-expand").click();
+    await expect(journal.locator("#work-session-panel")).toHaveAttribute(
+      "data-collapsed",
+      "false",
+    );
+    await expect(journal.locator("#work-session-panel")).toHaveAttribute(
+      "data-phase",
+      "paused",
+    );
+    await noteControls(journal, workingNote, baseline);
+    await journal.locator('[data-action="work-resume"]').click();
+    await expect(journal.locator("#work-session-panel")).toHaveAttribute(
+      "data-phase",
+      "running",
+    );
+    await expect(workingNote).toHaveValue(result);
+    await noteControls(journal, workingNote, baseline);
+    await journal.locator('[data-action="work-finish"]').click();
     await expect(page.locator("#work-finish-dialog")).toHaveCount(0);
     await expect(journal.locator("#work-session-panel")).toHaveAttribute(
       "data-mode",
       "finish",
     );
     await expect(workingNote).toHaveValue(result);
+    await noteControls(journal, workingNote, baseline);
     await expect(
       journal.getByRole("button", { name: "Kaydet ve bitir", exact: true }),
     ).toBeInViewport({ ratio: 1 });
@@ -451,6 +529,10 @@ test("sidebar working notes keep idle compact and inline finish controls bounded
     ).toBeInViewport({ ratio: 1 });
     await workingNote.press("Enter");
     await expect(journal.locator("#work-session-panel")).not.toBeVisible();
+    await navigationGeometry(baseline);
+    await expect(journal.locator("#sidebar-saved-count")).toHaveText(
+      `${savedCount + 1} kayıt`,
+    );
     const changed = (await records(page)).find(
       (record) => record.id === "refine-primary",
     );
@@ -464,5 +546,8 @@ test("sidebar working notes keep idle compact and inline finish controls bounded
     await undo(page);
     expect(await records(page)).toEqual(original);
     expect(await saved(page)).toBe(originalBytes);
+    await expect(journal.locator("#sidebar-saved-count")).toHaveText(
+      `${savedCount} kayıt`,
+    );
   }
 });

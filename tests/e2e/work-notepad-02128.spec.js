@@ -218,12 +218,13 @@ test("starting work opens a focused untimed notepad whose durable drafts survive
   expect(await saved(page)).toBe(raw);
 });
 
-test("Bitir keeps the current result inline, requires real text, and saves one untimed journal record without changing task planning or raw history", async ({
+test("Bitir keeps a draft inline and permits an empty finish without changing saved work, planning or Undo history", async ({
   page,
   context,
 }) => {
-  const { records, raw } = await seed(page, context);
+  const { raw } = await seed(page, context);
   await start(page);
+  await expect(page.locator("#sidebar-saved-count")).toHaveText("1 kayıt");
   await note(page).fill("Taslak çalışma sonucu\nİkinci gerçek satır.");
   await expectDraft(page, "Taslak çalışma sonucu\nİkinci gerçek satır.");
   const sessionId = (await entry(page)).sessionId;
@@ -231,7 +232,12 @@ test("Bitir keeps the current result inline, requires real text, and saves one u
   await expect(pad(page)).toHaveAttribute("data-mode", "finish");
   await expect(finish(page)).toBeVisible();
   await expect(page.locator("#work-finish-dialog")).toHaveCount(0);
-  await expect(note(page)).toHaveAccessibleName("Sonuç");
+  await expect(note(page)).toHaveAccessibleName("Sonuç (isteğe bağlı)");
+  await expect(note(page)).toHaveJSProperty("required", false);
+  await expect(pad(page).locator("#work-finish-shortcuts")).toHaveCount(0);
+  expect(
+    (await note(page).getAttribute("aria-describedby")) || "",
+  ).not.toContain("work-finish-shortcuts");
   await expect(note(page)).toHaveValue(
     "Taslak çalışma sonucu\nİkinci gerçek satır.",
   );
@@ -245,45 +251,33 @@ test("Bitir keeps the current result inline, requires real text, and saves one u
   await expectDraft(page, "Taslak çalışma sonucu\nİkinci gerçek satır.");
   expect(await saved(page)).toBe(raw);
   await action(page, "work-finish").click();
-  await note(page).fill("   ");
-  await note(page).press("Enter");
-  await expect(pad(page)).toHaveAttribute("data-mode", "finish");
-  await expect(finish(page).locator("#work-finish-error")).not.toBeEmpty();
-  expect(await saved(page)).toBe(raw);
-  const result = "Tamamlanan gerçek inceleme\nKayda geçecek sonuç.";
-  await note(page).fill(result);
+  await note(page).fill("  \n ");
+  await expect(note(page)).toHaveJSProperty("required", false);
+  expect(
+    await note(page).evaluate((textarea) => textarea.validationMessage),
+  ).toBe("");
   await note(page).press("Enter");
   await expect(pad(page)).not.toBeVisible();
   const after = await stored(page);
-  const original = records.find((record) => record.id === "pad-first");
-  const changed = after.records.find((record) => record.id === original.id);
-  expect(changed.workLog).toEqual([
-    ...original.workLog,
-    {
-      id: sessionId,
-      date: "2026-11-09",
-      endedAt: NOW.toISOString(),
-      durationMs: 0,
-      note: result,
-      nextAction: "",
-    },
-  ]);
-  expect(after.records).toEqual(
-    records.map((record) =>
-      record.id === original.id
-        ? { ...record, workLog: changed.workLog, updatedAt: NOW.toISOString() }
-        : record,
-    ),
-  );
-  expect(after.odak.notes).toEqual(JSON.parse(raw).odak.notes);
-  expect(after.odak.preferences).toEqual(JSON.parse(raw).odak.preferences);
-  expect(after.odak.history).toHaveLength(1);
-  expect(await entry(page)).toMatchObject({ status: "finished", elapsedMs: 0 });
+  expect(await saved(page)).toBe(raw);
+  expect(after.odak.history).toHaveLength(0);
+  await expect(page.locator("#sidebar-saved-count")).toHaveText("1 kayıt");
+  await expect(
+    page.getByRole("button", { name: "Geri al", exact: true }),
+  ).toBeDisabled();
+  expect(await entry(page)).toMatchObject({
+    sessionId,
+    status: "finished",
+    elapsedMs: 0,
+  });
   expect(Object.hasOwn(await entry(page), "draftNote")).toBe(false);
   await page.reload();
   expect((await stored(page)).records).toEqual(after.records);
-  await undo(page);
   expect(await saved(page)).toBe(raw);
+  await expect(page.locator("#sidebar-saved-count")).toHaveText("1 kayıt");
+  await expect(
+    page.getByRole("button", { name: "Geri al", exact: true }),
+  ).toBeDisabled();
 });
 
 test("draft storage failure keeps the exact local text and caret until one explicit retry succeeds without a primary workspace write", async ({
@@ -363,6 +357,7 @@ test("a peer draft conflict preserves both texts until explicit load or overwrit
       "pad-first",
     );
     await expect(pad(page)).toHaveAttribute("data-phase", "paused");
+    await expect(pad(page)).toHaveAttribute("data-collapsed", "false");
     await expect(note(page)).toHaveValue("Ortak başlangıç notu");
     expect(
       await note(page).evaluate((textarea) => [

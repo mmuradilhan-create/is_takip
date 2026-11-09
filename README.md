@@ -1,6 +1,6 @@
 # Odak
 
-PC kullanımına odaklanan, Türkçe kişisel iş ve hedef takibi. HTML/CSS/JavaScript tabanlıdır. Güncel sürüm: **0.21.28**.
+PC kullanımına odaklanan, Türkçe kişisel iş ve hedef takibi. HTML/CSS/JavaScript tabanlıdır. Güncel sürüm: **0.21.29**.
 
 ## Kullanım
 
@@ -123,9 +123,11 @@ Eski aktarımın **Kaç Gün Bekledi** satırı yalnız kaynak değeriyle doğru
 
 Günlük işin **▶ Çalışmaya başla** düğmesi sol altta o işe ait **Çalışma notu** alanını açar. Çalışırken bu alana yazabilirsiniz. Süre sayacı ve saat/dakika girişi yoktur. Notlar bağımsız **Notlar** kartından ayrıdır; her çalışma notu kendi işine ve çalışma kaydına aittir.
 
-**Duraklat** sonuç istemez; yazılanları taslak olarak korur. **Devam et** aynı nottan sürdürür. Başka işe başlandığında önceki iş duraklatılır; geri dönüldüğünde taslağı açılır. Sayfa yenilendiğinde veya pencere kapandığında da kaydedilmiş taslak korunur. Kaydedilemeyen metin açık alanda tutulur ve hata gösterilir; yeniden denenebilir. Başka penceredeki notun üzerine sessizce yazılmaz.
+**Duraklat** sonuç istemez; yazılanları taslak olarak korur ve not alanını küçük özete indirir. **Notu aç** notu yeniden gösterir. **Devam et** aynı nottan sürdürür. Başka işe başlandığında önceki iş duraklatılır; geri dönüldüğünde taslağı açılır. Sayfa yenilendiğinde veya pencere kapandığında da kaydedilmiş taslak korunur. Kaydedilemeyen metin açık alanda tutulur ve hata gösterilir; yeniden denenebilir. Başka penceredeki notun üzerine sessizce yazılmaz.
 
-**Bitir**, aynı alanda **Sonuç** adımını açar; notunuz hazır gelir. Boş olmayan sonucu **Kaydet ve bitir** ile tarih ve saat bilgisiyle çalışma geçmişine ekleyebilirsiniz. Vazgeçmek taslağı korur. Kaydetme başarısız olursa metin korunur; yeniden denemek aynı kaydı çoğaltmaz. Bitirmek günlük işin durumunu değiştirmez. Kaydedilmiş çalışma tek **Geri al** adımıyla geri alınabilir.
+Sol menüdeki sekmeler çalışma notu açıldığında da sabit kalır; menü kaydırılmaz ve başlıklar tek satırda gösterilir. Üst boşluklar ve not alanı ekran yüksekliğine göre sıkışır. Kartın alt satırında solda oksuz **Çalışma geçmişi**, sağda toplam kayıt sayısı bulunur.
+
+**Bitir**, aynı alanda **Sonuç** adımını açar; notunuz hazır gelir. Sonuç yazmak isteğe bağlıdır. Alan boşken **Kaydet ve bitir** çalışmayı kapatır, geçmişe kayıt eklemez. Sonuç yazılmışsa tarih ve saat bilgisiyle kaydedilir. Vazgeçmek taslağı korur. Kaydetme başarısız olursa metin korunur; yeniden denemek aynı kaydı çoğaltmaz. Bitirmek günlük işin durumunu değiştirmez. Kaydedilmiş çalışma tek **Geri al** adımıyla geri alınabilir.
 
 Sol alttaki **Çalışma geçmişi** haftalık geçmişi, günlük işin sağındaki geçmiş simgesi o işe ait kayıtları açar. Kayıtlar tarih ve sonuçla gösterilir; tarih ve sonuç düzenlenebilir, kayıt silinebilir. Eski boş sonuçlar, sonraki adımlar ve hassas süre değerleri kayıtta ve JSON yedeğinde korunur. Düzenleme ve silme tek **Geri al** adımıdır.
 

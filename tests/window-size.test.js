@@ -6,6 +6,7 @@ import {
   fitWidgetWindow,
   windowSizingMode,
   windowRoleHash,
+  windowPinSupported,
 } from "../src/window-size.js";
 
 const windowFeatures = (metrics) =>
@@ -103,6 +104,43 @@ test("native sizing requires the helper-ready fragment marker", () => {
     "browser",
   );
   assert.equal(windowSizingMode(null), "browser");
+});
+
+test("pin controls require both helper capabilities and survive main/widget navigation", () => {
+  const owner = {
+    location: {
+      hash: "#widget?windowSizing=native&windowPin=native",
+    },
+  };
+  assert.equal(windowPinSupported(owner), true);
+  const mainHash = windowRoleHash("desktop", owner, {
+    record: "saved & record",
+  });
+  const main = { location: { hash: `#${mainHash}` } };
+  assert.equal(windowPinSupported(main), true);
+  assert.equal(
+    new URLSearchParams(mainHash.split("?")[1]).get("record"),
+    "saved & record",
+  );
+  assert.equal(
+    windowRoleHash("widget", main),
+    "widget?windowSizing=native&windowPin=native",
+  );
+  for (const hash of [
+    "#widget",
+    "#widget?windowSizing=native",
+    "#widget?windowPin=native",
+    "#widget?windowSizing=native&windowPin=browser",
+    "#widget?record=windowPin%3Dnative",
+  ])
+    assert.equal(windowPinSupported({ location: { hash } }), false);
+  assert.equal(windowPinSupported(null), false);
+  assert.equal(
+    windowRoleHash("widget", {
+      location: { hash: "#desktop?windowPin=native" },
+    }),
+    "widget",
+  );
 });
 
 test("new main and widget windows carry sizing ownership without changing their workspace scope or record target", () => {

@@ -34,7 +34,8 @@
 }
 
 .date-picker-toggle svg,
-.date-picker-nav svg {
+.date-picker-nav svg,
+.date-picker-close svg {
   width: 18px;
   height: 18px;
   fill: none;
@@ -72,6 +73,26 @@
   align-items: center;
   gap: 5px;
   margin-bottom: 10px;
+}
+
+.odak-date-picker[data-selection-mode="direct"] .date-picker-header {
+  grid-template-columns: 28px minmax(0, 1fr) 64px 28px 26px;
+}
+
+.date-picker-close {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  color: inherit;
+  background: transparent;
+}
+
+.date-picker-close:hover {
+  background: #eaf1e5;
 }
 
 .date-picker-header label {
@@ -189,7 +210,22 @@
   outline-offset: 1px;
 }
 
-.quick-date-form input[data-date-input] {
-  min-height: 40px;
-  font-size: 13px;
+.date-picker-error {
+  margin: 8px 0 0;
+  color: #a23c34;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.date-picker-error:empty {
+  display: none;
+}
+
+.odak-date-picker[aria-busy="true"] .date-picker-days {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+[data-theme="dark"] .date-picker-error {
+  color: #ffb9ae;
 }

@@ -139,6 +139,7 @@ test("today and tomorrow show actual dated events across types without routed du
   await expect.poll(() => entryIds(page)).toEqual(todayIds);
   await expect(page.locator("#widget-today-count")).toHaveText("7");
   await expect(page.locator("#widget-tomorrow-count")).toHaveText("3");
+  await expect(page.locator("#widget-overdue-count")).toHaveText("1");
   await expect(page.locator("#widget-task-count")).toHaveText("7 kayıt");
   await expect(entry(page, "meeting")).toHaveCount(0);
   await expect(entry(page, "routed-meeting")).toHaveCount(0);
@@ -316,6 +317,8 @@ test("a long agenda scrolls only its entries with accessible pinned controls in 
             "#widget-date",
             "[data-widget-day=today]",
             "[data-widget-day=tomorrow]",
+            "[data-widget-day=overdue]",
+            "#widget-pin",
             "#widget-open-main",
           ].map((selector) => {
             const rect = document
@@ -384,6 +387,7 @@ test("unavailable storage clears stale agenda counts and recovers the selected d
   );
   await expect(page.locator("#widget-today-count")).toHaveText("—");
   await expect(page.locator("#widget-tomorrow-count")).toHaveText("—");
+  await expect(page.locator("#widget-overdue-count")).toHaveText("—");
   await expect(page.locator("#widget-tasks .widget-task")).toHaveCount(0);
   await expect(page.locator("#widget-open-main")).toBeEnabled();
   await page.evaluate(() => {

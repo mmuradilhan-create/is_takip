@@ -21,7 +21,7 @@ test("both launchers keep window geometry out of Chrome's process-wide arguments
     assert(launcher.includes("$sizingReady=$ready.WaitOne(10000)"));
     const wait = launcher.indexOf("$sizingReady=$ready.WaitOne(10000)");
     const ownership = launcher.indexOf(
-      "if ($sizingReady) { $url+='?windowSizing=native' }",
+      "if ($sizingReady) { $url+='?windowSizing=native';",
     );
     const argumentsReady = launcher.indexOf("$arguments=@(");
     const open = launcher.indexOf("Start-Process -FilePath $chrome");
@@ -96,11 +96,16 @@ test("native helper only settles newly identified ODAK roles and releases later 
   );
   assert(
     helper.includes(
-      "[void]$seen.Remove($h); $settling.Remove($h); [OdakWidgetBounds]::Forget($h)",
+      "[void]$seen.Remove($h); $settling.Remove($h); [OdakWidgetBounds]::Forget($h); [OdakWidgetBounds]::ForgetPin($h)",
     ),
     "closed HWND state cannot leak into a later window reusing the handle",
   );
-  assert(helper.includes('t.ToString()=="ODAK · Özet"'));
+  assert(
+    helper.includes(
+      'return title=="ODAK · Özet" || title=="ODAK · Özet · Üstte";',
+    ),
+    "both widget titles retain the same native sizing role",
+  );
   const titles = JSON.parse(
     `[${helper.match(/static readonly string\[\] Titles=new string\[\]\{([^}]+)\};/)[1]}]`,
   );
@@ -120,6 +125,7 @@ test("native helper only settles newly identified ODAK roles and releases later 
     false,
     "widget stays a separate native window role",
   );
+  assert.equal(titles.includes("ODAK · Özet · Üstte"), false);
   assert(
     helper.includes("Array.IndexOf(Titles,t.ToString())>=0 && !IsZoomed(h)"),
   );
@@ -178,6 +184,115 @@ test("native widget observes stable bounds before one size change and reserves f
     "renderer absence cannot cause an early fallback followed by another correction",
   );
   assert(fit.includes("finally { SetThreadDpiAwarenessContext(previous); }"));
+});
+
+test("native pinning changes only widget z-order once per requested state transition", () => {
+  // Native calls are inspected here; this suite does not run on Windows.
+  const start = helper.indexOf("public static void SyncPin(IntPtr h)");
+  const pin = helper.slice(start, helper.indexOf("static bool Renderer("));
+  assert(start >= 0);
+  assert(
+    pin.includes(
+      'if(h==IntPtr.Zero || !IsWindowVisible(h) || !Class(h).StartsWith("Chrome_WidgetWin_")) return;',
+    ),
+  );
+  assert(
+    pin.includes("string title=Title(h); if(!WidgetTitle(title)) return;"),
+  );
+  assert(
+    pin.includes(
+      'bool requested=title=="ODAK · Özet · Üstte",previous; if(!PinStates.TryGetValue(h,out previous)) previous=false;',
+    ),
+    "the base title starts unpinned without a native operation",
+  );
+  const transition = pin.indexOf(
+    "PinStates[h]=requested; if(previous==requested) return;",
+  );
+  const apply = pin.indexOf(
+    "SetWindowPos(h,new IntPtr(requested?-1:-2),0,0,0,0,0x0001|0x0002|0x0010);",
+  );
+  assert(transition >= 0 && apply > transition);
+  assert.equal((pin.match(/SetWindowPos\(/g) || []).length, 1);
+  assert.doesNotMatch(pin, /ShowWindow|PendingWindows|resize|Maximize/);
+  assert(
+    helper.includes(
+      "foreach ($h in $widgets) {\n      [OdakWidgetBounds]::SyncPin($h)",
+    ),
+    "pin changes remain available after startup fitting has finished",
+  );
+  const forget = helper.slice(
+    helper.indexOf("public static void Forget(IntPtr h)"),
+    helper.indexOf("public static bool Fit("),
+  );
+  assert.doesNotMatch(forget, /PinStates/);
+});
+
+test("pin capability is advertised only by a ready helper that supports it", () => {
+  const owned = helper.indexOf("if (!$owned) { return }");
+  assert(owned < helper.indexOf("$pinReady.Reset()"));
+  assert(helper.indexOf("$pinReady.Set()") < helper.indexOf("$ready.Set()"));
+  assert(
+    helper.includes(
+      "if ($owned) { $ready.Reset(); $pinReady.Reset(); $worker.ReleaseMutex() }",
+    ),
+    "a losing helper instance cannot reset another worker's readiness",
+  );
+  assert(helper.includes("$pinReady.Dispose()"));
+  for (const role of ["desktop", "widget"]) {
+    const launcher = createWindowsLauncher(role);
+    assert(
+      launcher.includes(
+        "$pinReady=[Threading.EventWaitHandle]::new($false,[Threading.EventResetMode]::ManualReset,$prefix+'.PinReady')",
+      ),
+    );
+    assert(
+      launcher.includes(
+        "if ($sizingReady) { $url+='?windowSizing=native'; if ($pinReady -and $pinReady.WaitOne(0)) { $url+='&windowPin=native' } }",
+      ),
+      "an older sizing-only worker leaves pinning unavailable",
+    );
+    assert(launcher.includes("if ($pinReady) { $pinReady.Dispose() }"));
+  }
+});
+
+test("native pin ownership is released when a live window leaves the widget role", () => {
+  const start = helper.indexOf("public static void ReleasePins()");
+  const release = helper.slice(
+    start,
+    helper.indexOf("public static void SyncPin("),
+  );
+  assert(start >= 0);
+  assert(
+    release.includes("foreach(IntPtr h in new List<IntPtr>(PinStates.Keys))"),
+    "only windows previously observed by pin handling are inspected",
+  );
+  const previouslyPinned = release.indexOf("if(!PinStates[h]) continue;");
+  const destroyed = release.indexOf(
+    "if(!IsWindow(h)) { PinStates.Remove(h); continue; }",
+  );
+  const stillWidget = release.indexOf("if(Widget(h)) continue;");
+  const unpin = release.indexOf(
+    "SetWindowPos(h,new IntPtr(-2),0,0,0,0,0x0001|0x0002|0x0010);",
+  );
+  assert(
+    previouslyPinned >= 0 &&
+      previouslyPinned < destroyed &&
+      destroyed < stillWidget &&
+      stillWidget < unpin,
+    "destroyed windows and unowned pin states never receive native calls",
+  );
+  assert(unpin < release.lastIndexOf("PinStates.Remove(h);"));
+  assert.equal((release.match(/SetWindowPos\(/g) || []).length, 1);
+  assert.doesNotMatch(
+    release,
+    /ShowWindow|PendingWindows|Maximize|new IntPtr\(-1\)/,
+  );
+  const sweep = helper.indexOf("[OdakWidgetBounds]::ReleasePins()");
+  assert(
+    helper.indexOf("while ($true)") < sweep &&
+      sweep < helper.indexOf("$mains=@([OdakMainBounds]::Windows($true))"),
+    "role loss is checked every loop even after a HWND leaves the widget list",
+  );
 });
 
 test("helper startup and idle shutdown share a per-user lock without changing Chrome or record storage", () => {

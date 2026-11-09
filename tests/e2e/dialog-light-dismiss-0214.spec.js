@@ -265,6 +265,30 @@ test("a date popover closes before its editor and backdrop cancellation returns 
     .click();
   const picker = page.locator("#odak-date-picker");
   await expect(picker).toBeVisible();
+  await picker.locator('[data-date-day="2026-11-13"]').click();
+  await expect(picker).not.toBeVisible();
+  await expect(editor(page).locator('[name="dueDate"]')).toHaveValue(
+    "13.11.2026",
+  );
+  await expect(editor(page)).toBeVisible();
+  await expect(calendar).toBeVisible();
+  expect(await saved(page)).toBe(before);
+  const dateToggle = editor(page)
+    .locator('[name="dueDate"]')
+    .locator("..")
+    .locator(".date-picker-toggle");
+  await dateToggle.click();
+  await expect(picker).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(picker).not.toBeVisible();
+  await expect(editor(page)).toBeVisible();
+  await expect(calendar).toBeVisible();
+  await expect(editor(page).locator('[name="dueDate"]')).toHaveValue(
+    "13.11.2026",
+  );
+  expect(await saved(page)).toBe(before);
+  await dateToggle.click();
+  await expect(picker).toBeVisible();
   const outside = await backdropPoint(page, editor(page));
   await clickPoint(page, outside);
   await expect(picker).not.toBeVisible();

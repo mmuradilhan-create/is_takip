@@ -40,6 +40,7 @@ tek Geri al adımıdır. Enter kaydeder, Shift+Enter alt satır ekler.
 Notlar JSON yedeğine dahildir; eski notsuz yedek mevcut notları korur.
 Takip kartlarında konu metni üstteki boş alanı kullanır; durum ve tarih
 alt bölüme yaklaşır. Panel yüksekliği artmadan daha fazla satır okunur.
+Haftalık hedefin durum/teslim tarihi takip kartlarıyla aynı alt hizadadır.
 
 Ayarlar içindeki eski Listeler menüsü kaldırıldı; eski kayıt değerleri
 ve yedek uyumluluğu korunur. Bekleme bilgisi penceresinde Enter kaydeder,
@@ -278,7 +279,8 @@ temasını izler. Ayrı liste yoğunluğu seçimi kaldırıldı; tek kompakt yer
 kullanılır. Koyu tema siyaha yakın nötr zeminler kullanır; durum ve öncelik
 renkleri korunur. Eski yoğunluk tercihi ve geri alma geçmişi korunur.
 
-Altı liste ekranında Sırala bulunur. Oluşturma - en yeni varsayılandır;
+Altı liste ekranında sağ uçtaki küçük aşağı/yukarı ok sıralamayı açar.
+Oluşturma - en yeni varsayılandır;
 oluşturma tarihine göre en eski de seçilebilir. Senelik hedeflerde yalnız
 oluşturma sıralaması kullanılır. Diğer teslim listelerinde yakın veya uzak
 önce seçilebilir. Bekleyen konularda teslim yerine sonraki Takip tarihi
@@ -286,7 +288,9 @@ sıralanır. Tarihsizler iki yönde de sondadır. Sayfada en fazla 50 kayıt
 görünür; arama, filtre, kapsam veya sıralama değişince ilk sayfaya dönülür.
 Silme sonrası sayfa düzeltilir. Bunlar kayıtları ve geri almayı değiştirmez.
 
-Tarih etiketine basınca takvim doğrudan açılır; seçim Kaydet ile uygulanır.
+Tarih etiketine basınca yalnız takvim açılır; gün seçimi hemen kaydedilir.
+Tarihi kaldır da hemen uygular. Çarpı, Escape veya dışarı tıklama seçim
+yapmadan kapatır.
 Tarihler GG.AA.YYYY sırasındadır. Türkçe takvimde ay ve yıl seçilebilir;
 takvim ekranın içinde kalacak şekilde açılır. Öncelik menüsünde yalnız yazı
 vardır; seçili satır yeşil ve tiklidir. Listede küçük bir bayrak gösterilir.
@@ -434,6 +438,8 @@ kaydı ve kalanların +N sayısı gösterilir; günü seçince bütün kayıtlar
 ulaşılır. Mini veya geniş takvimden kayıt açmak arkadaki bölümü değiştirmez;
 arama, filtreler ve kaydırma konumu korunur. Düzenleyici takvimin üzerinde açılır; formdan
 dönünce seçili gün ve görünüm korunur, takvim açık kalır.
+Büyük takvimde gün hücresinin boş alanına tıklamak o günü seçer. Hücredeki
+kaydı açmak da seçimi kaydın tarihine taşır; dönüşte o gün açık kalır.
 Takvimden Günlük iş / Bekleyen konu eklenebilir: seçili gün günlük işin
 teslim tarihine veya bekleyen konunun sonraki takip tarihine hazırlanır.
 Kayıt/açılış tarihi yeni kaydın açıldığı gündür. Kaydetmeden vazgeçmek kayıt
@@ -665,7 +671,9 @@ PENCERELER ARASINDA GEÇİŞ
 ODAK.cmd ile açılan ana uygulamadaki Widget düğmesi, AYRI ve küçük bir
 Mini ajanda açar; ana ODAK ekranı açık ve aynı görünümde kalır.
 Bugün / Yarın sekmeleri, takvimde o güne ait açık teslim ve sonraki takip
-kayıtlarını gösterir. Seçili günün bütün kayıtları listenin içinde
+kayıtlarını gösterir. Gecikenler, tarihi bugünden önce olan açık teslim
+ve takipleri en eski tarihten başlayarak gerçek tarihleriyle gösterir.
+Seçili listenin bütün kayıtları listenin içinde
 kaydırılarak okunur; başlık ve gün sekmeleri sabit kalır. Ajanda salt
 okunurdur; gün değiştirmek kayıtları değiştirmez. Başlık ilgili kaydı
 ana ekranda açar. Ana uygulamadaki değişiklikler ve Geri al burada da görünür.
@@ -678,6 +686,13 @@ Normal HTML açılışında tarayıcı bir kez dener; öncesinde fare veya klavy
 kullanılırsa bu deneme iptal edilir.
 Sonraki elle boyutlandırmalar zorlanmaz; açık widget yeniden kullanılırken
 boyutuna müdahale edilmez.
+
+Windows paketinde başlıktaki Üstte tut düğmesi widget'ı diğer pencerelerin
+üstünde tutar; tekrar basmak normal sıraya döndürür. Seçim açık widget
+içindir. Normal tarayıcı açılışında bu düğme kullanılamaz.
+Çalışılan günlük iş varsa altta iş adı, Çalışıyor / Duraklatıldı ve canlı
+saat:dakika:saniye süresi görünür. Widget oturumu yalnız okur; başlatma,
+devralma veya kaydetme yapmaz. Duraklatılmış süre ilerlemez.
 
 ODAK-Pencere.ps1, başlatıcı tarafından gizli çalıştırılan pencere yardımcısıdır.
 Araç çubuğundaki Widget ve widget'taki ODAK'ı aç dahil yeni ODAK pencerelerini
@@ -708,7 +723,8 @@ Normal Chrome içindeki Widget düğmesi de eski tarayıcı açılır penceresin
 açar; adres çubuğunu gizlemek için CMD başlatıcılarını kullan.
 
 Chrome kapatılır veya Windows yeniden başlatılırsa pencereleri yeniden
-açman gerekir. Widget sürekli üstte kalmaz ve kendiliğinden başlangıca
+açman gerekir. Üstte tut seçimi kapalıyken widget normal pencere sırasını
+izler; kendiliğinden başlangıca
 eklenmez. Kayıtların ve geri alma geçmişin aynı çalışma alanında kalır.
 `;
 

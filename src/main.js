@@ -1559,7 +1559,6 @@ export async function startMainApp() {
       : state.listSort;
   }
   function listToolbar() {
-    const dateLabel = state.view === "waiting" ? "Takip" : "Teslim";
     const meeting = state.view === "meeting";
     return `<div class="list-view-toolbar"><div class="list-scope-tabs" role="group" aria-label="Kayıt görünümü">${[
       ["open", "Açık"],
@@ -1570,9 +1569,11 @@ export async function startMainApp() {
         ([scope, title]) =>
           `<button type="button" data-action="list-scope" data-scope="${scope}" aria-pressed="${state.listScope === scope}">${title}</button>`,
       )
-      .join(
-        "",
-      )}</div><label class="list-sort">Sırala<select id="list-sort" aria-label="Kayıtları sırala">${[
+      .join("")}</div></div>`;
+  }
+  function listSortControl() {
+    const dateLabel = state.view === "waiting" ? "Takip" : "Teslim";
+    const choices = [
       ["created-desc", "Oluşturma · en yeni"],
       ["created-asc", "Oluşturma · en eski"],
       ...(["yearly", "meeting"].includes(state.view)
@@ -1581,12 +1582,16 @@ export async function startMainApp() {
             ["due-asc", `${dateLabel} · yakın önce`],
             ["due-desc", `${dateLabel} · uzak önce`],
           ]),
-    ]
+    ];
+    const selected = effectiveListSort();
+    const caption = choices.find(([value]) => value === selected)?.[1];
+    const title = `Sırala: ${caption || choices[0][1]}`;
+    return `<label class="list-sort" title="${esc(title)}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4v16m-4-4 4 4 4-4M16 20V4m-4 4 4-4 4 4"/></svg><select id="list-sort" aria-label="Kayıtları sırala" title="${esc(title)}">${choices
       .map(
         ([value, title]) =>
-          `<option value="${value}" ${effectiveListSort() === value ? "selected" : ""}>${title}</option>`,
+          `<option value="${value}" ${selected === value ? "selected" : ""}>${title}</option>`,
       )
-      .join("")}</select></label></div>`;
+      .join("")}</select></label>`;
   }
   function listPagination(page) {
     if (page.pageCount <= 1) return "";
@@ -1698,7 +1703,7 @@ export async function startMainApp() {
             .join(""),
           state.period !== "all",
         );
-    return `<section class="panel">${planningPeriodBar()}<div class="list-controls-bar">${listToolbar()}${pendingInbox ? '<div class="daily-context-banner"><span>Eski Pop-Up işleri haftalık hedeften ayırıp Anlık işler grubunda takip edebilirsin.</span><button type="button" class="text-btn" data-action="migrate-daily-inbox">Anlık işlere taşı</button></div>' : ""}<div class="filters">${contextFilter}${statusFilter}${priorityFilter}${dateFilter}${hasListFilters() ? `<button type="button" class="clear-filters" data-action="clear-filters" aria-label="Liste filtrelerini temizle">${icon("close")}Temizle</button>` : ""}<span class="result-count">${state.search ? `“${esc(state.search)}” için ` : ""}${page.total} sonuç</span></div></div>${state.view === "daily" && state.listScope !== "completed" && pendingGoalLinks.length ? `<div class="link-warning">${icon("link")}<span>${pendingGoalLinks.length} açık işin hedef bağlantısı eksik.</span><button type="button" class="text-btn" data-action="unlinked">${state.onlyUnlinked ? "Tüm açık işleri göster" : "Bu işleri göster"}</button></div>` : ""}${state.view === "weekly" && state.status === "transferred" ? '<p class="weekly-archive-note">Eski hafta aktarımları. İlerleme ve bağlı işler bu kayıtlarda korunur.</p>' : ""}${planningBacklog()}${["weekly", "monthly"].includes(state.view) && !records.length ? planningEmpty() : table(records)}${listPagination(page)}<button class="add-inline" data-action="new">${icon("plus")}Yeni kayıt ekle</button></section>`;
+    return `<section class="panel">${planningPeriodBar()}<div class="list-controls-bar">${listToolbar()}${pendingInbox ? '<div class="daily-context-banner"><span>Eski Pop-Up işleri haftalık hedeften ayırıp Anlık işler grubunda takip edebilirsin.</span><button type="button" class="text-btn" data-action="migrate-daily-inbox">Anlık işlere taşı</button></div>' : ""}<div class="filters">${contextFilter}${statusFilter}${priorityFilter}${dateFilter}${hasListFilters() ? `<button type="button" class="clear-filters" data-action="clear-filters" aria-label="Liste filtrelerini temizle">${icon("close")}Temizle</button>` : ""}<span class="result-count">${state.search ? `“${esc(state.search)}” için ` : ""}${page.total} sonuç</span></div>${listSortControl()}</div>${state.view === "daily" && state.listScope !== "completed" && pendingGoalLinks.length ? `<div class="link-warning">${icon("link")}<span>${pendingGoalLinks.length} açık işin hedef bağlantısı eksik.</span><button type="button" class="text-btn" data-action="unlinked">${state.onlyUnlinked ? "Tüm açık işleri göster" : "Bu işleri göster"}</button></div>` : ""}${state.view === "weekly" && state.status === "transferred" ? '<p class="weekly-archive-note">Eski hafta aktarımları. İlerleme ve bağlı işler bu kayıtlarda korunur.</p>' : ""}${planningBacklog()}${["weekly", "monthly"].includes(state.view) && !records.length ? planningEmpty() : table(records)}${listPagination(page)}<button class="add-inline" data-action="new">${icon("plus")}Yeni kayıt ekle</button></section>`;
   }
   function render() {
     renderedCalendarDay = today();
@@ -2620,7 +2625,8 @@ export async function startMainApp() {
   inlineFields = createInlineFields({
     root: app,
     getRecords: () => state.records,
-    onOpenDatePicker: (input) => datePicker?.openFor(input),
+    onOpenDatePicker: (options) => datePicker?.openSelection(options),
+    onCloseDatePicker: () => datePicker?.closeSelection(),
     onSave: (id, patch, actionLabel) => {
       const existing = state.records.find((record) => record.id === id);
       if (!existing) return false;

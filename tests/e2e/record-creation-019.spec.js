@@ -220,6 +220,35 @@ test("all six creation forms expose a short optional workflow and save title-onl
         form(page).locator('[data-action="creation-meeting-route"]'),
       ).toHaveCount(3);
     }
+    if (["daily", "weekly", "monthly"].includes(type)) {
+      const selectId =
+        type === "daily" ? "weekly-parent-select" : "higher-goal-select";
+      const label = form(page).locator(
+        `.creation-parent-heading > label[for="${selectId}"]`,
+      );
+      const optional = label.locator("small");
+      await expect(optional).toHaveText("İsteğe bağlı");
+      const geometry = await label.evaluate((element) => {
+        const range = document.createRange();
+        range.selectNodeContents(element.firstChild);
+        const text = range.getBoundingClientRect();
+        const small = element.querySelector("small").getBoundingClientRect();
+        return {
+          text: { right: text.right, y: text.y, height: text.height },
+          small: { x: small.x, y: small.y, height: small.height },
+        };
+      });
+      expect(geometry.small.x).toBeGreaterThanOrEqual(geometry.text.right);
+      expect(
+        Math.abs(
+          geometry.small.y +
+            geometry.small.height / 2 -
+            geometry.text.y -
+            geometry.text.height / 2,
+        ),
+      ).toBeLessThanOrEqual(2);
+      await expect(form(page).locator(`#${selectId}`)).toBeVisible();
+    }
     await advanced(page);
     await expect(field(page, "nextAction")).not.toBeVisible();
     if (["weekly", "monthly", "yearly"].includes(type)) {

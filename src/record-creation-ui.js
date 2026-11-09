@@ -295,7 +295,7 @@ export function createRecordCreationUI({
     if (currentType === "daily")
       return `<div class="field creation-full" id="parent-field"><div class="creation-parent-heading"><label for="weekly-parent-select">Bağlı haftalık hedef <small>İsteğe bağlı</small></label></div><select name="parentId" id="weekly-parent-select"><option value="">Bağlantı yok</option></select><span class="field-help creation-parent-hint" hidden></span></div>`;
     if (["weekly", "monthly"].includes(currentType))
-      return `<label class="field creation-full" id="higher-goal-field">${currentType === "weekly" ? "Bağlı aylık hedef" : "Bağlı senelik hedef"} <small>İsteğe bağlı</small><select name="goalParentId" id="higher-goal-select"><option value="">Bağlantı yok</option></select><span class="field-help creation-parent-hint" hidden></span></label>`;
+      return `<div class="field creation-full" id="higher-goal-field"><div class="creation-parent-heading"><label for="higher-goal-select">${currentType === "weekly" ? "Bağlı aylık hedef" : "Bağlı senelik hedef"} <small>İsteğe bağlı</small></label></div><select name="goalParentId" id="higher-goal-select"><option value="">Bağlantı yok</option></select><span class="field-help creation-parent-hint" hidden></span></div>`;
     return "";
   }
 

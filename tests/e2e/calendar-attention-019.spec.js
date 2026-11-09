@@ -874,3 +874,157 @@ test("calendar query and view state stay read-only while daily and waiting creat
     expect(await saved(page)).toBe(original);
   }
 });
+
+const expandedCell = (page, date) =>
+  expanded(page).locator(
+    `.calendar-expanded-cell:has(.calendar-cell-date[data-calendar-date="${date}"])`,
+  );
+async function clickCellSpace(page, date) {
+  const cell = expandedCell(page, date);
+  await cell.scrollIntoViewIfNeeded();
+  const box = await cell.boundingBox();
+  const point = { x: box.x + box.width - 3, y: box.y + box.height - 3 };
+  expect(
+    await page.evaluate(
+      ({ x, y }) =>
+        Boolean(
+          document.elementFromPoint(x, y)?.closest("[data-calendar-action]"),
+        ),
+      point,
+    ),
+  ).toBe(false);
+  await page.mouse.click(point.x, point.y);
+}
+async function selectedAgenda(page, date, ids) {
+  await expect(
+    expanded(page).locator(".calendar-selected-label time"),
+  ).toHaveAttribute("datetime", date);
+  await expect(
+    expanded(page).locator(`.calendar-cell-date[data-calendar-date="${date}"]`),
+  ).toHaveAttribute("aria-pressed", "true");
+  expect(
+    await expanded(page)
+      .locator(".calendar-day-agenda [data-calendar-record-id]")
+      .evaluateAll((nodes) =>
+        nodes.map((node) => node.dataset.calendarRecordId).sort(),
+      ),
+  ).toEqual([...ids].sort());
+}
+
+test("empty space in an expanded calendar cell selects its day and agenda without creating or editing records", async ({
+  page,
+}) => {
+  const original = await seed(page);
+  await calendar(page).locator(".calendar-expand").click();
+  await expect(expanded(page)).toBeVisible();
+  await clickCellSpace(page, "2026-11-13");
+  await selectedAgenda(page, "2026-11-13", []);
+  await expect(page.locator("#editor")).not.toBeVisible();
+  await clickCellSpace(page, "2026-11-10");
+  await selectedAgenda(page, "2026-11-10", ["calendar-monthly"]);
+  await expect(page.locator("#editor")).not.toBeVisible();
+  await expanded(page)
+    .locator('.calendar-cell-date[data-calendar-date="2026-11-10"]')
+    .focus();
+  await page.keyboard.press("ArrowRight");
+  await selectedAgenda(page, "2026-11-11", [
+    "attention-waiting-urgent-plus-three",
+    "attention-waiting-plus-three",
+  ]);
+  expect(await saved(page)).toBe(original);
+});
+
+test("opening an expanded grid entry first selects its own day and keeps that agenda after the untouched editor closes", async ({
+  page,
+}) => {
+  const original = await seed(page, { theme: "dark" });
+  await calendar(page).locator(".calendar-expand").click();
+  for (const [id, date] of [
+    ["calendar-unsafe", "2026-11-08"],
+    ["attention-waiting-plus-three", "2026-11-11"],
+  ]) {
+    await expanded(page)
+      .locator('.calendar-cell-date[data-calendar-date="2026-11-13"]')
+      .click();
+    await expanded(page)
+      .locator(`.calendar-expanded-grid [data-calendar-record-id="${id}"]`)
+      .click();
+    await expect(page.locator("#editor")).toBeVisible();
+    await expect(page.locator('#record-form [name="id"]')).toHaveValue(id);
+    await expect(
+      expanded(page).locator(".calendar-selected-label time"),
+    ).toHaveAttribute("datetime", date);
+    expect(await saved(page)).toBe(original);
+    await page.keyboard.press("Escape");
+    await expect(page.locator("#editor")).not.toBeVisible();
+    await expect(expanded(page)).toBeVisible();
+    await expect(
+      expanded(page).locator(
+        `.calendar-day-agenda [data-calendar-record-id="${id}"]`,
+      ),
+    ).toBeVisible();
+    await expect(
+      expanded(page).locator(".calendar-selected-label time"),
+    ).toHaveAttribute("datetime", date);
+  }
+  expect(await page.evaluate(() => window.__calendarInjected)).toBeUndefined();
+  expect(await saved(page)).toBe(original);
+});
+
+test("whole-cell selection preserves filtered overflow, adjacent-month days and week keyboard navigation", async ({
+  page,
+}) => {
+  const records = [
+    ...Array.from({ length: 5 }, (_, index) =>
+      record({
+        id: `filtered-${index}`,
+        title: `Calendar needle ${index}`,
+        dueDate: "2026-11-08",
+      }),
+    ),
+    record({
+      id: "filtered-adjacent",
+      title: "Calendar needle adjacent",
+      dueDate: "2026-10-31",
+    }),
+    record({
+      id: "filtered-next-day",
+      title: "Calendar needle next",
+      dueDate: "2026-11-01",
+    }),
+    record({
+      id: "not-matching",
+      title: "Başka başlık",
+      dueDate: "2026-11-08",
+    }),
+    record({
+      id: "filtered-closed",
+      title: "Calendar needle closed",
+      dueDate: "2026-11-08",
+      status: "completed",
+    }),
+  ];
+  const original = await seed(page, { records });
+  await page.locator("#global-search").fill("calendar needle");
+  await calendar(page).locator(".calendar-expand").click();
+  const more = expandedCell(page, "2026-11-08").locator(".calendar-cell-more");
+  await expect(more).toHaveText("+3 kayıt");
+  await clickCellSpace(page, "2026-11-13");
+  await more.click();
+  await selectedAgenda(
+    page,
+    "2026-11-08",
+    records.slice(0, 5).map((record) => record.id),
+  );
+  await clickCellSpace(page, "2026-10-31");
+  await selectedAgenda(page, "2026-10-31", ["filtered-adjacent"]);
+  await expanded(page).locator('[data-calendar-mode="week"]').click();
+  await expect(expanded(page).locator(".calendar-expanded-week")).toBeVisible();
+  await expanded(page)
+    .locator('.calendar-cell-date[data-calendar-date="2026-10-31"]')
+    .focus();
+  await page.keyboard.press("ArrowRight");
+  await selectedAgenda(page, "2026-11-01", ["filtered-next-day"]);
+  await expect(page.locator("#editor")).not.toBeVisible();
+  expect(await saved(page)).toBe(original);
+});

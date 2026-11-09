@@ -474,55 +474,6 @@
   height: 14px;
 }
 
-.quick-date-menu {
-  width: 340px;
-}
-
-.quick-date-form {
-  display: grid;
-  gap: 12px;
-  margin: 0;
-  padding: 8px 10px 10px;
-}
-
-.quick-date-form .field {
-  gap: 6px;
-  font-size: 12px;
-}
-
-.quick-date-form input[type="date"] {
-  min-height: 38px;
-  padding: 8px 10px;
-  font-size: 13px;
-}
-
-.quick-date-form #quick-date-error:empty {
-  display: none;
-}
-
-.quick-date-form .error-message {
-  margin: 0;
-  padding: 8px 10px;
-  font-size: 11px;
-}
-
-.quick-date-actions {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 7px;
-}
-
-.quick-date-actions .btn {
-  min-height: 34px;
-  padding: 7px 9px;
-  font-size: 11px;
-}
-
-.quick-date-actions .btn:first-child {
-  margin-right: auto;
-}
-
 @media (max-width: 1000px) {
   .full-table > thead > tr > th,
   .full-table > tbody > tr:not(.linked-detail-row) > td {

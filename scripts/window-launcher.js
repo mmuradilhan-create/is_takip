@@ -9,6 +9,7 @@ public delegate bool EnumProc(IntPtr h,IntPtr p);
 [DllImport("user32.dll",CharSet=CharSet.Unicode)] static extern int GetWindowText(IntPtr h,StringBuilder s,int n);
 [DllImport("user32.dll",CharSet=CharSet.Unicode)] static extern int GetClassName(IntPtr h,StringBuilder s,int n);
 [DllImport("user32.dll")] static extern bool GetWindowRect(IntPtr h,out R r);
+[DllImport("user32.dll")] static extern bool IsWindow(IntPtr h);
 [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr h);
 [DllImport("user32.dll")] static extern bool IsZoomed(IntPtr h);
 [DllImport("user32.dll")] static extern bool IsIconic(IntPtr h);
@@ -17,8 +18,28 @@ public delegate bool EnumProc(IntPtr h,IntPtr p);
 [DllImport("user32.dll")] static extern uint GetDpiForWindow(IntPtr h);
 [DllImport("user32.dll")] static extern IntPtr SetThreadDpiAwarenessContext(IntPtr c);
 static string Class(IntPtr h) { var c=new StringBuilder(128); GetClassName(h,c,c.Capacity); return c.ToString(); }
-static bool Widget(IntPtr h) { if(!IsWindowVisible(h) || !Class(h).StartsWith("Chrome_WidgetWin_")) return false; var t=new StringBuilder(512); GetWindowText(h,t,t.Capacity); return t.ToString()=="ODAK · Özet"; }
-public static IntPtr[] Windows(bool widgetOnly) { var found=new List<IntPtr>(); EnumWindows(delegate(IntPtr h,IntPtr p) { if(Class(h).StartsWith("Chrome_WidgetWin_")) { var t=new StringBuilder(512); GetWindowText(h,t,t.Capacity); if(!widgetOnly || (IsWindowVisible(h) && t.ToString()=="ODAK · Özet")) found.Add(h); } return true; },IntPtr.Zero); return found.ToArray(); }
+static string Title(IntPtr h) { var t=new StringBuilder(512); GetWindowText(h,t,t.Capacity); return t.ToString(); }
+static bool WidgetTitle(string title) { return title=="ODAK · Özet" || title=="ODAK · Özet · Üstte"; }
+static bool Widget(IntPtr h) { return IsWindowVisible(h) && Class(h).StartsWith("Chrome_WidgetWin_") && WidgetTitle(Title(h)); }
+public static IntPtr[] Windows(bool widgetOnly) { var found=new List<IntPtr>(); EnumWindows(delegate(IntPtr h,IntPtr p) { if(Class(h).StartsWith("Chrome_WidgetWin_") && (!widgetOnly || Widget(h))) found.Add(h); return true; },IntPtr.Zero); return found.ToArray(); }
+static readonly Dictionary<IntPtr,bool> PinStates=new Dictionary<IntPtr,bool>();
+public static void ForgetPin(IntPtr h) { PinStates.Remove(h); }
+public static void ReleasePins() {
+  foreach(IntPtr h in new List<IntPtr>(PinStates.Keys)) {
+    if(!PinStates[h]) continue;
+    if(!IsWindow(h)) { PinStates.Remove(h); continue; }
+    if(Widget(h)) continue;
+    SetWindowPos(h,new IntPtr(-2),0,0,0,0,0x0001|0x0002|0x0010);
+    PinStates.Remove(h);
+  }
+}
+public static void SyncPin(IntPtr h) {
+  if(h==IntPtr.Zero || !IsWindowVisible(h) || !Class(h).StartsWith("Chrome_WidgetWin_")) return;
+  string title=Title(h); if(!WidgetTitle(title)) return;
+  bool requested=title=="ODAK · Özet · Üstte",previous; if(!PinStates.TryGetValue(h,out previous)) previous=false;
+  PinStates[h]=requested; if(previous==requested) return;
+  SetWindowPos(h,new IntPtr(requested?-1:-2),0,0,0,0,0x0001|0x0002|0x0010);
+}
 static bool Renderer(IntPtr h,R outer,out R view) { R best=new R(); EnumChildWindows(h,delegate(IntPtr child,IntPtr p) { R r; if(IsWindowVisible(child) && Class(child)=="Chrome_RenderWidgetHostHWND" && GetWindowRect(child,out r) && r.W>0 && r.H>0 && r.L>=outer.L && r.T>=outer.T && r.Rt<=outer.Rt && r.B<=outer.B && (long)r.W*r.H>(long)best.W*best.H) best=r; return true; },IntPtr.Zero); view=best; return best.W>0 && best.H>0; }
 class Pending { public string Sample; public long StableSince; public bool Restored; }
 static readonly Dictionary<IntPtr,Pending> PendingWindows=new Dictionary<IntPtr,Pending>();
@@ -88,6 +109,7 @@ $prefix='Local\\ODAK.WindowSizing.'+$sid
 $worker=[Threading.Mutex]::new($false,$prefix+'.Worker')
 $launch=[Threading.Mutex]::new($false,$prefix+'.Launch')
 $ready=[Threading.EventWaitHandle]::new($false,[Threading.EventResetMode]::ManualReset,$prefix+'.Ready')
+$pinReady=[Threading.EventWaitHandle]::new($false,[Threading.EventResetMode]::ManualReset,$prefix+'.PinReady')
 $wake=[Threading.EventWaitHandle]::new($false,[Threading.EventResetMode]::AutoReset,$prefix+'.Wake')
 $owned=$false
 $exitLock=$false
@@ -95,6 +117,7 @@ try {
   try { $owned=$worker.WaitOne(0) } catch [Threading.AbandonedMutexException] { $owned=$true }
   if (!$owned) { return }
   $ready.Reset()
+  $pinReady.Reset()
   Add-Type -TypeDefinition @'
 ${native}
 '@
@@ -104,13 +127,15 @@ ${native}
   $clock=[Diagnostics.Stopwatch]::StartNew()
   $lastSeen=$clock.ElapsedMilliseconds
   $idleGrace=30000
+  $pinReady.Set()
   $ready.Set()
   while ($true) {
     $now=$clock.ElapsedMilliseconds
     if ($wake.WaitOne(0)) { $lastSeen=$now; $idleGrace=30000 }
     $alive=[Collections.Generic.HashSet[IntPtr]]::new()
     foreach ($h in @([OdakMainBounds]::Windows($false))) { [void]$alive.Add($h) }
-    foreach ($h in @($seen)) { if (!$alive.Contains($h)) { [void]$seen.Remove($h); $settling.Remove($h); [OdakWidgetBounds]::Forget($h) } }
+    foreach ($h in @($seen)) { if (!$alive.Contains($h)) { [void]$seen.Remove($h); $settling.Remove($h); [OdakWidgetBounds]::Forget($h); [OdakWidgetBounds]::ForgetPin($h) } }
+    [OdakWidgetBounds]::ReleasePins()
     $mains=@([OdakMainBounds]::Windows($true))
     $widgets=@([OdakWidgetBounds]::Windows($true))
     if ($mains.Count+$widgets.Count -gt 0) { $lastSeen=$now; $idleGrace=5000 }
@@ -118,6 +143,7 @@ ${native}
       if ($seen.Add($h)) { $settling[$h]=@{ Role='main'; Until=$now+2500 } }
     }
     foreach ($h in $widgets) {
+      [OdakWidgetBounds]::SyncPin($h)
       if ($seen.Add($h)) { $settling[$h]=@{ Role='widget'; Until=$now+2500 } }
     }
     foreach ($h in @($settling.Keys)) {
@@ -141,11 +167,12 @@ ${native}
     Start-Sleep -Milliseconds 100
   }
 } finally {
-  if ($owned) { $ready.Reset(); $worker.ReleaseMutex() }
+  if ($owned) { $ready.Reset(); $pinReady.Reset(); $worker.ReleaseMutex() }
   if ($exitLock) { $launch.ReleaseMutex() }
   $worker.Dispose()
   $launch.Dispose()
   $ready.Dispose()
+  $pinReady.Dispose()
   $wake.Dispose()
 }
 `;
@@ -168,8 +195,8 @@ export function createWindowsLauncher(mode) {
     "$sid=[Security.Principal.WindowsIdentity]::GetCurrent().User.Value",
     "$prefix='Local\\ODAK.WindowSizing.'+$sid",
     "$launch=[Threading.Mutex]::new($false,$prefix+'.Launch')",
-    "$ready=$null; $wake=$null; $launchOwned=$false; $sizingReady=$false",
-    "try { try { $launchOwned=$launch.WaitOne(10000) } catch [Threading.AbandonedMutexException] { $launchOwned=$true }; if ($launchOwned) { try { if (!(Test-Path -LiteralPath $helper -PathType Leaf)) { throw 'ODAK-Pencere.ps1 bulunamadi.' }; $ready=[Threading.EventWaitHandle]::new($false,[Threading.EventResetMode]::ManualReset,$prefix+'.Ready'); $wake=[Threading.EventWaitHandle]::new($false,[Threading.EventResetMode]::AutoReset,$prefix+'.Wake'); $wake.Set() | Out-Null; $encoded=[Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes([IO.File]::ReadAllText($helper))); if ($encoded.Length -gt 30000) { throw 'Pencere yardimcisi komut sinirini asiyor.' }; Start-Process -FilePath (Join-Path $PSHOME 'powershell.exe') -WindowStyle Hidden -ArgumentList @('-NoLogo','-NoProfile','-EncodedCommand',$encoded); $sizingReady=$ready.WaitOne(10000) } catch { $sizingReady=$false } }; if ($sizingReady) { $url+='?windowSizing=native' }; $arguments=@(('--app='+[char]34+$url+[char]34)); Start-Process -FilePath $chrome -ArgumentList $arguments } finally { if ($ready) { $ready.Dispose() }; if ($wake) { $wake.Dispose() }; if ($launchOwned) { $launch.ReleaseMutex() }; $launch.Dispose() }",
+    "$ready=$null; $pinReady=$null; $wake=$null; $launchOwned=$false; $sizingReady=$false",
+    "try { try { $launchOwned=$launch.WaitOne(10000) } catch [Threading.AbandonedMutexException] { $launchOwned=$true }; if ($launchOwned) { try { if (!(Test-Path -LiteralPath $helper -PathType Leaf)) { throw 'ODAK-Pencere.ps1 bulunamadi.' }; $ready=[Threading.EventWaitHandle]::new($false,[Threading.EventResetMode]::ManualReset,$prefix+'.Ready'); $pinReady=[Threading.EventWaitHandle]::new($false,[Threading.EventResetMode]::ManualReset,$prefix+'.PinReady'); $wake=[Threading.EventWaitHandle]::new($false,[Threading.EventResetMode]::AutoReset,$prefix+'.Wake'); $wake.Set() | Out-Null; $encoded=[Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes([IO.File]::ReadAllText($helper))); if ($encoded.Length -gt 30000) { throw 'Pencere yardimcisi komut sinirini asiyor.' }; Start-Process -FilePath (Join-Path $PSHOME 'powershell.exe') -WindowStyle Hidden -ArgumentList @('-NoLogo','-NoProfile','-EncodedCommand',$encoded); $sizingReady=$ready.WaitOne(10000) } catch { $sizingReady=$false } }; if ($sizingReady) { $url+='?windowSizing=native'; if ($pinReady -and $pinReady.WaitOne(0)) { $url+='&windowPin=native' } }; $arguments=@(('--app='+[char]34+$url+[char]34)); Start-Process -FilePath $chrome -ArgumentList $arguments } finally { if ($ready) { $ready.Dispose() }; if ($pinReady) { $pinReady.Dispose() }; if ($wake) { $wake.Dispose() }; if ($launchOwned) { $launch.ReleaseMutex() }; $launch.Dispose() }",
     "if (!$sizingReady) { Write-Host 'ODAK acildi; otomatik pencere boyutu uygulanamadi. ODAK-Pencere.ps1 dosyasini ayni klasorde tutun.'; pause }",
   ];
   const command =

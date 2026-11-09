@@ -17,7 +17,7 @@ const waitingCard = (page, id = "adjustment-waiting") =>
   attention(page).locator(`.followup-row[data-id="${id}"]`);
 const dateControl = (page) =>
   waitingCard(page).locator('button[data-action="edit-next-followup"]');
-const dateMenu = (page) => page.locator("#due-date-menu");
+const datePicker = (page) => page.locator("#odak-date-picker");
 const dashboard = (page) =>
   page.locator('#nav [data-view="dashboard"]').click();
 const undo = (page) =>
@@ -108,10 +108,32 @@ async function seed(page, { paged = false, width = 1536, height = 864 } = {}) {
 
 async function openDate(page) {
   await dateControl(page).click();
-  await expect(dateMenu(page)).toBeVisible();
+  await expect(datePicker(page)).toBeVisible();
+  await expect(datePicker(page)).toHaveAttribute(
+    "data-selection-mode",
+    "direct",
+  );
+  await expect(page.locator("#due-date-menu")).toHaveCount(0);
+  await expect(
+    datePicker(page).locator('form, input[type="text"], [data-date-input]'),
+  ).toHaveCount(0);
+  await expect(
+    datePicker(page).getByRole("button", { name: /^(Kaydet|Vazgeç)$/ }),
+  ).toHaveCount(0);
+  await expect(
+    datePicker(page).getByRole("button", {
+      name: "Tarihi kaldır",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(
+    datePicker(page).getByRole("button", {
+      name: "Takvimi kapat",
+      exact: true,
+    }),
+  ).toBeVisible();
   await expect(page.locator("#editor")).not.toBeVisible();
   await expect(page.locator("#waiting-followup-dialog")).not.toBeVisible();
-  return dateMenu(page).locator('[name="nextFollowUpDate"]');
 }
 
 async function slotWidth(list, card, expectedColumns) {
@@ -236,35 +258,37 @@ async function sharedHeaders(page, expectedWaitingCount = "1") {
   });
 }
 
-test("a card follow-up date cancels without writes and saves only its plan with exact reload and one Undo", async ({
+test("a card follow-up calendar closes without writes and immediately saves or clears only its plan with exact reload and one Undo", async ({
   page,
 }) => {
   const { records, original } = await seed(page);
-  let input = await openDate(page);
-  await expect(page.locator("#odak-date-picker")).toBeVisible();
-  await expect(input).toHaveValue("08.11.2026");
-  await input.fill("10.11.2026");
+  await openDate(page);
+  await expect(
+    datePicker(page).locator('[data-date-day="2026-11-08"]'),
+  ).toHaveAttribute("aria-pressed", "true");
+  await datePicker(page).locator('[data-date-nav="1"]').click();
   await page.keyboard.press("Escape");
-  await expect(page.locator("#odak-date-picker")).not.toBeVisible();
-  await expect(dateMenu(page)).toBeVisible();
-  expect(await saved(page)).toBe(original);
-  await page.keyboard.press("Escape");
-  await expect(dateMenu(page)).not.toBeVisible();
+  await expect(datePicker(page)).not.toBeVisible();
   expect(await saved(page)).toBe(original);
 
-  input = await openDate(page);
-  await input.fill("10.11.2026");
-  await dateMenu(page).locator('[data-action="cancel-inline"]').click();
-  await expect(dateMenu(page)).not.toBeVisible();
-  expect(await saved(page)).toBe(original);
-
-  input = await openDate(page);
-  await input.fill("09.11.2026");
-  await dateMenu(page)
-    .getByRole("button", { name: "Kaydet", exact: true })
+  await openDate(page);
+  await datePicker(page)
+    .getByRole("button", { name: "Takvimi kapat", exact: true })
     .click();
-  await expect(dateMenu(page)).not.toBeVisible();
+  await expect(datePicker(page)).not.toBeVisible();
+  await expect(dateControl(page)).toBeFocused();
+  expect(await saved(page)).toBe(original);
+
+  await openDate(page);
+  await datePicker(page).locator('[data-date-day="2026-11-08"]').click();
+  await expect(datePicker(page)).not.toBeVisible();
+  expect(await saved(page)).toBe(original);
+
+  await openDate(page);
+  await datePicker(page).locator('[data-date-day="2026-11-09"]').click();
+  await expect(datePicker(page)).not.toBeVisible();
   await expect(dateControl(page)).toHaveText("9 Kas");
+  await expect(dateControl(page)).toBeFocused();
   const expected = records.map((item) =>
     item.id === "adjustment-waiting"
       ? {
@@ -275,6 +299,7 @@ test("a card follow-up date cancels without writes and saves only its plan with 
       : item,
   );
   expect(await savedRecords(page)).toEqual(expected);
+  expect(JSON.parse(await saved(page)).odak.history).toHaveLength(1);
   await expect(page.locator("#editor")).not.toBeVisible();
   await expect(page.locator("#waiting-followup-dialog")).not.toBeVisible();
   const editedBytes = await saved(page);
@@ -286,6 +311,42 @@ test("a card follow-up date cancels without writes and saves only its plan with 
   expect(await savedRecords(page)).toEqual(records);
   await page.reload();
   expect(await saved(page)).toBe(original);
+  await expect(dateControl(page)).toHaveText("8 Kas");
+
+  await openDate(page);
+  await datePicker(page)
+    .getByRole("button", { name: "Tarihi kaldır", exact: true })
+    .click();
+  await expect(datePicker(page)).not.toBeVisible();
+  await expect(waitingCard(page)).toHaveCount(0);
+  expect(await savedRecords(page)).toEqual(
+    records.map((item) =>
+      item.id === "adjustment-waiting"
+        ? { ...item, nextFollowUpDate: "", updatedAt: NOW.toISOString() }
+        : item,
+    ),
+  );
+  expect(JSON.parse(await saved(page)).odak.history).toHaveLength(1);
+  const clearedBytes = await saved(page);
+  await page.locator('#nav [data-view="waiting"]').click();
+  const unplannedRow = page.locator(
+    '.waiting-table tr[data-record-row][data-id="adjustment-waiting"]',
+  );
+  await expect(unplannedRow).toHaveCount(1);
+  const unplannedDate = unplannedRow.getByRole("button", {
+    name: `${records.find((item) => item.id === "adjustment-waiting").title}: sonraki takip tarihini değiştir`,
+    exact: true,
+  });
+  await expect(unplannedDate).toBeVisible();
+  await expect(unplannedDate).toBeEnabled();
+  await expect(unplannedDate).toHaveText("Takip planla");
+  expect(await saved(page)).toBe(clearedBytes);
+  await dashboard(page);
+  expect(await saved(page)).toBe(clearedBytes);
+  await expect(waitingCard(page)).toHaveCount(0);
+  await undo(page);
+  expect(await saved(page)).toBe(original);
+  await expect(waitingCard(page)).toBeVisible();
   await expect(dateControl(page)).toHaveText("8 Kas");
 });
 

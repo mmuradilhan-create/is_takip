@@ -266,29 +266,27 @@ test("waiting reminder dates open from attention cards and their own list while 
   const attentionDate = primary.locator("button.waiting-next-date");
   await expect(attentionDate).toBeVisible();
   await attentionDate.click();
-  await expect(page.locator("#due-date-menu")).toBeVisible();
-  await expect(page.locator("#editor")).not.toBeVisible();
+  const picker = page.locator("#odak-date-picker");
+  await expect(picker).toBeVisible();
+  await expect(picker).toHaveAttribute("data-selection-mode", "direct");
+  await expect(page.locator("#due-date-menu, #quick-date-form")).toHaveCount(0);
   await expect(
-    page.locator('#due-date-menu [name="nextFollowUpDate"]'),
-  ).toHaveValue("07.11.2026");
-  await expect(page.locator("#odak-date-picker")).toBeVisible();
+    picker.locator('input[type="text"], [type="submit"]'),
+  ).toHaveCount(0);
+  await expect(page.locator("#editor")).not.toBeVisible();
+  await expect(picker.locator('[data-date-day="2026-11-07"]')).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
   await page.keyboard.press("Escape");
-  await expect(page.locator("#odak-date-picker")).not.toBeVisible();
-  await expect(page.locator("#due-date-menu")).toBeVisible();
-  await page.keyboard.press("Escape");
-  await expect(page.locator("#due-date-menu")).not.toBeVisible();
+  await expect(picker).not.toBeVisible();
+  await expect(attentionDate).toHaveAttribute("aria-expanded", "false");
   expect(await saved(page)).toBe(initialBytes);
   await list(page);
   await row(page).locator(".waiting-next-date").click();
-  await expect(page.locator("#due-date-menu")).toBeVisible();
-  await expect(page.locator("#odak-date-picker")).toBeVisible();
-  await page.keyboard.press("Escape");
-  await expect(page.locator("#odak-date-picker")).not.toBeVisible();
-  await expect(page.locator("#due-date-menu")).toBeVisible();
-  await page
-    .locator('#due-date-menu [name="nextFollowUpDate"]')
-    .fill("10.11.2026");
-  await page.locator('#quick-date-form button[type="submit"]').click();
+  await expect(picker).toBeVisible();
+  await picker.locator('[data-date-day="2026-11-10"]').click();
+  await expect(picker).not.toBeVisible();
   await expect(page.locator("#editor")).not.toBeVisible();
   expect(
     (await records(page)).find((item) => item.id === "waiting-primary")
@@ -300,6 +298,20 @@ test("waiting reminder dates open from attention cards and their own list while 
   expect(
     (await records(page)).find((item) => item.id === "meeting-primary"),
   ).toEqual(original.find((item) => item.id === "meeting-primary"));
+  await undo(page);
+  expect(await saved(page)).toBe(initialBytes);
+  await row(page).locator(".waiting-next-date").click();
+  await picker
+    .getByRole("button", { name: "Tarihi kaldır", exact: true })
+    .click();
+  await expect(picker).not.toBeVisible();
+  expect(await records(page)).toEqual(
+    original.map((item) =>
+      item.id === "waiting-primary"
+        ? { ...item, nextFollowUpDate: "", updatedAt: NOW.toISOString() }
+        : item,
+    ),
+  );
   await undo(page);
   expect(await saved(page)).toBe(initialBytes);
   await list(page);
@@ -324,15 +336,12 @@ test("waiting reminder dates open from attention cards and their own list while 
   );
   await expect(unplannedDate).toContainText("Takip planla");
   await unplannedDate.click();
-  await expect(page.locator("#due-date-menu")).toBeVisible();
-  await expect(page.locator("#odak-date-picker")).toBeVisible();
-  await page.keyboard.press("Escape");
-  await expect(page.locator("#odak-date-picker")).not.toBeVisible();
-  await expect(page.locator("#due-date-menu")).toBeVisible();
-  await page
-    .locator('#due-date-menu [name="nextFollowUpDate"]')
-    .fill("10.11.2026");
-  await page.locator('#quick-date-form button[type="submit"]').click();
+  await expect(picker).toBeVisible();
+  await expect(
+    picker.getByRole("button", { name: "Tarihi kaldır", exact: true }),
+  ).toBeDisabled();
+  await picker.locator('[data-date-day="2026-11-10"]').click();
+  await expect(picker).not.toBeVisible();
   await expect(dialog(page)).not.toBeVisible();
   await expect(page.locator("#editor")).not.toBeVisible();
   const edited = await records(page);

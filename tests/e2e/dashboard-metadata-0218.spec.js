@@ -16,7 +16,7 @@ const goal = (page, id = "metadata-goal") =>
 const waiting = (page, id = "metadata-waiting") =>
   page.locator(`.attention-panel .followup-row[data-id="${id}"]`);
 const panel = (page) => page.locator("#goal-detail-panel");
-const dateMenu = (page) => page.locator("#due-date-menu");
+const datePicker = (page) => page.locator("#odak-date-picker");
 const goalDate = (page) => goal(page).locator('[data-action="edit-date"]');
 const childDate = (page) =>
   panel(page).locator(
@@ -208,15 +208,37 @@ async function seed(page, { dense = false } = {}) {
 
 async function openDate(control, page) {
   await control.click();
-  await expect(dateMenu(page)).toBeVisible();
-  return dateMenu(page).locator('[name="dueDate"]');
+  await expect(datePicker(page)).toBeVisible();
+  await expect(datePicker(page)).toHaveAttribute(
+    "data-selection-mode",
+    "direct",
+  );
+  await expect(page.locator("#due-date-menu")).toHaveCount(0);
+  await expect(
+    datePicker(page).locator('form, input[type="text"], [data-date-input]'),
+  ).toHaveCount(0);
+  await expect(
+    datePicker(page).getByRole("button", { name: /^(Kaydet|Vazgeç)$/ }),
+  ).toHaveCount(0);
+  await expect(
+    datePicker(page).getByRole("button", {
+      name: "Tarihi kaldır",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(
+    datePicker(page).getByRole("button", {
+      name: "Takvimi kapat",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(page.locator("#editor")).not.toBeVisible();
+  await expect(page.locator("#waiting-followup-dialog")).not.toBeVisible();
 }
 
-async function saveDate(page) {
-  await dateMenu(page)
-    .getByRole("button", { name: "Kaydet", exact: true })
-    .click();
-  await expect(dateMenu(page)).not.toBeVisible();
+async function selectDate(page, value) {
+  await datePicker(page).locator(`[data-date-day="${value}"]`).click();
+  await expect(datePicker(page)).not.toBeVisible();
 }
 
 async function openGoal(page) {
@@ -582,7 +604,7 @@ test("Dashboard metadata explains follow-up age, offers reversible type-specific
   expect(await saved(page)).toBe(before);
 });
 
-test("editing a goal deadline on its card changes only that date and preserves metric drafts and historical fields through cancel, save and exact Undo", async ({
+test("a goal deadline calendar immediately saves or clears only its date and preserves metric drafts and historical fields through close and exact Undo", async ({
   page,
 }) => {
   const items = await seed(page);
@@ -593,13 +615,22 @@ test("editing a goal deadline on its card changes only that date and preserves m
     panel(page).locator("#goal-next-action, #goal-next-step-form"),
   ).toHaveCount(0);
   await closePanel(page);
-  let input = await openDate(goalDate(page), page);
-  await input.fill("16.11.2026");
-  await dateMenu(page).locator('[data-action="cancel-inline"]').click();
+  await openDate(goalDate(page), page);
+  await expect(
+    datePicker(page).locator('[data-date-day="2026-11-10"]'),
+  ).toHaveAttribute("aria-pressed", "true");
+  await datePicker(page).locator('[data-date-nav="1"]').click();
+  await datePicker(page)
+    .getByRole("button", { name: "Takvimi kapat", exact: true })
+    .click();
+  await expect(datePicker(page)).not.toBeVisible();
   expect(await saved(page)).toBe(before);
-  input = await openDate(goalDate(page), page);
-  await input.fill("17.11.2026");
-  await saveDate(page);
+  await openDate(goalDate(page), page);
+  await selectDate(page, "2026-11-10");
+  expect(await saved(page)).toBe(before);
+  await openDate(goalDate(page), page);
+  await selectDate(page, "2026-11-17");
+  await expect(goalDate(page)).toBeFocused();
   const original = items.find((item) => item.id === "metadata-goal");
   const after = await stored(page);
   expect(after.records.find((item) => item.id === original.id)).toEqual({
@@ -624,9 +655,28 @@ test("editing a goal deadline on its card changes only that date and preserves m
   await closePanel(page);
   await undo(page);
   expect(await saved(page)).toBe(before);
+
+  await openDate(goalDate(page), page);
+  await datePicker(page)
+    .getByRole("button", { name: "Tarihi kaldır", exact: true })
+    .click();
+  await expect(datePicker(page)).not.toBeVisible();
+  expect((await stored(page)).records).toEqual(
+    items.map((item) =>
+      item.id === original.id
+        ? { ...item, dueDate: "", updatedAt: NOW.toISOString() }
+        : item,
+    ),
+  );
+  expect((await stored(page)).odak.history).toHaveLength(1);
+  await openGoal(page);
+  await expect(metricDraft(page)).toHaveValue("6");
+  await closePanel(page);
+  await undo(page);
+  expect(await saved(page)).toBe(before);
 });
 
-test("a child deadline edits inside the goal panel without losing drafts or overwriting external history and data", async ({
+test("a child deadline calendar safely retries failed writes and preserves goal drafts and external history and data", async ({
   page,
   context,
 }) => {
@@ -637,20 +687,32 @@ test("a child deadline edits inside the goal panel without losing drafts or over
   await expect(
     panel(page).locator("#goal-next-action, #goal-next-step-form"),
   ).toHaveCount(0);
-  let input = await openDate(childDate(page), page);
-  await input.fill("30.02.2026");
-  await dateMenu(page)
-    .getByRole("button", { name: "Kaydet", exact: true })
-    .click();
-  await expect(dateMenu(page)).toBeVisible();
-  await expect(dateMenu(page).locator("#quick-date-error")).not.toBeEmpty();
-  await dateMenu(page)
-    .getByRole("button", { name: "Vazgeç", exact: true })
-    .click();
+  await openDate(childDate(page), page);
+  await expect(
+    datePicker(page).locator('[data-date-day="2026-11-12"]'),
+  ).toHaveAttribute("aria-pressed", "true");
+  await page.evaluate((key) => {
+    const originalSetItem = Storage.prototype.setItem;
+    window.restoreMetadataStorage = () => {
+      Storage.prototype.setItem = originalSetItem;
+    };
+    Storage.prototype.setItem = function (name, value) {
+      if (name === key)
+        throw new DOMException("Test depolaması dolu", "QuotaExceededError");
+      return originalSetItem.call(this, name, value);
+    };
+  }, KEY);
+  await datePicker(page).locator('[data-date-day="2026-11-18"]').click();
+  await expect(datePicker(page)).toBeVisible();
+  await expect(
+    datePicker(page).locator('#date-picker-error[role="alert"]'),
+  ).not.toBeEmpty();
+  await expect(metricDraft(page)).toHaveValue("5");
+  await expect(childDate(page)).toContainText("12 Kas");
   expect(await saved(page)).toBe(before);
-  input = await openDate(childDate(page), page);
-  await input.fill("18.11.2026");
-  await saveDate(page);
+  await page.evaluate(() => window.restoreMetadataStorage());
+  await selectDate(page, "2026-11-18");
+  await expect(childDate(page)).toBeFocused();
   const original = items.find((item) => item.id === "metadata-child");
   expect(
     (await stored(page)).records.find((item) => item.id === original.id),
@@ -659,6 +721,7 @@ test("a child deadline edits inside the goal panel without losing drafts or over
     dueDate: "2026-11-18",
     updatedAt: NOW.toISOString(),
   });
+  expect((await stored(page)).odak.history).toHaveLength(1);
   await expect(metricDraft(page)).toHaveValue("5");
   expect(
     (await stored(page)).records.find((item) => item.id === "metadata-goal")
@@ -668,8 +731,9 @@ test("a child deadline edits inside the goal panel without losing drafts or over
   await undo(page);
   expect(await saved(page)).toBe(before);
   await openGoal(page);
-  input = await openDate(childDate(page), page);
-  await input.fill("21.11.2026");
+  await openDate(childDate(page), page);
+  await datePicker(page).locator('[data-date-nav="1"]').click();
+  expect(await saved(page)).toBe(before);
   const other = await context.newPage();
   await other.clock.setFixedTime(NOW);
   await other.goto("/");
@@ -687,16 +751,18 @@ test("a child deadline edits inside the goal panel without losing drafts or over
   await expect(other.locator("#editor")).not.toBeVisible();
   const external = await saved(other);
   await expect.poll(() => saved(page)).toBe(external);
-  await expect(dateMenu(page)).not.toBeVisible();
+  await expect(datePicker(page)).not.toBeVisible();
   await expect(metricDraft(page)).toHaveValue("5");
   expect(
     (await stored(page)).records.find((item) => item.id === "metadata-goal")
       .nextAction,
   ).toBe(items.find((item) => item.id === "metadata-goal").nextAction);
-  input = await openDate(childDate(page), page);
-  await expect(input).toHaveValue("19.11.2026");
-  await input.fill("22.11.2026");
-  await saveDate(page);
+  await openDate(childDate(page), page);
+  await expect(
+    datePicker(page).locator('[data-date-day="2026-11-19"]'),
+  ).toHaveAttribute("aria-pressed", "true");
+  await selectDate(page, "2026-11-22");
+  await expect(metricDraft(page)).toHaveValue("5");
   const remoteChild = JSON.parse(external).records.find(
     (item) => item.id === original.id,
   );
@@ -814,6 +880,10 @@ test("dense previews keep two shared cards beside independent notes and every go
     }
     const firstGoal = goals.locator(".dashboard-goal-row").first();
     const goalBounds = await firstGoal.boundingBox();
+    const goalStatus = await firstGoal.locator(".status-trigger").boundingBox();
+    const goalDateBounds = await firstGoal
+      .locator('[data-action="edit-date"]')
+      .boundingBox();
     const goalActions = await firstGoal
       .locator(".dashboard-goal-actions")
       .boundingBox();
@@ -843,6 +913,12 @@ test("dense previews keep two shared cards beside independent notes and every go
         .locator('[data-action="edit-next-followup"]')
         .boundingBox();
       expect(dateBounds.y).toBeGreaterThanOrEqual(title.y + title.height - 1);
+      expect(
+        Math.abs(status.y - bounds.y - (goalStatus.y - goalBounds.y)),
+      ).toBeLessThanOrEqual(1);
+      expect(
+        Math.abs(dateBounds.y - bounds.y - (goalDateBounds.y - goalBounds.y)),
+      ).toBeLessThanOrEqual(1);
       expect(
         Math.abs(
           bounds.y +

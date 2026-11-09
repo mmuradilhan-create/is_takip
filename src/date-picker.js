@@ -14,6 +14,8 @@ const previousIcon =
   '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 6-6 6 6 6"/></svg>';
 const nextIcon =
   '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m10 6 6 6-6 6"/></svg>';
+const closeIcon =
+  '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>';
 const months = [
   "Ocak",
   "Şubat",
@@ -111,6 +113,7 @@ export function createDatePicker({
   root.append(picker);
   let activeInput = null;
   let activeTrigger = null;
+  let activeSelection = null;
   let viewed = calendarDate(localDate());
   let focusDate = "";
   let destroyed = false;
@@ -121,21 +124,70 @@ export function createDatePicker({
     activeTrigger?.setAttribute("aria-expanded", "false");
   }
 
-  function close({ restoreFocus = false } = {}) {
-    const input = activeInput;
+  function selectionAnchor(selection = activeSelection) {
+    const replacement = selection?.resolveAnchor?.();
+    return replacement?.isConnected ? replacement : selection?.anchor;
+  }
+
+  function close({ restoreFocus = false, dismiss = false } = {}) {
+    // Saving rerenders the source list. Keep the pending selection alive until
+    // its result can be shown at the replacement chip.
+    if (activeSelection?.pending && !dismiss) return;
+    const target = activeSelection ? selectionAnchor() : activeInput;
+    if (activeSelection) activeSelection.dismissed = true;
+    activeSelection = null;
     if (isOpen()) picker.hidePopover();
     resetTrigger();
-    if (restoreFocus && input?.isConnected)
-      input.focus({ preventScroll: true });
+    picker.removeAttribute("aria-busy");
+    if (restoreFocus && target?.isConnected)
+      target.focus({ preventScroll: true });
+  }
+
+  function closeSelection(options) {
+    if (activeSelection) close(options);
+  }
+
+  function bounds() {
+    return {
+      min: activeSelection?.min || activeInput?.dataset.dateMin || "1900-01-01",
+      max: activeSelection?.max || activeInput?.dataset.dateMax || "9999-12-31",
+    };
+  }
+
+  function validSelectionHeader() {
+    if (!activeSelection) return true;
+    const yearInput = picker.querySelector("[data-date-year]");
+    const monthInput = picker.querySelector("[data-date-month]");
+    const text = yearInput.value.trim();
+    const year = Number(text);
+    const month = Number(monthInput.value);
+    const { min, max } = bounds();
+    const valid =
+      /^\d{4}$/.test(text) &&
+      year >= Number(min.slice(0, 4)) &&
+      year <= Number(max.slice(0, 4)) &&
+      Number.isInteger(month) &&
+      month >= 0 &&
+      month <= 11;
+    const message = valid
+      ? ""
+      : `Geçerli bir yıl yaz (${min.slice(0, 4)}–${max.slice(0, 4)}).`;
+    yearInput.setCustomValidity(message);
+    yearInput.setAttribute("aria-invalid", String(!valid));
+    picker.querySelector("#date-picker-error").textContent =
+      message || activeSelection.error;
+    position();
+    return valid;
   }
 
   function position() {
     if (!isOpen()) return;
-    if (!activeInput?.isConnected) {
+    const source = activeSelection ? selectionAnchor() : activeInput;
+    if (!source?.isConnected) {
       close();
       return;
     }
-    const anchor = activeInput.closest(".date-input-wrap") || activeInput;
+    const anchor = source.closest(".date-input-wrap") || source;
     const rect = anchor.getBoundingClientRect();
     const viewport = win.visualViewport;
     let leftEdge = viewport?.offsetLeft || 0;
@@ -144,13 +196,13 @@ export function createDatePicker({
     const height = viewport?.height || win.innerHeight;
     let rightEdge = leftEdge + width;
     let bottom = topEdge + height;
-    const dialog = activeInput.closest("dialog");
+    const dialog = source.closest("dialog");
     if (dialog) {
       if (!dialog.open) {
         close();
         return;
       }
-      const body = activeInput.closest(".modal-body");
+      const body = source.closest(".modal-body");
       const bodyBounds = body?.getBoundingClientRect();
       const dialogBounds = dialog.getBoundingClientRect();
       const header = dialog
@@ -188,6 +240,7 @@ export function createDatePicker({
   }
 
   function selectedValue() {
+    if (activeSelection) return activeSelection.value;
     try {
       return dateValue(activeInput);
     } catch {
@@ -199,8 +252,7 @@ export function createDatePicker({
     const year = viewed.getUTCFullYear();
     const month = viewed.getUTCMonth();
     const selected = selectedValue();
-    const min = activeInput?.dataset.dateMin || "1900-01-01";
-    const max = activeInput?.dataset.dateMax || "9999-12-31";
+    const { min, max } = bounds();
     const start = partsDate(year, month);
     const offset = (start.getUTCDay() + 6) % 7;
     const days = partsDate(year, month + 1, 0).getUTCDate();
@@ -215,7 +267,9 @@ export function createDatePicker({
         `<button type="button" class="date-picker-day${value === selected ? " is-selected" : ""}${value === currentDay() ? " is-today" : ""}" data-date-day="${value}" aria-label="${escapeHtml(spokenDate.format(date))}" aria-pressed="${value === selected}" ${value === currentDay() ? 'aria-current="date"' : ""} ${value < min || value > max ? "disabled" : ""}>${day}</button>`,
       );
     }
-    picker.innerHTML = `<div class="date-picker-header"><button type="button" class="date-picker-nav" data-date-nav="-1" aria-label="Önceki ay" ${year === Number(min.slice(0, 4)) && month === Number(min.slice(5, 7)) - 1 ? "disabled" : ""}>${previousIcon}</button><label class="date-picker-month-label"><span class="visually-hidden">Ay</span><select data-date-month aria-label="Ay">${months.map((name, index) => `<option value="${index}" ${index === month ? "selected" : ""}>${name}</option>`).join("")}</select></label><label class="date-picker-year-label"><span class="visually-hidden">Yıl</span><input type="number" data-date-year aria-label="Yıl" min="${min.slice(0, 4)}" max="${max.slice(0, 4)}" value="${year}" inputmode="numeric"></label><button type="button" class="date-picker-nav" data-date-nav="1" aria-label="Sonraki ay" ${year === Number(max.slice(0, 4)) && month === Number(max.slice(5, 7)) - 1 ? "disabled" : ""}>${nextIcon}</button></div><div class="date-picker-weekdays" aria-hidden="true">${weekdays.map((day) => `<span>${day}</span>`).join("")}</div><div class="date-picker-days" role="group" aria-label="${months[month]} ${year}">${cells.join("")}</div><div class="date-picker-footer"><button type="button" data-date-shortcut="today">Bugün</button><button type="button" data-date-shortcut="clear">Temizle</button><button type="button" data-date-shortcut="cancel">Vazgeç</button></div>`;
+    const direct = Boolean(activeSelection);
+    picker.dataset.selectionMode = direct ? "direct" : "input";
+    picker.innerHTML = `<div class="date-picker-header"><button type="button" class="date-picker-nav" data-date-nav="-1" aria-label="Önceki ay" ${year === Number(min.slice(0, 4)) && month === Number(min.slice(5, 7)) - 1 ? "disabled" : ""}>${previousIcon}</button><label class="date-picker-month-label"><span class="visually-hidden">Ay</span><select data-date-month aria-label="Ay">${months.map((name, index) => `<option value="${index}" ${index === month ? "selected" : ""}>${name}</option>`).join("")}</select></label><label class="date-picker-year-label"><span class="visually-hidden">Yıl</span><input type="number" data-date-year aria-label="Yıl" min="${min.slice(0, 4)}" max="${max.slice(0, 4)}" value="${year}" inputmode="numeric"></label><button type="button" class="date-picker-nav" data-date-nav="1" aria-label="Sonraki ay" ${year === Number(max.slice(0, 4)) && month === Number(max.slice(5, 7)) - 1 ? "disabled" : ""}>${nextIcon}</button>${direct ? `<button type="button" class="date-picker-close" data-date-shortcut="cancel" aria-label="Takvimi kapat" title="Kapat">${closeIcon}</button>` : ""}</div><div class="date-picker-weekdays" aria-hidden="true">${weekdays.map((day) => `<span>${day}</span>`).join("")}</div><div class="date-picker-days" role="group" aria-label="${months[month]} ${year}">${cells.join("")}</div><div class="date-picker-footer">${direct ? `<button type="button" data-date-shortcut="clear" ${selected ? "" : "disabled"}>Tarihi kaldır</button>` : '<button type="button" data-date-shortcut="today">Bugün</button><button type="button" data-date-shortcut="clear">Temizle</button><button type="button" data-date-shortcut="cancel">Vazgeç</button>'}</div>${direct ? `<p class="date-picker-error" id="date-picker-error" role="alert">${escapeHtml(activeSelection.error || "")}</p>` : ""}`;
     position();
   }
 
@@ -225,16 +279,16 @@ export function createDatePicker({
       close();
       return;
     }
-    close();
+    close({ dismiss: true });
     activeInput = input;
     activeTrigger = trigger;
+    picker.setAttribute("aria-label", "Tarih seç");
     const date = selectedValue() || currentDay();
     const min = input.dataset.dateMin || "1900-01-01";
     const max = input.dataset.dateMax || "9999-12-31";
     focusDate = date >= min && date <= max ? date : min;
     viewed = calendarDate(focusDate) || calendarDate(localDate());
-    // A child popover keeps its parent quick editor open and remains interactive
-    // when the field belongs to a modal dialog.
+    // Date inputs in modal forms keep their calendar within the same dialog.
     (input.closest("[popover], dialog") || root).append(picker);
     picker.style.left = "8px";
     picker.style.top = "8px";
@@ -269,7 +323,121 @@ export function createDatePicker({
     return isOpen();
   }
 
+  function showSelection(selection) {
+    const anchor = selectionAnchor(selection);
+    if (!anchor?.isConnected || !root.contains(anchor)) return false;
+    resetTrigger();
+    activeTrigger = anchor;
+    const parent = anchor.closest("[popover], dialog") || root;
+    if (picker.parentElement !== parent) parent.append(picker);
+    picker.setAttribute("aria-label", selection.label);
+    render();
+    if (!isOpen()) picker.showPopover();
+    activeTrigger.setAttribute("aria-expanded", "true");
+    position();
+    picker
+      .querySelector(`[data-date-day="${focusDate}"]`)
+      ?.focus({ preventScroll: true });
+    return isOpen();
+  }
+
+  /** Quick chips commit a calendar selection directly, without a draft input. */
+  function openSelection({
+    anchor,
+    value = "",
+    label = "Tarih seç",
+    onSelect,
+    resolveAnchor,
+    min = "1900-01-01",
+    max = "9999-12-31",
+  } = {}) {
+    if (
+      destroyed ||
+      !anchor?.isConnected ||
+      !root.contains(anchor) ||
+      anchor.matches(":disabled") ||
+      typeof onSelect !== "function" ||
+      !calendarDate(min) ||
+      !calendarDate(max) ||
+      min > max
+    )
+      return false;
+    close({ dismiss: true });
+    activeInput = null;
+    activeSelection = {
+      anchor,
+      value: calendarDate(value) ? value : "",
+      label,
+      onSelect,
+      resolveAnchor,
+      min,
+      max,
+      pending: false,
+      dismissed: false,
+      error: "",
+    };
+    const date = selectedValue() || currentDay();
+    focusDate = date >= min && date <= max ? date : min;
+    viewed = calendarDate(focusDate);
+    return showSelection(activeSelection);
+  }
+
+  async function commitSelection(value) {
+    const selection = activeSelection;
+    if (!selection || selection.pending) return;
+    if (!validSelectionHeader()) {
+      picker.querySelector("[data-date-year]").focus({ preventScroll: true });
+      return;
+    }
+    const headerYear = Number(picker.querySelector("[data-date-year]").value);
+    const headerMonth = Number(picker.querySelector("[data-date-month]").value);
+    if (
+      headerYear !== viewed.getUTCFullYear() ||
+      headerMonth !== viewed.getUTCMonth()
+    ) {
+      changeMonth(headerMonth, headerYear);
+      return;
+    }
+    const selectedDate = value ? calendarDate(value) : null;
+    if (
+      value &&
+      (!selectedDate ||
+        selectedDate.getUTCFullYear() !== headerYear ||
+        selectedDate.getUTCMonth() !== headerMonth)
+    )
+      return;
+    selection.pending = true;
+    picker.setAttribute("aria-busy", "true");
+    for (const input of picker.querySelectorAll(
+      "[data-date-month], [data-date-year]",
+    ))
+      input.disabled = true;
+    try {
+      if ((await selection.onSelect(value)) === false)
+        throw new Error(
+          "Tarih kaydedilemedi. Yeniden bir tarih seçerek deneyebilirsin.",
+        );
+      selection.pending = false;
+      if (!selection.dismissed) close({ restoreFocus: true });
+    } catch (error) {
+      selection.pending = false;
+      if (selection.dismissed || destroyed) return;
+      selection.error =
+        error instanceof Error ? error.message : "Tarih kaydedilemedi.";
+      activeSelection = selection;
+      if (value) focusDate = value;
+      if (!showSelection(selection)) close();
+    } finally {
+      selection.pending = false;
+      if (activeSelection === selection) picker.removeAttribute("aria-busy");
+    }
+  }
+
   function setValue(value) {
+    if (activeSelection) {
+      void commitSelection(value);
+      return;
+    }
     if (!activeInput) return;
     activeInput.value = formatDateInput(value);
     activeInput.setCustomValidity("");
@@ -289,8 +457,7 @@ export function createDatePicker({
   }
 
   function changeMonth(month, year) {
-    const min = activeInput?.dataset.dateMin || "1900-01-01";
-    const max = activeInput?.dataset.dateMax || "9999-12-31";
+    const { min, max } = bounds();
     const next = partsDate(year, month);
     if (
       next.getUTCFullYear() < Number(min.slice(0, 4)) ||
@@ -316,6 +483,12 @@ export function createDatePicker({
     );
     if (!control || !picker.contains(control)) return;
     event.preventDefault();
+    if (control.dataset.dateShortcut === "cancel") {
+      close({ restoreFocus: true, dismiss: true });
+      return;
+    }
+    if (control.matches(":disabled") || activeSelection?.pending) return;
+    if (activeSelection && !validSelectionHeader()) return;
     if (control.dataset.dateDay) setValue(control.dataset.dateDay);
     else if (control.dataset.dateNav) {
       changeMonth(
@@ -332,15 +505,23 @@ export function createDatePicker({
 
   function onInput(event) {
     if (event.target.matches?.("[data-date-input]")) updateInput(event.target);
+    else if (
+      activeSelection &&
+      picker.contains(event.target) &&
+      event.target.matches?.("[data-date-year]")
+    )
+      validSelectionHeader();
   }
 
   function onChange(event) {
     const input = event.target;
     if (input.matches?.("[data-date-input]")) updateInput(input, true);
     else if (
+      !activeSelection?.pending &&
       picker.contains(input) &&
       input.matches?.("[data-date-month], [data-date-year]")
     ) {
+      if (!validSelectionHeader()) return;
       const month = Number(picker.querySelector("[data-date-month]").value);
       const year = Number(picker.querySelector("[data-date-year]").value);
       changeMonth(month, year);
@@ -373,14 +554,16 @@ export function createDatePicker({
     if (event.key === "Escape") {
       event.preventDefault();
       event.stopPropagation();
-      close({ restoreFocus: true });
+      close({ restoreFocus: true, dismiss: true });
       return;
     }
+    if (activeSelection?.pending) return;
     if (event.target.matches("[data-date-year]") && event.key === "Enter") {
       event.preventDefault();
       onChange(event);
       return;
     }
+    if (activeSelection && !validSelectionHeader()) return;
     const day = event.target.closest("[data-date-day]");
     const amount = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 }[
       event.key
@@ -390,11 +573,8 @@ export function createDatePicker({
     const date = calendarDate(day.dataset.dateDay);
     date.setUTCDate(date.getUTCDate() + amount);
     const value = key(date);
-    if (
-      value < (activeInput.dataset.dateMin || "1900-01-01") ||
-      value > (activeInput.dataset.dateMax || "9999-12-31")
-    )
-      return;
+    const { min, max } = bounds();
+    if (value < min || value > max) return;
     viewed = date;
     render();
     picker
@@ -403,7 +583,30 @@ export function createDatePicker({
   }
 
   function onToggle(event) {
-    if (event.newState === "closed" && !isOpen()) resetTrigger();
+    if (event.newState === "closed" && !isOpen()) {
+      resetTrigger();
+      if (activeSelection && !activeSelection.pending) close();
+    }
+  }
+  function onPointerDown(event) {
+    if (
+      activeSelection &&
+      (isOpen() || activeSelection.pending) &&
+      !picker.contains(event.target) &&
+      !activeTrigger?.contains(event.target)
+    )
+      close({ dismiss: true });
+  }
+  function onDismissKey(event) {
+    if (
+      activeSelection &&
+      (isOpen() || activeSelection.pending) &&
+      event.key === "Escape"
+    ) {
+      event.preventDefault();
+      event.stopPropagation();
+      close({ restoreFocus: true, dismiss: true });
+    }
   }
   function onResize() {
     position();
@@ -417,6 +620,9 @@ export function createDatePicker({
   root.addEventListener("change", onChange);
   root.addEventListener("keydown", onKeydown);
   picker.addEventListener("toggle", onToggle);
+  document.addEventListener("pointerdown", onPointerDown, true);
+  document.addEventListener("click", onPointerDown, true);
+  document.addEventListener("keydown", onDismissKey, true);
   win.addEventListener("resize", onResize);
   win.addEventListener("scroll", onScroll, true);
   win.visualViewport?.addEventListener("resize", onResize);
@@ -424,16 +630,19 @@ export function createDatePicker({
   function destroy() {
     if (destroyed) return;
     destroyed = true;
-    close();
+    close({ dismiss: true });
     root.removeEventListener("click", onClick);
     root.removeEventListener("input", onInput);
     root.removeEventListener("change", onChange);
     root.removeEventListener("keydown", onKeydown);
     picker.removeEventListener("toggle", onToggle);
+    document.removeEventListener("pointerdown", onPointerDown, true);
+    document.removeEventListener("click", onPointerDown, true);
+    document.removeEventListener("keydown", onDismissKey, true);
     win.removeEventListener("resize", onResize);
     win.removeEventListener("scroll", onScroll, true);
     win.visualViewport?.removeEventListener("resize", onResize);
     picker.remove();
   }
-  return { openFor, close, destroy };
+  return { openFor, openSelection, closeSelection, close, destroy };
 }

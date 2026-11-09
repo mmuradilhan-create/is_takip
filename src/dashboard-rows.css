@@ -205,6 +205,27 @@
   margin-top: 0;
 }
 
+/* Goal metadata shares the same bottom anchor as follow-up metadata. */
+.dashboard-workspace.dashboard-rows
+  .dashboard-bottom-row
+  .dashboard-goals
+  .dashboard-goal-title-line {
+  flex: 1 1 0;
+  height: auto;
+  max-height: none;
+}
+
+.dashboard-workspace.dashboard-rows
+  .dashboard-bottom-row
+  .dashboard-goals
+  .dashboard-goal-progress {
+  flex: 0 0 22px;
+  min-height: 22px;
+  height: 22px;
+  margin-top: 0;
+  padding-top: 8px;
+}
+
 @media (min-width: 1536px) and (min-height: 741px) {
   .dashboard-workspace.dashboard-rows
     .dashboard-bottom-row

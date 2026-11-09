@@ -83,6 +83,11 @@ function parse(raw) {
   return { version: 1, currentId: decoded.currentId, entries };
 }
 
+/** Read and validate session context without creating an owner or writing storage. */
+export function readWorkSessionSnapshot(raw) {
+  return parse(raw);
+}
+
 function elapsedAt(entry, at) {
   if (!entry) return 0;
   const added =

@@ -1,6 +1,6 @@
 # Odak
 
-PC kullanımına odaklanan, Türkçe kişisel iş ve hedef takibi. HTML/CSS/JavaScript tabanlıdır. Güncel sürüm: **0.21.23**.
+PC kullanımına odaklanan, Türkçe kişisel iş ve hedef takibi. HTML/CSS/JavaScript tabanlıdır. Güncel sürüm: **0.21.24**.
 
 ## Kullanım
 
@@ -69,13 +69,13 @@ Haftalık veya aylık hedefi taşırken açılan kısa pencerede hedef dönem ve
 
 Haftalık listede eski **Aktarıldı** kayıtları **Arşivlendi** adıyla **Tümü** görünümünde yer alır; yalnız bunları görmek için **Durum → Arşivlenenler** seçilebilir. Bunlar eski haftaların kayıtlarıdır; kendiliğinden açık hedefe çevrilmez veya yeni haftaya taşınmaz. Özgün durumları ve bağlı işleri yedekte korunur. Formdaki işlevsiz **Sonraki döneme aktarılacak** kutusu kaldırılmıştır; eski kayıtların bu alanı saklanır.
 
-Öncelik satırdan düzenlenebilir; teslim tarihi kullanılan listelerde tarih de aynı şekilde değiştirilebilir. Öncelik menüden seçilince kaydedilir; tarih etiketine basınca takvim doğrudan açılır ve seçim **Kaydet** ile uygulanır. **Tarihi kaldır**, tarihi boşaltır. Escape, dışarı tıklama veya **Vazgeç**, kaydedilmemiş tarih seçimini iptal eder. Aynı değer tekrar seçilirse kayıt ve geri alma adımı oluşturulmaz. Gerçek değişiklikler mevcut **Geri al / Ctrl+Z** akışını kullanır.
+Öncelik satırdan düzenlenebilir; teslim tarihi kullanılan listelerde tarih de aynı şekilde değiştirilebilir. Öncelik menüden seçilince kaydedilir; tarih etiketine basınca yalnız takvim açılır. Gün seçimi tarihi hemen kaydeder; **Tarihi kaldır** da tarihi hemen boşaltır. Çarpı, Escape veya dışarı tıklama, gün seçmeden kapatır. Aynı değer tekrar seçilirse kayıt ve geri alma adımı oluşturulmaz. Gerçek değişiklikler mevcut **Geri al / Ctrl+Z** akışını kullanır.
 
 Filtreler kısa bir araç çubuğunda yer alır. Küçük **İş grubu / Durum / Öncelik / Termin** başlıkları seçimlerin anlamını korur; kontrolün tamamına tıklanabilir. Varsayılandan farklı seçimler vurgulanır; **Temizle** yerel iş grubu, durum, öncelik, tarih ve eksik bağlantı filtrelerini kaldırır. Seçili **Açık / Tamamlanan / Tümü** kapsamı, sıralama, plan dönemi ve genel arama korunur. Sıralamayı değiştirmek bir filtre sayılmaz ve tek başına **Temizle** düğmesini göstermez. Günlük işlerdeki **3 gün içinde**, bugün ve sonraki üç takvim gününde teslim edilecek açık işleri gösterir. Filtre işlemleri kayıtları veya geri alma geçmişini değiştirmez.
 
 Günlük listedeki eksik hedef bağlantısı bildirimi yalnız aramayla eşleşen açık planlı işleri sayar. **Bu işleri göster**, çakışan yerel filtreleri temizleyip ilgili açık işleri gösterir; genel arama ve sıralama korunur. Tamamlanmış işler bu bildirime dahil edilmez ve listeyi açmak kayıt değiştirmez.
 
-Bütün altı liste ekranında **Sırala** alanı bulunur. Varsayılan **Oluşturma · en yeni**, yeni açılan kayıtları önce gösterir; oluşturma tarihine göre eskiden yeniye de sıralanabilir. Senelik hedefler yalnız oluşturma tarihine göre sıralanır. Diğer teslim tarihi listelerinde **Teslim · yakın önce / uzak önce**, teslim tarihini iki yönde sıralar; tarihsizler her iki yönde de sonda kalır. Bekleyen konularda bunun yerine **Takip · yakın önce / uzak önce**, sonraki takip tarihini kullanır. Her sayfada en fazla **50 kayıt** gösterilir. Arama, filtre, kapsam veya sıralama değişince ilk sayfaya dönülür; silme sonrası artık olmayan sayfa düzeltilir. Sıralama ve sayfa değişimi kayıtları, tarihlerini veya geri alma geçmişini değiştirmez.
+Altı liste ekranında sıralama, araç çubuğunun sağ ucundaki küçük **aşağı/yukarı ok** düğmesinden seçilir. Güncel sıralama düğmenin açıklamasında görünür. Varsayılan **Oluşturma · en yeni**, yeni açılan kayıtları önce gösterir; oluşturma tarihine göre eskiden yeniye de sıralanabilir. Senelik hedefler yalnız oluşturma tarihine göre sıralanır. Diğer teslim tarihi listelerinde **Teslim · yakın önce / uzak önce**, teslim tarihini iki yönde sıralar; tarihsizler her iki yönde de sonda kalır. Bekleyen konularda bunun yerine **Takip · yakın önce / uzak önce**, sonraki takip tarihini kullanır. Her sayfada en fazla **50 kayıt** gösterilir. Arama, filtre, kapsam veya sıralama değişince ilk sayfaya dönülür; silme sonrası artık olmayan sayfa düzeltilir. Sıralama ve sayfa değişimi kayıtları, tarihlerini veya geri alma geçmişini değiştirmez.
 
 Tarih alanları tarayıcı dilinden bağımsız **GG.AA.YYYY** sırasındadır. Türkçe takvimde ay/yıl seçilebilir; pencerenin altında açıldığında takvim alanın üstüne yerleşir ve ekran içinde kalır. Teslim, kayıt/açılış ve son takip tarihlerinde aynı seçici kullanılır; yedeklerde tarih yine ISO biçiminde tutulur. Öncelik menüsü durum menüsü gibi yalnız yazıdan oluşur; seçili satır yeşil vurgulanır ve tikle belirtilir. Listede önceliğin yanında küçük bir bayrak bulunur: Düşük yeşil, Normal gri mor, Yüksek kehribar, Acil vişne tonundadır. Hafif zeminli etiketler kullanılır. Sol baştaki boş tamamlama kutusu, bekleyen konularda **Kapandı** durumunu uygular; diğer kayıtları tamamlar. Bu işlem geri alınabilir; sayısal hedef değerlerini değiştirmez.
 
@@ -182,6 +182,8 @@ Bir gün seçince o günün kayıtları açılır. Ay gezinmesi, gün ızgarası
 
 Üst çubuktaki **Takvim** düğmesi, Genel bakışta veya herhangi bir listede aynı takvimi açar. Bulunduğunuz bölümü, aramayı ve liste filtrelerini değiştirmez; Escape kapatınca klavye odağı düğmeye döner. Seçili gün ve görünüm korunur.
 
+Büyük takvimde gün hücresinin boş alanına tıklamak da o günü seçer. Hücredeki bir kaydı açınca seçili gün kaydın bulunduğu tarihe geçer; düzenleyiciden dönünce aynı günün ajandası açık kalır.
+
 Yeni bekleyen konuda **Son takip** boş başlar; kayıt açmak görüşme yapılmış gibi bir takip tarihi oluşturmaz.
 
 Takvimin altındaki **Bu haftanın hedefleri**, güncel haftanın açık hedeflerini başlığı, durumu, değiştirilebilir teslim tarihi, ilerlemesi ve bağlı günlük iş sayısıyla gösterir; uzun liste kendi içinde kaydırılır. Bu haftada açık hedef yoksa en yakın gelecek haftanın açık hedefleri **Yaklaşan haftanın hedefleri** başlığı ve hafta tarihleriyle gösterilir. Aynı haftadaki bütün açık hedeflere bu listeden ulaşılabilir. Bu önizleme hedeflerin dönemini veya durumunu değiştirmez; **Haftalık plan** gösterilen haftayı açar. Karttaki **İlerleme** ve **Bağlı işler** düğmeleri mevcut ayrıntı panelinin ilgili bölümünü açar. Açmak kaydı değiştirmez; kaydedilmemiş hedef taslakları korunur. Sayısal hedef ilerlemesi ile bağlı işlerin tamamlanması ayrı anlam taşır; birleştirilip yeni bir yüzde uydurulmaz. Önceki haftaların açık hedefleri yalnız üstteki **Kalan hedefleri planla** önerisinde yer alır; sağ panelde sayıları tekrarlanmaz. Güncel veya yaklaşan hedef yoksa **Hedef seç** haftalık planı açar.
@@ -190,7 +192,11 @@ Takvimin altındaki **Bu haftanın hedefleri**, güncel haftanın açık hedefle
 
 Takip kartlarında bekleyen konuların sonraki takip tarihleri esas alınır: **gecikenler, bugün ve sonraki üç takvim günü** dahil edilir. Toplantının eski teslim tarihi bu kartlara alınmaz. Geçerli tarihi olmayan, kapalı veya daha uzak gelecekteki kayıtlar bu alana girmez. Günlük temas işi bulunan bekleyen konu, dış yanıtı beklediği için kendi takip tarihiyle burada kalabilir. Arama kartları da süzer. Daha uzak tarihli kayıtlar takvimde görünmeye devam eder; takip sayfasını değiştirmek üstteki takvimi hareket ettirmez.
 
-Genel bakış, uygulama içinde kompakt özet ekranıdır. Sağ üstteki **Widget** düğmesi, ana ekranı koruyarak **ayrı ve küçük bir Mini ajanda** açar. **Bugün / Yarın** sekmeleri, takvimde ilgili güne ait açık teslim ve sonraki takip kayıtlarını gösterir. Seçili günün bütün kayıtlarına listenin içinde kaydırarak ulaşılır; başlık ve gün sekmeleri yerinde kalır. Ajanda salt okunurdur: gün değiştirmek kayıtları değiştirmez; bir başlığa tıklamak ana uygulamadaki kaydını açar, **ODAK’ı aç** ana pencereye döner. Ana uygulamadaki değişiklikler ve geri alma widget'a anında yansır.
+Genel bakış, uygulama içinde kompakt özet ekranıdır. Sağ üstteki **Widget** düğmesi, ana ekranı koruyarak **ayrı ve küçük bir Mini ajanda** açar. **Bugün / Yarın** sekmeleri, takvimde ilgili güne ait açık teslim ve sonraki takip kayıtlarını gösterir. **Gecikenler**, teslim veya takip tarihi bugünden önce olan açık kayıtları en eski tarihten başlayarak gösterir; her kaydın gerçek tarihi görünür. Seçili listenin bütün kayıtlarına içeride kaydırarak ulaşılır; başlık ve sekmeler yerinde kalır. Ajanda salt okunurdur: sekme değiştirmek kayıtları değiştirmez; bir başlığa tıklamak ana uygulamadaki kaydını açar, **ODAK’ı aç** ana pencereye döner. Ana uygulamadaki değişiklikler ve geri alma widget'a anında yansır.
+
+Çalışılan günlük iş varsa widget'ın altında iş adı, **Çalışıyor / Duraklatıldı** ve **saat:dakika:saniye** süresi görünür. Çalışan süre saniyede bir güncellenir; duraklatılmış süre sabit kalır. Widget bu oturumu başlatmaz, devralmaz veya kaydetmez. Geçersiz, kapanmış veya iş günlüğüne kaydedilmiş oturum gösterilmez.
+
+Windows paketinde başlığın yanındaki **Üstte tut** düğmesi widget'ı diğer pencerelerin üstünde tutar; tekrar basmak normal sıraya döndürür. Bu seçim yalnız açık widget içindir. Normal tarayıcı açılışında düğme kullanılamaz; açıklaması Windows paketini belirtir.
 
 Hedef içerik alanı **380×420 CSS piksel**dir; açılır pencerenin genişlik/yüksekliği baştan bu ölçüyle verilir. Windows başlatıcısının yardımcısı hazırsa tarayıcı ayrıca boyutlandırmaz; yardımcı ölçüler sabitlenince dış boyutu bir kez düzeltir. Normal HTML açılışında tarayıcı bir kez düzeltme dener; bu işlemden önce fare veya klavye kullanılırsa deneme iptal edilir. Boyut değişikliğini yeniden tetikleyen bir döngü yoktur. Sonraki elle boyutlandırmalar ve açık widget yeniden kullanılırkenki boyut korunur. Aynı düğme açık widget'ı tekrar kullanır; ana ekranın adresi, bölümü, araması ve açık formu değişmez.
 
@@ -198,7 +204,7 @@ Widget, aynı HTML dosyasının `#widget` adresini kendi penceresinde açar ve k
 
 ## Windows'ta uygulama görünümü
 
-`npm run export:desktop`, `.local/ODAK-Masaustu.zip` ve sürüm numaralı kopyasını üretir. İçinde beş dosya bulunur: **TAKIP.html**, **ODAK.cmd**, **ODAK-Widget.cmd**, **ODAK-Pencere.ps1** ve **KULLANIM.txt**. Windows'ta Chrome'un uygulama modu ile açılır; adres ve sekme çubuğu kullanılmaz. Chrome kurulu olmalıdır. Normal Windows başlık çubuğu, küçültme/büyütme/kapat düğmeleri kalır. Bu paket Windows'a kurulan bir EXE değildir; pencerenin sürekli üstte kalmasını veya bilgisayar açılışında başlamasını ayarlamaz.
+`npm run export:desktop`, `.local/ODAK-Masaustu.zip` ve sürüm numaralı kopyasını üretir. İçinde beş dosya bulunur: **TAKIP.html**, **ODAK.cmd**, **ODAK-Widget.cmd**, **ODAK-Pencere.ps1** ve **KULLANIM.txt**. Windows'ta Chrome'un uygulama modu ile açılır; adres ve sekme çubuğu kullanılmaz. Chrome kurulu olmalıdır. Normal Windows başlık çubuğu, küçültme/büyütme/kapat düğmeleri kalır. Bu paket Windows'a kurulan bir EXE değildir; bilgisayar açılışında başlamayı ayarlamaz.
 
 Önce mevcut uygulamada **Ayarlar → Yedekleme → Yedeği indir** ile güncel kayıt yedeğinizi alın. Açık ODAK ve widget pencerelerini kapatıp eski pencere yardımcısının kapanması için **6 saniye bekleyin**. ZIP içindekileri **mevcut TAKIP.html dosyanızın bulunduğu klasöre** koyun; yeni HTML aynı ad ve konumda eskisinin yerini alsın. Sonra:
 
@@ -298,3 +304,5 @@ Genel bakışın alt satırında Takip gerekenler ve haftanın hedefleri ikişer
 Genel bakışın üç alt paneli önceki kompakt yüksekliğe döndü (masaüstünde 220 px, kısa pencerede 210 px). İş listesi ilk sütunu İş / Hedef olarak adlandırılır.
 
 Takip kartlarındaki konu metni, durum ve tarih satırının üstündeki boşluğu kullanır. Kartın yüksekliği artmadan daha fazla satır okunabilir; Bekleme, Son takip ve Takip ettim alt bölümde kalır.
+
+Haftalık hedef kartındaki durum ve teslim tarihi de takip kartlarıyla aynı alt hizadadır. İlerleme ve düğmeler yerinde kalır; panel yüksekliği artmaz.

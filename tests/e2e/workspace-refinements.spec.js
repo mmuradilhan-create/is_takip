@@ -176,16 +176,35 @@ test("dashboard priority and delivery controls edit only their field and undo pr
   );
   await undo(page);
   expect(await records(page)).toEqual(original);
+  const beforeDate = await saved(page);
 
   await primary.locator(".inline-date").click();
-  const dateMenu = page.locator("#due-date-menu");
-  await expect(dateMenu).toBeVisible();
+  const picker = page.locator("#odak-date-picker");
+  await expect(picker).toBeVisible();
+  await expect(picker).toHaveAttribute("data-selection-mode", "direct");
+  await expect(page.locator("#due-date-menu, #quick-date-form")).toHaveCount(0);
+  await expect(
+    picker.locator('input[type="text"], [type="submit"]'),
+  ).toHaveCount(0);
+  await expect(
+    picker.getByRole("button", { name: "Kaydet", exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    picker.getByRole("button", { name: "Vazgeç", exact: true }),
+  ).toHaveCount(0);
   await expect(page.locator("#editor")).not.toBeVisible();
-  await dateMenu.locator('[name="dueDate"]').fill("10.11.2026");
-  await dateMenu.locator(".date-picker-toggle").click();
-  await page.locator('#odak-date-picker [data-date-day="2026-11-10"]').click();
-  await expect(dateMenu).toBeVisible();
-  await dateMenu.getByRole("button", { name: "Kaydet", exact: true }).click();
+  await picker
+    .getByRole("button", { name: "Takvimi kapat", exact: true })
+    .click();
+  await expect(picker).not.toBeVisible();
+  expect(await saved(page)).toBe(beforeDate);
+  await primary.locator(".inline-date").click();
+  await picker.locator('[data-date-day="2026-11-06"]').click();
+  await expect(picker).not.toBeVisible();
+  expect(await saved(page)).toBe(beforeDate);
+  await primary.locator(".inline-date").click();
+  await picker.locator('[data-date-day="2026-11-10"]').click();
+  await expect(picker).not.toBeVisible();
   await expect(primary.locator(".inline-date")).toHaveClass(/due-soon/);
   await expect(page.locator("#editor")).not.toBeVisible();
   const afterDate = await records(page);

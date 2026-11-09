@@ -177,16 +177,14 @@ test("a changed reminder in another tab preserves the follow-up draft and blocks
   await other.goto("/");
   await goToWaiting(other);
   await waitingRow(other).locator('[data-action="edit-next-followup"]').click();
-  const menu = other.locator("#due-date-menu");
-  await expect(other.locator("#odak-date-picker")).toBeVisible();
-  await other.keyboard.press("Escape");
-  await expect(other.locator("#odak-date-picker")).not.toBeVisible();
-  await expect(menu).toBeVisible();
-  await menu.locator('[name="nextFollowUpDate"]').fill("14.11.2026");
-  await menu
-    .locator("#quick-date-form > .quick-date-actions > [type=submit]")
-    .click();
-  await expect(menu).not.toBeVisible();
+  const picker = other.locator("#odak-date-picker");
+  await expect(picker).toBeVisible();
+  await expect(picker).toHaveAttribute("data-selection-mode", "direct");
+  await expect(other.locator("#due-date-menu, #quick-date-form")).toHaveCount(
+    0,
+  );
+  await picker.locator('[data-date-day="2026-11-14"]').click();
+  await expect(picker).not.toBeVisible();
   await expect(dialog.locator(".waiting-followup-availability")).toContainText(
     "Sonraki takip tarihi başka bir pencerede değişti",
   );

@@ -221,7 +221,7 @@ export function createDashboardCalendar({
         if (!date) return '<div class="calendar-expanded-cell is-empty"></div>';
         const values = byDay(entries, date);
         const counts = dayCount(entries, date);
-        return `<div class="calendar-expanded-cell ${dayClasses(date)}"><button type="button" class="calendar-cell-date" data-calendar-action="select-day" data-calendar-date="${date}" aria-label="${esc(`${format(date, "full")}${caption(counts) ? `, ${caption(counts)}` : ""}`)}" aria-pressed="${date === selectedDay}" ${date === readToday() ? 'aria-current="date"' : ""} tabindex="${date === selectedDay ? "0" : "-1"}"><span>${mode === "week" ? `${WEEKDAYS[(dateObject(date).getUTCDay() + 6) % 7]} ` : ""}${Number(date.slice(8))}</span>${countMarkup(counts)}</button><ul>${values
+        return `<div class="calendar-expanded-cell ${dayClasses(date)}" data-calendar-date="${date}"><button type="button" class="calendar-cell-date" data-calendar-action="select-day" data-calendar-date="${date}" aria-label="${esc(`${format(date, "full")}${caption(counts) ? `, ${caption(counts)}` : ""}`)}" aria-pressed="${date === selectedDay}" ${date === readToday() ? 'aria-current="date"' : ""} tabindex="${date === selectedDay ? "0" : "-1"}"><span>${mode === "week" ? `${WEEKDAYS[(dateObject(date).getUTCDay() + 6) % 7]} ` : ""}${Number(date.slice(8))}</span>${countMarkup(counts)}</button><ul>${values
           .slice(0, previewLimit)
           .map((entry) => `<li>${entryMarkup(entry, true)}</li>`)
           .join(
@@ -402,7 +402,25 @@ export function createDashboardCalendar({
 
   function onClick(event) {
     const button = event.target.closest?.("[data-calendar-action]");
-    if (!button || !belongs(button) || button.disabled) return;
+    if (!button) {
+      const cell = event.target.closest?.(
+        ".calendar-expanded-cell[data-calendar-date]",
+      );
+      if (
+        !cell ||
+        !dialog.contains(cell) ||
+        !belongs(cell) ||
+        event.target.closest?.(
+          'button, a[href], input, select, textarea, label, summary, [contenteditable="true"], [role="button"], [role="link"]',
+        )
+      )
+        return;
+      event.preventDefault();
+      event.stopPropagation();
+      selectDay(cell.dataset.calendarDate, true, true);
+      return;
+    }
+    if (!belongs(button) || button.disabled) return;
     event.preventDefault();
     event.stopPropagation();
     const expanded = dialog.contains(button);
@@ -425,6 +443,8 @@ export function createDashboardCalendar({
     else if (action === "close") closeExpanded();
     else if (action === "open-record") {
       const id = button.dataset.calendarRecordId;
+      const entry = allEntries().find((item) => item.record.id === id);
+      if (entry && entry.date !== selectedDay) selectDay(entry.date);
       openCalendarEditor(() => onOpenRecord(id), expanded);
     } else if (action === "new-record") {
       const date = selectedDay;

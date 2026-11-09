@@ -149,12 +149,13 @@
 
 /* Scope, sorting and detailed filters share one compact wrapping toolbar. */
 .list-controls-bar {
+  position: relative;
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 8px 12px;
   min-width: 0;
-  padding: 10px 16px;
+  padding: 10px 60px 10px 16px;
   border-bottom: 1px solid var(--line);
 }
 
@@ -179,18 +180,10 @@
   font-size: 11px;
 }
 
-.list-controls-bar .list-sort {
-  gap: 5px;
-  margin-left: auto;
-  font-size: 10px;
-}
-
-.list-controls-bar .list-sort select {
-  width: 166px;
-  min-height: 32px;
-  padding: 5px 7px;
-  border-radius: 6px;
-  font-size: 11px;
+.list-controls-bar > .list-sort {
+  position: absolute;
+  top: 10px;
+  right: 16px;
 }
 
 .list-controls-bar > .filters {
@@ -486,19 +479,14 @@
   }
 
   .list-controls-bar {
-    padding: 10px 12px;
+    padding: 10px 56px 10px 12px;
   }
 
   .list-controls-bar .filter-control.filter-surface {
     flex: 1 1 125px;
   }
 
-  .list-controls-bar .list-sort {
-    width: auto;
-    max-width: 100%;
-  }
-
-  .list-controls-bar .list-sort select {
-    width: 166px;
+  .list-controls-bar > .list-sort {
+    right: 12px;
   }
 }

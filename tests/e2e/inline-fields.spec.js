@@ -80,18 +80,39 @@ async function priorityMenu(page) {
   return menu;
 }
 
-async function dateMenu(page, { keepCalendar = false } = {}) {
+async function dateMenu(page) {
   await dailyRow(page).locator(".inline-date").click();
-  const menu = page.locator("#due-date-menu");
-  await expect(menu).toBeVisible();
-  await expect(page.locator("#odak-date-picker")).toBeVisible();
-  if (!keepCalendar) {
-    await page.keyboard.press("Escape");
-    await expect(page.locator("#odak-date-picker")).not.toBeVisible();
-    await expect(menu).toBeVisible();
-  }
+  const calendar = page.locator("#odak-date-picker");
+  await expect(calendar).toBeVisible();
+  await expect(calendar).toHaveAttribute("data-selection-mode", "direct");
+  await expect(page.locator("#due-date-menu")).toHaveCount(0);
+  await expect(
+    calendar.locator('input[type="text"], [data-date-input], textarea'),
+  ).toHaveCount(0);
+  await expect(
+    calendar.getByRole("button", { name: /^(Kaydet|Vazgeç)$/ }),
+  ).toHaveCount(0);
+  await expect(
+    calendar.getByRole("button", { name: "Takvimi kapat", exact: true }),
+  ).toBeVisible();
   await expect(page.locator("#editor")).not.toBeVisible();
-  return menu;
+  return calendar;
+}
+async function chooseDate(page, value, { duplicate = false } = {}) {
+  const calendar = page.locator("#odak-date-picker");
+  const [year, month] = value.split("-");
+  await calendar
+    .getByLabel("Ay", { exact: true })
+    .selectOption(String(Number(month) - 1));
+  await calendar.getByLabel("Yıl", { exact: true }).fill(year);
+  await calendar.getByLabel("Yıl", { exact: true }).press("Enter");
+  const button = calendar.locator(`[data-date-day="${value}"]`);
+  if (duplicate)
+    await button.evaluate((element) => {
+      element.click();
+      element.click();
+    });
+  else await button.click();
 }
 
 test("inline priority changes only the selected field, skips no-ops, and undoes exactly", async ({
@@ -135,38 +156,51 @@ test("inline priority changes only the selected field, skips no-ops, and undoes 
   expect(await readRecords(page)).toEqual(original);
 });
 
-test("inline due dates cancel without saving, clear intentionally, and undo each edit", async ({
+test("inline due dates use only a calendar, dismiss without writes, and save or clear immediately with exact Undo", async ({
   page,
 }) => {
   const original = await seed(page);
-  let menu = await dateMenu(page);
-  await expect(menu.locator('[name="dueDate"]')).toHaveValue("10.11.2026");
-  await menu.locator('[name="dueDate"]').fill("25.11.2026");
+  let calendar = await dateMenu(page);
+  await expect(
+    calendar.locator('[data-date-day="2026-11-10"]'),
+  ).toHaveAttribute("aria-pressed", "true");
   await page.keyboard.press("Escape");
-  await expect(menu).not.toBeVisible();
+  await expect(calendar).not.toBeVisible();
+  await expect(dailyRow(page).locator(".inline-date")).toBeFocused();
   expect(await readRecords(page)).toEqual(original);
-
-  menu = await dateMenu(page);
-  await menu.getByRole("button", { name: "Kaydet", exact: true }).click();
-  await expect(menu).not.toBeVisible();
+  calendar = await dateMenu(page);
+  await calendar
+    .getByRole("button", { name: "Takvimi kapat", exact: true })
+    .click();
+  await expect(calendar).not.toBeVisible();
+  expect(await readRecords(page)).toEqual(original);
+  calendar = await dateMenu(page);
+  await page.locator("#page-title").click();
+  await expect(calendar).not.toBeVisible();
+  expect(await readRecords(page)).toEqual(original);
+  calendar = await dateMenu(page);
+  await calendar.locator('[data-date-day="2026-11-10"]').click();
+  await expect(calendar).not.toBeVisible();
   await expect(
     page.getByRole("button", { name: "Geri al", exact: true }),
   ).toBeDisabled();
-  menu = await dateMenu(page);
-  await menu.locator('[name="dueDate"]').fill("25.11.2026");
-  await menu.getByRole("button", { name: "Kaydet", exact: true }).click();
+  calendar = await dateMenu(page);
+  await chooseDate(page, "2026-11-25", { duplicate: true });
+  await expect(calendar).not.toBeVisible();
   const edited = await readRecords(page);
+  expect(edited[0]).toEqual(original[0]);
   expect(edited[1].dueDate).toBe("2026-11-25");
   expect({
     ...edited[1],
     dueDate: original[1].dueDate,
     updatedAt: original[1].updatedAt,
   }).toEqual(original[1]);
-
-  menu = await dateMenu(page);
-  await menu
+  await expect(dailyRow(page).locator(".inline-date")).toBeFocused();
+  calendar = await dateMenu(page);
+  await calendar
     .getByRole("button", { name: "Tarihi kaldır", exact: true })
     .click();
+  await expect(calendar).not.toBeVisible();
   expect((await readRecords(page))[1].dueDate).toBe("");
   await page.getByRole("button", { name: "Geri al", exact: true }).click();
   expect(await readRecords(page)).toEqual(edited);
@@ -174,7 +208,7 @@ test("inline due dates cancel without saving, clear intentionally, and undo each
   expect(await readRecords(page)).toEqual(original);
 });
 
-test("quick controls support keyboard selection and reject invalid dates without changing saved records", async ({
+test("quick controls support keyboard selection and save a valid calendar day without an intermediate form", async ({
   page,
 }) => {
   const original = await seed(page);
@@ -188,21 +222,45 @@ test("quick controls support keyboard selection and reject invalid dates without
   expect((await readRecords(page))[1].priority).toBe("urgent");
   await page.getByRole("button", { name: "Geri al", exact: true }).click();
   expect(await readRecords(page)).toEqual(original);
-
-  const menu = await dateMenu(page);
-  const input = menu.locator('[name="dueDate"]');
-  await input.fill("31.12.1899");
-  await menu.getByRole("button", { name: "Kaydet", exact: true }).click();
-  await expect(menu).toBeVisible();
-  await expect(menu.locator('[role="alert"]')).toContainText("1900");
+  const calendar = await dateMenu(page);
+  await expect(calendar.locator('[data-date-day="2026-11-10"]')).toBeFocused();
+  const dateBefore = await page.evaluate(
+    (key) => localStorage.getItem(key),
+    KEY,
+  );
+  const year = calendar.getByLabel("Yıl", { exact: true });
+  for (const invalid of ["", "1899"]) {
+    await year.fill(invalid);
+    await calendar.locator('[data-date-day="2026-11-11"]').click();
+    await expect(calendar).toBeVisible();
+    await expect(year).toHaveValue(invalid);
+    await expect(calendar.locator("#date-picker-error")).toContainText(
+      /yıl|1900/i,
+    );
+    expect(await readRecords(page)).toEqual(original);
+    expect(await page.evaluate((key) => localStorage.getItem(key), KEY)).toBe(
+      dateBefore,
+    );
+    await calendar
+      .getByRole("button", { name: "Tarihi kaldır", exact: true })
+      .click();
+    await expect(calendar).toBeVisible();
+    await expect(year).toHaveValue(invalid);
+    expect(await page.evaluate((key) => localStorage.getItem(key), KEY)).toBe(
+      dateBefore,
+    );
+  }
+  await year.fill("2026");
+  await year.press("Enter");
+  await calendar.locator('[data-date-day="2026-11-10"]').focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(calendar.locator('[data-date-day="2026-11-11"]')).toBeFocused();
   expect(await readRecords(page)).toEqual(original);
-
-  await input.fill("30.02.2026");
-  await menu.getByRole("button", { name: "Kaydet", exact: true }).click();
-  await expect(menu.locator('[role="alert"]')).toContainText("Geçerli");
+  await page.keyboard.press("Enter");
+  await expect(calendar).not.toBeVisible();
+  expect((await readRecords(page))[1].dueDate).toBe("2026-11-11");
+  await page.getByRole("button", { name: "Geri al", exact: true }).click();
   expect(await readRecords(page)).toEqual(original);
-  await menu.getByRole("button", { name: "Vazgeç", exact: true }).click();
-  await expect(menu).not.toBeVisible();
 });
 
 test("lists expose context-appropriate quick controls without opening the full editor or saving a draft", async ({
@@ -304,42 +362,29 @@ test("lists expose context-appropriate quick controls without opening the full e
         0,
       );
       await row.locator(".waiting-next-date").click();
-      await expect(
-        page.locator('#due-date-menu [name="nextFollowUpDate"]'),
-      ).toHaveValue("");
-      await page
-        .locator('#due-date-menu [name="nextFollowUpDate"]')
-        .fill("20.11.2026");
     } else {
       await row.locator(".inline-priority").click();
       await expect(page.locator("#priority-menu")).toBeVisible();
       await page.keyboard.press("Escape");
       if (record.type === "yearly") {
         await expect(row.locator(".inline-date")).toHaveCount(0);
-        await expect(page.locator("#due-date-menu")).not.toBeVisible();
-        await expect(page.locator("#editor")).not.toBeVisible();
+        await expect(page.locator("#odak-date-picker")).not.toBeVisible();
         expect(
           await page.evaluate((key) => localStorage.getItem(key), KEY),
         ).toBe(savedBefore);
         continue;
       }
       await row.locator(".inline-date").click();
-      await expect(page.locator('#due-date-menu [name="dueDate"]')).toHaveValue(
-        "",
-      );
     }
-    await expect(page.locator("#due-date-menu")).toBeVisible();
-    await expect(page.locator("#odak-date-picker")).toBeVisible();
+    const picker = page.locator("#odak-date-picker");
+    await expect(picker).toBeVisible();
+    await expect(picker).toHaveAttribute("data-selection-mode", "direct");
+    await expect(page.locator("#due-date-menu")).toHaveCount(0);
     await expect(
-      page
-        .locator("#due-date-menu")
-        .getByRole("button", { name: "Tarihi kaldır", exact: true }),
-    ).toBeDisabled();
+      picker.getByRole("button", { name: "Tarihi kaldır", exact: true }),
+    ).toBeVisible();
     await page.keyboard.press("Escape");
-    await expect(page.locator("#odak-date-picker")).not.toBeVisible();
-    await expect(page.locator("#due-date-menu")).toBeVisible();
-    await page.keyboard.press("Escape");
-    await expect(page.locator("#due-date-menu")).not.toBeVisible();
+    await expect(picker).not.toBeVisible();
     await expect(page.locator("#editor")).not.toBeVisible();
     expect(await page.evaluate((key) => localStorage.getItem(key), KEY)).toBe(
       savedBefore,
@@ -348,7 +393,7 @@ test("lists expose context-appropriate quick controls without opening the full e
   expect(await readRecords(page)).toEqual(records);
 });
 
-test("Turkish calendar stays inside a short viewport in an English browser and selects month, year and day", async ({
+test("Turkish quick calendars fit a short English-browser viewport and immediately save a selected month, year and day", async ({
   browser,
 }) => {
   const context = await browser.newContext({
@@ -359,20 +404,11 @@ test("Turkish calendar stays inside a short viewport in an English browser and s
   const page = await context.newPage();
   try {
     const original = await seed(page);
-    const menu = await dateMenu(page, { keepCalendar: true });
-    const input = menu.locator('[name="dueDate"]');
-    await expect(input).toHaveAttribute("type", "text");
-    await expect(input).toHaveValue("10.11.2026");
-    const calendar = page.locator("#odak-date-picker");
-    await expect(calendar).toBeVisible();
+    const calendar = await dateMenu(page);
     await expect(calendar.getByLabel("Ay", { exact: true })).toHaveValue("10");
     await expect(calendar.getByLabel("Yıl", { exact: true })).toHaveValue(
       "2026",
     );
-    await expect(
-      calendar.locator('[data-date-day="2026-11-10"]'),
-    ).toHaveAttribute("aria-pressed", "true");
-    await expect(menu).toBeVisible();
     const bounds = await calendar.boundingBox();
     expect(bounds.x).toBeGreaterThanOrEqual(7);
     expect(bounds.y).toBeGreaterThanOrEqual(7);
@@ -381,14 +417,11 @@ test("Turkish calendar stays inside a short viewport in an English browser and s
     await calendar.getByLabel("Ay", { exact: true }).selectOption("1");
     await calendar.getByLabel("Yıl", { exact: true }).fill("2028");
     await calendar.getByLabel("Yıl", { exact: true }).press("Enter");
+    expect(await readRecords(page)).toEqual(original);
     await calendar
       .getByRole("button", { name: "29 Şubat 2028 Salı", exact: true })
       .click();
     await expect(calendar).not.toBeVisible();
-    await expect(menu).toBeVisible();
-    await expect(input).toHaveValue("29.02.2028");
-    expect(await readRecords(page)).toEqual(original);
-    await menu.getByRole("button", { name: "Kaydet", exact: true }).click();
     expect((await readRecords(page))[1].dueDate).toBe("2028-02-29");
     await page.getByRole("button", { name: "Geri al", exact: true }).click();
     expect(await readRecords(page)).toEqual(original);
@@ -397,7 +430,7 @@ test("Turkish calendar stays inside a short viewport in an English browser and s
   }
 });
 
-test("a follow-up chip opens its selected calendar immediately and preserves drafts through Escape, invalid input, save and exact Undo", async ({
+test("a follow-up chip selects and immediately saves only its plan while Escape, same-day no-ops and exact Undo retain history", async ({
   page,
 }) => {
   const waiting = createRecord({
@@ -429,44 +462,32 @@ test("a follow-up chip opens its selected calendar immediately and preserves dra
     `.waiting-table tr[data-record-row][data-id="${waiting.id}"] .waiting-next-date`,
   );
   const calendar = page.locator("#odak-date-picker");
-  const menu = page.locator("#due-date-menu");
-  const input = menu.locator('[name="nextFollowUpDate"]');
   await chip.click();
-  await expect(menu).toBeVisible();
-  await expect(calendar).toBeVisible();
+  await expect(calendar).toHaveAttribute("data-selection-mode", "direct");
   await expect(calendar.getByLabel("Ay", { exact: true })).toHaveValue("1");
   await expect(calendar.getByLabel("Yıl", { exact: true })).toHaveValue("2028");
   await expect(calendar.locator('[data-date-day="2028-02-29"]')).toBeFocused();
+  await expect(page.locator("#due-date-menu")).toHaveCount(0);
   await expect(page.locator("#editor")).not.toBeVisible();
-  expect(await readRecords(page)).toEqual([waiting]);
   await page.keyboard.press("Escape");
   await expect(calendar).not.toBeVisible();
-  await expect(menu).toBeVisible();
-  await expect(input).toBeFocused();
-  await input.fill("31.02.2028");
-  await menu.locator(".date-picker-toggle").click();
-  await expect(calendar).toBeVisible();
-  await expect(input).toHaveValue("31.02.2028");
-  await page.keyboard.press("Escape");
-  await expect(calendar).not.toBeVisible();
-  await expect(input).toHaveValue("31.02.2028");
-  await menu.getByRole("button", { name: "Vazgeç", exact: true }).click();
-  await expect(menu).not.toBeVisible();
+  await expect(chip).toBeFocused();
   expect(await page.evaluate((key) => localStorage.getItem(key), KEY)).toBe(
     before,
   );
-
   await chip.click();
-  await expect(calendar.locator('[data-date-day="2028-02-29"]')).toBeFocused();
+  await calendar.locator('[data-date-day="2028-02-29"]').click();
+  await expect(calendar).not.toBeVisible();
+  expect(await page.evaluate((key) => localStorage.getItem(key), KEY)).toBe(
+    before,
+  );
+  await chip.click();
   await page.keyboard.press("ArrowRight");
   await expect(calendar.locator('[data-date-day="2028-03-01"]')).toBeFocused();
+  expect(await readRecords(page)).toEqual([waiting]);
   await page.keyboard.press("Enter");
   await expect(calendar).not.toBeVisible();
-  await expect(menu).toBeVisible();
-  await expect(input).toHaveValue("01.03.2028");
-  expect(await readRecords(page)).toEqual([waiting]);
-  await menu.getByRole("button", { name: "Kaydet", exact: true }).click();
-  await expect(menu).not.toBeVisible();
+  await expect(chip).toBeFocused();
   const changed = await readRecords(page);
   expect(changed[0].nextFollowUpDate).toBe("2028-03-01");
   expect({
@@ -482,26 +503,48 @@ test("a follow-up chip opens its selected calendar immediately and preserves dra
   expect(await readRecords(page)).toEqual([waiting]);
 });
 
-test("calendar selection remains a draft and keyboard navigation crosses month boundaries", async ({
+test("ordinary record date calendars keep selections as drafts, validate typed dates and require explicit Save", async ({
   page,
 }) => {
   const original = await seed(page);
-  const menu = await dateMenu(page);
-  await menu.locator('[name="dueDate"]').fill("30.11.2026");
-  await menu.locator(".date-picker-toggle").click();
+  await dailyRow(page).locator(".task-name").click();
+  let input = page.locator('#record-form [name="dueDate"]');
+  await input.fill("30.11.2026");
+  await input.locator("..").locator(".date-picker-toggle").click();
   const calendar = page.locator("#odak-date-picker");
-  await expect(
-    calendar.getByRole("button", {
-      name: "30 Kasım 2026 Pazartesi",
-      exact: true,
-    }),
-  ).toBeFocused();
+  await expect(calendar.locator('[data-date-day="2026-11-30"]')).toBeFocused();
   await page.keyboard.press("ArrowRight");
-  await expect(
-    calendar.getByRole("button", { name: "1 Aralık 2026 Salı", exact: true }),
-  ).toBeFocused();
+  await expect(calendar.locator('[data-date-day="2026-12-01"]')).toBeFocused();
   await page.keyboard.press("Enter");
-  await expect(menu.locator('[name="dueDate"]')).toHaveValue("01.12.2026");
-  await menu.getByRole("button", { name: "Vazgeç", exact: true }).click();
+  await expect(calendar).not.toBeVisible();
+  await expect(page.locator("#editor")).toBeVisible();
+  await expect(input).toHaveValue("01.12.2026");
+  expect(await readRecords(page)).toEqual(original);
+  await page.locator('#record-form [type="submit"]').click();
+  expect((await readRecords(page))[1].dueDate).toBe("2026-12-01");
+  await page.getByRole("button", { name: "Geri al", exact: true }).click();
+  expect(await readRecords(page)).toEqual(original);
+  await dailyRow(page).locator(".task-name").click();
+  input = page.locator('#record-form [name="dueDate"]');
+  await input.fill("31.12.1899");
+  await page.locator('#record-form [type="submit"]').click();
+  expect(
+    await input.evaluate((element) => element.validationMessage),
+  ).toContain("1900");
+  expect(await input.evaluate((element) => element.validity.valid)).toBe(false);
+  expect(await readRecords(page)).toEqual(original);
+  await input.fill("30.02.2026");
+  await page.locator('#record-form [type="submit"]').click();
+  expect(
+    await input.evaluate((element) => element.validationMessage),
+  ).toContain("Geçerli");
+  expect(await input.evaluate((element) => element.validity.valid)).toBe(false);
+  expect(await readRecords(page)).toEqual(original);
+  page.once("dialog", (dialog) => dialog.accept());
+  await page
+    .locator("#editor")
+    .getByRole("button", { name: "Vazgeç", exact: true })
+    .click();
+  await expect(page.locator("#editor")).not.toBeVisible();
   expect(await readRecords(page)).toEqual(original);
 });

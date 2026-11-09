@@ -302,18 +302,24 @@ test("editing a daily deadline moves it into the orange window and undo restores
   page,
 }) => {
   const records = await seed(page);
+  const before = await readSaved(page);
   await page.locator('#nav [data-view="daily"]').click();
   await expectTone(row(page, "four").locator(".inline-date"), "neutral");
   await row(page, "four").locator(".inline-date").click();
-  const menu = page.locator("#due-date-menu");
-  await expect(page.locator("#odak-date-picker")).toBeVisible();
+  const picker = page.locator("#odak-date-picker");
+  await expect(picker).toBeVisible();
+  await expect(picker).toHaveAttribute("data-selection-mode", "direct");
+  await expect(page.locator("#due-date-menu, #quick-date-form")).toHaveCount(0);
+  await expect(
+    picker.locator('input[type="text"], [type="submit"]'),
+  ).toHaveCount(0);
+  expect(await readSaved(page)).toBe(before);
   await page.keyboard.press("Escape");
-  await expect(page.locator("#odak-date-picker")).not.toBeVisible();
-  await expect(menu).toBeVisible();
-  await menu.locator('[name="dueDate"]').fill("10.11.2026");
-  await menu
-    .locator("#quick-date-form > .quick-date-actions > [type=submit]")
-    .click();
+  await expect(picker).not.toBeVisible();
+  expect(await readSaved(page)).toBe(before);
+  await row(page, "four").locator(".inline-date").click();
+  await picker.locator('[data-date-day="2026-11-10"]').click();
+  await expect(picker).not.toBeVisible();
   await expectTone(row(page, "four").locator(".inline-date"), "due-soon");
   const changed = (await readRecords(page)).find(
     (record) => record.id === "deadline-four",
@@ -325,6 +331,12 @@ test("editing a daily deadline moves it into the orange window and undo restores
     dueDate: original.dueDate,
     updatedAt: original.updatedAt,
   }).toEqual(original);
+  await page.reload();
+  await page.locator('#nav [data-view="daily"]').click();
+  await expectTone(row(page, "four").locator(".inline-date"), "due-soon");
+  expect(
+    (await readRecords(page)).find((record) => record.id === changed.id),
+  ).toEqual(changed);
   await page.getByRole("button", { name: "Geri al", exact: true }).click();
   await expectTone(row(page, "four").locator(".inline-date"), "neutral");
   expect(await readRecords(page)).toEqual(records);

@@ -3,7 +3,7 @@ import {
   deadlineChipContent,
   deadlinePresentation,
 } from "./deadline-presentation.js";
-import { dateInput, dateValue, formatDateInput } from "./date-picker.js";
+import { formatDateInput } from "./date-picker.js";
 import { followUpPresentation } from "./waiting-followup.js";
 
 const escapeHtml = (value) =>
@@ -41,6 +41,7 @@ export function createInlineFields({
   formatDate = (date) => (date ? formatDateInput(date) : "Tarih yok"),
   today = () => localDate(),
   onOpenDatePicker = () => {},
+  onCloseDatePicker = () => {},
 } = {}) {
   if (!root || typeof getRecords !== "function" || typeof onSave !== "function")
     throw new TypeError(
@@ -55,13 +56,7 @@ export function createInlineFields({
   priorityMenu.setAttribute("popover", "auto");
   priorityMenu.setAttribute("role", "menu");
   priorityMenu.setAttribute("aria-label", "Öncelik seç");
-  const dateMenu = owner.createElement("div");
-  dateMenu.id = "due-date-menu";
-  dateMenu.className = "quick-field-menu quick-date-menu";
-  dateMenu.setAttribute("popover", "auto");
-  dateMenu.setAttribute("role", "dialog");
-  dateMenu.setAttribute("aria-label", "Teslim tarihini değiştir");
-  root.append(priorityMenu, dateMenu);
+  root.append(priorityMenu);
   const triggers = new Map();
   let saving = false;
 
@@ -78,7 +73,7 @@ export function createInlineFields({
   function dateControl(record) {
     const presentation = deadlinePresentation(record, currentDay());
     const title = `${record.dueDate ? formatDateInput(record.dueDate) : presentation.label} · ${presentation.status} · Tarihi değiştir`;
-    return `<button type="button" class="inline-date date-cell deadline-tag ${presentation.tone}" data-deadline-state="${presentation.state}" data-action="edit-date" data-id="${escapeHtml(record.id)}" aria-label="${escapeHtml(record.title)}: teslim tarihini değiştir" aria-description="${escapeHtml(presentation.status)}" aria-haspopup="dialog" aria-controls="due-date-menu" aria-expanded="false" title="${escapeHtml(title)}">${deadlineChipContent(record, { label: formatDate(record.dueDate), today: currentDay() })}</button>`;
+    return `<button type="button" class="inline-date date-cell deadline-tag ${presentation.tone}" data-deadline-state="${presentation.state}" data-action="edit-date" data-id="${escapeHtml(record.id)}" aria-label="${escapeHtml(record.title)}: teslim tarihini değiştir" aria-description="${escapeHtml(presentation.status)}" aria-haspopup="dialog" aria-controls="odak-date-picker" aria-expanded="false" title="${escapeHtml(title)}">${deadlineChipContent(record, { label: formatDate(record.dueDate), today: currentDay() })}</button>`;
   }
 
   function followUpDateControl(record) {
@@ -95,7 +90,7 @@ export function createInlineFields({
           ? "soon"
           : "calendar";
     const title = `${record.nextFollowUpDate ? formatDateInput(record.nextFollowUpDate) : label} · ${presentation.status} · Takip tarihini değiştir`;
-    return `<button type="button" class="waiting-next-date deadline-tag ${escapeHtml(presentation.tone)}" data-followup-state="${escapeHtml(presentation.state)}" data-action="edit-next-followup" data-id="${escapeHtml(record.id)}" aria-label="${escapeHtml(record.title)}: sonraki takip tarihini değiştir" aria-description="${escapeHtml(presentation.status)}" aria-haspopup="dialog" aria-controls="due-date-menu" aria-expanded="false" title="${escapeHtml(title)}"><svg class="deadline-symbol" data-followup-icon="${symbol}" viewBox="0 0 24 24" aria-hidden="true"><path d="${followUpIcons[symbol]}"/></svg><span class="deadline-label">${escapeHtml(label)}</span></button>`;
+    return `<button type="button" class="waiting-next-date deadline-tag ${escapeHtml(presentation.tone)}" data-followup-state="${escapeHtml(presentation.state)}" data-action="edit-next-followup" data-id="${escapeHtml(record.id)}" aria-label="${escapeHtml(record.title)}: sonraki takip tarihini değiştir" aria-description="${escapeHtml(presentation.status)}" aria-haspopup="dialog" aria-controls="odak-date-picker" aria-expanded="false" title="${escapeHtml(title)}"><svg class="deadline-symbol" data-followup-icon="${symbol}" viewBox="0 0 24 24" aria-hidden="true"><path d="${followUpIcons[symbol]}"/></svg><span class="deadline-label">${escapeHtml(label)}</span></button>`;
   }
 
   function resetTrigger(menu) {
@@ -104,10 +99,9 @@ export function createInlineFields({
   }
 
   function close() {
-    for (const menu of [priorityMenu, dateMenu]) {
-      if (menu.matches(":popover-open")) menu.hidePopover();
-      resetTrigger(menu);
-    }
+    if (priorityMenu.matches(":popover-open")) priorityMenu.hidePopover();
+    resetTrigger(priorityMenu);
+    onCloseDatePicker();
   }
 
   function show(menu, trigger) {
@@ -128,6 +122,7 @@ export function createInlineFields({
   }
 
   function openPriority(id, trigger) {
+    if (saving) return;
     const record = find(id);
     if (!record) return;
     priorityMenu.innerHTML = `<div class="quick-field-heading"><strong>Öncelik</strong><span>${escapeHtml(record.title)}</span></div>${Object.entries(
@@ -150,44 +145,56 @@ export function createInlineFields({
     if (!record || (field === "nextFollowUpDate" && record.type !== "waiting"))
       return;
     const followUp = field === "nextFollowUpDate";
-    const label = followUp ? "Sonraki takip tarihi" : "Teslim tarihi";
-    const inputId = followUp ? "quick-next-followup-date" : "quick-due-date";
-    dateMenu.setAttribute(
-      "aria-label",
-      followUp ? "Sonraki takip tarihini değiştir" : "Teslim tarihini değiştir",
-    );
-    dateMenu.innerHTML = `<div class="quick-field-heading"><strong>${label}</strong><span>${escapeHtml(record.title)}</span></div><form class="quick-date-form" id="quick-date-form" data-record-id="${escapeHtml(id)}" data-field="${field}"><label class="field" for="${inputId}">${label}${dateInput({ id: inputId, name: field, label, value: record[field] || "" })}</label><div id="quick-date-error" role="alert"></div><div class="quick-date-actions"><button type="button" class="btn" data-action="clear-date" data-id="${escapeHtml(id)}" data-field="${field}" ${!record[field] ? "disabled" : ""}>Tarihi kaldır</button><button type="button" class="btn" data-action="cancel-inline">Vazgeç</button><button type="submit" class="btn primary">Kaydet</button></div></form>`;
-    if (show(dateMenu, trigger)) {
-      const input = dateMenu.querySelector("input");
-      input?.focus({ preventScroll: true });
-      onOpenDatePicker(input);
-    }
+    const action = followUp ? "edit-next-followup" : "edit-date";
+    const context = trigger.closest("dialog, [popover]") || root;
+    const resolveAnchor = () => {
+      if (trigger.isConnected) return trigger;
+      const scope = context.isConnected ? context : root;
+      return [...scope.querySelectorAll(`[data-action="${action}"]`)].find(
+        (candidate) => candidate.dataset.id === id && !candidate.disabled,
+      );
+    };
+    close();
+    onOpenDatePicker({
+      anchor: trigger,
+      value: record[field] || "",
+      label: followUp
+        ? "Sonraki takip tarihini değiştir"
+        : "Teslim tarihini değiştir",
+      resolveAnchor,
+      onSelect: (value) => save(id, field, value),
+    });
   }
 
   async function save(id, field, value) {
-    if (saving) return;
-    if (!["priority", "dueDate", "nextFollowUpDate"].includes(field)) return;
+    if (saving) return false;
+    if (!["priority", "dueDate", "nextFollowUpDate"].includes(field))
+      return false;
     const record = find(id);
     if (
       !record ||
-      (field === "nextFollowUpDate" && record.type !== "waiting") ||
-      (record[field] || "") === value
+      (field === "nextFollowUpDate" && record.type !== "waiting")
     ) {
-      close();
-      return;
+      onError("Bu kayıt artık düzenlenemiyor.");
+      return false;
     }
-    if (field === "priority" && !Object.hasOwn(PRIORITIES, value)) return;
+    if ((record[field] || "") === value) {
+      if (field === "priority") close();
+      return true;
+    }
+    if (field === "priority" && !Object.hasOwn(PRIORITIES, value)) return false;
     if (field !== "priority" && value && !validDate(value)) {
-      dateMenu.querySelector("#quick-date-error").textContent =
+      onError(
         field === "nextFollowUpDate"
           ? "Geçerli bir takip tarihi seç."
-          : "Geçerli bir teslim tarihi seç.";
-      return;
+          : "Geçerli bir teslim tarihi seç.",
+      );
+      return false;
     }
     saving = true;
-    close();
+    if (field === "priority") close();
     try {
-      await onSave(
+      const saved = await onSave(
         id,
         { [field]: value, updatedAt: new Date().toISOString() },
         field === "priority"
@@ -196,10 +203,12 @@ export function createInlineFields({
             ? "Takip tarihi güncelleme"
             : "Teslim tarihi güncelleme",
       );
+      return saved !== false;
     } catch (error) {
       onError(
         error instanceof Error ? error.message : "Değişiklik kaydedilemedi.",
       );
+      return false;
     } finally {
       saving = false;
     }
@@ -215,7 +224,6 @@ export function createInlineFields({
         "edit-date",
         "edit-next-followup",
         "set-priority",
-        "clear-date",
         "cancel-inline",
       ].includes(action)
     )
@@ -227,30 +235,7 @@ export function createInlineFields({
       openDate(id, button, "nextFollowUpDate");
     else if (action === "set-priority")
       void save(id, "priority", button.dataset.priority);
-    else if (action === "clear-date")
-      void save(id, button.dataset.field || "dueDate", "");
     else close();
-  }
-
-  function onSubmit(event) {
-    if (event.target !== dateMenu.querySelector("#quick-date-form")) return;
-    event.preventDefault();
-    const form = event.target;
-    try {
-      const field = form.dataset.field || "dueDate";
-      if (!["dueDate", "nextFollowUpDate"].includes(field)) return;
-      const value = dateValue(form.elements[field]);
-      if (!form.reportValidity()) return;
-      void save(form.dataset.recordId, field, value);
-    } catch (error) {
-      dateMenu.querySelector("#quick-date-error").textContent = error.message;
-    }
-  }
-
-  function onInvalid(event) {
-    if (!dateMenu.contains(event.target)) return;
-    dateMenu.querySelector("#quick-date-error").textContent =
-      event.target.validationMessage;
   }
 
   function onKeydown(event) {
@@ -276,22 +261,16 @@ export function createInlineFields({
     if (event.newState === "closed") resetTrigger(event.currentTarget);
   };
   priorityMenu.addEventListener("toggle", onToggle);
-  dateMenu.addEventListener("toggle", onToggle);
   root.addEventListener("click", onClick);
-  root.addEventListener("submit", onSubmit);
-  root.addEventListener("invalid", onInvalid, true);
   root.addEventListener("keydown", onKeydown);
   win.addEventListener("resize", close);
 
   function destroy() {
     close();
     root.removeEventListener("click", onClick);
-    root.removeEventListener("submit", onSubmit);
-    root.removeEventListener("invalid", onInvalid, true);
     root.removeEventListener("keydown", onKeydown);
     win.removeEventListener("resize", close);
     priorityMenu.remove();
-    dateMenu.remove();
   }
 
   return { priorityControl, dateControl, followUpDateControl, close, destroy };

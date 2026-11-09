@@ -114,6 +114,211 @@ test("a busy day retains every entry so a scrolling widget can reach beyond the 
   assert.equal(next.entries.at(-1).record, records.at(-1));
 });
 
+test("overdue uses only past open delivery and follow-up entries in calendar order and never mutates frozen work", () => {
+  const records = freeze([
+    record("waiting-past", {
+      type: "waiting",
+      nextFollowUpDate: "2026-11-06",
+      dueDate: "2026-11-08",
+      priority: "urgent",
+    }),
+    record("daily-past-normal", {
+      dueDate: "2026-11-06",
+      priority: "normal",
+    }),
+    record("daily-past-urgent", {
+      dueDate: "2026-11-06",
+      priority: "urgent",
+    }),
+    record("weekly-past", { type: "weekly", dueDate: "2026-11-05" }),
+    record("monthly-oldest", { type: "monthly", dueDate: "2026-10-30" }),
+    record("today", { dueDate: "2026-11-07" }),
+    record("tomorrow", { dueDate: "2026-11-08" }),
+    record("future", { dueDate: "2026-12-01" }),
+    record("waiting-today", {
+      type: "waiting",
+      dueDate: "2026-10-01",
+      nextFollowUpDate: "2026-11-07",
+    }),
+    record("waiting-tomorrow", {
+      type: "waiting",
+      nextFollowUpDate: "2026-11-08",
+    }),
+    record("meeting-legacy-date", {
+      type: "meeting",
+      dueDate: "2026-10-01",
+    }),
+    record("yearly-legacy-date", {
+      type: "yearly",
+      dueDate: "2026-10-01",
+      periodKey: "2026",
+    }),
+    record("weekly-period-only", {
+      type: "weekly",
+      periodKey: "2026-W44",
+    }),
+    record("monthly-period-only", { type: "monthly", periodKey: "2026-10" }),
+    record("dateless"),
+    record("focus-only", { focusDate: "2026-11-06" }),
+    record("waiting-due-only", { type: "waiting", dueDate: "2026-11-06" }),
+    ...["completed", "cancelled", "transferred"].flatMap((status) => [
+      record(`closed-delivery-${status}`, { dueDate: "2026-10-01", status }),
+      record(`closed-followup-${status}`, {
+        type: "waiting",
+        nextFollowUpDate: "2026-10-01",
+        status,
+      }),
+    ]),
+    record("closed-source-copy", {
+      dueDate: "2026-10-01",
+      status: "completed",
+      sourceFields: {
+        __followupSource: { recordId: "meeting-legacy-date", type: "meeting" },
+      },
+    }),
+  ]);
+  const before = JSON.stringify(records);
+  const dateBefore = today.getTime();
+  const agenda = widgetAgenda(records, today, freeze({ view: "overdue" }));
+  assert.deepEqual(ids(agenda), [
+    "monthly-oldest",
+    "weekly-past",
+    "daily-past-urgent",
+    "daily-past-normal",
+    "waiting-past",
+  ]);
+  assert.equal(agenda.view, "overdue");
+  assert.equal(agenda.dayOffset, 0);
+  assert.equal(agenda.selectedDate, "2026-11-07");
+  assert.equal(agenda.overdueCount, 5);
+  assert.equal(agenda.todayCount, 2);
+  assert.equal(agenda.tomorrowCount, 2);
+  assert.equal(
+    agenda.entries.filter(({ record }) => record.id === "waiting-past").length,
+    1,
+  );
+  assert.equal(agenda.entries.at(-1).kind, "followup");
+  assert.equal(agenda.entries.at(-1).date, "2026-11-06");
+  for (const entry of agenda.entries)
+    assert.equal(
+      entry.record,
+      records.find((record) => record.id === entry.record.id),
+    );
+  for (const view of ["today", "tomorrow", "overdue"])
+    assert.equal(widgetAgenda(records, today, { view }).overdueCount, 5);
+  assert.equal(today.getTime(), dateBefore);
+  assert.equal(JSON.stringify(records), before);
+});
+
+test("explicit views select their channel while unsupported views retain the numeric day-offset API", () => {
+  const records = freeze([
+    record("past", { dueDate: "2026-11-06" }),
+    record("current", { dueDate: "2026-11-07" }),
+    record("next", { dueDate: "2026-11-08" }),
+  ]);
+  for (const [view, dayOffset, expectedId, expectedOffset] of [
+    ["today", 1, "current", 0],
+    ["tomorrow", 0, "next", 1],
+    ["overdue", 1, "past", 0],
+    ["unsupported", 1, "next", 1],
+    [undefined, 1, "next", 1],
+    [null, 0, "current", 0],
+    [true, "1", "current", 0],
+  ]) {
+    const agenda = widgetAgenda(records, today, freeze({ view, dayOffset }));
+    assert.deepEqual(ids(agenda), [expectedId]);
+    assert.equal(agenda.dayOffset, expectedOffset);
+    assert.equal(
+      agenda.view,
+      expectedId === "past" ? "overdue" : expectedOffset ? "tomorrow" : "today",
+    );
+    assert.equal(
+      agenda.selectedDate,
+      expectedOffset ? "2026-11-08" : "2026-11-07",
+    );
+    assert.equal(agenda.overdueCount, 1);
+  }
+  const empty = widgetAgenda([], today, { view: "overdue" });
+  assert.deepEqual(empty.entries, []);
+  assert.equal(empty.overdueCount, 0);
+});
+
+test("overdue comparisons cross month, leap-day and year boundaries without fabricating period deadlines", () => {
+  for (const [date, previous, current, next] of [
+    [new Date(2026, 4, 1, 0, 1), "2026-04-30", "2026-05-01", "2026-05-02"],
+    [new Date(2024, 2, 1, 0, 1), "2024-02-29", "2024-03-01", "2024-03-02"],
+    [new Date(2027, 0, 1, 0, 1), "2026-12-31", "2027-01-01", "2027-01-02"],
+  ]) {
+    const before = date.getTime();
+    const records = freeze([
+      record("past", { dueDate: previous }),
+      record("current", { dueDate: current }),
+      record("next", { dueDate: next }),
+      record("period-only", {
+        type: "monthly",
+        periodKey: previous.slice(0, 7),
+      }),
+    ]);
+    const agenda = widgetAgenda(records, date, { view: "overdue" });
+    assert.deepEqual(ids(agenda), ["past"]);
+    assert.equal(agenda.today, current);
+    assert.equal(agenda.tomorrow, next);
+    assert.equal(agenda.selectedDate, current);
+    assert.equal(agenda.overdueCount, 1);
+    assert.equal(date.getTime(), before);
+  }
+});
+
+test("overdue is relative to the local day at DST boundaries and when UTC is on yesterday", () => {
+  const originalTimezone = process.env.TZ;
+  try {
+    for (const [timezone, parts, previous, current, next] of [
+      [
+        "America/New_York",
+        [2026, 2, 8, 0, 30],
+        "2026-03-07",
+        "2026-03-08",
+        "2026-03-09",
+      ],
+      [
+        "America/New_York",
+        [2026, 10, 1, 0, 30],
+        "2026-10-31",
+        "2026-11-01",
+        "2026-11-02",
+      ],
+      [
+        "Pacific/Auckland",
+        [2027, 0, 1, 0, 30],
+        "2026-12-31",
+        "2027-01-01",
+        "2027-01-02",
+      ],
+    ]) {
+      process.env.TZ = timezone;
+      const date = new Date(...parts);
+      const records = freeze([
+        record("past", { dueDate: previous }),
+        record("past-followup", {
+          type: "waiting",
+          nextFollowUpDate: previous,
+        }),
+        record("current", { dueDate: current }),
+        record("next", { dueDate: next }),
+      ]);
+      const agenda = widgetAgenda(records, date, { view: "overdue" });
+      assert.deepEqual(ids(agenda), ["past", "past-followup"], timezone);
+      assert.equal(agenda.selectedDate, current, timezone);
+      assert.equal(agenda.todayCount, 1, timezone);
+      assert.equal(agenda.tomorrowCount, 1, timezone);
+      assert.equal(agenda.overdueCount, 2, timezone);
+    }
+  } finally {
+    if (originalTimezone === undefined) delete process.env.TZ;
+    else process.env.TZ = originalTimezone;
+  }
+});
+
 test("relative days cross month, leap-day and year boundaries using the input's local calendar date", () => {
   for (const [date, expectedToday, expectedTomorrow] of [
     [new Date(2026, 3, 30, 23, 59), "2026-04-30", "2026-05-01"],

@@ -412,11 +412,16 @@ test("native sizing stays the only owner while widget and record routes retain t
   const context = await sizingContext(browser, baseURL);
   try {
     const main = await context.newPage();
-    await main.goto("/#desktop?windowSizing=native");
+    await main.goto("/#desktop?windowSizing=native&windowPin=native");
     await expect(main.locator("#page-title")).toHaveText("Genel bakış");
     const before = await main.evaluate((key) => localStorage.getItem(key), KEY);
     const widget = await openClockedWidget(main, context);
-    await expect(widget).toHaveURL(/#widget\?windowSizing=native$/);
+    await expect(widget).toHaveURL(
+      /#widget\?windowSizing=native&windowPin=native$/,
+    );
+    await expect(widget.locator("#widget-pin")).toBeEnabled();
+    await widget.locator("#widget-pin").click();
+    await expect(widget).toHaveTitle("ODAK · Özet · Üstte");
     await context.clock.runFor(650);
     expect(await widget.evaluate(() => window.widgetResizeRequests)).toEqual(
       [],
@@ -437,7 +442,7 @@ test("native sizing stays the only owner while widget and record routes retain t
       widget.locator('[data-record-id="widget-persistent-urgent"]').click(),
     );
     await expect(reopened).toHaveURL(
-      /#desktop\?record=widget-persistent-urgent&windowSizing=native$/,
+      /#desktop\?record=widget-persistent-urgent&windowSizing=native&windowPin=native$/,
     );
     await expect(reopened.locator('#record-form [name="title"]')).toHaveValue(
       "Öncelikli günlük iş",
@@ -453,7 +458,9 @@ test("native sizing stays the only owner while widget and record routes retain t
 
     await widget.close();
     const fresh = await openClockedWidget(reopened, context);
-    await expect(fresh).toHaveURL(/#widget\?windowSizing=native$/);
+    await expect(fresh).toHaveURL(
+      /#widget\?windowSizing=native&windowPin=native$/,
+    );
     await context.clock.runFor(3000);
     expect(await fresh.evaluate(() => window.widgetResizeRequests)).toEqual([]);
     expect(await reopened.evaluate(() => window.widgetResizeRequests)).toEqual(

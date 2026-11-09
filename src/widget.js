@@ -38,10 +38,15 @@ export const widgetDocumentHtml = `<!doctype html>
     button:focus-visible { outline:3px solid #87b89d; outline-offset:2px; }
     .widget-shell { display:flex; flex-direction:column; gap:9px; width:100%; height:100%; height:100dvh; min-width:0; padding:12px; }
     .widget-header { display:flex; align-items:center; justify-content:space-between; gap:12px; flex:0 0 auto; }
+    .widget-header-tools { display:flex; align-items:center; gap:8px; }
     h1 { margin:0; color:#174d43; font-size:20px; line-height:1.2; font-weight:850; letter-spacing:2px; }
     .widget-live { color:#64775f; font-size:11px; }
-    .widget-day-tabs { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:6px; flex:0 0 auto; }
-    .widget-day-tab { display:flex; align-items:center; justify-content:center; gap:8px; min-width:0; min-height:35px; padding:6px 10px; border:1px solid #dce5d7; border-radius:8px; background:#fff; color:#5d715a; font-size:12px; font-weight:600; }
+    .widget-pin { display:inline-flex; align-items:center; justify-content:center; flex:0 0 26px; width:26px; height:26px; padding:4px; border:1px solid #dce5d7; border-radius:6px; color:#5d715a; background:#fff; }
+    .widget-pin:disabled { opacity:.5; cursor:default; }
+    .widget-pin[aria-pressed="true"] { color:#174d43; border-color:#a8c5a0; background:#eaf2e4; }
+    .widget-pin svg { width:16px; height:16px; fill:none; stroke:currentColor; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
+    .widget-day-tabs { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px; flex:0 0 auto; }
+    .widget-day-tab { display:flex; align-items:center; justify-content:center; gap:6px; min-width:0; min-height:35px; padding:6px 8px; border:1px solid #dce5d7; border-radius:8px; background:#fff; color:#5d715a; font-size:11px; font-weight:600; }
     .widget-day-tab[aria-pressed="true"] { color:#174d43; border-color:#a8c5a0; background:#eaf2e4; }
     .widget-day-count { display:inline-flex; align-items:center; justify-content:center; min-width:20px; min-height:20px; padding:1px 5px; border-radius:6px; background:#f0f4ed; font-size:11px; font-variant-numeric:tabular-nums; }
     .widget-day-tab[aria-pressed="true"] .widget-day-count { background:#d7e7ce; }
@@ -59,9 +64,17 @@ export const widgetDocumentHtml = `<!doctype html>
     .widget-event-kind.followup { color:#886028; background:#fbf2e2; }
     .widget-event-kind svg { width:11px; height:11px; flex:0 0 11px; fill:none; stroke:currentColor; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
     .widget-record-type { min-width:0; overflow-wrap:anywhere; }
+    .widget-entry-date { margin-left:auto; white-space:nowrap; }
     .widget-empty { display:flex; flex-direction:column; justify-content:center; align-items:center; gap:6px; min-height:100%; padding:20px 14px; color:#6b7e64; font-size:11px; line-height:1.5; text-align:center; }
     .widget-empty strong { color:#3f5c43; font-size:12px; }
     .widget-footer { flex:0 0 auto; min-width:0; }
+    .widget-session { display:flex; align-items:center; justify-content:space-between; gap:10px; flex:0 0 auto; min-width:0; padding:6px 9px; border:1px solid #dce5d7; border-radius:8px; background:#eaf2e4; }
+    .widget-session[hidden] { display:none; }
+    .widget-session-identity { display:flex; flex-direction:column; gap:2px; min-width:0; }
+    #widget-session-phase { color:#64775f; font-size:9px; line-height:1.2; }
+    #widget-session-title { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#304d37; font-size:11px; line-height:1.3; }
+    #widget-session-time { flex:0 0 auto; color:#174d43; font-size:12px; font-weight:650; font-variant-numeric:tabular-nums; }
+    .widget-session[data-phase="paused"] { background:#f4f3e9; }
     #widget-open-main { display:flex; align-items:center; justify-content:center; gap:8px; width:100%; min-height:36px; padding:8px 12px; border:1px solid #174d43; border-radius:8px; background:#174d43; color:#fff; font-size:12px; font-weight:600; }
     #widget-open-main:hover { background:#256354; }
     #widget-open-main svg { width:14px; height:14px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
@@ -70,7 +83,8 @@ export const widgetDocumentHtml = `<!doctype html>
     :root[data-theme="dark"] { color:#e9eaec; background:#0d0e10; color-scheme:dark; }
     [data-theme="dark"] h1 { color:#9dd8b7; }
     [data-theme="dark"] :is(.widget-live,#widget-task-count,.widget-task-meta,.widget-empty) { color:#b7bbc2; }
-    [data-theme="dark"] :is(.widget-day-tab,.widget-work) { color:#d3d8d1; background:#18191b; border-color:#3d4249; }
+    [data-theme="dark"] :is(.widget-day-tab,.widget-work,.widget-pin) { color:#d3d8d1; background:#18191b; border-color:#3d4249; }
+    [data-theme="dark"] .widget-pin[aria-pressed="true"] { color:#c3e7ce; background:#263b2c; border-color:#719b74; }
     [data-theme="dark"] .widget-day-tab[aria-pressed="true"] { color:#c3e7ce; background:#263b2c; border-color:#719b74; }
     [data-theme="dark"] .widget-day-count { color:#d3d8d1; background:#292d2a; }
     [data-theme="dark"] .widget-day-tab[aria-pressed="true"] .widget-day-count { background:#35513c; }
@@ -82,17 +96,23 @@ export const widgetDocumentHtml = `<!doctype html>
     [data-theme="dark"] #widget-status { color:#ffb9ae; }
     [data-theme="dark"] #widget-open-main { color:#122e23; background:#9dd8b7; border-color:#9dd8b7; }
     [data-theme="dark"] #widget-open-main:hover { background:#b8e8ce; }
-    @media(max-width:310px) { .widget-shell { padding:9px; gap:7px; } .widget-task { padding:8px; } }
+    [data-theme="dark"] .widget-session { background:#263b2c; border-color:#48664c; }
+    [data-theme="dark"] .widget-session[data-phase="paused"] { background:#38362a; border-color:#686148; }
+    [data-theme="dark"] #widget-session-phase { color:#b7bbc2; }
+    [data-theme="dark"] #widget-session-title { color:#e9eaec; }
+    [data-theme="dark"] #widget-session-time { color:#9dd8b7; }
+    @media(max-width:310px) { .widget-shell { padding:9px; gap:7px; } .widget-task { padding:8px; } .widget-day-tabs { gap:4px; } .widget-day-tab { padding:6px 4px; gap:4px; font-size:10px; } .widget-day-count { min-width:18px; padding:1px 3px; } }
   </style>
 </head>
 <body>
   <main class="widget-shell">
-    <header class="widget-header"><h1>ODAK</h1><span class="widget-live">Mini ajanda</span></header>
-    <nav class="widget-day-tabs" aria-label="Ajanda günü"><button type="button" class="widget-day-tab" data-widget-day="today" aria-pressed="true">Bugün <span class="widget-day-count" id="widget-today-count">0</span></button><button type="button" class="widget-day-tab" data-widget-day="tomorrow" aria-pressed="false">Yarın <span class="widget-day-count" id="widget-tomorrow-count">0</span></button></nav>
+    <header class="widget-header"><h1>ODAK</h1><div class="widget-header-tools"><span class="widget-live">Mini ajanda</span><button type="button" class="widget-pin" id="widget-pin" aria-label="Üstte tut" aria-pressed="false" title="Üstte tut Windows paketiyle kullanılabilir." disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m16 3 5 5-4 1-3 4v4l-2 2-3-6-6-3 2-2h4l4-3zM9 15l-6 6"/></svg></button></div></header>
+    <nav class="widget-day-tabs" aria-label="Ajanda günü"><button type="button" class="widget-day-tab" data-widget-day="today" aria-pressed="true">Bugün <span class="widget-day-count" id="widget-today-count">0</span></button><button type="button" class="widget-day-tab" data-widget-day="tomorrow" aria-pressed="false">Yarın <span class="widget-day-count" id="widget-tomorrow-count">0</span></button><button type="button" class="widget-day-tab" data-widget-day="overdue" aria-pressed="false">Gecikenler <span class="widget-day-count" id="widget-overdue-count">0</span></button></nav>
     <section class="widget-work" aria-label="Seçili günün ajandası">
       <header class="widget-work-header"><time id="widget-date"></time><span id="widget-task-count"></span></header>
       <ul id="widget-tasks" tabindex="0" aria-label="Seçili günün teslimleri ve takipleri"></ul>
     </section>
+    <section class="widget-session" id="widget-session" aria-label="Çalışma oturumu" hidden><div class="widget-session-identity"><span id="widget-session-phase"></span><span id="widget-session-title"></span></div><span id="widget-session-time" role="timer" aria-label="Bu oturumda geçen süre, saat, dakika ve saniye" aria-live="off"></span></section>
     <footer class="widget-footer"><button type="button" id="widget-open-main">ODAK’ı aç <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h16m-5-5 5 5-5 5"/></svg></button><p id="widget-status" role="status" aria-live="polite"></p></footer>
   </main>
 </body>
@@ -103,6 +123,15 @@ const dayFormatter = new Intl.DateTimeFormat("tr-TR", {
   month: "long",
   weekday: "long",
 });
+const entryDateFormatter = new Intl.DateTimeFormat("tr-TR", {
+  day: "numeric",
+  month: "short",
+});
+const olderEntryDateFormatter = new Intl.DateTimeFormat("tr-TR", {
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+});
 
 export function renderWidgetSummary(
   document,
@@ -112,41 +141,56 @@ export function renderWidgetSummary(
 ) {
   const agenda = widgetAgenda(records, date, options);
   const list = document.getElementById("widget-tasks");
-  const sameDay = list.dataset.agendaDate === agenda.selectedDate;
+  const sameDay =
+    list.dataset.agendaDate === agenda.selectedDate &&
+    list.dataset.agendaView === agenda.view;
   const previousScroll = sameDay ? list.scrollTop : 0;
   const focused = document.activeElement?.closest?.("[data-record-id]");
   const focusedId =
     focused && list.contains(focused) ? focused.dataset.recordId : null;
   const restoreFocus = Boolean(focusedId && document.hasFocus());
   const dateElement = document.getElementById("widget-date");
-  dateElement.dateTime = agenda.selectedDate;
-  dateElement.textContent = dayFormatter.format(
-    new Date(`${agenda.selectedDate}T12:00:00`),
-  );
+  if (agenda.view === "overdue") {
+    dateElement.removeAttribute("datetime");
+    dateElement.textContent = "Gecikenler";
+  } else {
+    dateElement.dateTime = agenda.selectedDate;
+    dateElement.textContent = dayFormatter.format(
+      new Date(`${agenda.selectedDate}T12:00:00`),
+    );
+  }
   document.getElementById("widget-today-count").textContent = String(
     agenda.todayCount,
   );
   document.getElementById("widget-tomorrow-count").textContent = String(
     agenda.tomorrowCount,
   );
+  document.getElementById("widget-overdue-count").textContent = String(
+    agenda.overdueCount,
+  );
   for (const button of document.querySelectorAll("[data-widget-day]"))
     button.setAttribute(
       "aria-pressed",
-      String(
-        (button.dataset.widgetDay === "tomorrow" ? 1 : 0) === agenda.dayOffset,
-      ),
+      String(button.dataset.widgetDay === agenda.view),
     );
   document.getElementById("widget-task-count").textContent =
     `${agenda.entries.length} kayıt`;
   list.dataset.agendaDate = agenda.selectedDate;
+  list.dataset.agendaView = agenda.view;
+  list.setAttribute(
+    "aria-label",
+    agenda.view === "overdue"
+      ? "Gecikmiş teslimler ve takipler"
+      : "Seçili günün teslimleri ve takipleri",
+  );
   list.innerHTML = agenda.entries.length
     ? agenda.entries
         .map(
           (entry) =>
-            `<li class="widget-task" data-id="${escapeHtml(entry.record.id)}" data-entry-kind="${entry.kind}" data-entry-date="${entry.date}"><button type="button" class="widget-task-open" data-record-id="${escapeHtml(entry.record.id)}" title="${escapeHtml(entry.record.title)}">${escapeHtml(entry.record.title)}</button><div class="widget-task-meta"><span class="widget-event-kind ${entry.kind}">${eventIcons[entry.kind]}${entry.kind === "followup" ? "Takip" : "Teslim"}</span><span class="widget-record-type">${escapeHtml(typeLabels[entry.record.type] || entry.record.type)}</span></div></li>`,
+            `<li class="widget-task" data-id="${escapeHtml(entry.record.id)}" data-entry-kind="${entry.kind}" data-entry-date="${entry.date}"><button type="button" class="widget-task-open" data-record-id="${escapeHtml(entry.record.id)}" title="${escapeHtml(entry.record.title)}">${escapeHtml(entry.record.title)}</button><div class="widget-task-meta"><span class="widget-event-kind ${entry.kind}">${eventIcons[entry.kind]}${entry.kind === "followup" ? "Takip" : "Teslim"}</span><span class="widget-record-type">${escapeHtml(typeLabels[entry.record.type] || entry.record.type)}</span>${agenda.view === "overdue" ? `<time class="widget-entry-date" datetime="${entry.date}">${(entry.date.slice(0, 4) === agenda.today.slice(0, 4) ? entryDateFormatter : olderEntryDateFormatter).format(new Date(`${entry.date}T12:00:00`))}</time>` : ""}</div></li>`,
         )
         .join("")
-    : `<li class="widget-empty"><strong>${agenda.dayOffset ? "Yarın" : "Bugün"} için kayıt yok.</strong><span>Teslim veya takip tarihi olan açık kayıtlar burada görünür.</span></li>`;
+    : `<li class="widget-empty"><strong>${agenda.view === "overdue" ? "Gecikmiş kayıt yok." : `${agenda.view === "tomorrow" ? "Yarın" : "Bugün"} için kayıt yok.`}</strong><span>Teslim veya takip tarihi olan açık kayıtlar burada görünür.</span></li>`;
   list.scrollTop = previousScroll;
   if (restoreFocus) {
     const next =
@@ -155,10 +199,7 @@ export function renderWidgetSummary(
         (button) => button.dataset.recordId === focusedId,
       );
     (
-      next ||
-      document.querySelector(
-        `[data-widget-day="${agenda.dayOffset ? "tomorrow" : "today"}"]`,
-      )
+      next || document.querySelector(`[data-widget-day="${agenda.view}"]`)
     )?.focus({ preventScroll: true });
   }
 }

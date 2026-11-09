@@ -16,7 +16,7 @@ const goal = (page) =>
   page.locator('.dashboard-goal-row[data-goal-id="details-week"]');
 const waitingPanel = (page) => page.locator("#waiting-record-panel");
 const goalPanel = (page) => page.locator("#goal-detail-panel");
-const dateMenu = (page) => page.locator("#due-date-menu");
+const datePicker = (page) => page.locator("#odak-date-picker");
 const followup = (page) => page.locator("#waiting-followup-dialog");
 const closeWaiting = (page) =>
   waitingPanel(page)
@@ -25,6 +25,38 @@ const closeWaiting = (page) =>
     .click();
 const closeGoal = (page) =>
   goalPanel(page).locator('[data-action="goal-panel-close"]').last().click();
+
+async function expectQuickDatePicker(page, value) {
+  await expect(datePicker(page)).toBeVisible();
+  await expect(datePicker(page)).toHaveAttribute(
+    "data-selection-mode",
+    "direct",
+  );
+  await expect(
+    datePicker(page).locator(`[data-date-day="${value}"]`),
+  ).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("#due-date-menu")).toHaveCount(0);
+  await expect(
+    datePicker(page).locator('form, input[type="text"], [data-date-input]'),
+  ).toHaveCount(0);
+  await expect(
+    datePicker(page).getByRole("button", { name: /^(Kaydet|Vazgeç)$/ }),
+  ).toHaveCount(0);
+  await expect(
+    datePicker(page).getByRole("button", {
+      name: "Tarihi kaldır",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(
+    datePicker(page).getByRole("button", {
+      name: "Takvimi kapat",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(page.locator("#editor")).not.toBeVisible();
+  await expect(followup(page)).not.toBeVisible();
+}
 
 async function expectBottomCardControls(page, sideBySide) {
   const boxes = await page.evaluate(() => {
@@ -440,10 +472,14 @@ test("goal body opens the panel at its top while nested goal, follow-up and date
   await expect(childTitle).toHaveCSS("text-decoration-line", /underline/);
   await closeGoal(page);
   await goal(page).locator('[data-action="edit-date"]').click();
-  await expect(dateMenu(page)).toBeVisible();
+  await expectQuickDatePicker(page, "2026-11-12");
   await expect(goalPanel(page)).not.toBeVisible();
   await expect(waitingPanel(page)).not.toBeVisible();
-  await dateMenu(page).locator('[data-action="cancel-inline"]').click();
+  await datePicker(page)
+    .getByRole("button", { name: "Takvimi kapat", exact: true })
+    .click();
+  await expect(datePicker(page)).not.toBeVisible();
+  await expect(goal(page).locator('[data-action="edit-date"]')).toBeFocused();
   await goal(page)
     .locator('.record-context-link[data-id="details-month"]')
     .click();
@@ -456,12 +492,16 @@ test("goal body opens the panel at its top while nested goal, follow-up and date
   );
   await closeGoal(page);
   await waiting(page).locator('[data-action="edit-next-followup"]').click();
-  await expect(dateMenu(page).locator('[name="nextFollowUpDate"]')).toHaveValue(
-    "08.11.2026",
-  );
+  await expectQuickDatePicker(page, "2026-11-08");
   await expect(waitingPanel(page)).not.toBeVisible();
   await expect(goalPanel(page)).not.toBeVisible();
-  await dateMenu(page).locator('[data-action="cancel-inline"]').click();
+  await datePicker(page)
+    .getByRole("button", { name: "Takvimi kapat", exact: true })
+    .click();
+  await expect(datePicker(page)).not.toBeVisible();
+  await expect(
+    waiting(page).locator('[data-action="edit-next-followup"]'),
+  ).toBeFocused();
   await waiting(page).locator('[data-action="waiting-followup"]').click();
   await expect(followup(page)).toBeVisible();
   await expect(waitingPanel(page)).not.toBeVisible();
@@ -609,13 +649,19 @@ test("touch cards open read-only details while nested date and follow-up control
     ).toBe(0);
     await closeGoal(page);
     await waiting(page).locator('[data-action="edit-next-followup"]').tap();
-    await expect(dateMenu(page)).toBeVisible();
+    await expectQuickDatePicker(page, "2026-11-08");
     await expect(waitingPanel(page)).not.toBeVisible();
-    await dateMenu(page).locator('[data-action="cancel-inline"]').tap();
+    await datePicker(page)
+      .getByRole("button", { name: "Takvimi kapat", exact: true })
+      .tap();
+    await expect(datePicker(page)).not.toBeVisible();
     await goal(page).locator('[data-action="edit-date"]').tap();
-    await expect(dateMenu(page)).toBeVisible();
+    await expectQuickDatePicker(page, "2026-11-12");
     await expect(goalPanel(page)).not.toBeVisible();
-    await dateMenu(page).locator('[data-action="cancel-inline"]').tap();
+    await datePicker(page)
+      .getByRole("button", { name: "Takvimi kapat", exact: true })
+      .tap();
+    await expect(datePicker(page)).not.toBeVisible();
     expect(await saved(page)).toBe(before);
   } finally {
     await context.close();

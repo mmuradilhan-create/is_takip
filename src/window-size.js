@@ -12,10 +12,20 @@ export function windowSizingMode(win = globalThis.window) {
   return parameters.get("windowSizing") === "native" ? "native" : "browser";
 }
 
+/** Older native helpers can size windows without supporting the pin control. */
+export function windowPinSupported(win = globalThis.window) {
+  const parameters = new URLSearchParams(win?.location?.hash?.split("?")[1]);
+  return (
+    windowSizingMode(win) === "native" &&
+    parameters.get("windowPin") === "native"
+  );
+}
+
 /** Keep sizing ownership in the fragment so workspace/window identity stays the same. */
 export function windowRoleHash(role, win = globalThis.window, parameters = {}) {
   const query = new URLSearchParams(parameters);
   if (windowSizingMode(win) === "native") query.set("windowSizing", "native");
+  if (windowPinSupported(win)) query.set("windowPin", "native");
   return query.size ? `${role}?${query}` : role;
 }
 

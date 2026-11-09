@@ -5,7 +5,14 @@ import {
   desktopWindowFeatures,
   fitWidgetWindow,
   windowRoleHash,
+  windowPinSupported,
+  windowSizingMode,
 } from "./window-size.js";
+import { WORK_SESSION_KEY } from "./work-session-store.js";
+import {
+  renderWidgetSession,
+  widgetSessionSummary,
+} from "./widget-session-presenter.js";
 import {
   applyTheme,
   normalizePreferences,
@@ -40,6 +47,13 @@ export function startStandaloneWidget() {
   );
   document.querySelector(".widget-live").title =
     "Kayıtlar değiştikçe güncellenir";
+  const pin = document.getElementById("widget-pin");
+  const pinSupported = windowPinSupported(window);
+  pin.disabled = !pinSupported;
+  if (pinSupported) pin.title = "Üstte tut";
+  else if (windowSizingMode(window) === "native")
+    pin.title =
+      "Üstte tut için ODAK pencerelerini kapatıp güncel Windows paketini yeniden aç.";
 
   let previousRaw;
   let previousLegacyPreferences;
@@ -52,7 +66,8 @@ export function startStandaloneWidget() {
   let activating = false;
   let activationMessage = "";
   let mainPopup = null;
-  let dayOffset = 0;
+  let view = "today";
+  let pinned = false;
   const stopTheme = watchTheme(document, () => preferences, window);
   const windows = createWindowCoordinator({
     onActivateWidget: () => {
@@ -69,8 +84,13 @@ export function startStandaloneWidget() {
   }
 
   function showError() {
-    renderWidgetSummary(document, [], new Date(), { dayOffset });
-    for (const id of ["widget-today-count", "widget-tomorrow-count"]) {
+    renderWidgetSummary(document, [], new Date(), { view });
+    renderWidgetSession(document, null);
+    for (const id of [
+      "widget-today-count",
+      "widget-tomorrow-count",
+      "widget-overdue-count",
+    ]) {
       document.getElementById(id).textContent = "—";
     }
     document.getElementById("widget-task-count").textContent = "—";
@@ -80,6 +100,23 @@ export function startStandaloneWidget() {
       "Kayıtlar okunamadı. Verilerin değiştirilmedi; ODAK’ı açarak kontrol edebilirsin.";
   }
 
+  function refreshSession() {
+    if (stopped) return;
+    let summary = null;
+    if (!failed) {
+      try {
+        summary = widgetSessionSummary(
+          records,
+          window.localStorage.getItem(WORK_SESSION_KEY),
+          Date.now(),
+        );
+      } catch {
+        // Optional session context cannot make the agenda unreadable.
+      }
+    }
+    renderWidgetSession(document, summary);
+  }
+
   function refresh(force = false) {
     if (stopped) return;
     try {
@@ -87,7 +124,10 @@ export function startStandaloneWidget() {
       const legacyRaw = window.localStorage.getItem(PREFERENCES_KEY);
       const changed =
         raw !== previousRaw || legacyRaw !== previousLegacyPreferences;
-      if (!changed && !force && !failed) return;
+      if (!changed && !force && !failed) {
+        refreshSession();
+        return;
+      }
       if (changed || failed) {
         // A deliberately empty saved store must take precedence over seeds.
         const saved = raw === null ? null : JSON.parse(raw);
@@ -112,9 +152,10 @@ export function startStandaloneWidget() {
         previousRaw = raw;
         previousLegacyPreferences = legacyRaw;
       }
-      renderWidgetSummary(document, records, new Date(), { dayOffset });
+      renderWidgetSummary(document, records, new Date(), { view });
       document.getElementById("widget-status").textContent = activationMessage;
       failed = false;
+      refreshSession();
     } catch {
       failed = true;
       showError();
@@ -185,9 +226,18 @@ export function startStandaloneWidget() {
   document.body.addEventListener("click", (event) => {
     const target = event.target;
     if (!(target instanceof Element)) return;
+    if (target.closest("#widget-pin")) {
+      if (pinSupported) {
+        pinned = !pinned;
+        pin.setAttribute("aria-pressed", String(pinned));
+        pin.title = pinned ? "Üstte tutmayı kapat" : "Üstte tut";
+        document.title = pinned ? "ODAK · Özet · Üstte" : "ODAK · Özet";
+      }
+      return;
+    }
     const day = target.closest("[data-widget-day]");
     if (day) {
-      dayOffset = day.dataset.widgetDay === "tomorrow" ? 1 : 0;
+      view = day.dataset.widgetDay;
       refresh(true);
       return;
     }
@@ -197,6 +247,10 @@ export function startStandaloneWidget() {
   });
 
   const onStorage = (event) => {
+    if (event.key === WORK_SESSION_KEY) {
+      refreshSession();
+      return;
+    }
     if (
       event.key === STORAGE_KEY ||
       event.key === PREFERENCES_KEY ||

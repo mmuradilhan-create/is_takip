@@ -16,7 +16,15 @@ const ids = (page) =>
 const saved = (page) => page.evaluate((key) => localStorage.getItem(key), KEY);
 const readRecords = (page) =>
   page.evaluate((key) => JSON.parse(localStorage.getItem(key)).records, KEY);
-const view = (page, type) => page.locator(`#nav [data-view="${type}"]`).click();
+const view = async (page, type) => {
+  const toggle = page.getByRole("button", { name: "Menüyü aç", exact: true });
+  if (
+    (await toggle.isVisible()) &&
+    (await toggle.getAttribute("aria-expanded")) !== "true"
+  )
+    await toggle.click();
+  await page.locator(`#nav [data-view="${type}"]`).click();
+};
 const scope = (page, value) =>
   page.locator(`[data-action="list-scope"][data-scope="${value}"]`);
 const next = (page) =>
@@ -273,7 +281,7 @@ test("scope buttons replace repeated completion choices and the entire filter ca
     ).toHaveText(type === "meeting" ? "Planlanacak" : "Devam ediyor");
     expect(await ids(page)).toEqual(
       type === "meeting"
-        ? ["scope-meeting-in_progress", "scope-meeting-planned"]
+        ? ["scope-meeting-planned"]
         : [`scope-${type}-in_progress`],
     );
 
@@ -283,19 +291,31 @@ test("scope buttons replace repeated completion choices and the entire filter ca
       "true",
     );
     await expect(page.locator("#status-filter")).toHaveCount(0);
-    expect(await ids(page)).toEqual([`scope-${type}-completed`]);
+    const closedIds =
+      type === "meeting"
+        ? [
+            "scope-meeting-transferred",
+            "scope-meeting-cancelled",
+            "scope-meeting-completed",
+          ]
+        : [`scope-${type}-completed`];
+    expect(await ids(page)).toEqual(closedIds);
 
     await scope(page, "all").click();
     await expect(scope(page, "all")).toHaveAttribute("aria-pressed", "true");
     await expect(
       page.locator('#status-filter option[value="completed"]'),
-    ).toHaveCount(0);
+    ).toHaveCount(type === "meeting" ? 1 : 0);
     await expect(rows(page)).toHaveCount(5);
     await expect(page.locator('#status-filter option[value="all"]')).toHaveText(
       "Tüm durumlar",
     );
-    await page.locator("#status-filter").selectOption("transferred");
-    expect(await ids(page)).toEqual([`scope-${type}-transferred`]);
+    await page
+      .locator("#status-filter")
+      .selectOption(type === "meeting" ? "completed" : "transferred");
+    expect(await ids(page)).toEqual(
+      type === "meeting" ? closedIds : [`scope-${type}-transferred`],
+    );
     await scope(page, "open").click();
     await expect(page.locator("#status-filter")).toHaveValue("all");
     await expect(rows(page)).toHaveCount(2);
@@ -371,4 +391,118 @@ test("filters, search, sort and scope reset pagination and deleting the last pag
   await expect(page.locator(".pagination-summary")).toHaveText(
     "1–50 / 51 kayıt",
   );
+});
+
+test("the compact native sort icon stays at the same toolbar edge across all lists and retains sorting without saving workspace data", async ({
+  page,
+}) => {
+  const records = TYPES.flatMap((type) => [
+    make({
+      id: `geometry-${type}-old`,
+      type,
+      title: `${type} eski`,
+      createdAt: stamp(0),
+      periodKey:
+        { weekly: "2026-W45", monthly: "2026-11", yearly: "2026" }[type] || "",
+    }),
+    make({
+      id: `geometry-${type}-new`,
+      type,
+      title: `${type} yeni`,
+      createdAt: stamp(2),
+      periodKey:
+        { weekly: "2026-W45", monthly: "2026-11", yearly: "2026" }[type] || "",
+    }),
+  ]);
+  await seed(page, records);
+  const before = await saved(page);
+  await view(page, "daily");
+  await page.locator("#list-sort").selectOption("created-asc");
+  await page.locator("#list-sort").focus();
+  await page.keyboard.press("ArrowUp");
+  await expect(page.locator("#list-sort")).toHaveValue("created-desc");
+  await page.locator("#list-sort").selectOption("created-asc");
+  for (const viewport of [
+    { width: 1536, height: 864 },
+    { width: 1280, height: 720 },
+    { width: 1100, height: 700 },
+    { width: 375, height: 700 },
+  ]) {
+    await page.setViewportSize(viewport);
+    for (const theme of ["light", "dark"]) {
+      for (const type of TYPES) {
+        await view(page, type);
+        await page.evaluate((theme) => {
+          document.documentElement.dataset.theme = theme;
+        }, theme);
+        const label = page.locator(".list-controls-bar > .list-sort");
+        const select = page.getByRole("combobox", {
+          name: "Kayıtları sırala",
+          exact: true,
+        });
+        await expect(label).toBeVisible();
+        await expect(select).toHaveValue("created-asc");
+        await expect(label).toHaveAttribute(
+          "title",
+          "Sırala: Oluşturma · en eski",
+        );
+        await expect(select).toHaveAttribute(
+          "title",
+          "Sırala: Oluşturma · en eski",
+        );
+        await expect(label.locator("svg")).toHaveCount(1);
+        const geometry = await label.evaluate((element) => {
+          const box = element.getBoundingClientRect();
+          const bar = element
+            .closest(".list-controls-bar")
+            .getBoundingClientRect();
+          const native = element
+            .querySelector("select")
+            .getBoundingClientRect();
+          const hit = (x, y) =>
+            document.elementFromPoint(x, y)?.id === "list-sort";
+          return {
+            width: box.width,
+            height: box.height,
+            top: box.top - bar.top,
+            right: bar.right - box.right,
+            native: { width: native.width, height: native.height },
+            text: [...element.childNodes]
+              .filter((node) => node.nodeType === Node.TEXT_NODE)
+              .map((node) => node.textContent.trim())
+              .join(""),
+            hits: [
+              [box.left + 3, box.top + 3],
+              [box.right - 3, box.bottom - 3],
+              [box.left + box.width / 2, box.top + box.height / 2],
+            ].map(([x, y]) => hit(x, y)),
+          };
+        });
+        for (const dimension of [
+          geometry.width,
+          geometry.height,
+          geometry.native.width,
+          geometry.native.height,
+        ])
+          expect(dimension).toBeCloseTo(32, 0);
+        expect(geometry.top).toBeCloseTo(10, 0);
+        expect(geometry.right).toBeCloseTo(viewport.width <= 600 ? 12 : 16, 0);
+        expect(geometry.text).toBe("");
+        expect(geometry.hits).toEqual([true, true, true]);
+        expect(await ids(page)).toEqual([
+          `geometry-${type}-old`,
+          `geometry-${type}-new`,
+        ]);
+        expect(
+          await page.evaluate(
+            () => document.documentElement.scrollWidth <= innerWidth,
+          ),
+        ).toBe(true);
+        expect(await saved(page)).toBe(before);
+      }
+    }
+  }
+  await expect(
+    page.getByRole("button", { name: "Geri al", exact: true }),
+  ).toBeDisabled();
 });

@@ -126,6 +126,7 @@ test("standalone agenda renders today's dated work and follow-ups without touchi
   await expect(page).toHaveTitle("ODAK · Özet");
   await expect(page.locator("#widget-today-count")).toHaveText("3");
   await expect(page.locator("#widget-tomorrow-count")).toHaveText("1");
+  await expect(page.locator("#widget-overdue-count")).toHaveText("1");
   await expect(page.locator("#widget-date")).toHaveAttribute(
     "datetime",
     "2026-11-07",
@@ -272,6 +273,7 @@ test("standalone reports invalid or inaccessible storage without overwriting it 
   );
   await expect(page.locator("#widget-today-count")).toHaveText("—");
   await expect(page.locator("#widget-tomorrow-count")).toHaveText("—");
+  await expect(page.locator("#widget-overdue-count")).toHaveText("—");
   await expect(page.locator(".widget-task")).toHaveCount(0);
   expect(await page.evaluate((key) => localStorage.getItem(key), KEY)).toBe(
     "broken-json",

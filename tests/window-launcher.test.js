@@ -55,12 +55,16 @@ test("generated launch commands preserve path quoting and stay within Windows co
     );
     assert.equal(launcher.replaceAll("\r\n", "").includes("\n"), false);
   }
-  const encoded = Buffer.from(helper, "utf16le").toString("base64");
-  assert(
-    encoded.length < 30000,
-    "leave room for powershell.exe arguments below 32767",
-  );
-  assert.equal(Buffer.from(encoded, "base64").toString("utf16le"), helper);
+  for (const role of ["desktop", "widget"]) {
+    const launcher = createWindowsLauncher(role);
+    assert(
+      launcher.includes(
+        "-ArgumentList @('-NoLogo','-NoProfile','-ExecutionPolicy','Bypass','-File',([char]34+$helper+[char]34))",
+      ),
+      "the sibling helper file runs directly, so its size is not bound by the command line",
+    );
+    assert.equal(launcher.includes("-EncodedCommand"), false);
+  }
 });
 
 test("native helper only settles newly identified ODAK roles and releases later manual resizing", () => {
@@ -91,12 +95,12 @@ test("native helper only settles newly identified ODAK roles and releases later 
   );
   assert(
     helper.includes(
-      "if (!$alive.Contains($h)) { $settling.Remove($h); [OdakWidgetBounds]::Forget($h); continue }",
+      "if (!$alive.Contains($h)) { $settling.Remove($h); [OdakMainBounds]::Forget($h); [OdakWidgetBounds]::Forget($h); continue }",
     ),
   );
   assert(
     helper.includes(
-      "[void]$seen.Remove($h); $settling.Remove($h); [OdakWidgetBounds]::Forget($h); [OdakWidgetBounds]::ForgetPin($h)",
+      "[void]$seen.Remove($h); $settling.Remove($h); [OdakMainBounds]::Forget($h); [OdakWidgetBounds]::Forget($h); [OdakWidgetBounds]::ForgetPin($h)",
     ),
     "closed HWND state cannot leak into a later window reusing the handle",
   );
@@ -126,8 +130,15 @@ test("native helper only settles newly identified ODAK roles and releases later 
     "widget stays a separate native window role",
   );
   assert.equal(titles.includes("ODAK · Özet · Üstte"), false);
+  assert(helper.includes("Array.IndexOf(Titles,t.ToString())>=0"));
   assert(
-    helper.includes("Array.IndexOf(Titles,t.ToString())>=0 && !IsZoomed(h)"),
+    helper.includes("if(Prepared.ContainsKey(h)) return true;"),
+    "each main HWND is prepared once; later restores and resizing stay manual",
+  );
+  assert(
+    helper.includes(
+      "} elseif ([OdakMainBounds]::Maximize($h) -or $now -ge $entry.Until) { $settling.Remove($h) }",
+    ),
   );
   assert(helper.includes('Class(h).StartsWith("Chrome_WidgetWin_")'));
   assert(helper.includes("if(h==IntPtr.Zero || !Widget(h)) return true"));
@@ -315,7 +326,12 @@ test("helper startup and idle shutdown share a per-user lock without changing Ch
   ]) {
     assert.doesNotMatch(
       source,
-      /--(?:user-data-dir|profile-directory|remote-debugging)|ExecutionPolicy|Stop-Process|taskkill|Set-ItemProperty|is-takip-v1/i,
+      /--(?:user-data-dir|profile-directory|remote-debugging)|Set-ExecutionPolicy|Stop-Process|taskkill|Set-ItemProperty|is-takip-v1/i,
+    );
+    // Bypass is allowed only as a per-process argument for the sibling helper.
+    assert.equal(
+      source.match(/ExecutionPolicy/gi)?.length ?? 0,
+      source === helper ? 0 : 1,
     );
   }
 });
@@ -323,7 +339,13 @@ test("helper startup and idle shutdown share a per-user lock without changing Ch
 test("missing sizing helper keeps app access available and reports the required sibling file", () => {
   const launcher = createWindowsLauncher("desktop");
   assert(launcher.includes("'ODAK-Pencere.ps1'"));
-  assert(launcher.includes("catch { $sizingReady=$false }"));
+  assert(
+    launcher.includes(
+      "catch { $sizingReady=$false; $sizingError=$_.Exception.Message }",
+    ),
+  );
+  assert(launcher.includes("ODAK-Pencere.ps1 bulunamadi."));
+  assert(launcher.includes("Write-Host $sizingError; pause"));
   const open = launcher.indexOf("Start-Process -FilePath $chrome");
   const warning = launcher.indexOf(
     "if (!$sizingReady) { Write-Host 'ODAK acildi;",
@@ -333,5 +355,5 @@ test("missing sizing helper keeps app access available and reports the required 
     "app launch precedes the nonfatal sizing warning",
   );
   assert(launcher.includes("-WindowStyle Hidden"));
-  assert(launcher.includes("-EncodedCommand"));
+  assert(launcher.includes("'-File'"));
 });

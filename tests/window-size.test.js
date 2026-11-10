@@ -61,8 +61,8 @@ test("new main windows use available monitor work area in CSS pixels and preserv
 test("unknown monitor geometry uses bounded main-window defaults rather than invalid popup values", () => {
   const fallback = {
     popup: "yes",
-    width: "1280",
-    height: "850",
+    width: "1920",
+    height: "1080",
     left: "0",
     top: "0",
     resizable: "yes",

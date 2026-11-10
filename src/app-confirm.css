@@ -1,0 +1,64 @@
+.app-confirm-dialog {
+  width: 380px;
+  max-width: calc(100vw - 16px);
+  max-height: calc(100dvh - 16px);
+  border-radius: 12px;
+  color: var(--theme-ink, #405b49);
+  background: var(--theme-surface, #fff);
+}
+
+.app-confirm-dialog[open] {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.app-confirm-dialog > :is(.modal-header, .modal-footer) {
+  flex: 0 0 auto;
+  padding: 11px 14px;
+}
+
+.app-confirm-dialog .modal-header {
+  gap: 12px;
+}
+
+.app-confirm-dialog .modal-header h2 {
+  font-size: 15px;
+  line-height: 1.4;
+  letter-spacing: -0.2px;
+}
+
+.app-confirm-dialog .close-modal {
+  flex: 0 0 28px;
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  min-height: 28px;
+  color: var(--theme-muted, #617458);
+}
+
+.app-confirm-dialog .modal-body {
+  min-height: 0;
+  padding: 13px 14px;
+  overflow-y: auto;
+}
+
+.app-confirm-dialog p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.65;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.app-confirm-dialog .modal-footer {
+  gap: 8px;
+  background: var(--theme-soft, #f7f9f4);
+}
+
+.app-confirm-dialog .modal-footer .btn {
+  min-height: 34px;
+  padding: 7px 12px;
+  font-size: 12px;
+  cursor: pointer;
+}

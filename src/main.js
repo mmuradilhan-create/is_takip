@@ -75,6 +75,7 @@ import {
   recordFormValues,
 } from "./record-form-discard.js";
 import { installDialogLightDismiss } from "./dialog-light-dismiss.js";
+import { confirmAction } from "./app-confirm.js";
 import { installInputModality } from "./input-modality.js";
 import { createTopbarClock } from "./topbar-clock.js";
 import { createMeetingBothUI } from "./meeting-both-ui.js";
@@ -335,6 +336,7 @@ export async function startMainApp() {
   let renderedWorkspaceDomain = null;
   let workspaceResetConfirmation = null;
   let workspaceResetSaving = false;
+  let editorDiscardPending = null;
   let summaryWidget = null;
   let inlineFields = null;
   let workSessions = null;
@@ -687,15 +689,24 @@ export async function startMainApp() {
       const expectedWorkSessionRaw = restoredDrafts.present
         ? workspaceStore.readWorkSessionRaw()
         : undefined;
+      const expectedWorkspace = workspaceDomainSnapshot(
+        state.records,
+        preferences,
+      );
       const contents = `${store.records.length} kayıt${restoredNotes.present ? ` ve ${restoredNotes.notes.length} not` : ""}${restoredDrafts.present ? ` ve ${restoredDrafts.drafts.entries.length} çalışma taslağı` : ""}${hasChoiceLists ? " ve seçenek listeleri" : ""}`;
       if (
-        !confirm(
-          `Yedekte ${contents} var. Mevcut ${state.records.length} kayıt${restoredNotes.present ? ` ve ${workspaceStore.notes.length} not` : ""}${hasChoiceLists ? " ve seçenek listeleri" : ""} bu yedekle değiştirilsin mi?${restoredDrafts.present ? ` Bu tarayıcıda ${currentDrafts.entries.length} çalışma taslağı var; farklı metinli taslakların üzerine yazılmaz. Geri gelen taslaklar duraklatılmış olarak açılır.` : " Çalışma taslakların korunacak."}${restoredDrafts.ignoredCount ? ` Kaydı bulunmayan veya aktarılmaya uygun olmayan ${restoredDrafts.ignoredCount} taslak alınmayacak.` : ""}${!restoredNotes.present && workspaceStore.notes.length ? " Bağımsız notların korunacak." : ""}`,
-        )
+        !(await confirmAction({
+          root: app,
+          title: "Yedeği geri yükle?",
+          message: `Yedekte ${contents} var. Mevcut ${state.records.length} kayıt${restoredNotes.present ? ` ve ${workspaceStore.notes.length} not` : ""}${hasChoiceLists ? " ve seçenek listeleri" : ""} bu yedekle değiştirilsin mi?\n\n${restoredDrafts.present ? `Bu tarayıcıda ${currentDrafts.entries.length} çalışma taslağı var; farklı metinli taslakların üzerine yazılmaz. Geri gelen taslaklar duraklatılmış olarak açılır.` : "Çalışma taslakların korunacak."}${restoredDrafts.ignoredCount ? ` Kaydı bulunmayan veya aktarılmaya uygun olmayan ${restoredDrafts.ignoredCount} taslak alınmayacak.` : ""}${!restoredNotes.present && workspaceStore.notes.length ? " Bağımsız notların korunacak." : ""}`,
+          confirmLabel: "Yedeği yükle",
+          danger: true,
+          trigger: dialog.querySelector('[data-action="select-backup"]'),
+        }))
       )
         return;
-      // A native confirmation blocks this renderer's storage notifications.
-      // Let queued cross-window changes reach its localStorage cache before CAS.
+      // Let queued cross-window changes reach localStorage before comparing
+      // the workspace the user approved with the workspace being replaced.
       await new Promise((resolve) => {
         const channel = new MessageChannel();
         channel.port1.onmessage = () => {
@@ -706,6 +717,14 @@ export async function startMainApp() {
         channel.port2.postMessage(null);
       });
       if (!input.isConnected || !dialog.open) return;
+      workspaceStore.synchronize(localStorage.getItem(STORAGE_KEY));
+      syncWorkspaceView();
+      if (
+        workspaceDomainSnapshot(state.records, preferences) !== expectedWorkspace
+      )
+        throw new Error(
+          "Çalışma alanı onay penceresi açıkken değişti. Güncel kayıtları kontrol edip yedeği yeniden seç.",
+        );
       const restored = saveWorkspaceSnapshot(
         store.records,
         {
@@ -2537,28 +2556,55 @@ export async function startMainApp() {
       menu.querySelector(".status-option")
     )?.focus({ preventScroll: true });
   }
-  function deleteRecord(id) {
-    const r = state.records.find((r) => r.id === id);
-    if (!r) return;
-    const children = goalChildren(r, state.records).length;
-    if (
-      !confirm(
-        `“${r.title}” silinsin mi?${children ? ` Bağlı ${children} iş veya alt hedef korunacak; bu hedefe bağlantıları kaldırılacak.` : ""}`,
-      )
-    )
-      return;
-    const next = state.records
-      .filter((r) => r.id !== id)
-      .map((r) =>
-        r.parentId === id
-          ? { ...r, parentId: "", updatedAt: new Date().toISOString() }
-          : r.goalParentId === id
-            ? { ...r, goalParentId: null, updatedAt: new Date().toISOString() }
-            : r,
+  async function deleteRecord(id, trigger) {
+    try {
+      workspaceStore.synchronize(localStorage.getItem(STORAGE_KEY));
+      syncWorkspaceView();
+      const r = state.records.find((r) => r.id === id);
+      if (!r) return;
+      const editor = document.querySelector("#editor");
+      const form = editor.querySelector("#record-form");
+      const expectedWorkspace = workspaceDomainSnapshot(
+        state.records,
+        preferences,
       );
-    if (saveRecords(next, "Kayıt silme")) {
-      document.querySelector("#editor").close();
-      toast("Kayıt silindi.");
+      const children = goalChildren(r, state.records).length;
+      if (
+        !(await confirmAction({
+          root: app,
+          title: "Kaydı sil?",
+          message: `“${r.title}” silinsin mi?${children ? ` Bağlı ${children} iş veya alt hedef korunacak; bu hedefe bağlantıları kaldırılacak.` : ""}`,
+          confirmLabel: "Kaydı sil",
+          danger: true,
+          trigger,
+        }))
+      )
+        return;
+      if (!editor.open || editor.querySelector("#record-form") !== form)
+        return;
+      workspaceStore.synchronize(localStorage.getItem(STORAGE_KEY));
+      syncWorkspaceView();
+      if (
+        workspaceDomainSnapshot(state.records, preferences) !== expectedWorkspace
+      )
+        throw new Error(
+          "Çalışma alanı onay penceresi açıkken değişti. Güncel kaydı kontrol edip yeniden silebilirsin.",
+        );
+      const next = state.records
+        .filter((r) => r.id !== id)
+        .map((r) =>
+          r.parentId === id
+            ? { ...r, parentId: "", updatedAt: new Date().toISOString() }
+            : r.goalParentId === id
+              ? { ...r, goalParentId: null, updatedAt: new Date().toISOString() }
+              : r,
+        );
+      if (saveRecords(next, "Kayıt silme")) {
+        editor.close();
+        toast("Kayıt silindi.");
+      }
+    } catch (error) {
+      toast(error.message || "Kayıt silinemedi.", true);
     }
   }
 
@@ -2592,17 +2638,40 @@ export async function startMainApp() {
     },
     { once: true },
   );
-  document.querySelector("#editor").addEventListener("cancel", (event) => {
-    const form = event.currentTarget.querySelector(
+  document.querySelector("#editor").addEventListener("cancel", async (event) => {
+    const editor = event.currentTarget;
+    const form = editor.querySelector(
       '#record-form:not([data-creation="true"])',
     );
     if (!form) return;
-    if (
-      form &&
-      recordFormValues(form) !== form.dataset.initialValues &&
-      !confirm(DISCARD_RECORD_CHANGES)
-    ) {
+    const values = recordFormValues(form);
+    if (values !== form.dataset.initialValues) {
       event.preventDefault();
+      if (editorDiscardPending) return;
+      const request = { form, values };
+      editorDiscardPending = request;
+      try {
+        const confirmed = await confirmAction({
+          root: app,
+          title: "Değişiklikler kaydedilmedi",
+          message: DISCARD_RECORD_CHANGES,
+          confirmLabel: "Kaydetmeden kapat",
+          danger: true,
+        });
+        if (
+          !confirmed ||
+          editorDiscardPending !== request ||
+          !editor.open ||
+          editor.querySelector("#record-form") !== form ||
+          recordFormValues(form) !== values
+        )
+          return;
+        datePicker?.close();
+        choiceFields?.close();
+        editor.close();
+      } finally {
+        if (editorDiscardPending === request) editorDiscardPending = null;
+      }
       return;
     }
     datePicker?.close();
@@ -3463,7 +3532,7 @@ export async function startMainApp() {
         break;
       }
       case "delete":
-        deleteRecord(id);
+        await deleteRecord(id, button);
         break;
       case "close":
         if (button.closest("#editor")) {

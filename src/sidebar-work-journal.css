@@ -25,6 +25,7 @@
   flex-direction: column;
   flex: 0 0 auto;
   gap: 3px;
+  margin-bottom: 6px;
   min-height: auto;
   max-height: none;
   overflow: visible;
@@ -82,9 +83,25 @@
   color: var(--theme-ink, #36513d);
 }
 
+#sidebar-work-journal,
+#sidebar-work-journal * {
+  cursor: default;
+}
+
+#app #sidebar-work-journal,
+#app #sidebar-work-journal * {
+  text-decoration: none;
+}
+
+#sidebar-work-journal button,
+#sidebar-work-journal button * {
+  cursor: pointer;
+}
+
 .sidebar-work-journal[data-expanded="true"] {
   flex: 1 1 auto;
-  margin-top: 6px;
+  /* Keep spare viewport space above the card once its height is capped. */
+  margin-top: auto;
   max-height: min(
     100%,
     calc(400px + var(--work-extra-space, 0px) + var(--work-finish-space, 0px))

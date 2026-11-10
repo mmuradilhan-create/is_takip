@@ -1,5 +1,6 @@
 export const WIDGET_VIEWPORT = Object.freeze({ width: 380, height: 420 });
 export const WIDGET_OUTER_FALLBACK = Object.freeze({ width: 400, height: 480 });
+export const MAIN_VIEWPORT = Object.freeze({ width: 1920, height: 1080 });
 const widgetSizing = new WeakMap();
 
 function positive(value, fallback) {
@@ -32,8 +33,14 @@ export function windowRoleHash(role, win = globalThis.window, parameters = {}) {
 /** Request the monitor's work area for a newly created main window. */
 export function desktopWindowFeatures(metrics = {}) {
   const screen = metrics.screen || {};
-  const width = Math.max(1, Math.round(positive(screen.availWidth, 1280)));
-  const height = Math.max(1, Math.round(positive(screen.availHeight, 850)));
+  const width = Math.max(
+    1,
+    Math.round(positive(screen.availWidth, MAIN_VIEWPORT.width)),
+  );
+  const height = Math.max(
+    1,
+    Math.round(positive(screen.availHeight, MAIN_VIEWPORT.height)),
+  );
   const left = Number.isFinite(screen.availLeft)
     ? Math.round(screen.availLeft)
     : 0;

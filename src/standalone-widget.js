@@ -37,6 +37,8 @@ export function startStandaloneWidget() {
     "text/html",
   );
   document.documentElement.lang = "tr";
+  document.documentElement.setAttribute("translate", "no");
+  document.documentElement.classList.add("notranslate");
   document.documentElement.dataset.odakWidget = "true";
   document.head.replaceChildren(
     ...[...template.head.childNodes].map((node) =>

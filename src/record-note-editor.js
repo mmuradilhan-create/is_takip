@@ -1,5 +1,6 @@
 import { DISCARD_RECORD_CHANGES } from "./record-form-discard.js";
 import { isPlainSaveEnter } from "./record-form-shortcuts.js";
+import { confirmAction } from "./app-confirm.js";
 
 const escapeHtml = (value) =>
   String(value ?? "").replace(
@@ -21,7 +22,6 @@ export function createRecordNoteEditor({
   onRestoreFocus = (target) => target.focus({ preventScroll: true }),
 } = {}) {
   const document = root.ownerDocument;
-  const owner = document.defaultView;
   const dialog = document.createElement("dialog");
   dialog.id = "record-note-editor";
   dialog.className = "modal record-note-editor";
@@ -33,6 +33,7 @@ export function createRecordNoteEditor({
   let saving = false;
   let destroyed = false;
   let generation = 0;
+  let closeRequest = null;
   const textarea = () => dialog.querySelector('[name="description"]');
   const find = () => getRecord(selectedId);
 
@@ -72,14 +73,38 @@ export function createRecordNoteEditor({
     if (dialog.open) dialog.close();
   }
 
-  function requestClose() {
-    if (saving) return;
-    if (
-      textarea()?.value !== expectedDescription &&
-      !owner.confirm(DISCARD_RECORD_CHANGES)
-    )
+  async function requestClose() {
+    if (destroyed || saving || !dialog.open || closeRequest) return;
+    const value = textarea()?.value;
+    if (value === expectedDescription) {
+      close();
       return;
-    close();
+    }
+    const request = { generation, value };
+    closeRequest = request;
+    try {
+      const confirmed = await confirmAction({
+        root,
+        title: "Değişiklikler kaydedilmedi",
+        message: DISCARD_RECORD_CHANGES,
+        confirmLabel: "Kaydetmeden kapat",
+        danger: true,
+      });
+      if (
+        confirmed &&
+        !destroyed &&
+        !saving &&
+        dialog.open &&
+        generation === request.generation &&
+        textarea()?.value === request.value
+      )
+        close();
+    } catch (error) {
+      if (!destroyed && generation === request.generation)
+        onError(error instanceof Error ? error.message : String(error));
+    } finally {
+      if (closeRequest === request) closeRequest = null;
+    }
   }
 
   function open(id, trigger = null) {
@@ -97,6 +122,7 @@ export function createRecordNoteEditor({
       expectedDescription = noteText(record);
       previousTrigger = trigger?.isConnected ? trigger : document.activeElement;
       generation++;
+      closeRequest = null;
       saving = false;
       dialog.innerHTML = `<form id="record-note-edit-form"><div class="modal-header"><h2>Notu düzenle</h2><button type="button" class="close-modal" data-action="record-note-edit-close" aria-label="Pencereyi kapat">${closeIcon}</button></div><div class="modal-body record-note-edit-body"><p class="record-note-edit-topic">${escapeHtml(record.title)}</p><p class="record-note-edit-availability" role="status" hidden></p><label class="field"><span id="record-note-edit-label">Notlar</span><textarea name="description" maxlength="50000" rows="8" aria-labelledby="record-note-edit-label" aria-describedby="record-note-edit-shortcuts">${escapeHtml(expectedDescription)}</textarea><small id="record-note-edit-shortcuts">Enter ile kaydet, Shift+Enter ile alt satıra geç.</small></label><p id="record-note-edit-error" class="error-message" role="alert" hidden></p></div><div class="modal-footer"><button type="button" class="btn" data-action="record-note-edit-close">Vazgeç</button><button type="submit" class="btn primary">Kaydet</button></div></form>`;
       dialog.showModal();
@@ -181,6 +207,7 @@ export function createRecordNoteEditor({
     expectedDescription = "";
     saving = false;
     generation++;
+    closeRequest = null;
     const active = document.activeElement;
     if (
       active &&
@@ -205,6 +232,7 @@ export function createRecordNoteEditor({
     if (destroyed) return;
     destroyed = true;
     generation++;
+    closeRequest = null;
     dialog.removeEventListener("submit", onSubmit);
     dialog.removeEventListener("click", onClick);
     dialog.removeEventListener("keydown", onKeydown);

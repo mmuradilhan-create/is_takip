@@ -5,15 +5,15 @@ import { resolve } from "node:path";
 import { validateStore, emptyStore } from "../src/model.js";
 import { cleanupMeetingContacts } from "../src/meeting-contact-cleanup.js";
 import { notesFromBackup, normalizeNotes } from "../src/workspace-notes.js";
+import { createAppIconPng } from "./app-icon.js";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 const directory = resolve(root, ".local");
 let data = emptyStore();
-let snapshotFile = null;
 const requestedDataFile = process.env.ODAK_EXPORT_DATA?.trim();
 const snapshotFiles = requestedDataFile
   ? [resolve(root, requestedDataFile)]
-  : ["current-data.json", "imported-data.json"];
+  : [];
 for (const file of snapshotFiles) {
   try {
     const saved = JSON.parse(await readFile(resolve(directory, file), "utf8"));
@@ -23,7 +23,6 @@ for (const file of snapshotFiles) {
       migration: saved.migration || null,
       ...(notes.present ? { notes: notes.notes } : {}),
     };
-    snapshotFile = file;
     break;
   } catch (error) {
     if (requestedDataFile || error.code !== "ENOENT") throw error;
@@ -51,6 +50,10 @@ html = html.replace(
   "",
 );
 html = html.replace("</head>", () => `<style>${css}</style></head>`);
+html = html.replace(
+  /<link\b[^>]*\brel="icon"[^>]*>/g,
+  `<link rel="icon" type="image/png" sizes="256x256" href="data:image/png;base64,${createAppIconPng().toString("base64")}">`,
+);
 const safeData = JSON.stringify(data).replace(/</g, "\\u003c");
 const safeScript = script.code.replace(/<\/script/gi, "<\\/script");
 html = html.replace(
@@ -64,9 +67,9 @@ await writeFile(destination, html, { mode: 0o600 });
 await writeFile(
   resolve(
     directory,
-    requestedDataFile || snapshotFile === "current-data.json"
+    data.records.length
       ? "ODAK-guncel-kayit-yedegi.json"
-      : "ODAK-kayit-yedegi.json",
+      : "ODAK-bos-kayit-yedegi.json",
   ),
   JSON.stringify(
     {
@@ -81,5 +84,5 @@ await writeFile(
   { mode: 0o600 },
 );
 console.log(
-  `Tek dosya hazır: .local/TAKIP.html (${data.records.length} başlangıç kaydı). Bu dosya kişisel verileri içerir; herkese açık yayımlamayın.`,
+  `Tek dosya hazır: .local/TAKIP.html (${data.records.length} başlangıç kaydı).${data.records.length || Object.hasOwn(data, "notes") || Object.hasOwn(data, "choiceLists") ? " Bu dosya kişisel verileri içerir; herkese açık yayımlamayın." : " Boş başlangıç verisiyle paylaşılabilir."}`,
 );

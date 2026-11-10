@@ -13,6 +13,7 @@ import {
   DISCARD_RECORD_CHANGES,
   recordFormValues,
 } from "./record-form-discard.js";
+import { confirmAction } from "./app-confirm.js";
 
 const esc = (value) =>
   String(value ?? "").replace(
@@ -162,6 +163,7 @@ export function createRecordCreationUI({
   let replacingForm = false;
   let destroyed = false;
   let generation = 0;
+  let closeRequest = null;
   const currentDay = () => (typeof today === "function" ? today() : today);
   const form = () => dialog.querySelector('#record-form[data-creation="true"]');
   const draft = () => drafts.get(currentType);
@@ -648,6 +650,7 @@ export function createRecordCreationUI({
       );
       saving = false;
       generation++;
+      closeRequest = null;
       if (!dialog.open) dialog.showModal();
       render();
       dialog.querySelector(".modal-body").scrollTop = 0;
@@ -665,6 +668,7 @@ export function createRecordCreationUI({
     previousTrigger = null;
     saving = false;
     generation++;
+    closeRequest = null;
     dialog.classList.remove("record-creation-dialog");
     if (dialog.open) dialog.close();
     const active = document.activeElement;
@@ -678,13 +682,48 @@ export function createRecordCreationUI({
       previous.focus({ preventScroll: true });
   }
 
-  function requestClose() {
-    if (saving) return;
+  async function requestClose() {
+    if (destroyed || saving || !dialog.open || !form() || closeRequest) return;
     capture();
     const dirty = [...draftValues].some(
       ([type, values]) => values !== initialValues.get(type),
     );
-    if (!dirty || owner.confirm(DISCARD_RECORD_CHANGES)) close();
+    if (!dirty) {
+      close();
+      return;
+    }
+    const request = {
+      generation,
+      type: currentType,
+      values: JSON.stringify([...draftValues]),
+    };
+    closeRequest = request;
+    try {
+      const confirmed = await confirmAction({
+        root,
+        title: "Değişiklikler kaydedilmedi",
+        message: DISCARD_RECORD_CHANGES,
+        confirmLabel: "Kaydetmeden kapat",
+        danger: true,
+      });
+      if (
+        !confirmed ||
+        destroyed ||
+        saving ||
+        !dialog.open ||
+        !form() ||
+        generation !== request.generation ||
+        currentType !== request.type
+      )
+        return;
+      capture();
+      if (JSON.stringify([...draftValues]) === request.values) close();
+    } catch (error) {
+      if (!destroyed && generation === request.generation)
+        onError(error instanceof Error ? error.message : String(error));
+    } finally {
+      if (closeRequest === request) closeRequest = null;
+    }
   }
 
   function updatePeriod() {
@@ -913,6 +952,7 @@ export function createRecordCreationUI({
     previousTrigger = null;
     saving = false;
     generation++;
+    closeRequest = null;
     dialog.classList.remove("record-creation-dialog");
     const active = document.activeElement;
     if (
@@ -931,6 +971,7 @@ export function createRecordCreationUI({
     close();
     destroyed = true;
     generation++;
+    closeRequest = null;
     root.removeEventListener("click", onClick);
     root.removeEventListener("change", onChange);
     root.removeEventListener("submit", onSubmit);

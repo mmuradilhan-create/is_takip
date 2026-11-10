@@ -1,5 +1,6 @@
 import { DISCARD_RECORD_CHANGES } from "./record-form-discard.js";
 import { isPlainSaveEnter } from "./record-form-shortcuts.js";
+import { confirmAction } from "./app-confirm.js";
 import {
   MAX_WORKSPACE_NOTES,
   MAX_WORKSPACE_NOTE_LENGTH,
@@ -48,6 +49,7 @@ export function createWorkspaceNotesUI({
   let deleting = false;
   let destroyed = false;
   let generation = 0;
+  let closeRequest = null;
   let panelError = "";
   let scrollTop = 0;
   let scrollElement = null;
@@ -132,14 +134,38 @@ export function createWorkspaceNotesUI({
     if (dialog.open) dialog.close();
   }
 
-  function requestClose() {
-    if (saving) return;
-    if (
-      field()?.value !== initialText &&
-      !owner.confirm(DISCARD_RECORD_CHANGES)
-    )
+  async function requestClose() {
+    if (destroyed || saving || !dialog.open || closeRequest) return;
+    const value = field()?.value;
+    if (value === initialText) {
+      close();
       return;
-    close();
+    }
+    const request = { generation, value };
+    closeRequest = request;
+    try {
+      const confirmed = await confirmAction({
+        root,
+        title: "Değişiklikler kaydedilmedi",
+        message: DISCARD_RECORD_CHANGES,
+        confirmLabel: "Kaydetmeden kapat",
+        danger: true,
+      });
+      if (
+        confirmed &&
+        !destroyed &&
+        !saving &&
+        dialog.open &&
+        generation === request.generation &&
+        field()?.value === request.value
+      )
+        close();
+    } catch (error) {
+      if (!destroyed && generation === request.generation)
+        onError(error instanceof Error ? error.message : String(error));
+    } finally {
+      if (closeRequest === request) closeRequest = null;
+    }
   }
 
   function open(id, control) {
@@ -159,6 +185,7 @@ export function createWorkspaceNotesUI({
       previousTrigger = control;
       newNoteId = null;
       generation++;
+      closeRequest = null;
       setPanelError();
       const title = note ? "Notu düzenle" : "Not ekle";
       dialog.setAttribute("aria-label", title);
@@ -346,6 +373,7 @@ export function createWorkspaceNotesUI({
     newNoteId = null;
     saving = false;
     generation++;
+    closeRequest = null;
     if (destroyed) return;
     const active = document.activeElement;
     if (
@@ -378,6 +406,7 @@ export function createWorkspaceNotesUI({
     if (destroyed) return;
     destroyed = true;
     generation++;
+    closeRequest = null;
     root.removeEventListener("click", onRootClick);
     dialog.removeEventListener("click", onDialogClick);
     dialog.removeEventListener("submit", onSubmit);

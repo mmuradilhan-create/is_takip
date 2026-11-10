@@ -6,6 +6,11 @@ import {
   createWindowsLauncher,
   windowHelperSource,
 } from "./window-launcher.js";
+import { createWindowsIcon } from "./app-icon.js";
+import {
+  createWindowsShortcutSetup,
+  createWindowsShortcutSetupLauncher,
+} from "./windows-shortcuts.js";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 const local = resolve(root, ".local");
@@ -18,10 +23,27 @@ const versionedArchive = resolve(local, `ODAK-Masaustu-${version}.zip`);
 
 const guide = `ODAK - MASAUSTU GORUNUMU (${version})
 
+MASAUSTU KISAYOLU
+
+ZIP dosyasini kalici bir klasore cikarin. Mevcut kayitlarla devam etmek icin
+dosyalari eski TAKIP.html ile ayni klasore koyun.
+ODAK-Kisayol-Kur.cmd dosyasina cift tiklayin. Masaustune ve Baslat menusune
+ODAK simgeli kisayollar eklenir. Sonra masaustundeki ODAK simgesinden acin.
+Widget icin kucuk pencere isaretli ayri bir ODAK Widget kisayolu da olusur.
+
+Gorev cubugu: Baslat menusunde ODAK'i bulun, sag tiklayin ve varsa
+Diğer > Gorev cubuguna sabitle secenegini kullanin. Windows her kisayolda
+bu secenegi sunmayabilir; calisan pencere Chrome altinda gorunebilir.
+Paket klasorunu tasirsaniz kisayol kurulumunu yeniden calistirin.
+
 Bu paket, Windows'ta kurulu Google Chrome'un uygulama modunu kullanır.
 Sekme ve adres çubuğu görünmez; Windows'un başlık, küçültme, büyütme ve
 kapatma düğmeleri kalır. Ana uygulama büyütülmüş açılır; görev çubuğu görünür.
-Pencere boyutu ekranın kullanılabilir alanına uyar. Widget küçük kalır.
+Ana uygulama ve widget Türkçe belgeler olarak otomatik çeviriden hariç tutulur.
+Pencere boyutu ekranın kullanılabilir alanına uyar. Ana pencereyi başlığa
+çift tıklayarak normal boyuta döndürünce nominal 1920x1080 içerik ölçüsü,
+Windows ekran ölçeğine göre uygulanır; ekran küçükse kullanılabilir alana
+sığar. Nominal ölçü değiştirilmez. Widget küçük kalır.
 Ek bir kurulum veya yönetici izni gerekmez.
 Bu bir .exe uygulaması değildir; Chrome motoru ve mevcut Chrome profili
 kullanılır. Ayrı bir tarayıcı profili oluşturulmaz ve güvenlik ayarları
@@ -49,6 +71,10 @@ Genel bakışın altındaki takip ve hedef alanları ikişer kart gösterir.
 Yanlarındaki Notlar alanı bağımsız maddeler tutar; ekleme/düzenleme/silme
 tek Geri al adımıdır. Not silme onay istemez; Geri al ile geri getirilebilir.
 Enter kaydeder, Shift+Enter alt satır ekler.
+Yedek yükleme, kayıt silme ve kaydetmeden kapatma onayları tarayıcı kartı
+yerine uygulamanın kendi küçük penceresinde açılır. Vazgeç, çarpı, Escape
+veya dışarı tıklama işlemi iptal eder; alttaki form ve taslak korunur.
+Çalışma notu kartı, pencere büyüse de sol altta sabit kalır.
 Çalışma alanını sıfırlama onayı Sıfırla düğmesine yakın küçük bir pencerede
 açılır. Vazgeç, çarpı, Escape veya dışına tıklamak kayıtları değiştirmez.
 Notlar JSON yedeğine dahildir; eski notsuz yedek mevcut notları korur.
@@ -651,19 +677,10 @@ kuyruğunda kalabilir. Outlook bağlantısı bu sürümde bulunmaz.
 Kaydedilen iş günlüğü ve bitmemiş çalışma notu taslakları JSON kayıt yedeğine
 dahildir. Yedekte bulunmayan işe ait taslak içeri alınmaz.
 
-BU SURUMDEKI KAYIT DUZENLEMESI
+PAYLASIM PAKETI
 
-Onaylanan düzenlemeyle 147 kayıt 92 kayda indirildi. 55 eski hafta aktarım
-kopyası ve yer tutucu kaldırıldı. 66 tamamlanmış kayıt, 21 açık kayıt ve
-4 kaydedilmiş çalışma oturumu korundu. Farklı gerçek dönemlere ait Mastar
-işleri ayrı bırakıldı; yalnız aynı başlığı taşıdıkları için birleştirilmedi.
-İlk aktarım ve düzenleme öncesi yedekler korunur.
-
-HTML'yi güncellemek mevcut tarayıcı kayıtlarını bu listeyle değiştirmez.
-Temizlenmiş listeyi kullanmak için önce Ayarlar > Yedekleme > Yedeği indir
-ile güncel yedeğini al. Ardından Yedeği yükle ile ayrıca verilen
-ODAK-guncel-kayit-yedegi.json dosyasını seç ve kayıtları değiştirme onayını
-ver. JSON geri yüklemesi Geri al ile önceki çalışma alanına döndürülebilir.
+Bu dagitim yeni bir tarayicida bos kayitlarla baslar. Kisisel is, hedef,
+not, calisma gecmisi veya taslak icermez. Mevcut tarayici verileri silinmez.
 
 MEVCUT KAYITLARINLA DEVAM ETMEK İÇİN
 
@@ -671,8 +688,7 @@ MEVCUT KAYITLARINLA DEVAM ETMEK İÇİN
    Yedeği indir ile güncel kayıtlarının JSON yedeğini al.
 2. Açık ODAK ve widget pencerelerini kapat; eski pencere yardımcısının
    kapanması için 6 saniye bekle.
-3. ZIP'i çıkar. İçindeki BEŞ DOSYANIN TAMAMINI (TAKIP.html, ODAK.cmd,
-   ODAK-Widget.cmd, ODAK-Pencere.ps1 ve KULLANIM.txt), daha önce kullandığın
+3. ZIP'i çıkar. İçindeki DOSYALARIN TAMAMINI daha önce kullandığın
    TAKIP.html dosyasının BULUNDUĞU AYNI KLASÖRE koy. Yeni TAKIP.html ile
    eskisini değiştir; dosya adını değiştirme.
 4. Ana uygulama için ODAK.cmd'ye çift tıkla.
@@ -784,6 +800,18 @@ await writeFile(
 await writeFile(resolve(directory, "KULLANIM.txt"), "\ufeff" + guide, {
   mode: 0o600,
 });
+await writeFile(resolve(directory, "ODAK.ico"), createWindowsIcon(), {
+  mode: 0o600,
+});
+await writeFile(resolve(directory, "ODAK-Widget.ico"), createWindowsIcon(true), {
+  mode: 0o600,
+});
+await writeFile(resolve(directory, "ODAK-Kisayol-Kur.ps1"), createWindowsShortcutSetup(), {
+  mode: 0o600,
+});
+await writeFile(resolve(directory, "ODAK-Kisayol-Kur.cmd"), createWindowsShortcutSetupLauncher(), {
+  mode: 0o600,
+});
 
 // Python is needed only on the export machine, never on the user's Windows PC.
 execFileSync(
@@ -798,6 +826,10 @@ execFileSync(
     "ODAK-Widget.cmd",
     "ODAK-Pencere.ps1",
     "KULLANIM.txt",
+    "ODAK.ico",
+    "ODAK-Widget.ico",
+    "ODAK-Kisayol-Kur.cmd",
+    "ODAK-Kisayol-Kur.ps1",
   ],
   { cwd: directory, stdio: "pipe" },
 );

@@ -23,13 +23,14 @@ const typeLabels = {
 };
 
 export const widgetDocumentHtml = `<!doctype html>
-<html lang="tr" data-odak-widget="true">
+<html lang="tr" translate="no" class="notranslate" data-odak-widget="true">
 <head>
   <meta charset="utf-8">
+  <meta name="google" content="notranslate">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light">
   <title>ODAK · Özet</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23174d43'/%3E%3Ccircle cx='16' cy='16' r='8' fill='none' stroke='white' stroke-width='3'/%3E%3C/svg%3E">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='12' fill='%23174d43'/%3E%3Cpath d='m11 21 6 6 13-14' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3Crect x='24' y='24' width='14' height='13' rx='3' fill='%23174d43'/%3E%3Crect x='25' y='25' width='12' height='11' rx='2' fill='%23d7e7ce'/%3E%3Cpath d='M27 28h8' stroke='%23174d43' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E">
   <style>
     :root { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif; color:#294735; background:#f6f8f3; font-synthesis:none; color-scheme:light; }
     * { box-sizing:border-box; }

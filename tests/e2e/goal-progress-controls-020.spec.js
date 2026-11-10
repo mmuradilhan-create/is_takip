@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { createRecord } from "../../src/model.js";
+import { appConfirms } from "./app-confirm-support.js";
 
 const KEY = "is-takip-v1";
 const NOW = new Date("2026-11-07T12:00:00.000Z");
@@ -679,7 +680,7 @@ test("editing a goal keeps its detail panel, draft and scroll through cancel, sa
         fullPage: false,
       });
     }
-    const confirmation = page.waitForEvent("dialog");
+    const confirmation = appConfirms(page).waitForEvent("dialog");
     const closing =
       dismissal === "cancel"
         ? editor.locator('[data-action="close"]').last().click()
@@ -721,7 +722,7 @@ test("editing a goal keeps its detail panel, draft and scroll through cancel, sa
   expect(await saved(page)).toBe(before);
   await expect(progressInput(page)).toHaveValue("2,5");
   await edit().click();
-  page.once("dialog", (dialog) => dialog.accept());
+  appConfirms(page).once("dialog", (dialog) => dialog.accept());
   await editor.getByRole("button", { name: "Kaydı sil", exact: true }).click();
   await expect(editor).not.toBeVisible();
   await expect(panel(page)).toBeVisible();

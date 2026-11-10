@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 import { createRecord } from "../../src/model.js";
+import { appConfirms } from "./app-confirm-support.js";
 
 const KEY = "is-takip-v1";
 const NOW = new Date("2026-11-09T10:00:00.000Z");
@@ -146,7 +147,7 @@ async function edit(page, id) {
 }
 
 async function confirmAction(page, action, accept = true) {
-  const pendingDialog = page.waitForEvent("dialog");
+  const pendingDialog = appConfirms(page).waitForEvent("dialog");
   const pendingAction = action();
   const confirmation = await pendingDialog;
   expect(confirmation.type()).toBe("confirm");
@@ -359,12 +360,12 @@ test("unchanged and cancelled note drafts never write while one-click deletion o
     deletionDialogs.push(confirmation.message());
     await confirmation.dismiss();
   };
-  page.on("dialog", dismissUnexpected);
+  appConfirms(page).on("dialog", dismissUnexpected);
   try {
     await remove();
     expect(deletionDialogs).toEqual([]);
   } finally {
-    page.off("dialog", dismissUnexpected);
+    appConfirms(page).off("dialog", dismissUnexpected);
   }
   await expect(items(page)).toHaveCount(1);
   expect((await stored(page)).odak.notes).toEqual([notes[1]]);
@@ -568,7 +569,7 @@ test("native backups restore notes and records atomically while old record-only 
       confirmations++;
       await confirmation.dismiss();
     };
-    receiver.on("dialog", rejectUnexpected);
+    appConfirms(receiver).on("dialog", rejectUnexpected);
     for (const invalid of [
       [...notes, { ...notes[0] }],
       [{ ...notes[0], text: "X".repeat(2001) }],
@@ -581,7 +582,7 @@ test("native backups restore notes and records atomically while old record-only 
       expect(await saved(receiver)).toBe(before);
     }
     expect(confirmations).toBe(0);
-    receiver.off("dialog", rejectUnexpected);
+    appConfirms(receiver).off("dialog", rejectUnexpected);
     await restore(receiver, backup, false);
     expect(await saved(receiver)).toBe(before);
     await restore(receiver, backup);
@@ -615,6 +616,7 @@ test("native backups restore notes and records atomically while old record-only 
       }),
     ];
     await restore(receiver, { version: 1, records: legacy });
+    await expect(settings(receiver)).not.toBeVisible();
     expect((await stored(receiver)).records).toEqual(legacy);
     expect((await stored(receiver)).odak.notes).toEqual(receiverNotes);
     expect((await stored(receiver)).odak.preferences).toEqual(
@@ -624,6 +626,7 @@ test("native backups restore notes and records atomically while old record-only 
     await undo(receiver);
     expect(await saved(receiver)).toBe(before);
     await restore(receiver, { version: 1, records: legacy, notes: [] });
+    await expect(settings(receiver)).not.toBeVisible();
     expect((await stored(receiver)).odak.notes).toEqual([]);
     expect((await stored(receiver)).records).toEqual(legacy);
     await undo(receiver);
@@ -699,7 +702,7 @@ test("a notes-only reset stays beside its trigger and every dismissal preserves 
   await openSettings(page);
   await expect(resetTrigger(page)).toBeEnabled();
   const nativeDialogs = [];
-  page.on("dialog", async (confirmation) => {
+  appConfirms(page).on("dialog", async (confirmation) => {
     nativeDialogs.push(confirmation.message());
     await confirmation.dismiss();
   });

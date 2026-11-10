@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { createRecord } from "../../src/model.js";
+import { appConfirms } from "./app-confirm-support.js";
 
 const KEY = "is-takip-v1";
 const NOW = new Date("2026-11-09T09:00:00.000Z");
@@ -169,7 +170,7 @@ test("each existing editor starts with collapsed extras while expansion and ente
     await expect(field(page, "description")).toHaveValue(
       `Kaydedilmeyen ${type} notu.`,
     );
-    page.once("dialog", (dialog) => dialog.accept());
+    appConfirms(page).once("dialog", (dialog) => dialog.accept());
     await page.locator('#editor [data-action="close"]').last().click();
     await expect(page.locator("#editor")).not.toBeVisible();
     expect(await saved(page)).toBe(raw);
@@ -296,12 +297,12 @@ test("cancelled and failed global drafts keep their source list until a successf
   await launch(page);
   await field(page, "type").selectOption("waiting");
   await field(page, "title").fill("Kaydedilmeyen bekleyen konu");
-  page.once("dialog", (dialog) => dialog.dismiss());
+  appConfirms(page).once("dialog", (dialog) => dialog.dismiss());
   await form(page).getByRole("button", { name: "Vazgeç", exact: true }).click();
   await expect(form(page)).toBeVisible();
   await expect(activeView(page)).toHaveAttribute("data-view", "daily");
   expect(await saved(page)).toBe(raw);
-  page.once("dialog", (dialog) => dialog.accept());
+  appConfirms(page).once("dialog", (dialog) => dialog.accept());
   await form(page).getByRole("button", { name: "Vazgeç", exact: true }).click();
   await expect(page.locator("#editor")).not.toBeVisible();
   await expectSourceFilters(page);

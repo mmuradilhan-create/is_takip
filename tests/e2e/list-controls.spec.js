@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { createRecord } from "../../src/model.js";
+import { appConfirms } from "./app-confirm-support.js";
 
 const KEY = "is-takip-v1";
 const NOW = new Date("2026-11-07T12:00:00.000Z");
@@ -492,7 +493,7 @@ test("filters, search, sort and scope reset pagination and deleting the last pag
   await next(page).click();
   const removedId = (await ids(page))[0];
   await rows(page).locator(".task-name").click();
-  page.once("dialog", (dialog) => dialog.accept());
+  appConfirms(page).once("dialog", (dialog) => dialog.accept());
   await page.locator('#editor [data-action="delete"]').click();
   await expect(page.locator("#editor")).not.toBeVisible();
   await expect(rows(page)).toHaveCount(50);

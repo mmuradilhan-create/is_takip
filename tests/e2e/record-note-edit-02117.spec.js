@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { createRecord } from "../../src/model.js";
+import { appConfirms } from "./app-confirm-support.js";
 
 const KEY = "is-takip-v1";
 const NOW = new Date("2026-11-09T10:00:00.000Z");
@@ -83,7 +84,7 @@ async function expectRestoredNoteStaysClosed(page) {
 }
 
 async function confirmDiscard(page, action, accept) {
-  const confirmation = page.waitForEvent("dialog");
+  const confirmation = appConfirms(page).waitForEvent("dialog");
   const pending = action();
   const dialog = await confirmation;
   expect(dialog.type()).toBe("confirm");
@@ -131,7 +132,7 @@ test("direct note editing confirms dirty dismissal, preserves only the note on S
   expect(await saved(page)).toBe(before);
 
   const unexpected = [];
-  page.on("dialog", async (dialog) => {
+  appConfirms(page).on("dialog", async (dialog) => {
     unexpected.push(dialog.message());
     await dialog.dismiss();
   });

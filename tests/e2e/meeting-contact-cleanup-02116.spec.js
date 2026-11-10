@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { createRecord } from "../../src/model.js";
 import { cleanupMeetingContacts } from "../../src/meeting-contact-cleanup.js";
+import { appConfirms } from "./app-confirm-support.js";
 
 const KEY = "is-takip-v1";
 const MARKER = `${KEY}-meeting-contact-cleanup`;
@@ -16,7 +17,7 @@ const undo = (page) =>
 async function restore(page, backup) {
   await page.getByRole("button", { name: "Ayarlar", exact: true }).click();
   await expect(page.locator("#settings-dialog")).toBeVisible();
-  page.once("dialog", (dialog) => dialog.accept());
+  appConfirms(page).once("dialog", (dialog) => dialog.accept());
   await page.locator("#restore-file").setInputFiles({
     name: "sentetik-toplanti-yedegi.json",
     mimeType: "application/json",

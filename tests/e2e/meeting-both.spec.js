@@ -2,6 +2,7 @@ import { test, expect } from "@playwright/test";
 import { createRecord } from "../../src/model.js";
 import { cleanupMeetingContacts } from "../../src/meeting-contact-cleanup.js";
 import { openCreationExtras } from "./creation-support.js";
+import { appConfirms } from "./app-confirm-support.js";
 
 const KEY = "is-takip-v1";
 const NOW = new Date("2026-11-07T12:00:00.000Z");
@@ -407,7 +408,7 @@ test("a concurrent saved action is reused without overwriting either draft and a
     .click();
   await expect(other.locator("#editor")).toBeVisible();
   await expect(form(other).locator('[name="id"]')).toHaveValue(SOURCE_ID);
-  other.once("dialog", (message) => message.accept());
+  appConfirms(other).once("dialog", (message) => message.accept());
   await other.locator('#editor [data-action="delete"]').click();
   await expect(
     dialog(page).locator(".meeting-both-availability"),

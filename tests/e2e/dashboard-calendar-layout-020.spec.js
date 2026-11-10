@@ -7,6 +7,7 @@ import {
   previousAttention,
   readAttentionCards,
 } from "./attention-support.js";
+import { appConfirms } from "./app-confirm-support.js";
 
 const KEY = "is-takip-v1";
 const NOW = new Date("2026-11-07T12:00:00.000Z");
@@ -675,7 +676,7 @@ test("attention paging is keyboard accessible, resets on search, and clamps afte
       .getByRole("button", { name: "Kaydı düzenle", exact: true })
       .click();
     await expect(page.locator('#record-form [name="id"]')).toHaveValue(id);
-    page.once("dialog", (dialog) => dialog.accept());
+    appConfirms(page).once("dialog", (dialog) => dialog.accept());
     await page.getByRole("button", { name: "Kaydı sil", exact: true }).click();
     await expect(page.locator("#editor")).not.toBeVisible();
   }

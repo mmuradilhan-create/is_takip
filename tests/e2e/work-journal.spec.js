@@ -9,6 +9,7 @@ import {
   readWorkspaceDomainRaw,
   sessionAwareStorageHooks,
 } from "./work-session-support.js";
+import { appConfirms } from "./app-confirm-support.js";
 
 const KEY = "is-takip-v1";
 const SESSION_KEY = `${KEY}-work-session`;
@@ -486,7 +487,7 @@ test("a journal backup survives reset and restores all records and journal field
   expect(await readEffectiveWorkSession(page)).toEqual(savedSession);
   await expect(page.locator("#settings-dialog")).not.toBeVisible();
   await openBackup(page);
-  page.once("dialog", (dialog) => dialog.accept());
+  appConfirms(page).once("dialog", (dialog) => dialog.accept());
   await page.locator("#restore-file").setInputFiles({
     name: "is-gunlugu-yedegi.json",
     mimeType: "application/json",
@@ -516,7 +517,7 @@ test("a backup with malformed journal data is rejected before replacement and do
   await openBackup(page);
   const saved = await readSaved(page);
   let confirmations = 0;
-  page.on("dialog", async (dialog) => {
+  appConfirms(page).on("dialog", async (dialog) => {
     confirmations++;
     await dialog.dismiss();
   });

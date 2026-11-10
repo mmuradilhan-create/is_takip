@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { createRecord } from "../../src/model.js";
 import { openCreationExtras } from "./creation-support.js";
+import { appConfirms } from "./app-confirm-support.js";
 
 const KEY = "is-takip-v1";
 const title = "Uzun kayıt formu";
@@ -144,7 +145,7 @@ test("cancel and delete remain available at the end of a long record form", asyn
   await expandNotes(page);
   await scrollFields(page, true);
   await actionBounds(page);
-  const confirmation = page.waitForEvent("dialog");
+  const confirmation = appConfirms(page).waitForEvent("dialog");
   const closing = page
     .getByRole("button", { name: "Vazgeç", exact: true })
     .click();
@@ -163,7 +164,7 @@ test("cancel and delete remain available at the end of a long record form", asyn
   await page.getByRole("button", { name: title, exact: true }).click();
   await expandNotes(page);
   await scrollFields(page, true);
-  page.once("dialog", (dialog) => dialog.accept());
+  appConfirms(page).once("dialog", (dialog) => dialog.accept());
   await page.getByRole("button", { name: "Kaydı sil", exact: true }).click();
   await expect(page.locator("#editor")).not.toBeVisible();
   expect(

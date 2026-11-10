@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { createRecord } from "../../src/model.js";
 import { nextAttention, readAttentionCards } from "./attention-support.js";
+import { appConfirms } from "./app-confirm-support.js";
 
 test.use({ timezoneId: "Europe/Istanbul" });
 
@@ -19,7 +20,7 @@ const attentionRows = (page) =>
 const saved = (page) => page.evaluate((key) => localStorage.getItem(key), KEY);
 
 async function discardChanges(page, dismiss) {
-  const confirmation = page.waitForEvent("dialog");
+  const confirmation = appConfirms(page).waitForEvent("dialog");
   const dismissal = dismiss();
   const dialog = await confirmation;
   expect(dialog.type()).toBe("confirm");
@@ -588,7 +589,7 @@ test("an expanded calendar survives record cancel, save and delete with its sele
 
   await entry.click();
   await sameBackground();
-  page.once("dialog", (dialog) => dialog.accept());
+  appConfirms(page).once("dialog", (dialog) => dialog.accept());
   await page
     .locator("#editor")
     .getByRole("button", { name: "Kaydı sil", exact: true })

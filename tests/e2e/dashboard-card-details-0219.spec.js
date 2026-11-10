@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { createRecord } from "../../src/model.js";
+import { appConfirms } from "./app-confirm-support.js";
 
 const KEY = "is-takip-v1";
 const NOW = new Date("2026-11-08T12:00:00.000Z");
@@ -747,7 +748,7 @@ test("selecting card text does not activate details and external updates or dele
     waitingPanel(page).locator('[data-waiting-fact="latestUpdate"]'),
   ).toContainText("Diğer pencereden kaydedilen gerçek gelişme.");
   await otherRow.locator(".record-edit-trigger").click();
-  other.once("dialog", (confirmation) => confirmation.accept());
+  appConfirms(other).once("dialog", (confirmation) => confirmation.accept());
   await other.locator('#editor [data-action="delete"]').click();
   await expect(other.locator("#editor")).not.toBeVisible();
   const deleted = await saved(other);

@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { createRecord } from "../../src/model.js";
+import { appConfirms } from "./app-confirm-support.js";
 
 const KEY = "is-takip-v1";
 const NOW = new Date("2026-11-09T12:00:00.000Z");
@@ -274,7 +275,7 @@ test("numeric OFF, ON and type switches retain drafts while cancel and a non-goa
   await numeric(page).check();
   await expectNumericFields(page, true, draft);
   expect(await saved(page)).toBe(before);
-  const confirmation = page.waitForEvent("dialog");
+  const confirmation = appConfirms(page).waitForEvent("dialog");
   const closing = closeEditor(page);
   const dialog = await confirmation;
   expect(dialog.type()).toBe("confirm");

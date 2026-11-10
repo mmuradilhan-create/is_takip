@@ -2,6 +2,7 @@ import { test, expect } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 import { createRecord, validateStore } from "../../src/model.js";
 import { openCreationExtras } from "./creation-support.js";
+import { appConfirms } from "./app-confirm-support.js";
 
 const KEY = "is-takip-v1";
 const CLEANUP_KEY = `${KEY}-import-notes-cleanup`;
@@ -239,7 +240,7 @@ test("legacy field values survive note edits and new daily work while cancelled 
   const beforeDraft = await readSaved(page);
   await newDaily(page, "Vazgeçilecek iş");
   await form(page).locator('[name="description"]').fill(CUSTOM_PROJECT);
-  page.once("dialog", (dialog) => dialog.accept());
+  appConfirms(page).once("dialog", (dialog) => dialog.accept());
   await closeEditor(page);
   await expect(page.locator("#editor")).not.toBeVisible();
   expect(await readSaved(page)).toBe(beforeDraft);

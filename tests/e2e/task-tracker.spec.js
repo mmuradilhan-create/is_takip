@@ -8,6 +8,7 @@ import {
   nextAttention,
   readAttentionCards,
 } from "./attention-support.js";
+import { appConfirms } from "./app-confirm-support.js";
 
 const RECORDS_KEY = "is-takip-v1";
 const PREFERENCES_KEY = `${RECORDS_KEY}-preferences`;
@@ -231,7 +232,7 @@ test("creates, edits, completes, persists and safely unlinks daily work from wee
   await expect(page.locator('#record-form select[name="type"]')).toHaveValue(
     "weekly",
   );
-  page.once("dialog", (dialog) => dialog.accept());
+  appConfirms(page).once("dialog", (dialog) => dialog.accept());
   await page.getByRole("button", { name: "Kaydı sil", exact: true }).click();
   await page.locator('#nav [data-view="daily"]').click();
   await selectListStatus(page, "all");
@@ -694,7 +695,7 @@ test("native record backup restores all fields and weekly links after an explici
   expect(await readRecords(page)).toHaveLength(3);
   await openBackupSettings(page);
   let confirmationMessage = "";
-  page.once("dialog", async (dialog) => {
+  appConfirms(page).once("dialog", async (dialog) => {
     confirmationMessage = dialog.message();
     await dialog.accept();
   });
@@ -722,7 +723,7 @@ test("invalid native backups show an error without changing records or requestin
   await seedRecords(page, records);
   await openBackupSettings(page);
   let confirmations = 0;
-  page.on("dialog", async (dialog) => {
+  appConfirms(page).on("dialog", async (dialog) => {
     confirmations++;
     await dialog.dismiss();
   });
@@ -832,7 +833,7 @@ test("workspace reset respects cancellation, keeps an empty saved store, and res
   ).toBeDisabled();
 
   let restoreMessage = "";
-  page.once("dialog", async (dialog) => {
+  appConfirms(page).once("dialog", async (dialog) => {
     restoreMessage = dialog.message();
     await dialog.accept();
   });
@@ -1489,8 +1490,9 @@ test("multiple undo restores exact add, edit, status and weekly-unlink states an
   await expect(page.locator('#record-form select[name="type"]')).toHaveValue(
     "weekly",
   );
-  page.once("dialog", (dialog) => dialog.accept());
+  appConfirms(page).once("dialog", (dialog) => dialog.accept());
   await page.getByRole("button", { name: "Kaydı sil", exact: true }).click();
+  await appConfirms(page).settled();
   const afterDelete = await readRecords(page);
   expect(afterDelete).toHaveLength(2);
   expect(
@@ -1545,7 +1547,7 @@ test("undo reverses reset, backup restoration and theme while preserving the ato
   await expect(secondReset).not.toBeVisible();
   expect(await readRecords(page)).toEqual([]);
   await openBackupSettings(page);
-  page.once("dialog", (dialog) => dialog.accept());
+  appConfirms(page).once("dialog", (dialog) => dialog.accept());
   await page.locator("#restore-file").setInputFiles({
     name: "geri-al-denemesi.json",
     mimeType: "application/json",
@@ -1936,7 +1938,7 @@ test("each module keeps its own status options in forms, filters and the quick s
   await form.locator('[name="type"]').selectOption("waiting");
   await openCreationExtras(page);
   await expect(form.locator('[name="status"]')).toHaveValue("waiting_response");
-  const discard = page.waitForEvent("dialog");
+  const discard = appConfirms(page).waitForEvent("dialog");
   const cancelDraft = page
     .getByRole("button", { name: "Vazgeç", exact: true })
     .click();

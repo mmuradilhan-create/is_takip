@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 import { createRecord } from "../../src/model.js";
+import { appConfirms } from "./app-confirm-support.js";
 
 const KEY = "is-takip-v1";
 const NOW = new Date("2026-11-08T12:00:00.000Z");
@@ -284,7 +285,7 @@ test("direct backup buttons download the original records and open upload withou
   );
   expect(await saved(page)).toBe(before);
   let confirmations = 0;
-  page.on("dialog", async (confirmation) => {
+  appConfirms(page).on("dialog", async (confirmation) => {
     confirmations++;
     await confirmation.dismiss();
   });

@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { createRecord } from "../../src/model.js";
+import { appConfirms } from "./app-confirm-support.js";
 
 const KEY = "is-takip-v1";
 const NOW = new Date("2026-11-08T12:00:00.000Z");
@@ -117,14 +118,14 @@ test("native editor padding, input and an inside-to-backdrop drag keep drafts op
   await expect(editor(page)).toBeVisible();
   await expect(title).toHaveValue("Kaydedilmeyen mevcut kayıt taslağı");
   expect(await saved(page)).toBe(before);
-  page.once("dialog", (dialog) => dialog.accept());
+  appConfirms(page).once("dialog", (dialog) => dialog.accept());
   await clickPoint(page, outside);
   await expect(editor(page)).not.toBeVisible();
   await expect(page.locator("#page-title")).toHaveText("Günlük işler");
   expect(await saved(page)).toBe(before);
   await page.getByRole("button", { name: "Yeni kayıt", exact: true }).click();
   await editor(page).locator('[name="title"]').fill("Kaydedilmeyen yeni kayıt");
-  page.once("dialog", (dialog) => dialog.accept());
+  appConfirms(page).once("dialog", (dialog) => dialog.accept());
   await clickPoint(page, await backdropPoint(page, editor(page)));
   await expect(editor(page)).not.toBeVisible();
   expect(await saved(page)).toBe(before);
@@ -298,7 +299,7 @@ test("a date popover closes before its editor and backdrop cancellation returns 
   );
   await expect(calendar).toBeVisible();
   expect(await saved(page)).toBe(before);
-  page.once("dialog", (dialog) => dialog.accept());
+  appConfirms(page).once("dialog", (dialog) => dialog.accept());
   await clickPoint(page, outside);
   await expect(editor(page)).not.toBeVisible();
   await expect(calendar).toBeVisible();
@@ -339,7 +340,7 @@ test("dirty edit and creation forms require discard confirmation while pristine,
   ];
   const awaitPoint = await backdropPoint(page, editor(page));
   for (const dismiss of dismissals) {
-    const confirmation = page.waitForEvent("dialog");
+    const confirmation = appConfirms(page).waitForEvent("dialog");
     const action = dismiss();
     const dialog = await confirmation;
     expect(dialog.type()).toBe("confirm");
@@ -354,7 +355,7 @@ test("dirty edit and creation forms require discard confirmation while pristine,
     );
     expect(await saved(page)).toBe(before);
   }
-  page.once("dialog", (dialog) => dialog.accept());
+  appConfirms(page).once("dialog", (dialog) => dialog.accept());
   await clickPoint(page, awaitPoint);
   await expect(editor(page)).not.toBeVisible();
   await expect(panel(page)).toBeVisible();
@@ -365,7 +366,7 @@ test("dirty edit and creation forms require discard confirmation while pristine,
     unexpectedDialogs.push(dialog.message());
     await dialog.dismiss();
   };
-  page.on("dialog", rejectUnexpected);
+  appConfirms(page).on("dialog", rejectUnexpected);
   for (const revert of [false, true]) {
     await panel(page)
       .getByRole("button", { name: "Hedefi düzenle", exact: true })
@@ -395,7 +396,7 @@ test("dirty edit and creation forms require discard confirmation while pristine,
     ).title,
   ).toBe("Kaydedilen hedef düzenlemesi");
   expect(unexpectedDialogs).toEqual([]);
-  page.off("dialog", rejectUnexpected);
+  appConfirms(page).off("dialog", rejectUnexpected);
   await panel(page).getByRole("button", { name: "Kapat", exact: true }).click();
   await page.locator('#nav [data-view="daily"]').click();
   const afterSave = await saved(page);
@@ -404,7 +405,7 @@ test("dirty edit and creation forms require discard confirmation while pristine,
   await editor(page).locator('[name="type"]').selectOption("waiting");
   await editor(page).locator('[name="type"]').selectOption("daily");
   await expect(title).toHaveValue("Kaydedilmeyen yeni iş taslağı");
-  const confirmation = page.waitForEvent("dialog");
+  const confirmation = appConfirms(page).waitForEvent("dialog");
   const dismissal = clickPoint(page, await backdropPoint(page, editor(page)));
   const dialog = await confirmation;
   expect(dialog.type()).toBe("confirm");
@@ -412,14 +413,14 @@ test("dirty edit and creation forms require discard confirmation while pristine,
   await dismissal;
   await expect(title).toHaveValue("Kaydedilmeyen yeni iş taslağı");
   expect(await saved(page)).toBe(afterSave);
-  page.once("dialog", (next) => next.accept());
+  appConfirms(page).once("dialog", (next) => next.accept());
   await editor(page)
     .getByRole("button", { name: "Vazgeç", exact: true })
     .click();
   await expect(editor(page)).not.toBeVisible();
   expect(await saved(page)).toBe(afterSave);
 
-  page.on("dialog", rejectUnexpected);
+  appConfirms(page).on("dialog", rejectUnexpected);
   await page.getByRole("button", { name: "Yeni kayıt", exact: true }).click();
   await editor(page)
     .getByRole("button", { name: "Vazgeç", exact: true })

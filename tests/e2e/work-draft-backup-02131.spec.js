@@ -2,6 +2,7 @@ import { test, expect } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 import { createRecord } from "../../src/model.js";
 import { readWorkSessionSnapshot } from "../../src/work-session-store.js";
+import { appConfirms } from "./app-confirm-support.js";
 
 const KEY = "is-takip-v1";
 const SESSION = `${KEY}-work-session`;
@@ -248,7 +249,7 @@ async function upload(page, backup) {
 }
 
 async function restore(page, backup, accept = true) {
-  const pending = page.waitForEvent("dialog");
+  const pending = appConfirms(page).waitForEvent("dialog");
   const action = upload(page, backup);
   const confirmation = await pending;
   expect(confirmation.type()).toBe("confirm");
@@ -389,7 +390,7 @@ test("invalid or conflicting draft imports do not write, ignored orphans do not 
     confirmations++;
     await dialog.dismiss();
   };
-  page.on("dialog", reject);
+  appConfirms(page).on("dialog", reject);
   for (const workDrafts of [
     { ...backup.workDrafts, version: 2 },
     {
@@ -409,7 +410,7 @@ test("invalid or conflicting draft imports do not write, ignored orphans do not 
     ).not.toBeEmpty();
     expect(await bytes(page)).toEqual(before);
   }
-  page.off("dialog", reject);
+  appConfirms(page).off("dialog", reject);
   expect(confirmations).toBe(0);
   await restore(page, backup);
   await expect(settings(page).locator("#settings-backup-error")).toContainText(
@@ -512,7 +513,7 @@ test("peer changes during confirmation and draft edits after restore block stale
   try {
     await peer.goto("/");
     await openCurrentNote(peer);
-    const pending = page.waitForEvent("dialog");
+    const pending = appConfirms(page).waitForEvent("dialog");
     const action = upload(page, backup);
     const confirmation = await pending;
     await note(peer).fill(

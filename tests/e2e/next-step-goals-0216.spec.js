@@ -2,6 +2,7 @@ import { test, expect } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 import { createRecord } from "../../src/model.js";
 import { openCreationExtras } from "./creation-support.js";
+import { appConfirms } from "./app-confirm-support.js";
 
 const KEY = "is-takip-v1";
 const NOW = new Date("2026-11-08T12:00:00.000Z");
@@ -235,7 +236,7 @@ test("daily and external waiting forms hide general next steps while preserving 
   await expect(field(page, "description")).toHaveValue(
     "Kaydedilmeyen hedef notu taslağı.",
   );
-  const confirmation = page.waitForEvent("dialog");
+  const confirmation = appConfirms(page).waitForEvent("dialog");
   const closing = closeEditor(page);
   const prompt = await confirmation;
   expect(prompt.type()).toBe("confirm");

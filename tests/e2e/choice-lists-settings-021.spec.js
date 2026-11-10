@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 import { createRecord } from "../../src/model.js";
+import { appConfirms } from "./app-confirm-support.js";
 
 const KEY = "is-takip-v1";
 const NOW = new Date("2026-11-07T12:00:00.000Z");
@@ -121,7 +122,7 @@ async function uploadBackup(page, data) {
 
 async function restore(page, data, accept = true) {
   let handled = false;
-  page.once("dialog", async (dialog) => {
+  appConfirms(page).once("dialog", async (dialog) => {
     if (accept) await dialog.accept();
     else await dialog.dismiss();
     handled = true;
@@ -180,7 +181,7 @@ test("native backup transfers legacy fields and catalogs atomically while record
       confirmations++;
       await dialog.dismiss();
     };
-    receiver.on("dialog", dismissInvalidConfirmation);
+    appConfirms(receiver).on("dialog", dismissInvalidConfirmation);
     await uploadBackup(receiver, {
       ...backup,
       choiceLists: {
@@ -193,7 +194,7 @@ test("native backup transfers legacy fields and catalogs atomically while record
     ).not.toBeEmpty();
     expect(confirmations).toBe(0);
     expect(await saved(receiver)).toBe(beforeImport);
-    receiver.off("dialog", dismissInvalidConfirmation);
+    appConfirms(receiver).off("dialog", dismissInvalidConfirmation);
 
     await restore(receiver, backup, false);
     expect(await saved(receiver)).toBe(beforeImport);

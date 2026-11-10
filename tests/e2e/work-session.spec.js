@@ -6,6 +6,7 @@ import {
   readEffectiveWorkSessionRaw,
   workspaceDomainRaw,
 } from "./work-session-support.js";
+import { appConfirms } from "./app-confirm-support.js";
 
 const KEY = "is-takip-v1";
 const PREFERENCES_KEY = `${KEY}-preferences`;
@@ -560,7 +561,7 @@ test("closed and removed work is stopped without changing lifecycle status, and 
   await start(page);
   await expect(draft(page)).toHaveValue(workingDraft);
   await row(page, "work-first").locator(".task-name").click();
-  page.once("dialog", (dialog) => dialog.accept());
+  appConfirms(page).once("dialog", (dialog) => dialog.accept());
   await page
     .locator("#editor")
     .getByRole("button", { name: "Kaydı sil", exact: true })

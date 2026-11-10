@@ -2,6 +2,7 @@ import { selectListStatus } from "./list-scope-helper.js";
 import { test, expect } from "@playwright/test";
 import { createRecord } from "../../src/model.js";
 import { openCreationExtras } from "./creation-support.js";
+import { appConfirms } from "./app-confirm-support.js";
 
 const KEY = "is-takip-v1";
 const STAMP = "2026-11-01T09:00:00.000Z";
@@ -193,7 +194,7 @@ test("weekly add-step action opens a linked daily draft without changing the goa
   await expect(form.locator('select[name="type"]')).toHaveValue("daily");
   await expect(form.locator('[name="parentId"]')).toHaveValue("arrange-weekly");
   await form.locator('[name="title"]').fill("İlk yeni günlük adım");
-  page.once("dialog", async (dialog) => {
+  appConfirms(page).once("dialog", async (dialog) => {
     expect(dialog.type()).toBe("confirm");
     expect(dialog.message()).toContain("Kaydedilmemiş değişiklikler");
     await dialog.accept();
@@ -375,7 +376,7 @@ test("weekly parent choices have no completed toggle and preserve selected close
   await seed(page, records, true);
   const before = await readSaved(page);
   const discardChanges = async () => {
-    const confirmation = page.waitForEvent("dialog");
+    const confirmation = appConfirms(page).waitForEvent("dialog");
     const dismissal = form
       .getByRole("button", { name: "Vazgeç", exact: true })
       .click();

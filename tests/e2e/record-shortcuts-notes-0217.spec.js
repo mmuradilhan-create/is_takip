@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { createRecord } from "../../src/model.js";
 import { openCreationExtras } from "./creation-support.js";
+import { appConfirms } from "./app-confirm-support.js";
 
 const KEY = "is-takip-v1";
 const NOW = new Date("2026-11-08T12:00:00.000Z");
@@ -249,7 +250,7 @@ test("composition, held Enter and prevented events never submit while native inp
     "Korunacak yerel not taslağı.",
   );
   expect(await saved(page)).toBe(external);
-  page.once("dialog", (dialog) => dialog.accept());
+  appConfirms(page).once("dialog", (dialog) => dialog.accept());
   await closeEditor(page);
   await other.close();
 });

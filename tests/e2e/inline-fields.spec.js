@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { createRecord } from "../../src/model.js";
 import { openCreationExtras } from "./creation-support.js";
+import { appConfirms } from "./app-confirm-support.js";
 
 const KEY = "is-takip-v1";
 
@@ -540,7 +541,7 @@ test("ordinary record date calendars keep selections as drafts, validate typed d
   ).toContain("Geçerli");
   expect(await input.evaluate((element) => element.validity.valid)).toBe(false);
   expect(await readRecords(page)).toEqual(original);
-  page.once("dialog", (dialog) => dialog.accept());
+  appConfirms(page).once("dialog", (dialog) => dialog.accept());
   await page
     .locator("#editor")
     .getByRole("button", { name: "Vazgeç", exact: true })

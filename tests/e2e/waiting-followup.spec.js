@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import { createRecord, validateStore } from "../../src/model.js";
 import { nextAttention } from "./attention-support.js";
 import { openCreationExtras } from "./creation-support.js";
+import { appConfirms } from "./app-confirm-support.js";
 
 const KEY = "is-takip-v1";
 const CLEANUP_KEY = `${KEY}-waiting-notes-cleanup`;
@@ -663,7 +664,7 @@ test("closed waiting topics show plain durations while preserving original count
   const restored = original.map((item) =>
     item.id === "waiting-primary" ? { ...item, status: "completed" } : item,
   );
-  other.once("dialog", (confirmation) => confirmation.accept());
+  appConfirms(other).once("dialog", (confirmation) => confirmation.accept());
   await other.locator("#restore-file").setInputFiles({
     name: "eski-kapali-kayitlar.json",
     mimeType: "application/json",

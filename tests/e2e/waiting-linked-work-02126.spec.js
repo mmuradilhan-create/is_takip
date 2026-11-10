@@ -4,6 +4,7 @@ import {
 } from "./work-session-support.js";
 import { test, expect } from "@playwright/test";
 import { createRecord } from "../../src/model.js";
+import { appConfirms } from "./app-confirm-support.js";
 
 const KEY = "is-takip-v1";
 const NOW = new Date("2026-11-09T09:00:00.000Z");
@@ -405,7 +406,7 @@ test("waiting list plus always creates a blank new daily step while details keep
   await expect(form.locator('[name="title"]')).toHaveValue("");
   await expect(form.locator('[name="dueDate"]')).toHaveValue("");
   await form.locator('[name="title"]').fill("Zamansız iptal edilen adım");
-  page.once("dialog", (dialog) => dialog.accept());
+  appConfirms(page).once("dialog", (dialog) => dialog.accept());
   await closeEditor(page);
   expect(await saved(page)).toBe(raw);
   await children(page)

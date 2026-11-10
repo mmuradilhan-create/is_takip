@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { createRecord } from "../../src/model.js";
 import { openCreationExtras } from "./creation-support.js";
+import { appConfirms } from "./app-confirm-support.js";
 
 const KEY = "is-takip-v1";
 const NOW = new Date("2026-11-08T12:00:00.000Z");
@@ -242,7 +243,7 @@ test("explicit context changes and type switching keep daily draft fields but ca
   await form(page).locator('select[name="type"]').selectOption("daily");
   await expect(field(page, "workContext")).toHaveValue("ad_hoc");
   await expect(field(page, "parentId")).toHaveValue("");
-  const confirmation = page.waitForEvent("dialog");
+  const confirmation = appConfirms(page).waitForEvent("dialog");
   const closing = close(page);
   const discard = await confirmation;
   expect(discard.type()).toBe("confirm");

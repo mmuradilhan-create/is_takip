@@ -2,6 +2,7 @@ import { test, expect } from "@playwright/test";
 import { createRecord } from "../../src/model.js";
 import { cleanupMeetingContacts } from "../../src/meeting-contact-cleanup.js";
 import { openCreationExtras } from "./creation-support.js";
+import { appConfirms } from "./app-confirm-support.js";
 
 const KEY = "is-takip-v1";
 const NOW = new Date("2026-11-07T12:00:00.000Z");
@@ -109,7 +110,7 @@ test("a deleted routed record cannot be resurrected by an already-open editor an
     .fill("Kaybolmaması gereken yerel taslak");
   const other = await secondWindow(context);
   await openDaily(other, "conflict-target");
-  other.once("dialog", (dialog) => dialog.accept());
+  appConfirms(other).once("dialog", (dialog) => dialog.accept());
   await editor(other).locator('[data-action="delete"]').click();
   await expect(editor(other)).not.toBeVisible();
   await expect

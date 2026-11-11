@@ -141,7 +141,11 @@ test("a date popover follows a scrolling editor field, stays inside the dialog, 
 
   await page.setViewportSize({ width: 1280, height: 480 });
   await expect(picker).toBeVisible();
-  await expectCalendarInBody(page);
+  // Chrome sends "resize" at its next rendering step, after the new layout
+  // exists; the calendar is placed again then, so wait for that placement.
+  await expect(async () => {
+    await expectCalendarInBody(page);
+  }).toPass({ timeout: 5000 });
   expect(
     await picker.evaluate(
       (element) => element.scrollHeight > element.clientHeight,

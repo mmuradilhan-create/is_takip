@@ -69,7 +69,8 @@ ikişer kart sayfalanır.
 
 Bekleyen konular listesinde işlem sütunu önce kalem, sonra + düğmesidir.
 Takip ettim (✓) düğmesi Son takip tarihinin yanındadır; kapanmış konularda
-orada takip geçmişi simgesi bulunur. Not balonu, hedef balonu gibi fare
+orada takip geçmişi simgesi bulunur. Durum ve tarih düğmeleri günlük
+işlerdeki gibi tek boydadır; Takip ettim düğmeleri aynı hizadadır. Not balonu, hedef balonu gibi fare
 simgeden ayrılınca hemen kapanır.
 Takip kartlarında Takip ettim ve Bağlı işler sayacı yan yanadır. Bağlı işler,
 bekleyen konudaki günlük iş listesini açar; yeni iş eklenebilir, mevcut iş

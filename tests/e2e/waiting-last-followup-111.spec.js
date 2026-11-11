@@ -92,6 +92,7 @@ test("waiting rows keep edit and plus in the action column and put the follow-up
         .getBoundingClientRect();
       return {
         gap: button.left - date.right,
+        size: [button.width, button.height],
         middle: Math.abs(
           button.top + button.height / 2 - (date.top + date.height / 2),
         ),
@@ -99,10 +100,29 @@ test("waiting rows keep edit and plus in the action column and put the follow-up
       };
     });
     expect(geometry.gap).toBeGreaterThanOrEqual(4);
-    expect(geometry.gap).toBeLessThanOrEqual(12);
+    expect(geometry.size).toEqual([30, 30]);
     expect(geometry.middle).toBeLessThanOrEqual(2);
     expect(geometry.inside).toBe(true);
   }
+  // 1.1.2: one fixed control format, like the daily and goal lists.
+  const lefts = await page
+    .locator(".waiting-last-cell > .waiting-followup-trigger")
+    .evaluateAll((items) =>
+      items.map((item) => item.getBoundingClientRect().left),
+    );
+  expect(new Set(lefts.map(Math.round)).size).toBe(1);
+  const controls = await page
+    .locator(
+      ".waiting-table tbody td > .status-trigger, .waiting-table tbody td.waiting-next-col > .deadline-tag",
+    )
+    .evaluateAll((items) =>
+      items.map((item) => {
+        const rect = item.getBoundingClientRect();
+        return `${Math.round(rect.width)}x${Math.round(rect.height)}`;
+      }),
+    );
+  expect(controls).toHaveLength(6);
+  expect(new Set(controls)).toEqual(new Set(["112x30"]));
   await expect(
     cell("closed").locator(".waiting-followup-trigger svg path"),
   ).toHaveAttribute("d", "M3 11a9 9 0 1 1 2.7 6.4M3 4v7h7M12 7v5l3 2");

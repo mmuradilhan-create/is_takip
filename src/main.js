@@ -61,6 +61,7 @@ import "./title-icon-wrap.css";
 import "./sticky-topbar.css";
 import "./dashboard-weekly-paging.css";
 import "./waiting-last-followup.css";
+import "./waiting-table-controls.css";
 import { createWorkspaceNotesUI } from "./workspace-notes-ui.js";
 import { normalizeNotes, notesFromBackup } from "./workspace-notes.js";
 import { exportWorkDrafts, workDraftsFromBackup } from "./work-draft-backup.js";

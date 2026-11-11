@@ -1,6 +1,6 @@
 # Odak
 
-PC kullanımına odaklanan, Türkçe kişisel iş ve hedef takibi. HTML/CSS/JavaScript tabanlıdır. Güncel sürüm: **1.1.1**.
+PC kullanımına odaklanan, Türkçe kişisel iş ve hedef takibi. HTML/CSS/JavaScript tabanlıdır. Güncel sürüm: **1.1.2**.
 
 ## Kullanım
 
@@ -294,7 +294,7 @@ Not önizlemesi hedef bağlantısı balonu gibi doğrudan metni gösterir ve far
 
 Bağlantı simgesiyle açılan panel kapanınca küçük balon yeniden kendiliğinden açılmaz; yeni fare girişi veya klavye gezinmesiyle açılır. Pencere kapanınca geri dönen kayıt başlığı altı çizili kalmaz; yeni klavye gezinmesinde odak görünürdür. Not düzenleyicisi kapandıktan veya kaydedildikten sonra not balonu yeni fare girişi ya da klavye gezinmesine kadar kapalı kalır. Form alanlarında kalın dış odak halkası yerine alanın kendi ince kenarlığı kullanılır.
 
-Bekleyen konularda işlem sütunu diğer listelerle aynı sıradadır: önce kalem, sonra yeni günlük iş (+). **Takip ettim (✓)** düğmesi güncellediği **Son takip** tarihinin yanındadır (“3 Kas ✓”, “Takip yok ✓”); kapanmış konularda aynı yerde takip geçmişi simgesi bulunur. İşlem sütunları düğme sayısına göre kompakt kalır; başlık ve düğmeler sola, aynı iç boşluklarla hizalanır. Bekleyen konunun sağındaki + simgesi sabittir ve her zaman yeni günlük adım formunu açar; bağlı iş oluşunca zincir simgesine dönüşmez. Bağlı işler konu ayrıntısından açılır; listede ayrı sayaç gösterilmez. Sağ panelde Takip ettim, Takip geçmişi başlığının yanındadır; alt çubukta Kaydı düzenle ve Kapat bulunur.
+Bekleyen konularda işlem sütunu diğer listelerle aynı sıradadır: önce kalem, sonra yeni günlük iş (+). **Takip ettim (✓)** düğmesi güncellediği **Son takip** tarihinin yanındadır (“3 Kas ✓”, “Takip yok ✓”); kapanmış konularda aynı yerde takip geçmişi simgesi bulunur. Bekleyen konular da günlük işlerle aynı sabit biçimi kullanır: durum ve sonraki takip düğmeleri tek boydadır, simge düğmeleri 30×30’dur ve Takip ettim düğmeleri her satırda aynı hizadadır. İşlem sütunları düğme sayısına göre kompakt kalır; başlık ve düğmeler sola, aynı iç boşluklarla hizalanır. Bekleyen konunun sağındaki + simgesi sabittir ve her zaman yeni günlük adım formunu açar; bağlı iş oluşunca zincir simgesine dönüşmez. Bağlı işler konu ayrıntısından açılır; listede ayrı sayaç gösterilmez. Sağ panelde Takip ettim, Takip geçmişi başlığının yanındadır; alt çubukta Kaydı düzenle ve Kapat bulunur.
 
 Hedef panelindeki bağlı kaydın Bağı kaldır simgesi yalnız o ilişkiyi çözer. Günlük iş anlık işe döner; alt hedef kendi türünde kalır. Durum, tarih, not, kaynak bağlantısı ve iş günlüğü korunur. İşlem tek adımda geri alınır ve panel açık kalır.
 

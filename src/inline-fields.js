@@ -5,6 +5,7 @@ import {
 } from "./deadline-presentation.js";
 import { formatDateInput } from "./date-picker.js";
 import { followUpPresentation } from "./waiting-followup.js";
+import { waitingAgePresentation } from "./waiting-age.js";
 
 const escapeHtml = (value) =>
   String(value ?? "").replace(
@@ -24,7 +25,16 @@ const followUpIcons = {
   soon: "M12 7v5l3 2M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0",
   calendar: "M8 2v4m8-4v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14H3V6a2 2 0 0 1 2-2Z",
   missing: "M12 5v14M5 12h14",
+  hourglass:
+    "M6 3h12M6 21h12M8 3c0 4 8 5 8 9s-8 5-8 9M16 3c0 4-8 5-8 9s8 5 8 9",
 };
+const CLOSED = new Set(["completed", "cancelled", "transferred"]);
+
+/** Waiting length tiers: under a week, under a month, a month or more. */
+export function waitingAgeTone(days) {
+  if (!Number.isSafeInteger(days)) return "missing";
+  return days >= 30 ? "very-long" : days >= 7 ? "long" : "fresh";
+}
 
 function validDate(value) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
@@ -93,6 +103,27 @@ export function createInlineFields({
     return `<button type="button" class="waiting-next-date deadline-tag ${escapeHtml(presentation.tone)}" data-followup-state="${escapeHtml(presentation.state)}" data-action="edit-next-followup" data-id="${escapeHtml(record.id)}" aria-label="${escapeHtml(record.title)}: sonraki takip tarihini değiştir" aria-description="${escapeHtml(presentation.status)}" aria-haspopup="dialog" aria-controls="odak-date-picker" aria-expanded="false" title="${escapeHtml(title)}"><svg class="deadline-symbol" data-followup-icon="${symbol}" viewBox="0 0 24 24" aria-hidden="true"><path d="${followUpIcons[symbol]}"/></svg><span class="deadline-label">${escapeHtml(label)}</span></button>`;
   }
 
+  /** How long a topic has waited; the chip edits the waiting start date. */
+  function waitingStartControl(record) {
+    if (record?.type !== "waiting") return "";
+    const age = waitingAgePresentation(record, currentDay(), {
+      formatDate: (value) => formatDateInput(value),
+    });
+    const closed = CLOSED.has(record.status);
+    const tone = waitingAgeTone(age.days);
+    // Only an open topic offers to add its missing start date.
+    const addStart = !closed && !record.sourceDate;
+    const label = addStart ? "Başlangıç ekle" : age.text;
+    const icon = `<svg class="deadline-symbol" viewBox="0 0 24 24" aria-hidden="true"><path d="${followUpIcons[addStart ? "missing" : "hourglass"]}"/></svg>`;
+    const content = `${icon}<span class="waiting-age deadline-label" data-waiting-age-kind="${escapeHtml(age.kind)}" title="${escapeHtml(age.title)}" aria-label="${escapeHtml(age.ariaLabel)}">${escapeHtml(label)}</span>`;
+    if (closed)
+      return `<span class="waiting-start-date deadline-tag" data-waiting-age-tone="${tone}">${content}</span>`;
+    const title = record.sourceDate
+      ? `${age.title} · Başlangıç tarihini değiştir`
+      : "Beklemeye başlama tarihini ekle";
+    return `<button type="button" class="waiting-start-date deadline-tag" data-waiting-age-tone="${tone}" data-action="edit-waiting-start" data-id="${escapeHtml(record.id)}" aria-label="${escapeHtml(record.title)}: ${escapeHtml(addStart ? "beklemeye başlama tarihini ekle" : `${age.ariaLabel}; beklemeye başlama tarihini değiştir`)}" aria-haspopup="dialog" aria-controls="odak-date-picker" aria-expanded="false" title="${escapeHtml(title)}">${content}</button>`;
+  }
+
   function resetTrigger(menu) {
     triggers.get(menu)?.setAttribute("aria-expanded", "false");
     triggers.delete(menu);
@@ -142,10 +173,19 @@ export function createInlineFields({
   function openDate(id, trigger, field = "dueDate") {
     if (saving || trigger?.disabled) return;
     const record = find(id);
-    if (!record || (field === "nextFollowUpDate" && record.type !== "waiting"))
+    if (
+      !record ||
+      (["nextFollowUpDate", "sourceDate"].includes(field) &&
+        record.type !== "waiting")
+    )
       return;
     const followUp = field === "nextFollowUpDate";
-    const action = followUp ? "edit-next-followup" : "edit-date";
+    const start = field === "sourceDate";
+    const action = start
+      ? "edit-waiting-start"
+      : followUp
+        ? "edit-next-followup"
+        : "edit-date";
     const context = trigger.closest("dialog, [popover]") || root;
     const resolveAnchor = () => {
       if (trigger.isConnected) return trigger;
@@ -158,9 +198,13 @@ export function createInlineFields({
     onOpenDatePicker({
       anchor: trigger,
       value: record[field] || "",
-      label: followUp
-        ? "Sonraki takip tarihini değiştir"
-        : "Teslim tarihini değiştir",
+      label: start
+        ? "Beklemeye başlama tarihini değiştir"
+        : followUp
+          ? "Sonraki takip tarihini değiştir"
+          : "Teslim tarihini değiştir",
+      // A topic cannot have started waiting in the future.
+      ...(start ? { max: currentDay() } : {}),
       resolveAnchor,
       onSelect: (value) => save(id, field, value),
     });
@@ -168,12 +212,16 @@ export function createInlineFields({
 
   async function save(id, field, value) {
     if (saving) return false;
-    if (!["priority", "dueDate", "nextFollowUpDate"].includes(field))
+    if (
+      !["priority", "dueDate", "nextFollowUpDate", "sourceDate"].includes(field)
+    )
       return false;
     const record = find(id);
     if (
       !record ||
-      (field === "nextFollowUpDate" && record.type !== "waiting")
+      (["nextFollowUpDate", "sourceDate"].includes(field) &&
+        record.type !== "waiting") ||
+      (field === "sourceDate" && CLOSED.has(record.status))
     ) {
       onError("Bu kayıt artık düzenlenemiyor.");
       return false;
@@ -187,8 +235,14 @@ export function createInlineFields({
       onError(
         field === "nextFollowUpDate"
           ? "Geçerli bir takip tarihi seç."
-          : "Geçerli bir teslim tarihi seç.",
+          : field === "sourceDate"
+            ? "Geçerli bir başlangıç tarihi seç."
+            : "Geçerli bir teslim tarihi seç.",
       );
+      return false;
+    }
+    if (field === "sourceDate" && value > currentDay()) {
+      onError("Beklemeye başlama tarihi bugünden sonra olamaz.");
       return false;
     }
     saving = true;
@@ -201,7 +255,9 @@ export function createInlineFields({
           ? "Öncelik güncelleme"
           : field === "nextFollowUpDate"
             ? "Takip tarihi güncelleme"
-            : "Teslim tarihi güncelleme",
+            : field === "sourceDate"
+              ? "Bekleme başlangıcı güncelleme"
+              : "Teslim tarihi güncelleme",
       );
       return saved !== false;
     } catch (error) {
@@ -223,6 +279,7 @@ export function createInlineFields({
         "edit-priority",
         "edit-date",
         "edit-next-followup",
+        "edit-waiting-start",
         "set-priority",
         "cancel-inline",
       ].includes(action)
@@ -233,6 +290,8 @@ export function createInlineFields({
     else if (action === "edit-date") openDate(id, button);
     else if (action === "edit-next-followup")
       openDate(id, button, "nextFollowUpDate");
+    else if (action === "edit-waiting-start")
+      openDate(id, button, "sourceDate");
     else if (action === "set-priority")
       void save(id, "priority", button.dataset.priority);
     else close();
@@ -273,5 +332,12 @@ export function createInlineFields({
     priorityMenu.remove();
   }
 
-  return { priorityControl, dateControl, followUpDateControl, close, destroy };
+  return {
+    priorityControl,
+    dateControl,
+    followUpDateControl,
+    waitingStartControl,
+    close,
+    destroy,
+  };
 }

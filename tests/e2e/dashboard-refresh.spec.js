@@ -410,9 +410,9 @@ test("current-work filters sit beside the heading and waiting age remains short 
         });
         return Boolean(
           geometry?.heading.width &&
-            geometry.heading.height &&
-            geometry.filters.width &&
-            geometry.filters.height,
+          geometry.heading.height &&
+          geometry.filters.width &&
+          geometry.filters.height,
         );
       })
       .toBe(true);
@@ -438,7 +438,7 @@ test("current-work filters sit beside the heading and waiting age remains short 
   ).toHaveText("10 gün");
   await expect(
     page.locator('.waiting-table tr[data-id="waiting-none"] .waiting-age'),
-  ).toHaveText("—");
+  ).toHaveText("Başlangıç ekle");
   expect(await page.locator(".waiting-age").allTextContents()).not.toEqual(
     expect.arrayContaining([expect.stringMatching(/gündür|bekliyor/)]),
   );

@@ -1,0 +1,109 @@
+/* Waiting length reads like the other date controls and edits its start. */
+.full-table.waiting-table > thead > tr > th.waiting-age-col {
+  width: calc(var(--waiting-control-width, 112px) + 24px);
+}
+
+.full-table.waiting-table
+  > tbody
+  > tr
+  > td.waiting-age-col
+  > .waiting-start-date {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  width: var(--waiting-control-width, 112px);
+  max-width: 100%;
+  height: 30px;
+  min-height: 30px;
+  margin: 0;
+  padding: 2px 6px;
+  border: 1px solid #d5dee6;
+  border-radius: 6px;
+  background: #f3f6f8;
+  color: #4d6273;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 12px;
+  white-space: nowrap;
+}
+
+.full-table.waiting-table
+  > tbody
+  > tr
+  > td.waiting-age-col
+  > .waiting-start-date
+  > svg {
+  flex: 0 0 13px;
+  width: 13px;
+  height: 13px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.full-table.waiting-table
+  > tbody
+  > tr
+  > td.waiting-age-col
+  > .waiting-start-date
+  .waiting-age {
+  color: inherit;
+  font: inherit;
+}
+
+/* A week or more: warm sand; a month or more: clay. Red stays for overdue. */
+.waiting-start-date[data-waiting-age-tone="long"] {
+  border-color: #e2d3b5 !important;
+  background: #f8f2e6 !important;
+  color: #7a6230 !important;
+}
+
+.waiting-start-date[data-waiting-age-tone="very-long"] {
+  border-color: #dfbca9 !important;
+  background: #f7e9e1 !important;
+  color: #8a4b30 !important;
+}
+
+.waiting-start-date[data-waiting-age-tone="missing"] {
+  border-style: dashed !important;
+  background: transparent !important;
+  color: #6c7b65 !important;
+}
+
+button.waiting-start-date {
+  cursor: pointer;
+}
+
+button.waiting-start-date:hover {
+  filter: brightness(0.97);
+}
+
+span.waiting-start-date {
+  opacity: 0.85;
+}
+
+[data-theme="dark"] .waiting-start-date {
+  border-color: #3d4a57 !important;
+  background: #1c2329 !important;
+  color: #b9c7d3 !important;
+}
+
+[data-theme="dark"] .waiting-start-date[data-waiting-age-tone="long"] {
+  border-color: #675a3b !important;
+  background: #2e2a1f !important;
+  color: #e3cf9f !important;
+}
+
+[data-theme="dark"] .waiting-start-date[data-waiting-age-tone="very-long"] {
+  border-color: #6e4b3a !important;
+  background: #33241d !important;
+  color: #efbea4 !important;
+}
+
+[data-theme="dark"] .waiting-start-date[data-waiting-age-tone="missing"] {
+  background: transparent !important;
+  color: #b7bbc2 !important;
+}

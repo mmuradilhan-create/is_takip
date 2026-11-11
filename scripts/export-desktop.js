@@ -67,6 +67,9 @@ satırında kalır; yer daralınca önce başlık metni alt satıra geçer.
 Genel bakışta Bu haftanın hedefleri de Takip gerekenler gibi ← → düğmeleriyle
 ikişer kart sayfalanır.
 
+Bekleyen konular sütunları: Durum, Son takip, Sonraki takip, Bekleme.
+Bekleme düğmesi süreyi gösterir (7 gün altı nötr, 7-29 gün kum, 30+ kil
+tonu); tıklanınca beklemeye başlama tarihi takvimden düzeltilir.
 Bekleyen konular listesinde işlem sütunu önce kalem, sonra + düğmesidir.
 Takip ettim (✓) düğmesi Son takip tarihinin yanındadır; kapanmış konularda
 orada takip geçmişi simgesi bulunur. Durum ve tarih düğmeleri günlük

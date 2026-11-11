@@ -1,0 +1,112 @@
+/* Hidden planning suggestions in Settings, shaped like the backup section. */
+#settings-dialog .settings-hidden-prompts {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--theme-border, #dce5d5);
+  border-radius: 8px;
+  background: var(--theme-surface, #fff);
+}
+
+#settings-dialog .settings-hidden-prompts > summary {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 34px;
+  padding: 6px 9px;
+  color: var(--theme-ink, #405b49);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.4;
+  list-style: none;
+  cursor: pointer;
+}
+
+#settings-dialog .settings-hidden-prompts > summary::-webkit-details-marker {
+  display: none;
+}
+
+#settings-dialog .settings-hidden-prompts > summary:focus-visible {
+  outline: 2px solid var(--theme-accent, #80b8a6);
+  outline-offset: -2px;
+}
+
+#settings-dialog .settings-hidden-prompts[open] > summary .settings-chevron {
+  transform: rotate(90deg);
+}
+
+#settings-dialog .settings-hidden-count {
+  min-width: 18px;
+  padding: 0 5px;
+  border-radius: 5px;
+  background: var(--theme-soft, #edf3e8);
+  color: var(--theme-muted, #5d7c56);
+  font-size: 10px;
+  line-height: 16px;
+  text-align: center;
+}
+
+#settings-dialog .settings-hidden-body {
+  max-height: 220px;
+  padding: 4px 9px 8px;
+  overflow-y: auto;
+  border-top: 1px solid var(--theme-border, #e8eee4);
+}
+
+#settings-dialog .settings-hidden-group h3 {
+  margin: 6px 0 2px;
+  color: var(--theme-muted, #64775f);
+  font-size: 10px;
+  font-weight: 650;
+}
+
+#settings-dialog .settings-hidden-group ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+#settings-dialog .settings-hidden-group li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--theme-border, #edf0e9);
+}
+
+#settings-dialog .settings-hidden-group li:last-child {
+  border-bottom: 0;
+}
+
+#settings-dialog .settings-hidden-copy {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+#settings-dialog .settings-hidden-title {
+  overflow: hidden;
+  color: var(--theme-ink, #304d37);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#settings-dialog .settings-hidden-copy small {
+  color: var(--theme-muted, #6c7b65);
+  font-size: 10px;
+}
+
+#settings-dialog .settings-hidden-group .btn {
+  flex: 0 0 auto;
+  min-height: 26px;
+  padding: 3px 8px;
+  font-size: 10px;
+}
+
+#settings-dialog .settings-hidden-empty {
+  margin: 6px 0 2px;
+  color: var(--theme-muted, #6c7b65);
+  font-size: 10px;
+  line-height: 1.45;
+}

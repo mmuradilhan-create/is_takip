@@ -237,3 +237,71 @@ test("planning suggestions can be postponed, hidden and brought back as undo ste
   await page.getByRole("button", { name: "Geri al", exact: true }).click();
   await expect(prompt.locator(".planning-prompt-count")).toHaveText("2");
 });
+
+test("Settings lists postponed and hidden suggestions by kind and brings one back", async ({
+  context,
+}) => {
+  const OLD = "2026-10-20T09:00:00.000Z";
+  const make = (input) =>
+    createRecord({ createdAt: OLD, updatedAt: OLD, ...input });
+  await seed(context, {
+    records: [
+      make({
+        id: "goal",
+        type: "weekly",
+        title: "Ertelenen hedef",
+        periodKey: "2026-W45",
+        sourceFields: { __planningPrompts: { goals: "2026-11-10" } },
+      }),
+      make({
+        id: "topic",
+        type: "waiting",
+        title: "Gizlenen konu",
+        status: "waiting_response",
+        sourceDate: "2026-10-01",
+        sourceFields: { __planningPrompts: { waiting: "never" } },
+      }),
+    ],
+  });
+  const page = await context.newPage();
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/");
+  await page.getByRole("button", { name: "Ayarlar", exact: true }).click();
+  const section = page.locator("#settings-dialog .settings-hidden-prompts");
+  await expect(section).not.toHaveAttribute("open");
+  await expect(section.locator(".settings-hidden-count")).toHaveText("2");
+  await section.locator("summary").click();
+  await expect(section.locator(".settings-hidden-group h3")).toHaveText([
+    "Hedeflere adım planla",
+    "Beklemeyi netleştir",
+  ]);
+  await expect(section.locator('[data-hidden-record="goal"] small')).toHaveText(
+    "10 Kas tarihinde yeniden önerilecek",
+  );
+  await expect(
+    section.locator('[data-hidden-record="topic"] small'),
+  ).toHaveText("Bir daha önerilmeyecek");
+  await section
+    .locator(
+      '[data-hidden-record="topic"] [data-action="planning-prompt-restore"]',
+    )
+    .click();
+  await expect(section).toHaveAttribute("open");
+  await expect(section.locator(".settings-hidden-count")).toHaveText("1");
+  await expect(
+    section.locator('[data-hidden-record="goal"] button'),
+  ).toBeFocused();
+  const saved = await stored(page);
+  expect(
+    saved.records.find((item) => item.id === "topic").sourceFields,
+  ).toEqual({});
+  expect(saved.odak.history.map((item) => item.label)).toEqual([
+    "Öneriyi geri getirme",
+  ]);
+  await page.locator("#settings-dialog .modal-footer .btn.primary").click();
+  await expect(
+    page.locator(
+      '.planning-prompt[data-prompt="waiting"] .planning-prompt-count',
+    ),
+  ).toHaveText("1");
+});

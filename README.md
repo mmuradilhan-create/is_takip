@@ -1,6 +1,6 @@
 # Odak
 
-PC kullanımına odaklanan, Türkçe kişisel iş ve hedef takibi. HTML/CSS/JavaScript tabanlıdır. Güncel sürüm: **1.4.0**.
+PC kullanımına odaklanan, Türkçe kişisel iş ve hedef takibi. HTML/CSS/JavaScript tabanlıdır. Güncel sürüm: **1.4.1**.
 
 ## Kullanım
 
@@ -168,7 +168,7 @@ Bekleyen konu için e-posta veya telefon gibi bir **günlük temas adımı** aç
 - **Beklemeyi netleştir**: Kimden beklendiği veya **sonraki takip tarihi** eksik açık bekleyen konular; tarihsiz konular **Takip gerekenler**’de görünmediği için burada hatırlatılır. **Son gelişme** yalnız iki haftadır bekleyen ve hiç takip kaydı olmayan konularda istenir; yeni açılan konu bu yüzden işaretlenmez. Beklemede olan günlük işlerden bekleme nedeni boş olanlar da buradadır. Her satırda neyin eksik olduğu yazar; **Bilgi ekle** formu doğrudan ilk eksik alanda açar.
 - **İşleri gözden geçir**: En az yedi takvim günüdür güncellenmeyen ve üzerinde çalışılmayan açık günlük işler. Çalışılan iş ile son yedi günde çalışma notu yazılan veya duraklatılan işler dahil edilmez. Her işin yanında **Hâlâ geçerli / Tamamla / İptal / İşi aç** bulunur. **Hâlâ geçerli** işi güncellenmiş sayar ve yedi gün listeden düşürür; üç işlem de tek **Geri al** adımıdır. İşlemden sonra klavye odağı sıradaki işe geçer.
 
-Her öneri satırının sonundaki **⋯** düğmesi **Yarın hatırlat**, **1 hafta sonra hatırlat** ve **Bir daha önerme** seçeneklerini açar. Ertelenen kayıt o gün gelene kadar, gizlenen kayıt kalıcı olarak yalnız o öneriden çıkar; başka öneriler etkilenmez ve kaydın güncelleme tarihi değişmez. Dialogun altındaki **Gizlenenleri göster** ertelenen ve gizlenen kayıtları ne zaman döneceğiyle listeler; **Yeniden öner** geri getirir. Bu seçimler kaydın içinde saklanır, yedeğe girer ve her biri tek **Geri al** adımıdır.
+Her öneri satırının sonundaki **⋯** düğmesi **Yarın hatırlat**, **1 hafta sonra hatırlat** ve **Bir daha önerme** seçeneklerini açar. Ertelenen kayıt o gün gelene kadar, gizlenen kayıt kalıcı olarak yalnız o öneriden çıkar; başka öneriler etkilenmez ve kaydın güncelleme tarihi değişmez. Dialogun altındaki **Gizlenenleri göster** ertelenen ve gizlenen kayıtları ne zaman döneceğiyle listeler; **Yeniden öner** geri getirir. Aynı liste **Ayarlar → Gizlenen öneriler** bölümünde de bulunur: Yedekleme gibi açılıp kapanır, başlığında sayı görünür ve öneriler türlerine göre gruplanır. Bu seçimler kaydın içinde saklanır, yedeğe girer ve her biri tek **Geri al** adımıdır.
 - **Kalan hedefleri planla**: Önceki hafta ve aylardan kalan açık hedefler; türü ve dönemi gösterilir. Haftalık hedefi bu haftaya, aylık hedefi bu aya taşıyabilirsiniz.
 
 Her düğme ilgili kayıtları gösterir; buradan kaydı açıp karar verirsiniz. Arama bu önerileri de süzer. Sayılar birleştirilmez; şeridi açmak kayıt veya durum değiştirmez ve zorunlu bir işlem başlatmaz. Öneri yoksa şerit görünmez. Eski dört büyük gündem kartı kaldırılmıştır.

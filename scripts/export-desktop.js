@@ -579,8 +579,9 @@ birleştirilmez; şeridi açmak kayıt değiştirmez veya zorunlu işlem başlat
 Öneri yoksa şerit görünmez.
 Her öneri satırındaki ⋯ düğmesi Yarın hatırlat, 1 hafta sonra hatırlat ve
 Bir daha önerme seçeneklerini açar. Gizlenenleri göster ile ertelenen ve
-gizlenen kayıtlar görülür, Yeniden öner ile geri getirilir. Her biri tek
-Geri al adımıdır.
+gizlenen kayıtlar görülür, Yeniden öner ile geri getirilir. Aynı liste
+Ayarlar > Gizlenen öneriler bölümünde türlerine göre de bulunur. Her biri
+tek Geri al adımıdır.
 
 Güncel işler filtresi Açık işler / Bugün teslim / Geciken / Bugünün odağı
 seçeneklerini sunar. Bugün teslim, teslim tarihi bugün olan işleri gösterir.

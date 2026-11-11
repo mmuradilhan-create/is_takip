@@ -66,6 +66,7 @@ import "./work-card-journal.css";
 import "./waiting-age-chip.css";
 import "./note-reminders.css";
 import "./planning-dismiss.css";
+import "./settings-hidden-prompts.css";
 import { bellIcon, createWorkspaceNotesUI } from "./workspace-notes-ui.js";
 import { normalizeNotes, notesFromBackup } from "./workspace-notes.js";
 import { exportWorkDrafts, workDraftsFromBackup } from "./work-draft-backup.js";
@@ -514,6 +515,26 @@ export async function startMainApp() {
     ))
       input.checked = input.value === (preferences.theme || "light");
   }
+  /** Postponed and hidden planning suggestions, reachable from Settings. */
+  function settingsHiddenPromptsMarkup(open = false) {
+    const options = { ...planningPromptOptions(), query: "" };
+    const groups = Object.keys(promptKinds)
+      .map((kind) => ({
+        kind,
+        records: hiddenPlanningPrompts(state.records, kind, options),
+      }))
+      .filter((group) => group.records.length);
+    const total = groups.reduce((sum, group) => sum + group.records.length, 0);
+    const body = groups.length
+      ? groups
+          .map(
+            ({ kind, records }) =>
+              `<section class="settings-hidden-group" aria-label="${esc(promptKinds[kind].title)}"><h3>${esc(promptKinds[kind].title)}</h3><ul>${records.map((record) => `<li data-hidden-record="${esc(record.id)}" data-hidden-kind="${kind}"><span class="settings-hidden-copy"><span class="settings-hidden-title">${esc(record.title)}</span><small>${esc(hiddenPromptStatus(record, kind))}</small></span><button type="button" class="btn small" data-action="planning-prompt-restore" data-id="${esc(record.id)}" data-prompt="${kind}">Yeniden öner</button></li>`).join("")}</ul></section>`,
+          )
+          .join("")
+      : '<p class="settings-hidden-empty">Ertelenen veya gizlenen öneri yok. Planını netleştir’deki ⋯ menüsünden bir öneriyi erteleyebilir veya gizleyebilirsin.</p>';
+    return `<details class="settings-hidden-prompts"${open ? " open" : ""}><summary><span class="settings-summary-icon">${icon("clock")}</span><span>Gizlenen öneriler</span><span class="settings-hidden-count" aria-label="${total} öneri">${total}</span><span class="settings-chevron">${icon("chevron")}</span></summary><div class="settings-hidden-body">${body}</div></details>`;
+  }
   function openSettings() {
     closeRecordPreviews();
     recordNotes?.close();
@@ -535,6 +556,7 @@ export async function startMainApp() {
         )
         .join("")}</div><div id="settings-error" role="alert"></div></section>
       <details class="settings-backup" open><summary><span class="settings-summary-icon">${icon("download")}</span><span>Yedekleme</span><span class="settings-chevron">${icon("chevron")}</span></summary><div class="settings-backup-body"><div class="settings-backup-actions"><button type="button" class="btn" data-action="backup-records" aria-label="Kayıt yedeğini indir">${icon("download")}Yedeği indir</button><button type="button" class="btn" data-action="select-backup" aria-label="Kayıt yedeğini geri yükle">${icon("upload")}Yedeği yükle</button></div><input type="file" id="restore-file" accept=".json,application/json" aria-label="Kayıt yedeği seç" hidden><div id="settings-backup-error" role="alert"></div></div></details>
+      ${settingsHiddenPromptsMarkup()}
       <details class="settings-help"><summary><span>Yardım</span><span class="settings-chevron">${icon("chevron")}</span></summary><div class="settings-help-body"><section class="settings-goal-rules" aria-label="Hedef ilerlemesi"><h3>Hedef ilerlemesi</h3><p>Günlük iş → Haftalık → Aylık → Senelik</p><p>Bağlantılar isteğe bağlıdır. Sayısal hedef varsa kendi ölçümü kullanılır; yoksa bağlı işlerin ilerlemesi hesaplanır. Hedefi tamamlamak ayrıca senin kararındır.</p></section><section><h3>Kayıtlar ve yedekleme</h3><p>Kayıtlar ve tercihler bu tarayıcıda otomatik saklanır; HTML dosyasının içine yazılmaz. Yedeği indir, kayıtlarını, bağımsız notlarını ve bitmemiş çalışma taslaklarını JSON dosyası olarak saklar. Yedeği yükle, seçtiğin yedeği onayından sonra geri getirir.</p></section></div></details>
       ${cleanupInfo.recordsChanged ? `<section class="settings-note-cleanup"><p>${cleanupInfo.recordsChanged} kayıtta eski Gün / Gecikme / Odak Sıra aktarım satırları var.</p><button type="button" class="btn" data-action="cleanup-import-notes">Aktarım notlarını temizle</button></section>` : ""}
       ${waitingCleanupInfo.recordsChanged ? `<section class="settings-note-cleanup"><p>${waitingCleanupInfo.recordsChanged} bekleyen konuda eski Son Durum / Kaç Gün Bekledi aktarım satırları var.</p><button type="button" class="btn" data-action="cleanup-waiting-notes">Bekleyen konu notlarını düzenle</button></section>` : ""}
@@ -1408,8 +1430,8 @@ export async function startMainApp() {
     date.setDate(date.getDate() + days);
     return localDate(date);
   }
-  function hiddenPromptStatus(record) {
-    const value = promptDismissal(record, planningPromptKind);
+  function hiddenPromptStatus(record, kind = planningPromptKind) {
+    const value = promptDismissal(record, kind);
     if (value === "never") return "Bir daha önerilmeyecek";
     if (value === promptDay(1)) return "Yarın yeniden önerilecek";
     return `${formatDate(value)} tarihinde yeniden önerilecek`;
@@ -3506,6 +3528,42 @@ export async function startMainApp() {
         const kind = button.dataset.prompt;
         const record = state.records.find((item) => item.id === id);
         if (!record || !promptKinds[kind]) break;
+        const fromSettings = button.closest(".settings-hidden-prompts");
+        if (fromSettings) {
+          const rows = [...fromSettings.querySelectorAll("[data-hidden-record]")];
+          const index = rows.indexOf(button.closest("[data-hidden-record]"));
+          let next;
+          try {
+            next = withPromptDismissal(record, kind, null);
+          } catch (error) {
+            toast(error.message, true);
+            break;
+          }
+          if (
+            saveRecords(
+              state.records.map((item) => (item.id === id ? next : item)),
+              "Öneriyi geri getirme",
+            )
+          )
+            toast("Kayıt yeniden önerilecek.");
+          const current = document.querySelector(
+            "#settings-dialog .settings-hidden-prompts",
+          );
+          if (current) {
+            current.outerHTML = settingsHiddenPromptsMarkup(true);
+            const section = document.querySelector(
+              "#settings-dialog .settings-hidden-prompts",
+            );
+            const buttons = section.querySelectorAll(
+              '[data-action="planning-prompt-restore"]',
+            );
+            (
+              buttons[Math.min(index, buttons.length - 1)] ||
+              section.querySelector("summary")
+            )?.focus({ preventScroll: true });
+          }
+          break;
+        }
         const dialog = document.querySelector("#planning-prompts-dialog");
         const restore = action === "planning-prompt-restore";
         const until = button.dataset.until;

@@ -351,3 +351,60 @@ test("a note's reminder tag turns due as its minute passes and opens the editor 
   await expect(editor.locator('[name="remindDate"]')).toBeFocused();
   await expect(editor.locator('[name="remind"]')).toBeChecked();
 });
+
+test("reminders set for later leave a numberless dot and name the next one in the tooltip", async ({
+  context,
+}) => {
+  await seed(context, {
+    notes: [
+      note("later", { text: "Raporu gönder", remindAt: "2026-11-09T10:00" }),
+      note("next", { text: "Numuneyi sor", remindAt: "2026-11-08T17:30" }),
+    ],
+  });
+  const page = await context.newPage();
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/");
+  const bell = page.locator("#reminder-button");
+  const dot = () =>
+    bell.evaluate((item) => getComputedStyle(item, "::after").content);
+  await expect(bell).toHaveClass(/has-upcoming/);
+  await expect(bell).not.toHaveClass(/is-due/);
+  await expect(bell.locator(".reminder-count")).toBeHidden();
+  expect(await dot()).toBe('""');
+  await expect(bell).toHaveAttribute(
+    "title",
+    "2 yaklaşan hatırlatma · sıradaki: Bugün 17:30",
+  );
+  await expect(bell).toHaveAccessibleName(
+    "Hatırlatmalar: 2 yaklaşan hatırlatma · sıradaki: Bugün 17:30",
+  );
+
+  // When one comes due the count takes over and the dot steps aside.
+  await context.clock.setFixedTime(new Date("2026-11-08T14:31:00.000Z"));
+  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await expect(bell.locator(".reminder-count")).toHaveText("1");
+  await expect(bell).toHaveClass(/is-due/);
+  await expect(bell).not.toHaveClass(/has-upcoming/);
+  expect(await dot()).toBe("none");
+  await expect(bell).toHaveAttribute(
+    "title",
+    "1 hatırlatmanın zamanı geldi · 1 yaklaşan hatırlatma · sıradaki: Yarın 10:00",
+  );
+
+  // Finishing the last one clears the bell completely.
+  await bell.click();
+  await page.locator('#reminder-panel [data-reminder="done"]').click();
+  await page.keyboard.press("Escape");
+  await expect(bell).toHaveClass(/has-upcoming/);
+  await page.evaluate(
+    ({ key }) => {
+      const data = JSON.parse(localStorage.getItem(key));
+      data.odak.notes = data.odak.notes.map(({ remindAt, ...rest }) => rest);
+      localStorage.setItem(key, JSON.stringify(data));
+    },
+    { key: KEY },
+  );
+  await page.reload();
+  await expect(bell).not.toHaveClass(/has-upcoming/);
+  await expect(bell).toHaveAttribute("title", "Hatırlatmalar");
+});

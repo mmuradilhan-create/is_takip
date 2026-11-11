@@ -93,7 +93,9 @@ HATIRLATMALAR (1.4.0)
 
 Notlar kartında not eklerken veya düzenlerken Hatırlat seçilip tarih ve saat
 girilir. Üst çubuktaki zil, zamanı gelen hatırlatma sayısını gösterir; zile
-tıklayınca Tamam, 1 saat ve Yarın 09:00 seçenekleri çıkar. ODAK açıkken
+tıklayınca Tamam, 1 saat ve Yarın 09:00 seçenekleri çıkar.
+Zamanı gelmemiş hatırlatmalar sayılmaz; zilde sayısız gri bir nokta durur,
+üzerine gelince yaklaşan sayısı ve sıradaki saat yazar. ODAK açıkken
 zamanı gelen hatırlatma bir kez kısa uyarıyla bildirilir; ses veya Windows
 bildirimi yoktur. Widget açıksa zamanı gelenler widget'ın en üstünde durur.
 ODAK ve widget kapalıyken hatırlatma çalmaz; açılınca kaçırılanlar görünür.

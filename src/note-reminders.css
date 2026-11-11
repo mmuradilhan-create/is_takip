@@ -133,6 +133,35 @@
   background: #fdefd3;
 }
 
+/* A quiet, numberless dot: reminders are set but none is due yet. */
+.topbar .reminder-trigger.has-upcoming::after {
+  content: "";
+  position: absolute;
+  top: 7px;
+  right: 8px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #8c9a88;
+}
+
+/* The bell follows the dark Undo and Settings buttons until a reminder is due. */
+[data-theme="dark"] .topbar .reminder-trigger:not(.is-due) {
+  color: var(--theme-muted);
+  background: var(--theme-raised);
+  border-color: var(--theme-border);
+}
+
+[data-theme="dark"] .topbar .reminder-trigger:not(.is-due):hover {
+  color: var(--theme-accent);
+  background-color: var(--theme-hover);
+  border-color: #626a74;
+}
+
+[data-theme="dark"] .topbar .reminder-trigger.has-upcoming::after {
+  background: #9aa898;
+}
+
 .reminder-count {
   position: absolute;
   top: -6px;

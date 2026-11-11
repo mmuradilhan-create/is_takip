@@ -22,8 +22,8 @@ const closeIcon =
 const TICK = 20000;
 
 /**
- * The top bar bell: a badge for reminders that are due, a panel to finish or
- * snooze them, and one in-app alert per reminder while this window is open.
+ * The top bar bell: a badge for reminders that are due, a quiet dot and a
+ * tooltip for ones set for later, a panel to finish or snooze them, and one in-app alert per reminder while this window is open.
  * Every change goes through the notes save path, so it is one Undo step.
  */
 export function createReminderBell({
@@ -94,21 +94,30 @@ export function createReminderBell({
   function refresh() {
     if (destroyed) return;
     const notes = readNotes();
-    const due = dueReminders(notes, now());
+    const at = now();
+    const due = dueReminders(notes, at);
+    const upcoming = upcomingReminders(notes, at);
     count.textContent = String(due.length);
     count.hidden = !due.length;
     button.classList.toggle("is-due", due.length > 0);
+    // Reminders set for later only leave a quiet dot; the count is for due ones.
+    button.classList.toggle(
+      "has-upcoming",
+      !due.length && upcoming.length > 0,
+    );
+    const parts = [];
+    if (due.length) parts.push(`${due.length} hatırlatmanın zamanı geldi`);
+    if (upcoming.length)
+      parts.push(
+        `${upcoming.length} yaklaşan hatırlatma · sıradaki: ${formatReminder(upcoming[0].remindAt, new Date(at))}`,
+      );
+    const summary = parts.join(" · ");
     button.setAttribute(
       "aria-label",
-      due.length
-        ? `Hatırlatmalar: ${due.length} hatırlatmanın zamanı geldi`
-        : "Hatırlatmalar",
+      summary ? `Hatırlatmalar: ${summary}` : "Hatırlatmalar",
     );
-    button.title = due.length
-      ? `${due.length} hatırlatmanın zamanı geldi`
-      : "Hatırlatmalar";
+    button.title = summary || "Hatırlatmalar";
     // Note tags turn amber as their minute passes, without a full render.
-    const at = now();
     for (const tag of root.querySelectorAll(
       ".workspace-note-reminder[data-remind-at]",
     )) {

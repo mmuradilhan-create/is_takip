@@ -72,7 +72,7 @@ async function expectTrailingIcon(surface, titleSelector, withNote = true) {
       return {
         afterTitle: Boolean(
           title.compareDocumentPosition(waiting) &
-            Node.DOCUMENT_POSITION_FOLLOWING,
+          Node.DOCUMENT_POSITION_FOLLOWING,
         ),
         sameTitleGroup: title.parentElement === waiting.parentElement,
         sharesNoteGroup:
@@ -361,9 +361,7 @@ test("click and keyboard activation open the waiting editor directly while previ
   await expect(field).toHaveAccessibleDescription(
     "Enter ile kaydet, Shift+Enter ile alt satıra geç.",
   );
-  await expect(
-    detail(page).locator("#waiting-details-shortcuts"),
-  ).toBeVisible();
+  await expect(detail(page).locator("#waiting-details-shortcuts")).toBeHidden();
   await expect(field).toHaveValue(UNSAFE_REASON);
   await field.fill("Ölçüm sonucu bekleniyor.");
   await field.press("Shift+Enter");

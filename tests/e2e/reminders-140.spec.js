@@ -98,7 +98,8 @@ test("a note gets, shows and drops a dated reminder in its editor", async ({
   await editor.locator('[name="text"]').fill("Toplantı notlarını paylaş");
   await expect(editor.locator(".workspace-note-remind-when")).toBeHidden();
   await editor.locator('[name="remind"]').check();
-  await expect(editor.locator('[name="remindTime"]')).toBeFocused();
+  // Turning the reminder on keeps focus on the toggle.
+  await expect(editor.locator('[name="remind"]')).toBeFocused();
   // The default is the next full hour today.
   await expect(editor.locator('[name="remindDate"]')).toHaveValue("08.11.2026");
   await expect(editor.locator('[name="remindTime"]')).toHaveValue("16:00");
@@ -429,4 +430,72 @@ test("a reminder at an odd minute can be moved to any other minute", async ({
   await editor.locator('[type="submit"]').click();
   await expect(editor).toBeHidden();
   expect((await notesOf(page))[0].remindAt).toBe("2026-11-08T15:00");
+});
+
+test("reminder date and time move with arrow buttons and keys in 24-hour quarters", async ({
+  context,
+}) => {
+  await seed(context, {
+    notes: [
+      note("odd", { text: "Teklifi kontrol et", remindAt: "2026-11-12T09:07" }),
+    ],
+  });
+  const page = await context.newPage();
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/");
+  await page.locator('[data-action="workspace-note-edit"]').click();
+  const editor = page.locator("#workspace-note-editor");
+  const date = editor.locator('[name="remindDate"]');
+  const time = editor.locator('[name="remindTime"]');
+  await expect(date).toHaveValue("12.11.2026");
+  await expect(time).toHaveValue("09:07");
+  await expect(time).toHaveAttribute("type", "text");
+
+  await editor.getByRole("button", { name: "Sonraki gün" }).click();
+  await expect(date).toHaveValue("13.11.2026");
+  await editor.getByRole("button", { name: "Önceki gün" }).click();
+  await editor.getByRole("button", { name: "Önceki gün" }).click();
+  await expect(date).toHaveValue("11.11.2026");
+  await date.focus();
+  await page.keyboard.press("ArrowUp");
+  await expect(date).toHaveValue("12.11.2026");
+
+  // Minutes snap to :00, :15, :30 and :45.
+  await editor.getByRole("button", { name: "15 dakika sonra" }).click();
+  await expect(time).toHaveValue("09:15");
+  await editor.getByRole("button", { name: "15 dakika sonra" }).click();
+  await expect(time).toHaveValue("09:30");
+  await editor.getByRole("button", { name: "15 dakika önce" }).click();
+  await expect(time).toHaveValue("09:15");
+  // On the hour part the arrows move hours; on the minute part quarters.
+  await time.focus();
+  await time.evaluate((input) => input.setSelectionRange(0, 0));
+  await page.keyboard.press("ArrowUp");
+  await expect(time).toHaveValue("10:15");
+  await time.evaluate((input) => input.setSelectionRange(4, 4));
+  await page.keyboard.press("ArrowDown");
+  await expect(time).toHaveValue("10:00");
+  await page.keyboard.press("ArrowDown");
+  await expect(time).toHaveValue("09:45");
+
+  // Quarters roll the date over midnight; typed times are 24-hour.
+  await time.fill("23:50");
+  await editor.getByRole("button", { name: "15 dakika sonra" }).click();
+  await expect(time).toHaveValue("00:00");
+  await expect(date).toHaveValue("13.11.2026");
+  await time.fill("1430");
+  await time.blur();
+  await expect(time).toHaveValue("14:30");
+  await editor.locator('[type="submit"]').click();
+  await expect(editor).toBeHidden();
+  expect((await notesOf(page))[0].remindAt).toBe("2026-11-13T14:30");
+
+  // A time that is not a 24-hour clock value is refused with a hint.
+  await page.locator('[data-action="workspace-note-edit"]').click();
+  await time.fill("25:00");
+  await editor.locator('[type="submit"]').click();
+  await expect(editor.locator("#workspace-note-error")).toContainText(
+    "24 saat",
+  );
+  expect((await notesOf(page))[0].remindAt).toBe("2026-11-13T14:30");
 });

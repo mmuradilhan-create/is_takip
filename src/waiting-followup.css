@@ -271,7 +271,8 @@
   outline: none;
 }
 
-[data-followup-history-heading]:focus-visible {
+:root[data-focus-source="keyboard"]
+  [data-followup-history-heading]:focus-visible {
   text-decoration: underline;
   text-underline-offset: 3px;
 }

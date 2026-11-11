@@ -37,11 +37,13 @@
   text-decoration: none;
 }
 
-.dashboard-rows
+:root[data-focus-source="keyboard"]
+  .dashboard-rows
   .dashboard-bottom-row
   .dashboard-detail-card:focus-visible
   :is(.dashboard-goal-title, .followup-title),
-.dashboard-rows
+:root[data-focus-source="keyboard"]
+  .dashboard-rows
   .dashboard-bottom-row
   .dashboard-detail-card
   :is(.dashboard-goal-title, .followup-title):focus-visible {
@@ -71,7 +73,8 @@
   box-shadow: none;
 }
 
-.dashboard-rows
+:root[data-focus-source="keyboard"]
+  .dashboard-rows
   .dashboard-bottom-row
   button.followup-detail-trigger:focus-visible {
   text-decoration: underline;

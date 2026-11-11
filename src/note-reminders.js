@@ -108,3 +108,54 @@ export function withNoteReminder(notes, id, remindAt, updatedAt) {
   if (!found) throw new Error("Bu not artık bulunamıyor.");
   return next;
 }
+
+/**
+ * A typed 24-hour time as "HH:MM", or null. Accepts "9", "09", "930",
+ * "0930", "9:30", "9.30" and "9,30".
+ */
+export function parseReminderTime(text) {
+  const value = String(text ?? "").trim();
+  const match =
+    /^(\d{1,2})(?:[:.,](\d{1,2}))?$/.exec(value) ||
+    /^(\d{1,2})(\d{2})$/.exec(value);
+  if (!match) return null;
+  const hour = Number(match[1]);
+  const minute = Number(match[2] ?? 0);
+  if (hour > 23 || minute > 59 || (match[2] && match[2].length !== 2))
+    return null;
+  return `${pad(hour)}:${pad(minute)}`;
+}
+
+/**
+ * Move a reminder's date and time together. Days and hours keep the minutes;
+ * minutes move to the next or previous multiple of the step first
+ * (09:07 +15 → 09:15). Every step rolls the date over midnight.
+ */
+export function stepReminder(
+  date,
+  time,
+  { days = 0, hours = 0, minutes = 0 } = {},
+) {
+  const remindAt = `${date}T${time}`;
+  const start = reminderTime(remindAt);
+  if (start === null) throw new Error("Hatırlatma zamanı geçersiz.");
+  const at = new Date(start);
+  if (days) at.setDate(at.getDate() + days);
+  if (hours) at.setHours(at.getHours() + hours);
+  if (minutes) {
+    const size = Math.abs(minutes);
+    const current = at.getHours() * 60 + at.getMinutes();
+    const aligned = current % size === 0;
+    const target =
+      minutes > 0
+        ? aligned
+          ? current + size
+          : Math.ceil(current / size) * size
+        : aligned
+          ? current - size
+          : Math.floor(current / size) * size;
+    at.setHours(0, target, 0, 0);
+  }
+  const minute = localMinute(at);
+  return { date: minute.slice(0, 10), time: minute.slice(11) };
+}

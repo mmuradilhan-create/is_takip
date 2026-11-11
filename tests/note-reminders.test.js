@@ -5,7 +5,9 @@ import {
   dueReminders,
   formatReminder,
   localMinute,
+  parseReminderTime,
   reminderTime,
+  stepReminder,
   snoozedMinute,
   upcomingReminders,
   withNoteReminder,
@@ -183,4 +185,58 @@ test("postponed or hidden planning suggestions leave their list and stay reachab
   assert.equal(restored.updatedAt, hidden.updatedAt);
   assert.throws(() => withPromptDismissal(hidden, "unknown", "never"));
   assert.throws(() => withPromptDismissal(hidden, "waiting", "sonra"));
+});
+
+test("typed reminder times are read as 24-hour clock values", () => {
+  for (const [text, time] of [
+    ["9", "09:00"],
+    ["09", "09:00"],
+    ["930", "09:30"],
+    ["0930", "09:30"],
+    ["9:30", "09:30"],
+    ["14.05", "14:05"],
+    ["7,45", "07:45"],
+    [" 23:59 ", "23:59"],
+    ["0", "00:00"],
+  ])
+    assert.equal(parseReminderTime(text), time, text);
+  for (const text of [
+    "",
+    "24",
+    "24:00",
+    "9:60",
+    "9:5",
+    "12345",
+    "ab",
+    "9 30",
+    null,
+  ])
+    assert.equal(parseReminderTime(text), null, String(text));
+});
+
+test("reminder steps move days, snap minutes to quarters and roll over midnight", () => {
+  assert.deepEqual(stepReminder("2026-11-12", "09:00", { days: 1 }), {
+    date: "2026-11-13",
+    time: "09:00",
+  });
+  assert.deepEqual(stepReminder("2026-12-31", "09:00", { days: 1 }), {
+    date: "2027-01-01",
+    time: "09:00",
+  });
+  assert.deepEqual(stepReminder("2026-03-01", "18:30", { days: -1 }), {
+    date: "2026-02-28",
+    time: "18:30",
+  });
+  const step = (time, minutes) => stepReminder("2026-11-12", time, { minutes });
+  assert.deepEqual(step("09:00", 15), { date: "2026-11-12", time: "09:15" });
+  assert.deepEqual(step("09:07", 15), { date: "2026-11-12", time: "09:15" });
+  assert.deepEqual(step("09:07", -15), { date: "2026-11-12", time: "09:00" });
+  assert.deepEqual(step("09:00", -15), { date: "2026-11-12", time: "08:45" });
+  assert.deepEqual(step("23:50", 15), { date: "2026-11-13", time: "00:00" });
+  assert.deepEqual(step("00:00", -15), { date: "2026-11-11", time: "23:45" });
+  const hour = (time, hours) => stepReminder("2026-11-12", time, { hours });
+  assert.deepEqual(hour("09:20", 1), { date: "2026-11-12", time: "10:20" });
+  assert.deepEqual(hour("23:20", 1), { date: "2026-11-13", time: "00:20" });
+  assert.deepEqual(hour("00:07", -1), { date: "2026-11-11", time: "23:07" });
+  assert.throws(() => stepReminder("2026-11-12", "25:00", { minutes: 15 }));
 });

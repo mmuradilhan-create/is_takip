@@ -97,6 +97,9 @@ girilir. Üst çubuktaki zil, zamanı gelen hatırlatma sayısını gösterir; z
 tıklayınca Tamam, 1 saat ve Yarın 09:00 seçenekleri çıkar.
 1 saat ertelemesi çeyrek saate yuvarlanır (18:53 -> 20:00); saat alanına
 istenen her dakika yazılabilir.
+Tarihin yanındaki < > düğmeleri ve yukarı/aşağı ok tuşları günü değiştirir.
+Saat 24 saat biçimindedir: < > düğmeleri 15'er dakika (:00 :15 :30 :45)
+ilerletir; imleç saatteyken ok tuşları 1 saat, dakikadayken 15 dakika değiştirir.
 Zamanı gelmemiş hatırlatmalar sayılmaz; zilde sayısız gri bir nokta durur,
 üzerine gelince yaklaşan sayısı ve sıradaki saat yazar. ODAK açıkken
 zamanı gelen hatırlatma bir kez kısa uyarıyla bildirilir; ses veya Windows

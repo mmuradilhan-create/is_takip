@@ -257,7 +257,8 @@ test("two-card previews retain access to every record while independent escaped 
   await expect(field(page)).toHaveAccessibleDescription(
     "Enter ile kaydet, Shift+Enter ile alt satıra geç.",
   );
-  await expect(dialog(page).locator("#workspace-note-shortcuts")).toBeVisible();
+  // The shortcut is described to assistive technology, not shown.
+  await expect(dialog(page).locator("#workspace-note-shortcuts")).toBeHidden();
   await field(page).fill(UNSAFE);
   await field(page).press("Shift+Enter");
   await field(page).pressSequentially("  Bağımsız ikinci satır.  ");

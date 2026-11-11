@@ -16,7 +16,9 @@
   background-color: #f4f8f2;
 }
 
-[data-record-row]:focus-visible :is(.task-name, .focus-title, .followup-title) {
+:root[data-focus-source="keyboard"]
+  [data-record-row]:focus-visible
+  :is(.task-name, .focus-title, .followup-title) {
   text-decoration: underline;
   text-underline-offset: 3px;
 }

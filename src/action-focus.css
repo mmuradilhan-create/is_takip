@@ -19,7 +19,8 @@
   box-shadow: none;
 }
 
-:is(#app, .calendar-dialog, .odak-date-picker)
+:root[data-focus-source="keyboard"]
+  :is(#app, .calendar-dialog, .odak-date-picker)
   :is(button, a, summary, [data-goal-section-heading]):focus-visible:not(
     :disabled
   ) {
@@ -28,7 +29,8 @@
   text-decoration-thickness: 1px;
 }
 
-:is(#app, .calendar-dialog, .odak-date-picker)
+:root[data-focus-source="keyboard"]
+  :is(#app, .calendar-dialog, .odak-date-picker)
   :is(button, a, summary):focus-visible:not(:disabled)
   svg {
   stroke-width: 2.4;

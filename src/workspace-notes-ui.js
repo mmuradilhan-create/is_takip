@@ -7,11 +7,13 @@ import {
   normalizeNotes,
   validRemindAt,
 } from "./workspace-notes.js";
-import { dateInput, dateValue } from "./date-picker.js";
+import { dateInput, dateValue, formatDateInput } from "./date-picker.js";
 import {
   defaultReminder,
   formatReminder,
+  parseReminderTime,
   reminderTime,
+  stepReminder,
 } from "./note-reminders.js";
 
 const escapeHtml = (value) =>
@@ -30,6 +32,11 @@ const deleteIcon =
   '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 14h10l1-14M10 11v6M14 11v6"/></svg>';
 const closeIcon =
   '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>';
+const chevron = (path) =>
+  `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${path}"/></svg>`;
+/** A small ‹ or › button that moves the reminder by days or minutes. */
+const stepButton = (unit, amount, label) =>
+  `<button type="button" class="reminder-step" data-reminder-step="${unit}" data-amount="${amount}" aria-label="${label}" title="${label}">${chevron(amount < 0 ? "m15 18-6-6 6-6" : "m9 18 6-6-6-6")}</button>`;
 export const bellIcon =
   '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9a6 6 0 1 1 12 0c0 6 2.5 7.5 2.5 7.5h-17S6 15 6 9Zm4 11a2 2 0 0 0 4 0"/></svg>';
 
@@ -83,10 +90,14 @@ export function createWorkspaceNotesUI({
     if (!remindToggle()?.checked) return null;
     const date = dateValue(dialog.querySelector('[name="remindDate"]'));
     if (!date) throw new Error("Hatırlatma için bir tarih seç.");
-    const time = dialog.querySelector('[name="remindTime"]').value;
+    const time = parseReminderTime(
+      dialog.querySelector('[name="remindTime"]').value,
+    );
     const remindAt = `${date}T${time}`;
-    if (!/^\d{2}:\d{2}$/.test(time) || !validRemindAt(remindAt))
-      throw new Error("Hatırlatma için geçerli bir saat seç.");
+    if (!time || !validRemindAt(remindAt))
+      throw new Error(
+        "Hatırlatma için 24 saat biçiminde bir saat yaz (14:30).",
+      );
     return remindAt;
   }
 
@@ -225,7 +236,7 @@ export function createWorkspaceNotesUI({
       dialog.setAttribute("aria-label", title);
       const reminder = note?.remindAt || defaultReminder();
       const reminding = Boolean(note?.remindAt);
-      dialog.innerHTML = `<form id="workspace-note-form"><div class="modal-header"><h2>${title}</h2><button type="button" class="close-modal" data-action="workspace-note-close" aria-label="Pencereyi kapat">${closeIcon}</button></div><div class="modal-body workspace-note-editor-body"><p class="workspace-note-availability" role="status" hidden></p><label class="field"><span id="workspace-note-label">Not</span><textarea name="text" rows="6" maxlength="${MAX_WORKSPACE_NOTE_LENGTH}" required aria-labelledby="workspace-note-label" aria-describedby="workspace-note-shortcuts" placeholder="Aklında kalmasını istediğin bir not yaz.">${escapeHtml(initialText)}</textarea><small id="workspace-note-shortcuts">Enter ile kaydet, Shift+Enter ile alt satıra geç.</small></label><fieldset class="workspace-note-reminder-fields" aria-label="Hatırlatma"><label class="workspace-note-remind-toggle"><input type="checkbox" name="remind"${reminding ? " checked" : ""}>${bellIcon}<span>Hatırlat</span></label><div class="workspace-note-remind-when"${reminding ? "" : " hidden"}><label class="field"><span>Tarih</span>${dateInput({ name: "remindDate", id: "workspace-note-remind-date", value: reminder.slice(0, 10), label: "Hatırlatma tarihi" })}</label><label class="field"><span>Saat</span><input type="time" name="remindTime" value="${escapeHtml(reminder.slice(11))}" aria-label="Hatırlatma saati"></label></div></fieldset><p id="workspace-note-error" class="error-message" role="alert" hidden></p></div><div class="modal-footer"><button type="button" class="btn" data-action="workspace-note-close">Vazgeç</button><button type="submit" class="btn primary">Kaydet</button></div></form>`;
+      dialog.innerHTML = `<form id="workspace-note-form"><div class="modal-header"><h2>${title}</h2><button type="button" class="close-modal" data-action="workspace-note-close" aria-label="Pencereyi kapat">${closeIcon}</button></div><div class="modal-body workspace-note-editor-body"><p class="workspace-note-availability" role="status" hidden></p><label class="field"><span id="workspace-note-label">Not</span><textarea name="text" rows="6" maxlength="${MAX_WORKSPACE_NOTE_LENGTH}" required aria-labelledby="workspace-note-label" aria-describedby="workspace-note-shortcuts" placeholder="Aklında kalmasını istediğin bir not yaz.">${escapeHtml(initialText)}</textarea><small id="workspace-note-shortcuts" hidden>Enter ile kaydet, Shift+Enter ile alt satıra geç.</small></label><fieldset class="workspace-note-reminder-fields" aria-label="Hatırlatma"><label class="workspace-note-remind-toggle"><input type="checkbox" name="remind"${reminding ? " checked" : ""}>${bellIcon}<span>Hatırlat</span></label><div class="workspace-note-remind-when"${reminding ? "" : " hidden"}><div class="field"><span>Tarih</span><div class="reminder-stepper">${stepButton("days", -1, "Önceki gün")}${dateInput({ name: "remindDate", id: "workspace-note-remind-date", value: reminder.slice(0, 10), label: "Hatırlatma tarihi" })}${stepButton("days", 1, "Sonraki gün")}</div></div><div class="field"><span>Saat</span><div class="reminder-stepper">${stepButton("minutes", -15, "15 dakika önce")}<input type="text" name="remindTime" class="reminder-time-input" value="${escapeHtml(reminder.slice(11))}" inputmode="numeric" autocomplete="off" maxlength="5" placeholder="SS:DD" aria-label="Hatırlatma saati (24 saat)" title="24 saat biçimi. Saat üzerinde ↑↓ 1 saat, dakika üzerinde ↑↓ 15 dakika değiştirir.">${stepButton("minutes", 15, "15 dakika sonra")}</div></div></div></fieldset><p id="workspace-note-error" class="error-message" role="alert" hidden></p></div><div class="modal-footer"><button type="button" class="btn" data-action="workspace-note-close">Vazgeç</button><button type="submit" class="btn primary">Kaydet</button></div></form>`;
       dialog.showModal();
       initialState = formState();
       const reminderField = dialog.querySelector('[name="remindDate"]');
@@ -388,16 +399,62 @@ export function createWorkspaceNotesUI({
   }
 
   function onDialogChange(event) {
+    if (event.target.matches?.('[name="remindTime"]')) {
+      const time = parseReminderTime(event.target.value);
+      if (time) event.target.value = time;
+      return;
+    }
     if (event.target !== remindToggle()) return;
     const when = dialog.querySelector(".workspace-note-remind-when");
     when.hidden = !event.target.checked;
-    if (event.target.checked)
-      dialog
-        .querySelector('[name="remindTime"]')
-        ?.focus({ preventScroll: true });
+  }
+
+  /** Move the reminder by days, hours or minutes; bad input restarts from the default. */
+  function stepReminderFields(step) {
+    const dateField = dialog.querySelector('[name="remindDate"]');
+    const timeField = dialog.querySelector('[name="remindTime"]');
+    if (!dateField || !timeField) return;
+    const fallback = defaultReminder();
+    const date = dateValue(dateField) || fallback.slice(0, 10);
+    const time = parseReminderTime(timeField.value) || fallback.slice(11);
+    const next = stepReminder(date, time, step);
+    dateField.value = formatDateInput(next.date);
+    timeField.value = next.time;
+    for (const target of [dateField, timeField])
+      target.dispatchEvent(new Event("input", { bubbles: true }));
+  }
+
+  function onReminderKeydown(event) {
+    if (event.altKey || event.ctrlKey || event.metaKey) return false;
+    const direction = { ArrowUp: 1, ArrowDown: -1 }[event.key];
+    if (!direction) return false;
+    const target = event.target;
+    if (target.matches?.('[name="remindDate"]')) {
+      event.preventDefault();
+      stepReminderFields({ days: direction });
+      return true;
+    }
+    if (!target.matches?.('[name="remindTime"]')) return false;
+    event.preventDefault();
+    // Like a clock field: the hour part moves hours, the minute part quarters.
+    const onHour = (target.selectionStart ?? 0) <= 2;
+    stepReminderFields(
+      onHour ? { hours: direction } : { minutes: 15 * direction },
+    );
+    if (onHour) target.setSelectionRange(0, 2);
+    else target.setSelectionRange(3, 5);
+    return true;
   }
 
   function onDialogClick(event) {
+    const step = event.target.closest?.("[data-reminder-step]");
+    if (step && dialog.contains(step) && !step.disabled) {
+      event.preventDefault();
+      stepReminderFields({
+        [step.dataset.reminderStep]: Number(step.dataset.amount),
+      });
+      return;
+    }
     const control = event.target.closest?.(
       '[data-action="workspace-note-close"]',
     );
@@ -408,7 +465,9 @@ export function createWorkspaceNotesUI({
   }
 
   function onKeydown(event) {
-    if (destroyed || saving || !dialog.open || !isPlainSaveEnter(event)) return;
+    if (destroyed || saving || !dialog.open) return;
+    if (onReminderKeydown(event)) return;
+    if (!isPlainSaveEnter(event)) return;
     const textarea = field();
     if (
       event.target !== textarea ||

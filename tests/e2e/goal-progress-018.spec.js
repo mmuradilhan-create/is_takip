@@ -128,17 +128,17 @@ for (const width of [1280, 1920]) {
     await expect(numeric.locator(".goal-progress-summary > span")).toHaveText(
       "5 / 100",
     );
-    await expect(numeric.locator(".metric-cell > strong")).toHaveText("%5");
+    // The percent sits in the progress box's value and tooltip.
+    await expect(
+      numeric.locator(".metric-cell .progress-chip"),
+    ).toHaveAttribute("title", `%5 · 5 / 100 ${LONG_METRIC}`);
     await expect(
       numeric.locator('.metric-cell [role="progressbar"]'),
     ).toHaveAttribute("aria-valuenow", "5");
     expect(await numeric.locator(".metric-cell").textContent()).not.toContain(
       LONG_METRIC,
     );
-    await expect(numeric.locator(".goal-progress-summary")).toHaveAttribute(
-      "title",
-      `5 / 100 ${LONG_METRIC}`,
-    );
+
     await expect(
       numeric.locator(".goal-progress-info, .metric-cell button"),
     ).toHaveCount(0);
@@ -202,7 +202,8 @@ for (const width of [1280, 1920]) {
       {
         type: "monthly",
         id: "progress-monthly",
-        summary: "3 alt hedef",
+        // A roll-up has no count of its own, so its box shows the percent.
+        summary: "%67",
         percent: 67,
         basis: "rollup",
         explanation: "3 bağlı haftalık hedefin ortalaması",
@@ -232,9 +233,11 @@ for (const width of [1280, 1920]) {
       await expect(
         target.locator('.metric-cell [role="progressbar"]'),
       ).toHaveAttribute("aria-valuenow", String(example.percent));
-      await expect(target.locator(".goal-progress-summary")).toHaveAttribute(
+      await expect(
+        target.locator(".metric-cell .progress-chip"),
+      ).toHaveAttribute(
         "title",
-        example.explanation,
+        `%${example.percent} · ${example.explanation}`,
       );
       await expect(
         target.locator(".goal-progress-info, .metric-cell button"),

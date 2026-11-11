@@ -189,9 +189,9 @@ test("creates, edits, completes, persists and safely unlinks daily work from wee
     dueDate: "2026-01-01",
   });
   await page.locator('#nav [data-view="weekly"]').click();
-  await expect(page.locator(".weekly-goal-row .metric-cell")).toContainText(
-    "%0",
-  );
+  await expect(
+    page.locator(".weekly-goal-row .metric-cell .progress-chip"),
+  ).toHaveAttribute("aria-valuenow", "0");
   await expandWeekly(page);
   await expect(
     page.locator("#goal-detail-panel .goal-child-list"),
@@ -206,9 +206,9 @@ test("creates, edits, completes, persists and safely unlinks daily work from wee
       .first(),
     "completed",
   );
-  await expect(page.locator(".weekly-goal-row .metric-cell")).toContainText(
-    "%100",
-  );
+  await expect(
+    page.locator(".weekly-goal-row .metric-cell .progress-chip"),
+  ).toHaveAttribute("aria-valuenow", "100");
   await page.reload();
   await page.locator('#nav [data-view="daily"]').click();
   await selectListStatus(page, "all");
@@ -292,11 +292,14 @@ test("existing migrated records keep measurements, periods, original fields and 
   });
   await seedRecords(page, [...records, monthly]);
   await page.locator('#nav [data-view="monthly"]').click();
-  await expect(page.locator(".metric-cell")).toContainText("%70");
-  await page.locator('#nav [data-view="weekly"]').click();
-  await expect(page.locator(".weekly-goal-row .metric-cell")).toContainText(
-    "%50",
+  await expect(page.locator(".metric-cell .progress-chip")).toHaveAttribute(
+    "aria-valuenow",
+    "70",
   );
+  await page.locator('#nav [data-view="weekly"]').click();
+  await expect(
+    page.locator(".weekly-goal-row .metric-cell .progress-chip"),
+  ).toHaveAttribute("aria-valuenow", "50");
   await expandWeekly(page, "weekly-plan");
   await expect(page.locator("#goal-detail-panel .goal-child-row")).toHaveCount(
     1,
@@ -1281,9 +1284,9 @@ test("dashboard exposes active daily work with fixed order, filters, scrolling a
       .status,
   ).toBe("completed");
   await page.locator('#nav [data-view="weekly"]').click();
-  await expect(page.locator(".weekly-goal-row .metric-cell")).toContainText(
-    "%100",
-  );
+  await expect(
+    page.locator(".weekly-goal-row .metric-cell .progress-chip"),
+  ).toHaveAttribute("aria-valuenow", "100");
   await page.locator('#nav [data-view="dashboard"]').click();
   await attentionPanel
     .locator('li[data-id="waiting-earliest"] .followup-title')

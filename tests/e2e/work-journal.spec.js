@@ -565,8 +565,8 @@ test("weekly goals retain numeric progress and exact historical work across stat
   const saved = await readSaved(page);
   await page.locator('#nav [data-view="weekly"]').click();
   await expect(
-    row(page, "journal-weekly").locator(".metric-cell"),
-  ).toContainText("%40");
+    row(page, "journal-weekly").locator(".metric-cell .progress-chip"),
+  ).toHaveAttribute("aria-valuenow", "40");
   await expect(
     row(page, "journal-weekly").locator(".weekly-work-time"),
   ).toHaveCount(0);

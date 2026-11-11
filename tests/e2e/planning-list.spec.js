@@ -222,7 +222,8 @@ test("planning screens share compact rows and weekly details open separately wit
     expect(dimensions.actions).toBeCloseTo(actionWidth, 1);
     expect(dimensions.actionHeader).toBeCloseTo(actionWidth, 1);
     expect(dimensions.actionAlignment).toBe("flex-start");
-    if (type !== "daily") expect(dimensions.progress).toBeCloseTo(148, 1);
+    // Progress is a 112px column with a 96x30 box like status and date.
+    if (type !== "daily") expect(dimensions.progress).toBeCloseTo(112, 1);
     await expect(page.locator("#period-filter")).toHaveCount(
       type === "yearly" ? 0 : 1,
     );
@@ -327,15 +328,15 @@ test("linked panel refreshes after status changes and undo updates weekly progre
   const records = linkedFixture();
   await seed(page, records);
   await page.locator('#nav [data-view="weekly"]').click();
-  await expect(row(page, "weekly-plan").locator(".metric-cell")).toContainText(
-    "%33",
-  );
+  await expect(
+    row(page, "weekly-plan").locator(".metric-cell .progress-chip"),
+  ).toHaveAttribute("aria-valuenow", "33");
   await expand(page, "weekly-plan");
   await changeStatus(page, "daily-next", "completed");
   await expect(detail(page, "weekly-plan")).toBeVisible();
-  await expect(row(page, "weekly-plan").locator(".metric-cell")).toContainText(
-    "%67",
-  );
+  await expect(
+    row(page, "weekly-plan").locator(".metric-cell .progress-chip"),
+  ).toHaveAttribute("aria-valuenow", "67");
   const changed = await readRecords(page);
   expect(changed.map((record) => record.id)).toEqual(
     records.map((record) => record.id),
@@ -353,9 +354,9 @@ test("linked panel refreshes after status changes and undo updates weekly progre
   await page.getByRole("button", { name: "Geri al", exact: true }).click();
   expect(await readRecords(page)).toEqual(records);
   await expect(detail(page)).toBeVisible();
-  await expect(row(page, "weekly-plan").locator(".metric-cell")).toContainText(
-    "%33",
-  );
+  await expect(
+    row(page, "weekly-plan").locator(".metric-cell .progress-chip"),
+  ).toHaveAttribute("aria-valuenow", "33");
   await expect(detail(page, "weekly-plan")).toBeVisible();
   await detail(page, "weekly-plan")
     .getByRole("button", { name: "İkinci adımı hazırla", exact: true })
@@ -408,8 +409,8 @@ test("measured goals keep their numerical progress while linked work and empty g
   await seed(page, records);
   await page.locator('#nav [data-view="weekly"]').click();
   await expect(
-    row(page, "weekly-measured").locator(".metric-cell"),
-  ).toContainText("%70");
+    row(page, "weekly-measured").locator(".metric-cell .progress-chip"),
+  ).toHaveAttribute("aria-valuenow", "70");
   await expect(
     row(page, "weekly-measured").locator(".metric-cell"),
   ).toContainText(/7\s*\/\s*10/);
@@ -419,8 +420,8 @@ test("measured goals keep their numerical progress while linked work and empty g
   );
   await changeStatus(page, "measured-next", "completed");
   await expect(
-    row(page, "weekly-measured").locator(".metric-cell"),
-  ).toContainText("%70");
+    row(page, "weekly-measured").locator(".metric-cell .progress-chip"),
+  ).toHaveAttribute("aria-valuenow", "70");
   await expect(detail(page).locator(".goal-panel-body")).toContainText(
     /2\s*\/\s*2/,
   );

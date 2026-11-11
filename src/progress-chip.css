@@ -1,0 +1,62 @@
+/* Goal list progress: one framed box like status, priority and date. */
+.full-table.record-table > thead > tr > th.progress-col {
+  width: var(--record-column-width, 112px);
+}
+
+.full-table.record-table > thead > tr > th.progress-col,
+.full-table.record-table > tbody > tr > td.metric-cell {
+  padding-right: 8px;
+  padding-left: 8px;
+}
+
+.full-table .metric-cell .progress-chip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--record-control-width, 96px);
+  max-width: 100%;
+  height: 30px;
+  overflow: hidden;
+  border: 1px solid var(--theme-border, #cfdcc8);
+  border-radius: 6px;
+  background: var(--theme-raised, #fff);
+  color: var(--theme-ink, #2f5a3f);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 12px;
+  font-variant-numeric: tabular-nums;
+  cursor: default;
+}
+
+.full-table .metric-cell .progress-chip-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  max-width: 100%;
+  background: #e2eedb;
+}
+
+.full-table .metric-cell .progress-chip.is-complete {
+  border-color: #a9c79e;
+}
+
+.full-table .metric-cell .progress-chip > .goal-progress-summary {
+  position: relative;
+  display: block;
+  max-width: 100%;
+  margin: 0;
+  padding: 0 6px;
+  overflow: hidden;
+  color: inherit;
+  font: inherit;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+[data-theme="dark"] .full-table .metric-cell .progress-chip-fill {
+  background: #2c4434;
+}
+
+[data-theme="dark"] .full-table .metric-cell .progress-chip.is-complete {
+  border-color: #4f7a5c;
+}

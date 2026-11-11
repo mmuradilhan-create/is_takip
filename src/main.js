@@ -68,6 +68,7 @@ import "./note-reminders.css";
 import "./planning-dismiss.css";
 import "./settings-hidden-prompts.css";
 import "./window-min-size.css";
+import "./progress-chip.css";
 import { trackKeyboardFocus } from "./keyboard-focus.js";
 import { bellIcon, createWorkspaceNotesUI } from "./workspace-notes-ui.js";
 import { normalizeNotes, notesFromBackup } from "./workspace-notes.js";
@@ -1234,11 +1235,13 @@ export async function startMainApp() {
         : progress.basis === "linked"
           ? `${progress.completed} / ${progress.total}`
           : progress.basis === "rollup"
-            ? `${progress.total} alt hedef`
+            ? `%${progress.percent}`
             : record.status === "completed"
               ? "Tamamlandı"
               : "Ölçüm yok";
-    return `<td class="metric-cell progress-col"><strong>%${progress.percent}</strong><div class="progress-track" role="progressbar" aria-label="${esc(record.title)} ilerlemesi" aria-valuenow="${progress.percent}" aria-valuemin="0" aria-valuemax="100"><span style="width:${progress.percent}%"></span></div><small class="goal-progress-summary" title="${esc(progressDescription(record, progress))}"><span>${esc(summary)}</span></small></td>`;
+    // One framed 96x30 box like status and date: it fills as progress grows.
+    const detail = `%${progress.percent} · ${progressDescription(record, progress)}`;
+    return `<td class="metric-cell progress-col"><div class="progress-chip${progress.percent >= 100 ? " is-complete" : ""}" role="progressbar" aria-label="${esc(record.title)} ilerlemesi" aria-valuenow="${progress.percent}" aria-valuemin="0" aria-valuemax="100" aria-valuetext="${esc(detail)}" title="${esc(detail)}"><span class="progress-chip-fill" style="width:${progress.percent}%" aria-hidden="true"></span><span class="goal-progress-summary"><span>${esc(summary)}</span></span></div></td>`;
   }
   function table(records, nested = false) {
     if (!records.length) {

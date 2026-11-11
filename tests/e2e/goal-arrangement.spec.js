@@ -188,7 +188,10 @@ test("weekly add-step action opens a linked daily draft without changing the goa
   await expect(weekly.locator(".weekly-work-time, .linked-toggle")).toHaveCount(
     0,
   );
-  await expect(weekly.locator(".metric-cell")).toContainText("%40");
+  await expect(weekly.locator(".metric-cell .progress-chip")).toHaveAttribute(
+    "aria-valuenow",
+    "40",
+  );
   await weekly.locator('.goal-add-step[data-action="new-linked"]').click();
   const form = page.locator("#record-form");
   await expect(form.locator('select[name="type"]')).toHaveValue("daily");

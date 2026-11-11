@@ -1,0 +1,46 @@
+/* Each open or paused work in the sidebar card reaches its work journal. */
+.sidebar .work-session-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+.sidebar .work-session-heading > .work-session-task-link {
+  flex: 1 1 auto;
+  width: auto;
+}
+
+.work-paused-row {
+  grid-template-columns: minmax(0, 1fr) auto 22px;
+}
+
+.sidebar .work-journal-slot {
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+
+.sidebar .work-journal-slot[hidden] {
+  display: none;
+}
+
+.sidebar .work-journal-slot > .work-journal-trigger.row-icon-action {
+  flex: 0 0 22px;
+  width: 22px;
+  min-width: 22px;
+  height: 22px;
+  min-height: 22px;
+  padding: 4px;
+  border-radius: 5px;
+}
+
+.sidebar .work-journal-slot > .work-journal-trigger.row-icon-action > svg {
+  flex: 0 0 13px;
+  width: 13px;
+  height: 13px;
+}
+
+.work-running-summary > .work-running-title {
+  flex: 1 1 auto;
+}

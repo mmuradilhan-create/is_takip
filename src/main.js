@@ -62,6 +62,7 @@ import "./sticky-topbar.css";
 import "./dashboard-weekly-paging.css";
 import "./waiting-last-followup.css";
 import "./waiting-table-controls.css";
+import "./work-card-journal.css";
 import { createWorkspaceNotesUI } from "./workspace-notes-ui.js";
 import { normalizeNotes, notesFromBackup } from "./workspace-notes.js";
 import { exportWorkDrafts, workDraftsFromBackup } from "./work-draft-backup.js";
@@ -2711,6 +2712,8 @@ export async function startMainApp() {
       workspaceStorageKey: STORAGE_KEY,
       onRunningChange: refreshDashboardRunningOrder,
       onHistory: () => workJournal?.openWeek(),
+      journalButton: (record) =>
+        workJournal?.button(record, { compact: true }) || "",
       onCompleteSession: (recordId, draft) => {
         const record = state.records.find((r) => r.id === recordId);
         if (!record || record.type !== "daily") {

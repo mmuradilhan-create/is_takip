@@ -151,7 +151,11 @@ async function desktopGeometry(page) {
       scroll: scrollY,
     };
   });
-  expect(Math.abs(bounds.focus.y - bounds.calendar.y)).toBeLessThanOrEqual(1);
+  // Below 1280px the calendar sits under current work so titles keep room.
+  if (bounds.width >= 1280)
+    expect(Math.abs(bounds.focus.y - bounds.calendar.y)).toBeLessThanOrEqual(1);
+  else
+    expect(bounds.calendar.y).toBeGreaterThanOrEqual(bounds.focus.bottom);
   if (bounds.width >= 1280)
     expect(
       Math.abs(bounds.focus.height - bounds.calendar.height),
@@ -163,7 +167,9 @@ async function desktopGeometry(page) {
   expect(
     Math.abs(bounds.attention.width - bounds.weekly.width),
   ).toBeLessThanOrEqual(1);
-  expect(bounds.attention.y).toBeGreaterThanOrEqual(bounds.focus.bottom);
+  expect(bounds.attention.y).toBeGreaterThanOrEqual(
+    Math.max(bounds.focus.bottom, bounds.calendar.bottom),
+  );
   expect(bounds.documentWidth).toBeLessThanOrEqual(bounds.width + 1);
   if (bounds.width >= 1280) {
     const compactHeight = bounds.height <= 740 ? 210 : 220;

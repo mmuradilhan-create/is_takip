@@ -4,7 +4,8 @@ import { expect } from "@playwright/test";
 export async function showAgenda(page) {
   const toggle = page.locator("#widget-view-toggle");
   await expect(toggle).toBeVisible();
-  if ((await toggle.getAttribute("aria-pressed")) !== "true")
+  const shell = page.locator(".widget-shell");
+  if ((await shell.getAttribute("data-view")) !== "agenda")
     await toggle.click();
   await expect(page.locator(".widget-shell")).toHaveAttribute(
     "data-view",

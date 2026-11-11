@@ -313,7 +313,9 @@ test("paused work resumes from the widget, the agenda stays one click away, and 
     "data-view",
     "agenda",
   );
-  await expect(toggle).toHaveAttribute("aria-pressed", "true");
+  // The label names the destination; there is no green pressed state.
+  await expect(toggle).toHaveText("Çalışma");
+  await expect(toggle).not.toHaveAttribute("aria-pressed");
   await expect(widget.locator(".widget-day-tabs")).toBeVisible();
   await expect(widget.locator("#widget-workbench")).toBeHidden();
   await toggle.click();

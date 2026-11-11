@@ -1,6 +1,6 @@
 # Odak
 
-PC kullanımına odaklanan, Türkçe kişisel iş ve hedef takibi. HTML/CSS/JavaScript tabanlıdır. Güncel sürüm: **1.4.2**.
+PC kullanımına odaklanan, Türkçe kişisel iş ve hedef takibi. HTML/CSS/JavaScript tabanlıdır. Güncel sürüm: **1.4.3**.
 
 ## Kullanım
 
@@ -183,7 +183,7 @@ Genel bakışta **Sırala** kontrolü yoktur. Sabit sıra **çalışan iş → g
 
 İş adı, durum, öncelik ve teslim tarihi masaüstünde ayrı sütunlardır; tamamlama solda, başlatma en sağdadır. Öncelik ve tarihe tıklamak hızlı düzenleyiciyi açar; kayıt formunu açmak gerekmez. Beklemede durumunun menüsünden bekleme nedeni ayrıca düzenlenebilir. Gerçek değişiklikler **Geri al** ile geri alınabilir.
 
-Masaüstünde Genel bakış iki sıradan oluşur. Üstte **Güncel işler** ve **Takvim** aynı yükseklikte biter. Altta **Takip gerekenler**, haftalık hedefler ve bağımsız **Notlar** eşit genişlikte, aynı hizada üç paneldir. Takip kartlarında sayfa geçilir; bütün haftalık hedeflere **Haftalık plan** bağlantısıyla ulaşılır. Alt paneller boşken de ilgili listeye gitme bağlantısı görünür. Kısa/dar pencerelerde normal sayfa kaydırması korunur. Diğer altı liste ekranının sayfa akışı değişmez.
+Masaüstünde Genel bakış iki sıradan oluşur. Üstte **Güncel işler** ve **Takvim** aynı yükseklikte biter. Altta **Takip gerekenler**, haftalık hedefler ve bağımsız **Notlar** eşit genişlikte, aynı hizada üç paneldir. Takip kartlarında sayfa geçilir; bütün haftalık hedeflere **Haftalık plan** bağlantısıyla ulaşılır. Alt paneller boşken de ilgili listeye gitme bağlantısı görünür. Kısa/dar pencerelerde normal sayfa kaydırması korunur. Pencere 1280 pikselden darsa Takvim, Güncel işler’in altına iner; iş başlıkları sıkışmaz. Ana pencere 960 pikselden daha fazla daraltılırsa sayfa daralmayı bırakır ve yana kayar; menü sayfayla birlikte kayar, üst çubuk yerinde kalır. 760 piksel ve altı telefon düzeni değişmez. Diğer altı liste ekranının sayfa akışı değişmez.
 
 Sağ üstteki **Takvim**, pazartesi başlayan kompakt ay görünümüyle açık kayıtların gerçek tarihlerini gösterir. Günlük işler ve haftalık/aylık hedeflerde **teslim tarihi**, bekleyen konularda yalnız **sonraki takip tarihi** kullanılır. Toplantıların eski teslim tarihleri ve senelik hedefler takvimde gösterilmez; yalnız hafta/ay dönemi belirtilmiş hedefe tarih uydurulmaz. Kapalı kayıtlar gösterilmez; bağlı iş ve takipler kendi tarihlerinde görünür.
 
@@ -208,7 +208,7 @@ Genel bakış, uygulama içinde kompakt özet ekranıdır. Sağ üstteki **Widge
 - Her işin yanında günlük işlerdeki **çalışma geçmişi** simgesi vardır; kaydı olan işte lila görünür. Simge, o işin kayıtlı sonuçlarını tarihleriyle widget'ın içinde gösterir; **Geri** veya Escape çalışma görünümüne döner. Düzenleme ana penceredeki iş günlüğünden yapılır.
 - Not ana pencerede ve widget'ta aynı anda değişirse hiçbiri sessizce üzerine yazılmaz: yazılan metin korunur, **Güncel notu yükle / Bu notu kaydet** seçenekleri çıkar.
 
-Başlıktaki **Ajanda** düğmesi ikinci plandaki ajandayı açar; aynı düğme (**Çalışma**) çalışma görünümüne döner. Ajandada **Bugün / Yarın** sekmeleri, takvimde ilgili güne ait açık teslim ve sonraki takip kayıtlarını gösterir. **Gecikenler**, teslim veya takip tarihi bugünden önce olan açık kayıtları en eski tarihten başlayarak gösterir; her kaydın gerçek tarihi görünür. Seçili listenin bütün kayıtlarına içeride kaydırarak ulaşılır; başlık ve sekmeler yerinde kalır. Ajanda salt okunurdur: sekme değiştirmek kayıtları değiştirmez; bir başlığa tıklamak ana uygulamadaki kaydını açar, **ODAK’ı aç** ana pencereye döner. Ana uygulamadaki değişiklikler ve geri alma widget'a anında yansır.
+Başlıktaki **Ajanda** düğmesi ikinci plandaki ajandayı açar; aynı düğme (**Çalışma**) çalışma görünümüne döner. Düğme seçili görünümü renkle işaretlemez; yazısı hangi görünüme geçileceğini söyler. Widget 300×320 pikselden küçültülürse içerik sıkışmaz, kaydırılarak okunur. Ajandada **Bugün / Yarın** sekmeleri, takvimde ilgili güne ait açık teslim ve sonraki takip kayıtlarını gösterir. **Gecikenler**, teslim veya takip tarihi bugünden önce olan açık kayıtları en eski tarihten başlayarak gösterir; her kaydın gerçek tarihi görünür. Seçili listenin bütün kayıtlarına içeride kaydırarak ulaşılır; başlık ve sekmeler yerinde kalır. Ajanda salt okunurdur: sekme değiştirmek kayıtları değiştirmez; bir başlığa tıklamak ana uygulamadaki kaydını açar, **ODAK’ı aç** ana pencereye döner. Ana uygulamadaki değişiklikler ve geri alma widget'a anında yansır.
 
 Ajanda görünümünde çalışılan günlük iş varsa altta iş adı ve **Çalışıyor / Duraklatıldı** durumu görünür. Geçersiz, kapanmış veya iş günlüğüne kaydedilmiş oturum gösterilmez. Widget'ı kapatmak, widget'ta başlatılıp çalışmakta olan işi duraklatır; not korunur.
 

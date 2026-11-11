@@ -147,7 +147,6 @@ export function startStandaloneWidget() {
     pane = next;
     const agenda = pane === "agenda";
     shell.dataset.view = pane;
-    paneToggle.setAttribute("aria-pressed", String(agenda));
     paneToggle.title = agenda ? "Çalışmaya dön" : "Ajandayı göster";
     paneToggle.querySelector("span").textContent = agenda
       ? "Çalışma"

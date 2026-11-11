@@ -49,6 +49,9 @@ Pencere boyutu ekranın kullanılabilir alanına uyar. Ana pencereyi başlığa
 çift tıklayarak normal boyuta döndürünce nominal 1920x1080 içerik ölçüsü,
 Windows ekran ölçeğine göre uygulanır; ekran küçükse kullanılabilir alana
 sığar. Nominal ölçü değiştirilmez. Widget küçük kalır.
+Ana pencere 960 pikselden fazla daraltılırsa sayfa sıkışmaz, yana kayar;
+1280 pikselden dar pencerede Takvim Güncel işler'in altına iner. Widget
+300x320 pikselden küçültülürse içerik kaydırılarak okunur.
 Ek bir kurulum veya yönetici izni gerekmez.
 Bu bir .exe uygulaması değildir; Chrome motoru ve mevcut Chrome profili
 kullanılır. Ayrı bir tarayıcı profili oluşturulmaz ve güvenlik ayarları

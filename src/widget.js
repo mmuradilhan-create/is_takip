@@ -35,9 +35,11 @@ export const widgetDocumentHtml = `<!doctype html>
     :root { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif; color:#294735; background:#f6f8f3; font-synthesis:none; color-scheme:light; }
     * { box-sizing:border-box; }
     html,body { width:100%; height:100%; margin:0; overflow:hidden; }
+    /* A smaller window scrolls instead of squeezing the widget. */
+    @media (max-width:299px), (max-height:319px) { html,body { overflow:auto; } }
     button { font:inherit; cursor:pointer; }
     button:focus-visible { outline:3px solid #87b89d; outline-offset:2px; }
-    .widget-shell { display:flex; flex-direction:column; gap:9px; width:100%; height:100%; height:100dvh; min-width:0; padding:12px; }
+    .widget-shell { display:flex; flex-direction:column; gap:9px; width:100%; height:100%; height:100dvh; min-width:300px; min-height:320px; padding:12px; }
     .widget-header { display:flex; align-items:center; justify-content:space-between; gap:12px; flex:0 0 auto; }
     .widget-header-tools { display:flex; align-items:center; gap:8px; }
     h1 { margin:0; color:#174d43; font-size:20px; line-height:1.2; font-weight:850; letter-spacing:2px; }
@@ -104,7 +106,7 @@ export const widgetDocumentHtml = `<!doctype html>
     [data-theme="dark"] #widget-session-time { color:#9dd8b7; }
     .widget-view-toggle { display:inline-flex; align-items:center; gap:5px; min-height:26px; padding:3px 8px; border:1px solid #dce5d7; border-radius:6px; color:#5d715a; background:#fff; font-size:11px; font-weight:600; }
     .widget-view-toggle svg { width:14px; height:14px; fill:none; stroke:currentColor; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
-    .widget-view-toggle[aria-pressed="true"] { color:#174d43; border-color:#a8c5a0; background:#eaf2e4; }
+    .widget-view-toggle:hover { background:#f0f5ec; }
     .widget-shell[data-view="work"] :is(.widget-day-tabs,.widget-work,.widget-session) { display:none; }
     .widget-shell[data-view="agenda"] .widget-workbench { display:none; }
     .widget-reminders { flex:0 0 auto; min-width:0; border:1px solid #e5c082; border-radius:10px; background:#fff6e3; }
@@ -206,7 +208,6 @@ export const widgetDocumentHtml = `<!doctype html>
     .wb-row-start.is-paused { border-color:#e2cf9e; background:#fbf6e8; color:#8a6a2a; }
     .wb-row-start.is-paused svg { fill:none; stroke:currentColor; stroke-width:1.8; stroke-linejoin:round; }
     [data-theme="dark"] :is(.widget-view-toggle,.wb-active,.wb-paused,.wb-upcoming,.wb-row-start,.wb-controls button,.wb-finish-controls button) { color:#d3d8d1; background:#18191b; border-color:#3d4249; }
-    [data-theme="dark"] .widget-view-toggle[aria-pressed="true"] { color:#c3e7ce; background:#263b2c; border-color:#719b74; }
     [data-theme="dark"] :is(.wb-title,.wb-row-title) { color:#e9eaec; }
     [data-theme="dark"] :is(.wb-note-label,.wb-row-due,.wb-idle,.wb-paused h2,.wb-upcoming h2) { color:#b7bbc2; }
     [data-theme="dark"] :is(.wb-paused h2,.wb-upcoming h2,.wb-row) { border-color:#353b40; }
@@ -222,7 +223,7 @@ export const widgetDocumentHtml = `<!doctype html>
 </head>
 <body>
   <main class="widget-shell" data-view="work">
-    <header class="widget-header"><h1>ODAK</h1><div class="widget-header-tools"><span class="widget-live">Çalışma</span><button type="button" class="widget-view-toggle" id="widget-view-toggle" aria-pressed="false" aria-controls="widget-agenda-views" title="Ajandayı göster"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4m8-4v4M4 10h16"/></svg><span>Ajanda</span></button><button type="button" class="widget-pin" id="widget-pin" aria-label="Üstte tut" aria-pressed="false" title="Üstte tut Windows paketiyle kullanılabilir." disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m16 3 5 5-4 1-3 4v4l-2 2-3-6-6-3 2-2h4l4-3zM9 15l-6 6"/></svg></button></div></header>
+    <header class="widget-header"><h1>ODAK</h1><div class="widget-header-tools"><span class="widget-live">Çalışma</span><button type="button" class="widget-view-toggle" id="widget-view-toggle" aria-controls="widget-agenda-views" title="Ajandayı göster"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4m8-4v4M4 10h16"/></svg><span>Ajanda</span></button><button type="button" class="widget-pin" id="widget-pin" aria-label="Üstte tut" aria-pressed="false" title="Üstte tut Windows paketiyle kullanılabilir." disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m16 3 5 5-4 1-3 4v4l-2 2-3-6-6-3 2-2h4l4-3zM9 15l-6 6"/></svg></button></div></header>
     <section class="widget-reminders" id="widget-reminders" aria-label="Zamanı gelen hatırlatmalar" hidden><ul id="widget-reminder-list"></ul></section>
     <section class="widget-workbench" id="widget-workbench" aria-label="Çalışma" data-mode="idle">
       <div class="wb-active" hidden><div class="wb-heading"><span class="wb-phase"></span><div class="wb-title-line"><button type="button" class="wb-title" data-wb="open"></button><span class="wb-heading-journal"></span></div></div><label class="wb-note-field"><span class="wb-note-label">Çalışma notu</span><textarea id="widget-work-note" maxlength="10000" placeholder="Çalışırken notlarını buraya yaz…"></textarea></label><p class="wb-error" role="alert" hidden></p><div class="wb-conflict" hidden><button type="button" data-wb="use-current">Güncel notu yükle</button><button type="button" data-wb="save-local">Bu notu kaydet</button></div><div class="wb-controls"><button type="button" class="wb-toggle" data-wb="toggle"></button><button type="button" class="wb-finish" data-wb="finish"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6h12v12H6z"/></svg><span>Bitir</span></button></div><div class="wb-finish-controls" hidden><button type="button" data-wb="finish-cancel">Vazgeç</button><button type="button" class="wb-save" data-wb="finish-save">Kaydet ve bitir</button></div></div>

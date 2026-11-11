@@ -1,0 +1,32 @@
+/*
+ * Below a usable width the app stops squeezing: the page keeps a fixed
+ * minimum and scrolls sideways instead. Phone-sized windows (760px and less)
+ * keep their own single-column layout.
+ */
+@media (min-width: 761px) and (max-width: 959px) {
+  .layout {
+    min-width: 960px;
+  }
+
+  /* The menu scrolls away with the page instead of covering it. */
+  .sidebar {
+    position: sticky;
+    inset: 0 auto auto auto;
+    top: 0;
+    align-self: start;
+    height: 100vh;
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .main {
+    grid-row: 1;
+  }
+}
+
+/* Current work keeps the full width until the calendar fits beside it. */
+@media (max-width: 1279px) {
+  .dashboard-rows > .dashboard-top-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

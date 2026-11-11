@@ -67,6 +67,7 @@ import "./waiting-age-chip.css";
 import "./note-reminders.css";
 import "./planning-dismiss.css";
 import "./settings-hidden-prompts.css";
+import "./window-min-size.css";
 import { bellIcon, createWorkspaceNotesUI } from "./workspace-notes-ui.js";
 import { normalizeNotes, notesFromBackup } from "./workspace-notes.js";
 import { exportWorkDrafts, workDraftsFromBackup } from "./work-draft-backup.js";

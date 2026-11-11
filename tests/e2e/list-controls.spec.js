@@ -25,6 +25,9 @@ const view = async (page, type) => {
   )
     await toggle.click();
   await page.locator(`#nav [data-view="${type}"]`).click();
+  // On phones the menu slides away; wait until it no longer covers the page.
+  if (await toggle.isVisible())
+    await expect(page.locator(".sidebar")).not.toBeInViewport();
 };
 const scope = (page, value) =>
   page.locator(`[data-action="list-scope"][data-scope="${value}"]`);
@@ -579,6 +582,9 @@ test("filters remain one reachable row beside a fixed native sort icon across ev
         );
         await expect(label.locator("svg")).toHaveCount(1);
         const geometry = await label.evaluate((element) => {
+          // Below 960px wide the page keeps its width and scrolls sideways,
+          // so the sort icon is reached by scrolling rather than squeezed.
+          element.scrollIntoView({ block: "nearest", inline: "nearest" });
           const box = element.getBoundingClientRect();
           const bar = element
             .closest(".list-controls-bar")
@@ -672,9 +678,14 @@ test("filters remain one reachable row beside a fixed native sort icon across ev
           `geometry-${type}-old`,
           `geometry-${type}-new`,
         ]);
+        // A normal-height window narrower than 960px keeps a 960px page.
         expect(
           await page.evaluate(
-            () => document.documentElement.scrollWidth <= innerWidth,
+            () =>
+              document.documentElement.scrollWidth <=
+              (innerWidth > 760 && innerWidth < 960 && innerHeight > 650
+                ? 960
+                : innerWidth),
           ),
         ).toBe(true);
         expect(await saved(page)).toBe(before);
@@ -700,7 +711,11 @@ test("filters remain one reachable row beside a fixed native sort icon across ev
       }
       expect(
         await page.evaluate(
-          () => document.documentElement.scrollWidth <= innerWidth,
+          () =>
+            document.documentElement.scrollWidth <=
+            (innerWidth > 760 && innerWidth < 960 && innerHeight > 650
+              ? 960
+              : innerWidth),
         ),
       ).toBe(true);
     }

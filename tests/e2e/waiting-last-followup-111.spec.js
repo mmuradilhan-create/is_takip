@@ -82,38 +82,15 @@ test("waiting rows keep edit and plus in the action column and put the follow-up
     ["closed", "Kapanmış konu: takip geçmişi"],
   ]) {
     const control = cell(id).locator(".waiting-followup-trigger");
+    await expect(control).toHaveCount(1);
     await expect(control).toHaveAttribute("aria-label", label);
-    const geometry = await cell(id).evaluate((td) => {
-      const date = td
-        .querySelector(".waiting-last-date")
-        .getBoundingClientRect();
-      const button = td
-        .querySelector(".waiting-followup-trigger")
-        .getBoundingClientRect();
-      return {
-        gap: button.left - date.right,
-        size: [button.width, button.height],
-        middle: Math.abs(
-          button.top + button.height / 2 - (date.top + date.height / 2),
-        ),
-        inside: button.right <= td.getBoundingClientRect().right + 0.5,
-      };
-    });
-    expect(geometry.gap).toBeGreaterThanOrEqual(4);
-    expect(geometry.size).toEqual([30, 30]);
-    expect(geometry.middle).toBeLessThanOrEqual(2);
-    expect(geometry.inside).toBe(true);
+    // 1.1.3: the last follow-up date is itself the follow-up button.
+    await expect(control.locator(".waiting-last-date")).toHaveCount(1);
   }
-  // 1.1.2: one fixed control format, like the daily and goal lists.
-  const lefts = await page
-    .locator(".waiting-last-cell > .waiting-followup-trigger")
-    .evaluateAll((items) =>
-      items.map((item) => item.getBoundingClientRect().left),
-    );
-  expect(new Set(lefts.map(Math.round)).size).toBe(1);
+  // One fixed control format, like the daily and goal lists.
   const controls = await page
     .locator(
-      ".waiting-table tbody td > .status-trigger, .waiting-table tbody td.waiting-next-col > .deadline-tag",
+      ".waiting-table tbody td > .status-trigger, .waiting-table tbody td.waiting-last-col > .waiting-followup-trigger, .waiting-table tbody td.waiting-next-col > .deadline-tag",
     )
     .evaluateAll((items) =>
       items.map((item) => {
@@ -121,7 +98,7 @@ test("waiting rows keep edit and plus in the action column and put the follow-up
         return `${Math.round(rect.width)}x${Math.round(rect.height)}`;
       }),
     );
-  expect(controls).toHaveLength(6);
+  expect(controls).toHaveLength(9);
   expect(new Set(controls)).toEqual(new Set(["112x30"]));
   await expect(
     cell("closed").locator(".waiting-followup-trigger svg path"),

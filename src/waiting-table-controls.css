@@ -32,25 +32,3 @@
   text-align: center;
   white-space: nowrap;
 }
-
-.waiting-table .waiting-last-cell > .waiting-followup-trigger {
-  flex: 0 0 30px;
-  width: 30px;
-  min-width: 30px;
-  height: 30px;
-  min-height: 30px;
-  padding: 6px;
-}
-
-.waiting-table .waiting-last-cell > .waiting-followup-trigger > svg {
-  flex: 0 0 14px;
-  width: 14px;
-  height: 14px;
-}
-
-/* The date reads on the left; every follow-up button lines up on the right. */
-.waiting-table .waiting-last-cell {
-  justify-content: space-between;
-  width: var(--waiting-control-width);
-  max-width: 100%;
-}

@@ -89,9 +89,7 @@ async function expectBottomCardControls(page, sideBySide) {
         ...waiting.querySelectorAll(".followup-card-actions > button"),
       ].map(rect),
       goalContents: [
-        ...card.querySelectorAll(
-          ".dashboard-goal-progress .progress-track, .goal-progress-label, .dashboard-goal-actions button",
-        ),
+        ...card.querySelectorAll(".dashboard-goal-actions button"),
       ].map(rect),
       waitingContents: [
         ...waiting.querySelectorAll(
@@ -521,7 +519,8 @@ test("goal body opens the panel at its top while nested goal, follow-up and date
   expect(await saved(page)).toBe(before);
   await expect(goal(page)).toHaveAttribute("role", "group");
   await expect(goal(page)).toHaveAttribute("tabindex", "0");
-  await goal(page).locator(".goal-progress-label").click();
+  // The card body (here its title) opens the panel at its top.
+  await goal(page).locator(".dashboard-goal-title").click();
   await expect(goalPanel(page)).toHaveAttribute("data-goal-id", "details-week");
   await expect(goalPanel(page).locator(".goal-panel-title")).toHaveText(
     "Karttan açılacak haftalık hedef",
@@ -804,7 +803,7 @@ test("touch cards open read-only details while nested date and follow-up control
     ).toBeFocused();
     // The narrow panel covers the background card until explicitly closed.
     await closeWaiting(page);
-    await goal(page).locator(".dashboard-goal-progress").tap();
+    await goal(page).locator(".dashboard-goal-title").tap();
     await expect(goalPanel(page)).toBeVisible();
     expect(
       await goalPanel(page)

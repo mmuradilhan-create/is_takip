@@ -222,8 +222,8 @@ test("planning screens share compact rows and weekly details open separately wit
     expect(dimensions.actions).toBeCloseTo(actionWidth, 1);
     expect(dimensions.actionHeader).toBeCloseTo(actionWidth, 1);
     expect(dimensions.actionAlignment).toBe("flex-start");
-    // Progress is a 112px column with a 96x30 box like status and date.
-    if (type !== "daily") expect(dimensions.progress).toBeCloseTo(112, 1);
+    // Progress: a 96x30 box like status and date, with room for − and +.
+    if (type !== "daily") expect(dimensions.progress).toBeCloseTo(162, 1);
     await expect(page.locator("#period-filter")).toHaveCount(
       type === "yearly" ? 0 : 1,
     );

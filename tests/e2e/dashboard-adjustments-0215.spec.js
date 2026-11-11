@@ -541,7 +541,9 @@ test("two-card pages keep every record reachable in both two-column and one-colu
   const progressAction = weekly(page).locator(
     '[data-action="goal-progress-open"]',
   );
-  await expect(progressAction).toHaveText("İlerleme");
+  await expect(progressAction).toHaveText(
+    /^(\d+ \/ \d+|%\d+|Ölçüm yok|Tamamlandı)$/,
+  );
   const childrenAction = weekly(page).locator(
     '[data-action="goal-children-open"]',
   );

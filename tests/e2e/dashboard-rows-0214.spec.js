@@ -317,7 +317,7 @@ test("dashboard keeps three compact desktop panels and moves notes below the two
         "data-action",
       );
       for (const [action, text] of [
-        ["goal-progress-open", "İlerleme"],
+        ["goal-progress-open", /^(\d+ \/ \d+|%\d+|Ölçüm yok|Tamamlandı)$/],
         ["goal-children-open", "Bağlı işler 0"],
       ]) {
         const button = goal.locator(`[data-action="${action}"]`);
@@ -593,7 +593,7 @@ test("one upcoming goal and one waiting card show their full content without a r
     await contained(childCount, goal);
     await contained(childCount, list);
     for (const [name, text] of [
-      ["goal-progress-open", "İlerleme"],
+      ["goal-progress-open", /^(\d+ \/ \d+|%\d+|Ölçüm yok|Tamamlandı)$/],
       ["goal-children-open", "Bağlı işler 1"],
     ]) {
       const action = goal.locator(`[data-action="${name}"]`);

@@ -1206,10 +1206,9 @@ test("dashboard exposes active daily work with fixed order, filters, scrolling a
   await expect(weeklyPanel.locator(".dashboard-goal-title")).toHaveText(
     weekly.title,
   );
-  await expect(weeklyPanel.locator('[role="progressbar"]')).toHaveAttribute(
-    "aria-valuenow",
-    "0",
-  );
+  await expect(
+    weeklyPanel.locator('[data-action="goal-progress-open"]'),
+  ).toHaveAttribute("data-progress", "0");
   await expectAttentionPageSize(6);
   expect((await readAttentionCards(page)).map((card) => card.id)).toEqual([
     "waiting-earliest",

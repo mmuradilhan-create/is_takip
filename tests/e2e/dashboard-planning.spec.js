@@ -328,7 +328,9 @@ test("the dashboard previews two current goals with numeric progress while the f
   const lastProgress = goal(page, "plan-current-second").locator(
     '[data-action="goal-progress-open"]',
   );
-  await expect(lastProgress).toHaveText("İlerleme");
+  await expect(lastProgress).toHaveText(
+    /^(\d+ \/ \d+|%\d+|Ölçüm yok|Tamamlandı)$/,
+  );
   await lastProgress.click();
   const lastPanel = page.locator("#goal-detail-panel");
   await expect(lastPanel).toBeVisible();
@@ -347,16 +349,16 @@ test("the dashboard previews two current goals with numeric progress while the f
   );
   await expect(goal(page, "plan-current-primary")).toBeVisible();
   await expect(goal(page, "plan-current-primary")).toContainText(UNSAFE_TITLE);
-  await expect(goal(page, "plan-current-primary")).toContainText(/%20|20%/);
-  await expect(
-    goal(page, "plan-current-primary").getByRole("progressbar"),
-  ).toHaveAttribute("aria-valuenow", "20");
-  await expect(
-    goal(page, "plan-current-primary").locator(".goal-progress-label"),
-  ).toHaveText("%20 · 2 / 10");
-  await expect(
-    goal(page, "plan-current-primary").getByRole("progressbar"),
-  ).toHaveAttribute("aria-valuetext", "%20 · 2 / 10 Ölçüm");
+  // The İlerleme button shows the count; percent and unit are its tooltip.
+  const primaryProgress = goal(page, "plan-current-primary").locator(
+    '[data-action="goal-progress-open"]',
+  );
+  await expect(primaryProgress).toHaveText("2 / 10");
+  await expect(primaryProgress).toHaveAttribute("data-progress", "20");
+  await expect(primaryProgress).toHaveAttribute("title", "%20 · 2 / 10 Ölçüm");
+  await expect(primaryProgress).toHaveAccessibleName(
+    /ilerleme, %20 · 2 \/ 10 Ölçüm$/,
+  );
   await expect(goal(page, "plan-current-primary")).not.toContainText(
     "Sekiz ölçümü daha gözden geçir.",
   );

@@ -786,6 +786,13 @@ boyutuna müdahale edilmez.
 Windows paketinde başlıktaki Üstte tut düğmesi widget'ı diğer pencerelerin
 üstünde tutar; tekrar basmak normal sıraya döndürür. Seçim açık widget
 içindir. Normal tarayıcı açılışında bu düğme kullanılamaz.
+HEDEF ILERLEMESI (1.5.0)
+
+Sayiyla olculen acik hedeflerde satirin uzerine gelince ilerleme kutusunun
+yaninda - ve + belirir; her basis 1 degistirir ve tek Geri al adimidir.
+Bagli islerden veya alt hedeflerden hesaplanan ilerlemede bu dugmeler yoktur.
+Genel bakista hedef kartinin Ilerleme dugmesi dolan kutudur ("1 / 3").
+
 WIDGET: IS AYRINTISI (1.4.7)
 
 Siradaki isler ve Duraklatilanlar listesinde bir isin adina tiklamak isi

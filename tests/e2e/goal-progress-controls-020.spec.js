@@ -571,9 +571,9 @@ test("quick metric edits update tables, the Dashboard and derived ancestors as o
       await list(page, "dashboard");
       await expect(
         page.locator(
-          `.dashboard-goal-row[data-goal-id="${example.id}"] [role="progressbar"]`,
+          `.dashboard-goal-row[data-goal-id="${example.id}"] [data-action="goal-progress-open"]`,
         ),
-      ).toHaveAttribute("aria-valuenow", String(example.percent));
+      ).toHaveAttribute("data-progress", String(example.percent));
     }
     for (const [type, id] of example.ancestors)
       await expectTableProgress(page, type, id, example.percent);

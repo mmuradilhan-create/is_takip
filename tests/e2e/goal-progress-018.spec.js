@@ -140,7 +140,9 @@ for (const width of [1280, 1920]) {
     );
 
     await expect(
-      numeric.locator(".goal-progress-info, .metric-cell button"),
+      numeric.locator(
+        ".goal-progress-info, .metric-cell button:not(.progress-step)",
+      ),
     ).toHaveCount(0);
     const details = numeric.locator('.task-name[data-action="goal-details"]');
     await expect(details).toHaveText("Uzun ölçümlü senelik hedef");
@@ -240,7 +242,9 @@ for (const width of [1280, 1920]) {
         `%${example.percent} · ${example.explanation}`,
       );
       await expect(
-        target.locator(".goal-progress-info, .metric-cell button"),
+        target.locator(
+          ".goal-progress-info, .metric-cell button:not(.progress-step)",
+        ),
       ).toHaveCount(0);
       const targetTitle = target.locator(
         '.task-name[data-action="goal-details"]',

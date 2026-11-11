@@ -1224,23 +1224,57 @@ export async function startMainApp() {
   function updatePageHeader() {
     document.querySelector("#page-title").textContent = pageTitle();
   }
+  /** One undo step that sets a measured goal's current value. */
+  function saveGoalProgressValue(id, value, expectedCurrent, expectedSnapshot) {
+    const existing = state.records.find((record) => record.id === id);
+    if (!existing)
+      throw new Error("Hedef artık bulunamıyor. İlerleme kaydedilemedi.");
+    const updated = updateGoalProgress(existing, value, {
+      expectedCurrent,
+      expectedSnapshot,
+      updatedAt: new Date().toISOString(),
+    });
+    if (updated === existing) return true;
+    const saved = saveRecords(
+      state.records.map((record) => (record.id === id ? updated : record)),
+      "Hedef ilerlemesi",
+      { syncLinks: false },
+    );
+    if (saved) toast("İlerleme güncellendi.");
+    return saved;
+  }
+  /** The count a progress box shows: "5 / 100", "1 / 2", or a percent. */
+  function progressSummary(record, progress) {
+    return progress.basis === "metric"
+      ? `${record.currentValue ?? 0} / ${record.targetValue}`
+      : progress.basis === "linked"
+        ? `${progress.completed} / ${progress.total}`
+        : progress.basis === "rollup"
+          ? `%${progress.percent}`
+          : record.status === "completed"
+            ? "Tamamlandı"
+            : "Ölçüm yok";
+  }
+  const progressFill = (progress, summary) =>
+    `<span class="progress-chip-fill" style="width:${progress.percent}%" aria-hidden="true"></span><span class="goal-progress-summary"><span>${esc(summary)}</span></span>`;
   function progressCell(record) {
     if (record.status === "cancelled")
       return '<td class="metric-cell progress-col cancelled-progress" aria-label="İptal edilen kayıt ilerlemeye dahil değil" title="İptal edilen kayıt ilerlemeye dahil değil"><span aria-hidden="true">—</span></td>';
     const progress = goalProgress(record, state.records);
-    const summary =
-      progress.basis === "metric"
-        ? `${record.currentValue ?? 0} / ${record.targetValue}`
-        : progress.basis === "linked"
-          ? `${progress.completed} / ${progress.total}`
-          : progress.basis === "rollup"
-            ? `%${progress.percent}`
-            : record.status === "completed"
-              ? "Tamamlandı"
-              : "Ölçüm yok";
+    const summary = progressSummary(record, progress);
     // One framed 96x30 box like status and date: it fills as progress grows.
     const detail = `%${progress.percent} · ${progressDescription(record, progress)}`;
-    return `<td class="metric-cell progress-col"><div class="progress-chip${progress.percent >= 100 ? " is-complete" : ""}" role="progressbar" aria-label="${esc(record.title)} ilerlemesi" aria-valuenow="${progress.percent}" aria-valuemin="0" aria-valuemax="100" aria-valuetext="${esc(detail)}" title="${esc(detail)}"><span class="progress-chip-fill" style="width:${progress.percent}%" aria-hidden="true"></span><span class="goal-progress-summary"><span>${esc(summary)}</span></span></div></td>`;
+    const chip = `<div class="progress-chip${progress.percent >= 100 ? " is-complete" : ""}" role="progressbar" aria-label="${esc(record.title)} ilerlemesi" aria-valuenow="${progress.percent}" aria-valuemin="0" aria-valuemax="100" aria-valuetext="${esc(detail)}" title="${esc(detail)}">${progressFill(progress, summary)}</div>`;
+    // Only a goal's own measurement can be counted by hand; linked work and
+    // sub-goals compute theirs. The buttons appear while the row is pointed
+    // at or holds focus.
+    const steppable =
+      progress.basis === "metric" &&
+      !["completed", "cancelled", "transferred"].includes(record.status);
+    const current = Number(record.currentValue) || 0;
+    const step = (amount, symbol, label, disabled) =>
+      `<button type="button" class="progress-step" data-action="goal-progress-step" data-id="${esc(record.id)}" data-step="${amount}" aria-label="${esc(record.title)}: ${label}" title="${label}"${disabled ? " disabled" : ""}>${symbol}</button>`;
+    return `<td class="metric-cell progress-col"><div class="progress-stepper">${steppable ? step(-1, "−", "İlerlemeyi 1 azalt", current <= 0) : '<span class="progress-step-space" aria-hidden="true"></span>'}${chip}${steppable ? step(1, "+", "İlerlemeyi 1 artır", false) : '<span class="progress-step-space" aria-hidden="true"></span>'}</div></td>`;
   }
   function table(records, nested = false) {
     if (!records.length) {
@@ -1681,16 +1715,12 @@ export async function startMainApp() {
           ? `<ul class="dashboard-goals" tabindex="0" aria-label="Haftalık hedefler">${records
               .map((record) => {
                 const progress = goalProgress(record, state.records);
-                const progressCount = ["metric", "linked"].includes(
-                  progress.basis,
-                )
-                  ? ` · ${progress.completed} / ${progress.total}`
-                  : "";
+                const progressDetail = `%${progress.percent} · ${progressDescription(record, progress)}`;
                 const children = state.records.filter(
                   (item) =>
                     item.type === "daily" && item.parentId === record.id,
                 );
-                return `<li class="dashboard-goal-row dashboard-detail-card" role="group" tabindex="0" data-action="goal-card-details" data-id="${esc(record.id)}" data-goal-id="${esc(record.id)}" aria-label="${esc(record.title)}: ayrıntıları aç" aria-keyshortcuts="Enter Space"><div class="dashboard-goal-title-line"><strong class="dashboard-goal-title${record.status === "cancelled" ? " cancelled" : ""}" title="${esc(record.title)}">${esc(record.title)}</strong></div><div class="dashboard-goal-meta-controls">${statusBadge(record)}${lifecycleDateControl(record)}</div><div class="dashboard-goal-progress"><div class="progress-track" role="progressbar" aria-label="${esc(record.title)} ilerlemesi" aria-valuenow="${progress.percent}" aria-valuemin="0" aria-valuemax="100" aria-valuetext="%${progress.percent} · ${esc(progressDescription(record, progress))}"><span style="width:${progress.percent}%"></span></div><span class="goal-progress-label" title="${esc(progressDescription(record, progress))}">%${progress.percent}${esc(progressCount)}</span></div><div class="dashboard-goal-actions"><button type="button" class="btn small dashboard-goal-progress-action" data-action="goal-progress-open" data-id="${esc(record.id)}" aria-label="${esc(record.title)}: ilerleme">İlerleme</button><button type="button" class="btn small dashboard-goal-children-action" data-action="goal-children-open" data-id="${esc(record.id)}" aria-label="${esc(record.title)}: bağlı işler, ${children.length} adım">Bağlı işler <span class="dashboard-goal-count">${children.length}</span></button></div></li>`;
+                return `<li class="dashboard-goal-row dashboard-detail-card" role="group" tabindex="0" data-action="goal-card-details" data-id="${esc(record.id)}" data-goal-id="${esc(record.id)}" aria-label="${esc(record.title)}: ayrıntıları aç" aria-keyshortcuts="Enter Space"><div class="dashboard-goal-title-line"><strong class="dashboard-goal-title${record.status === "cancelled" ? " cancelled" : ""}" title="${esc(record.title)}">${esc(record.title)}</strong></div><div class="dashboard-goal-meta-controls">${statusBadge(record)}${lifecycleDateControl(record)}</div><div class="dashboard-goal-progress" aria-hidden="true"></div><div class="dashboard-goal-actions"><button type="button" class="btn small dashboard-goal-progress-action progress-chip${progress.percent >= 100 ? " is-complete" : ""}" data-action="goal-progress-open" data-id="${esc(record.id)}" data-progress="${progress.percent}" aria-label="${esc(record.title)}: ilerleme, ${esc(progressDetail)}" title="${esc(progressDetail)}">${progressFill(progress, progressSummary(record, progress))}</button><button type="button" class="btn small dashboard-goal-children-action" data-action="goal-children-open" data-id="${esc(record.id)}" aria-label="${esc(record.title)}: bağlı işler, ${children.length} adım">Bağlı işler <span class="dashboard-goal-count">${children.length}</span></button></div></li>`;
               })
               .join("")}</ul>`
           : `<div class="weekly-dashboard-empty"><p>${state.search ? "Eşleşen haftalık hedef yok." : "Bu hafta için açık hedef yok."}</p><button type="button" class="btn" data-action="dashboard-weekly">Hedef seç</button></div>`
@@ -2993,24 +3023,7 @@ export async function startMainApp() {
           { once: true },
         );
     },
-    onSaveProgress: (id, value, expectedCurrent, expectedSnapshot) => {
-      const existing = state.records.find((record) => record.id === id);
-      if (!existing)
-        throw new Error("Hedef artık bulunamıyor. İlerleme kaydedilemedi.");
-      const updated = updateGoalProgress(existing, value, {
-        expectedCurrent,
-        expectedSnapshot,
-        updatedAt: new Date().toISOString(),
-      });
-      if (updated === existing) return true;
-      const saved = saveRecords(
-        state.records.map((record) => (record.id === id ? updated : record)),
-        "Hedef ilerlemesi",
-        { syncLinks: false },
-      );
-      if (saved) toast("İlerleme güncellendi.");
-      return saved;
-    },
+    onSaveProgress: saveGoalProgressValue,
     onError: (message) => toast(message, true),
   });
   datePicker = createDatePicker({ root: app, today });
@@ -3779,6 +3792,24 @@ export async function startMainApp() {
         event.preventDefault();
         openRecordPreview("meeting", id, button);
         break;
+      case "goal-progress-step": {
+        event.preventDefault();
+        const goal = state.records.find((record) => record.id === id);
+        if (!goal) break;
+        const current = Number(goal.currentValue) || 0;
+        const next = Math.max(0, current + Number(button.dataset.step));
+        try {
+          if (saveGoalProgressValue(id, next, goal.currentValue))
+            app
+              .querySelector(
+                `[data-action="goal-progress-step"][data-id="${CSS.escape(id)}"][data-step="${button.dataset.step}"]:not(:disabled)`,
+              )
+              ?.focus({ preventScroll: true });
+        } catch (error) {
+          toast(error instanceof Error ? error.message : String(error), true);
+        }
+        break;
+      }
       case "goal-card-details":
       case "goal-details":
       case "goal-progress-open":

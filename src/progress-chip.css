@@ -1,47 +1,26 @@
-/* Goal list progress: one framed box like status, priority and date. */
-.full-table.record-table > thead > tr > th.progress-col {
-  width: var(--record-column-width, 112px);
-}
-
-.full-table.record-table > thead > tr > th.progress-col,
-.full-table.record-table > tbody > tr > td.metric-cell {
-  padding-right: 8px;
-  padding-left: 8px;
-}
-
-.full-table .metric-cell .progress-chip {
+/*
+ * Goal progress is one framed box like status, priority and date: it fills
+ * from the left and shows a count ("5 / 100", "1 / 2") or a percent.
+ */
+.progress-chip {
   position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: var(--record-control-width, 96px);
-  max-width: 100%;
-  height: 30px;
   overflow: hidden;
-  border: 1px solid var(--theme-border, #cfdcc8);
-  border-radius: 6px;
-  background: var(--theme-raised, #fff);
-  color: var(--theme-ink, #2f5a3f);
-  font-size: 11px;
-  font-weight: 600;
-  line-height: 12px;
   font-variant-numeric: tabular-nums;
-  /* Like the rest of the row: a click opens the goal. */
-  cursor: inherit;
 }
 
-.full-table .metric-cell .progress-chip-fill {
+.progress-chip > .progress-chip-fill {
   position: absolute;
   inset: 0 auto 0 0;
   max-width: 100%;
   background: #e2eedb;
+  pointer-events: none;
 }
 
-.full-table .metric-cell .progress-chip.is-complete {
+.progress-chip.is-complete {
   border-color: #a9c79e;
 }
 
-.full-table .metric-cell .progress-chip > .goal-progress-summary {
+.progress-chip > .goal-progress-summary {
   position: relative;
   display: block;
   max-width: 100%;
@@ -54,10 +33,101 @@
   white-space: nowrap;
 }
 
-[data-theme="dark"] .full-table .metric-cell .progress-chip-fill {
+[data-theme="dark"] .progress-chip > .progress-chip-fill {
   background: #2c4434;
 }
 
-[data-theme="dark"] .full-table .metric-cell .progress-chip.is-complete {
+[data-theme="dark"] .progress-chip.is-complete {
   border-color: #4f7a5c;
+}
+
+/* Goal lists: a 96x30 box between − and +, which only measured goals have. */
+.full-table.record-table > thead > tr > th.progress-col {
+  width: 162px;
+}
+
+.full-table.record-table > thead > tr > th.progress-col,
+.full-table.record-table > tbody > tr > td.metric-cell {
+  padding-right: 8px;
+  padding-left: 8px;
+}
+
+.full-table .metric-cell .progress-stepper {
+  display: inline-grid;
+  grid-template-columns: 22px var(--record-control-width, 96px) 22px;
+  align-items: center;
+  gap: 3px;
+}
+
+.full-table .metric-cell .progress-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--record-control-width, 96px);
+  max-width: 100%;
+  height: 30px;
+  border: 1px solid var(--theme-border, #cfdcc8);
+  border-radius: 6px;
+  background: var(--theme-raised, #fff);
+  color: var(--theme-ink, #2f5a3f);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 12px;
+  /* Like the rest of the row: a click opens the goal. */
+  cursor: inherit;
+}
+
+.full-table .metric-cell .progress-step {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--theme-border, #cfdcc8);
+  border-radius: 5px;
+  background: var(--theme-raised, #fff);
+  color: var(--theme-ink, #2f5a3f);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+
+.full-table tr:is(:hover, :focus-within) .metric-cell .progress-step {
+  opacity: 1;
+}
+
+.full-table .metric-cell .progress-step:hover {
+  background: var(--theme-hover, #edf3e8);
+}
+
+.full-table .metric-cell .progress-step:disabled {
+  color: var(--theme-faint, #a9b5a3);
+  cursor: default;
+}
+
+@media (hover: none) {
+  .full-table .metric-cell .progress-step {
+    opacity: 1;
+  }
+}
+
+/* Dashboard goal cards: the İlerleme button itself is the filling box. */
+.dashboard-goal-actions .dashboard-goal-progress-action.progress-chip {
+  display: block;
+  padding: 0;
+  font-weight: 650;
+}
+
+.dashboard-goal-actions
+  .dashboard-goal-progress-action.progress-chip
+  > .goal-progress-summary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  min-height: 26px;
 }

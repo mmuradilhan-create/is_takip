@@ -389,7 +389,7 @@ test("the two goal actions navigate to their exact sections and preserve metric 
   const before = await saved(page);
   const progress = card(page).locator('[data-action="goal-progress-open"]');
   const children = card(page).locator('[data-action="goal-children-open"]');
-  await expect(progress).toHaveText("İlerleme");
+  await expect(progress).toHaveText(/^(\d+ \/ \d+|%\d+|Ölçüm yok|Tamamlandı)$/);
   await expect(children).toContainText("Bağlı işler");
   expect(
     await card(page)
@@ -459,7 +459,7 @@ test("compact goal cards keep both labelled actions inside their bounds and keyb
     const goal = card(page, "goal-plain");
     await expect(
       goal.locator(".dashboard-goal-actions").getByRole("button"),
-    ).toHaveText(["İlerleme", "Bağlı işler 0"]);
+    ).toHaveText([/^(\d+ \/ \d+|%\d+|Ölçüm yok|Tamamlandı)$/, "Bağlı işler 0"]);
     await expect(
       goal.locator(".dashboard-goal-meta-controls").getByRole("button"),
     ).toHaveText(["Yapılacak", "Tarih yok"]);

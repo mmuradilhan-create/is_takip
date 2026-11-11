@@ -308,13 +308,10 @@ test("Dashboard metadata explains follow-up age, offers reversible type-specific
     ),
   ).toHaveCount(1);
   await expect(goalDate(page)).toBeVisible();
-  await expect(goal(page).locator(".goal-progress-label")).toHaveText(
-    "%25 · 2 / 8",
-  );
-  await expect(goal(page).locator(".goal-progress-label")).toHaveAttribute(
-    "title",
-    /Rapor/,
-  );
+  // The İlerleme button is the progress box: count inside, percent on hover.
+  const progressBox = goal(page).locator('[data-action="goal-progress-open"]');
+  await expect(progressBox).toHaveText("2 / 8");
+  await expect(progressBox).toHaveAttribute("title", /^%25 · .*Rapor/);
   await expect(
     goal(page).locator(".dashboard-goal-meta, .dashboard-goal-linked"),
   ).toHaveCount(0);
@@ -512,8 +509,10 @@ test("Dashboard metadata explains follow-up age, offers reversible type-specific
     );
     expect(after.odak.history).toHaveLength(1);
     await expect(
-      goal(page, "metadata-goal-two").locator('[role="progressbar"]'),
-    ).toHaveAttribute("aria-valuenow", "25");
+      goal(page, "metadata-goal-two").locator(
+        '[data-action="goal-progress-open"]',
+      ),
+    ).toHaveAttribute("data-progress", "25");
     for (const detail of [
       "#editor",
       "#goal-detail-panel",
@@ -646,10 +645,9 @@ test("a goal deadline calendar immediately saves or clears only its date and pre
     items.filter((item) => item.id !== original.id),
   );
   expect(after.odak.history).toHaveLength(1);
-  await expect(goal(page).locator('[role="progressbar"]')).toHaveAttribute(
-    "aria-valuenow",
-    "25",
-  );
+  await expect(
+    goal(page).locator('[data-action="goal-progress-open"]'),
+  ).toHaveAttribute("data-progress", "25");
   await openGoal(page);
   await expect(metricDraft(page)).toHaveValue("6");
   expect(
@@ -1086,7 +1084,9 @@ test("dense previews keep two shared cards beside independent notes and every go
       expect(statusBox.height).toBeCloseTo(28, 0);
       expect(dateBox.height).toBeCloseTo(28, 0);
       expect(statusBox.x + statusBox.width).toBeLessThanOrEqual(dateBox.x + 1);
-      await expect(item.locator('[role="progressbar"]')).toBeVisible();
+      await expect(
+        item.locator('[data-action="goal-progress-open"]'),
+      ).toBeVisible();
       await expect(
         item.locator(".dashboard-goal-meta, .dashboard-goal-linked"),
       ).toHaveCount(0);

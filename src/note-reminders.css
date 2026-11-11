@@ -1,0 +1,243 @@
+/* Reminders on notes, the top bar bell and its panel. */
+.workspace-note-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.workspace-note-reminder {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 4px;
+  padding: 1px 6px;
+  border: 1px solid var(--theme-border, #dce5d5);
+  border-radius: 5px;
+  background: var(--theme-soft, #f4f7f1);
+  color: var(--theme-muted, #5d715a);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 16px;
+  white-space: nowrap;
+}
+
+.workspace-note-reminder.is-due {
+  border-color: #e5c082;
+  background: #fff1d7;
+  color: #955400;
+}
+
+.workspace-note-reminder svg,
+.workspace-note-remind-toggle svg,
+.reminder-when svg {
+  flex: 0 0 12px;
+  width: 12px;
+  height: 12px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.workspace-note-reminder-fields {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px 12px;
+  margin: 10px 0 0;
+  padding: 0;
+  border: 0;
+}
+
+.workspace-note-remind-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  color: var(--theme-ink, #2f5a3f);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.workspace-note-remind-toggle input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+}
+
+.workspace-note-remind-when {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.workspace-note-remind-when[hidden] {
+  display: none;
+}
+
+.workspace-note-remind-when .field {
+  margin: 0;
+}
+
+.workspace-note-remind-when input[type="time"] {
+  min-height: 36px;
+}
+
+.reminder-trigger {
+  position: relative;
+}
+
+.reminder-trigger svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.reminder-trigger.is-due {
+  border-color: #e5c082;
+  background: #fff1d7;
+  color: #955400;
+}
+
+.reminder-count {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  border-radius: 9px;
+  background: #b4561c;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 17px;
+  text-align: center;
+}
+
+.reminder-count[hidden] {
+  display: none;
+}
+
+.reminder-panel {
+  position: fixed;
+  inset: auto;
+  width: min(380px, calc(100vw - 16px));
+  max-height: min(480px, calc(100vh - 16px));
+  margin: 0;
+  padding: 0;
+  overflow: auto;
+  border: 1px solid var(--theme-border, #dce5d5);
+  border-radius: 10px;
+  background: var(--theme-surface, #fff);
+  box-shadow: 0 14px 34px rgb(23 45 33 / 18%);
+  color: var(--theme-ink, #294735);
+}
+
+.reminder-panel-header {
+  position: sticky;
+  top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--theme-border, #e8eee4);
+  background: inherit;
+}
+
+.reminder-panel h2 {
+  margin: 0;
+  font-size: 14px;
+}
+
+.reminder-panel h3 {
+  margin: 0;
+  padding: 8px 12px 4px;
+  color: var(--theme-muted, #64775f);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.reminder-list {
+  list-style: none;
+  margin: 0;
+  padding: 0 6px 6px;
+}
+
+.reminder-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 6px;
+  border-bottom: 1px solid var(--theme-border, #edf0e9);
+}
+
+.reminder-row:last-child {
+  border-bottom: 0;
+}
+
+.reminder-when {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--theme-muted, #5d715a);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.reminder-row.is-due .reminder-when {
+  color: #955400;
+}
+
+.reminder-text {
+  display: -webkit-box;
+  margin: 2px 0 0;
+  overflow: hidden;
+  font-size: 12px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.reminder-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.reminder-empty {
+  margin: 0;
+  padding: 16px 14px;
+  color: var(--theme-muted, #64775f);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+[data-theme="dark"]
+  :is(.workspace-note-reminder.is-due, .reminder-trigger.is-due) {
+  border-color: #8a6a35;
+  background: #3b3120;
+  color: #efd09a;
+}
+
+[data-theme="dark"] .reminder-row.is-due .reminder-when {
+  color: #efd09a;
+}
+
+[data-theme="dark"] .reminder-panel {
+  box-shadow: 0 14px 34px rgb(0 0 0 / 45%);
+}
+
+.reminder-actions .btn {
+  min-height: 28px;
+  padding: 4px 10px;
+  font-size: 11px;
+}

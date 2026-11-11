@@ -64,7 +64,9 @@ import "./waiting-last-followup.css";
 import "./waiting-table-controls.css";
 import "./work-card-journal.css";
 import "./waiting-age-chip.css";
-import { createWorkspaceNotesUI } from "./workspace-notes-ui.js";
+import "./note-reminders.css";
+import "./planning-dismiss.css";
+import { bellIcon, createWorkspaceNotesUI } from "./workspace-notes-ui.js";
 import { normalizeNotes, notesFromBackup } from "./workspace-notes.js";
 import { exportWorkDrafts, workDraftsFromBackup } from "./work-draft-backup.js";
 import { createGoalTransferUI } from "./goal-transfer-ui.js";
@@ -102,7 +104,14 @@ import { createDashboardCalendar } from "./dashboard-calendar.js";
 import { selectDayFocus, toggleDayFocus } from "./day-focus.js";
 import { proposeGoalLinks, applyGoalLinks } from "./goal-link-review.js";
 import { normalizePreferences, applyTheme, watchTheme } from "./preferences.js";
-import { selectPlanningPrompts, waitingGaps } from "./planning-prompts.js";
+import {
+  hiddenPlanningPrompts,
+  promptDismissal,
+  selectPlanningPrompts,
+  waitingGaps,
+  withPromptDismissal,
+} from "./planning-prompts.js";
+import { createReminderBell } from "./reminder-bell.js";
 import { parentGoalType, goalChildren } from "./goal-hierarchy.js";
 import { unlinkGoalChild } from "./goal-child-unlink.js";
 import { createWaitingInfoUI } from "./waiting-info-ui.js";
@@ -361,11 +370,13 @@ export async function startMainApp() {
   let waitingInfo = null;
   let recordNotes = null;
   let workspaceNotes = null;
+  let reminderBell = null;
   let meetingBoth = null;
   let meetingLinkedReturn = null;
   let recordCreation = null;
   let dashboardCalendar = null;
   let planningPromptKind = null;
+  let planningShowHidden = false;
   let goalLinkReviewEntries = [];
   let goalLinkReviewSaving = false;
   let renderedCalendarDay = null;
@@ -826,6 +837,7 @@ export async function startMainApp() {
       preferences = workspaceStore.preferences;
     }
     render();
+    reminderBell?.refresh();
   }
   function workspaceDomainSnapshot(records, currentPreferences) {
     return JSON.stringify({
@@ -1361,6 +1373,7 @@ export async function startMainApp() {
     waitingInfo?.close();
     if (!promptKinds[kind]) return;
     planningPromptKind = kind;
+    planningShowHidden = false;
     renderPlanningPrompt();
     const dialog = document.querySelector("#planning-prompts-dialog");
     if (!dialog.open) dialog.showModal();
@@ -1382,20 +1395,57 @@ export async function startMainApp() {
     }
     return "";
   }
+  function planningPromptOptions() {
+    return {
+      today: today(),
+      query: state.search,
+      runningRecordId: workSessions?.getRunningRecordId() || null,
+      activity: workSessions?.activity?.() || null,
+    };
+  }
+  function promptDay(days) {
+    const date = new Date(`${today()}T12:00:00`);
+    date.setDate(date.getDate() + days);
+    return localDate(date);
+  }
+  function hiddenPromptStatus(record) {
+    const value = promptDismissal(record, planningPromptKind);
+    if (value === "never") return "Bir daha önerilmeyecek";
+    if (value === promptDay(1)) return "Yarın yeniden önerilecek";
+    return `${formatDate(value)} tarihinde yeniden önerilecek`;
+  }
+  const morePromptIcon =
+    '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h.01M12 12h.01M19 12h.01"/></svg>';
+  function planningPromptMore(record) {
+    return `<button type="button" class="btn small planning-prompt-more" data-action="planning-prompt-menu" data-id="${esc(record.id)}" data-prompt="${planningPromptKind}" aria-haspopup="menu" aria-expanded="false" aria-controls="planning-prompt-menu" aria-label="${esc(record.title)}: ertele veya gizle" title="Ertele veya gizle">${morePromptIcon}</button>`;
+  }
   function planningPromptActions(record) {
     const open = `<button type="button" class="btn small" data-action="planning-prompt-record" data-id="${esc(record.id)}" data-prompt="${planningPromptKind}">${planningPromptKind === "waiting" ? "Bilgi ekle" : planningPromptKind === "review" ? "İşi aç" : "Hedefi aç"}${icon("arrow")}</button>`;
     if (planningPromptKind === "previous")
-      return `${open}${carryPlanningButton(record, makePlanningPeriod(record.type, today()))}`;
+      return `${open}${carryPlanningButton(record, makePlanningPeriod(record.type, today()))}${planningPromptMore(record)}`;
     if (planningPromptKind === "review")
-      return `<button type="button" class="btn small planning-review-keep" data-action="planning-review" data-review="keep" data-id="${esc(record.id)}" title="İş hâlâ geçerli; 7 gün boyunca bu listede görünmez">Hâlâ geçerli</button><button type="button" class="btn small" data-action="planning-review" data-review="completed" data-id="${esc(record.id)}">Tamamla</button><button type="button" class="btn small" data-action="planning-review" data-review="cancelled" data-id="${esc(record.id)}">İptal</button>${open}`;
-    return open;
+      return `<button type="button" class="btn small planning-review-keep" data-action="planning-review" data-review="keep" data-id="${esc(record.id)}" title="İş hâlâ geçerli; 7 gün boyunca bu listede görünmez">Hâlâ geçerli</button><button type="button" class="btn small" data-action="planning-review" data-review="completed" data-id="${esc(record.id)}">Tamamla</button><button type="button" class="btn small" data-action="planning-review" data-review="cancelled" data-id="${esc(record.id)}">İptal</button>${open}${planningPromptMore(record)}`;
+    return `${open}${planningPromptMore(record)}`;
   }
   function renderPlanningPrompt() {
     if (!planningPromptKind) return;
     const config = promptKinds[planningPromptKind];
     const records = planningSuggestions()[config.key];
+    const hidden = hiddenPlanningPrompts(
+      state.records,
+      planningPromptKind,
+      planningPromptOptions(),
+    );
+    if (!hidden.length) planningShowHidden = false;
+    const hiddenToggle = hidden.length
+      ? `<button type="button" class="text-btn planning-hidden-toggle" data-action="planning-hidden-toggle" aria-expanded="${planningShowHidden}" aria-controls="planning-hidden-list">${planningShowHidden ? "Gizlenenleri sakla" : "Gizlenenleri göster"} (${hidden.length})</button>`
+      : "";
+    const hiddenList =
+      planningShowHidden && hidden.length
+        ? `<section class="planning-hidden" aria-label="Gizlenen öneriler"><h3>Gizlenen öneriler</h3><ul class="planning-prompt-list" id="planning-hidden-list">${hidden.map((record) => `<li data-hidden-record="${esc(record.id)}"><span>${esc(record.title)}<small class="planning-prompt-period">${esc(hiddenPromptStatus(record))}</small></span><div class="planning-prompt-row-actions"><button type="button" class="btn small" data-action="planning-prompt-restore" data-id="${esc(record.id)}" data-prompt="${planningPromptKind}">Yeniden öner</button></div></li>`).join("")}</ul></section>`
+        : "";
     const dialog = document.querySelector("#planning-prompts-dialog");
-    dialog.innerHTML = `<div class="modal-header"><h2>${config.title}</h2><button type="button" class="close-modal" data-action="close" aria-label="Pencereyi kapat">${icon("close")}</button></div><div class="modal-body"><p class="field-help">${config.description}</p>${records.length ? `<ul class="planning-prompt-list">${records.map((record) => `<li data-prompt-record="${esc(record.id)}"><span>${esc(record.title)}${planningPromptDetail(record)}</span><div class="planning-prompt-row-actions">${planningPromptActions(record)}</div></li>`).join("")}</ul>` : `<p class="soft-empty">Burada planlanacak kayıt kalmadı.</p>`}</div><div class="modal-footer"><button type="button" class="btn primary" data-action="close">Kapat</button></div>`;
+    dialog.innerHTML = `<div class="modal-header"><h2>${config.title}</h2><button type="button" class="close-modal" data-action="close" aria-label="Pencereyi kapat">${icon("close")}</button></div><div class="modal-body"><p class="field-help">${config.description}</p>${records.length ? `<ul class="planning-prompt-list">${records.map((record) => `<li data-prompt-record="${esc(record.id)}"><span>${esc(record.title)}${planningPromptDetail(record)}</span><div class="planning-prompt-row-actions">${planningPromptActions(record)}</div></li>`).join("")}</ul>` : `<p class="soft-empty">Burada planlanacak kayıt kalmadı.</p>`}${hiddenList}</div><div class="modal-footer">${hiddenToggle}<button type="button" class="btn primary" data-action="close">Kapat</button></div><div id="planning-prompt-menu" class="quick-field-menu planning-prompt-menu" popover="auto" role="menu" aria-label="Öneriyi ertele veya gizle"></div>`;
   }
   function focusList() {
     const options = {
@@ -2662,7 +2712,7 @@ export async function startMainApp() {
     }
   }
 
-  app.innerHTML = `<div class="layout"><div class="mobile-backdrop" data-action="menu"></div><aside class="sidebar"><div class="brand-lockup"><div class="brand"><span class="brand-name" id="brand-name"><span class="brand-accessible-name">ODAK</span><svg class="brand-lettering" viewBox="0 0 200 48" aria-hidden="true"><path fill-rule="evenodd" d="M15 2H29Q42 2 42 15V31Q42 44 29 44H15Q2 44 2 31V15Q2 2 15 2ZM16 11Q12 11 12 16V30Q12 35 16 35H28Q32 35 32 30V16Q32 11 28 11Z"/><path fill-rule="evenodd" d="M51 2H72Q93 2 93 23Q93 44 72 44H51ZM61 11V35H71Q83 35 83 23Q83 11 71 11Z"/><path fill-rule="evenodd" d="M119 2H130L148 44H137L133 34H116L112 44H101ZM119 26H130L124.5 12Z"/><path d="M157 2H167V19L183 2H196L176 23L198 44H184L167 27V44H157Z"/></svg></span></div></div><p class="nav-label">ÇALIŞMA ALANI</p><nav id="nav" class="nav" aria-label="Ana menü"></nav></aside><main class="main"><header class="topbar"><div class="topbar-start"><button type="button" class="mobile-toggle" data-action="menu" aria-label="Menüyü aç" aria-expanded="false">${icon("menu")}</button><div class="page-heading"><h1 id="page-title">Genel bakış</h1></div></div><div class="topbar-right"><div class="search">${icon("search")}<input type="search" id="global-search" placeholder="Kayıtlarında ara…" aria-label="Kayıtlarında ara" autocomplete="off"></div><button type="button" class="btn primary new-record" data-action="new">${icon("plus")}<span>Yeni kayıt</span></button><button type="button" class="btn widget-trigger" data-action="open-widget" aria-label="Widget aç" title="Mini ajandayı aç">${icon("widget")}<span>Widget</span></button><button type="button" class="btn calendar-trigger" data-action="open-calendar" aria-label="Takvimi aç" title="Takvimi aç">${icon("calendar")}<span>Takvim</span></button><span class="today">${icon("calendar")}<span class="today-copy"><time id="topbar-date" class="today-date"></time><time id="topbar-clock" class="today-clock"></time></span></span><button type="button" id="undo-button" class="icon-btn undo-trigger" data-action="undo" aria-label="Geri al" aria-keyshortcuts="Control+Z Meta+Z" title="Geri alınacak işlem yok" disabled>${icon("undo")}</button><button type="button" class="icon-btn settings-trigger" data-action="settings" aria-label="Ayarlar" title="Ayarlar">${icon("settings")}</button></div></header>${storageError || bootstrapNotice ? `<div class="unsaved-warning" role="alert">${esc(storageError || bootstrapNotice)}</div>` : ""}<div class="content" id="content"></div></main></div><dialog class="modal" id="editor" aria-label="Kayıt formu"></dialog><dialog class="modal" id="settings-dialog" aria-label="Ayarlar"></dialog><dialog class="modal" id="workspace-reset-dialog" aria-labelledby="workspace-reset-title" aria-describedby="workspace-reset-description"></dialog><dialog class="modal" id="planning-prompts-dialog" aria-label="Planını netleştir"></dialog><dialog class="modal goal-links-review-dialog" id="goal-links-review-dialog" aria-label="Hedef bağlantılarını gözden geçir"></dialog><div id="status-menu" class="status-menu" popover="auto" role="menu" aria-label="Durum seç"></div>`;
+  app.innerHTML = `<div class="layout"><div class="mobile-backdrop" data-action="menu"></div><aside class="sidebar"><div class="brand-lockup"><div class="brand"><span class="brand-name" id="brand-name"><span class="brand-accessible-name">ODAK</span><svg class="brand-lettering" viewBox="0 0 200 48" aria-hidden="true"><path fill-rule="evenodd" d="M15 2H29Q42 2 42 15V31Q42 44 29 44H15Q2 44 2 31V15Q2 2 15 2ZM16 11Q12 11 12 16V30Q12 35 16 35H28Q32 35 32 30V16Q32 11 28 11Z"/><path fill-rule="evenodd" d="M51 2H72Q93 2 93 23Q93 44 72 44H51ZM61 11V35H71Q83 35 83 23Q83 11 71 11Z"/><path fill-rule="evenodd" d="M119 2H130L148 44H137L133 34H116L112 44H101ZM119 26H130L124.5 12Z"/><path d="M157 2H167V19L183 2H196L176 23L198 44H184L167 27V44H157Z"/></svg></span></div></div><p class="nav-label">ÇALIŞMA ALANI</p><nav id="nav" class="nav" aria-label="Ana menü"></nav></aside><main class="main"><header class="topbar"><div class="topbar-start"><button type="button" class="mobile-toggle" data-action="menu" aria-label="Menüyü aç" aria-expanded="false">${icon("menu")}</button><div class="page-heading"><h1 id="page-title">Genel bakış</h1></div></div><div class="topbar-right"><div class="search">${icon("search")}<input type="search" id="global-search" placeholder="Kayıtlarında ara…" aria-label="Kayıtlarında ara" autocomplete="off"></div><button type="button" class="btn primary new-record" data-action="new">${icon("plus")}<span>Yeni kayıt</span></button><button type="button" class="btn widget-trigger" data-action="open-widget" aria-label="Widget aç" title="Mini ajandayı aç">${icon("widget")}<span>Widget</span></button><button type="button" class="btn calendar-trigger" data-action="open-calendar" aria-label="Takvimi aç" title="Takvimi aç">${icon("calendar")}<span>Takvim</span></button><span class="today">${icon("calendar")}<span class="today-copy"><time id="topbar-date" class="today-date"></time><time id="topbar-clock" class="today-clock"></time></span></span><button type="button" id="reminder-button" class="icon-btn reminder-trigger" aria-haspopup="dialog" aria-controls="reminder-panel" aria-expanded="false" aria-label="Hatırlatmalar" title="Hatırlatmalar">${bellIcon}<span class="reminder-count" hidden></span></button><button type="button" id="undo-button" class="icon-btn undo-trigger" data-action="undo" aria-label="Geri al" aria-keyshortcuts="Control+Z Meta+Z" title="Geri alınacak işlem yok" disabled>${icon("undo")}</button><button type="button" class="icon-btn settings-trigger" data-action="settings" aria-label="Ayarlar" title="Ayarlar">${icon("settings")}</button></div></header>${storageError || bootstrapNotice ? `<div class="unsaved-warning" role="alert">${esc(storageError || bootstrapNotice)}</div>` : ""}<div class="content" id="content"></div></main></div><dialog class="modal" id="editor" aria-label="Kayıt formu"></dialog><dialog class="modal" id="settings-dialog" aria-label="Ayarlar"></dialog><dialog class="modal" id="workspace-reset-dialog" aria-labelledby="workspace-reset-title" aria-describedby="workspace-reset-description"></dialog><dialog class="modal" id="planning-prompts-dialog" aria-label="Planını netleştir"></dialog><dialog class="modal goal-links-review-dialog" id="goal-links-review-dialog" aria-label="Hedef bağlantılarını gözden geçir"></dialog><div id="status-menu" class="status-menu" popover="auto" role="menu" aria-label="Durum seç"></div>`;
   document
     .querySelector("#editor")
     .addEventListener("close", restoreMeetingRoute);
@@ -3022,6 +3072,16 @@ export async function startMainApp() {
     onError: (message) => toast(message, true),
   });
   window.addEventListener("pagehide", workspaceNotes.destroy, { once: true });
+  reminderBell = createReminderBell({
+    root: app,
+    button: document.querySelector("#reminder-button"),
+    getNotes: () => workspaceStore?.notes || [],
+    onSaveNotes: saveWorkspaceNotes,
+    onEditNote: (id, control) => workspaceNotes.edit(id, control),
+    onAlert: (message) => toast(message),
+    onError: (message) => toast(message, true),
+  });
+  window.addEventListener("pagehide", reminderBell.destroy, { once: true });
   waitingInfo = createWaitingInfoUI({
     root: app,
     getRecord: (id) => state.records.find((record) => record.id === id),
@@ -3403,6 +3463,112 @@ export async function startMainApp() {
       case "planning-prompt":
         openPlanningPrompt(button.dataset.prompt);
         break;
+      case "planning-prompt-menu": {
+        const dialog = document.querySelector("#planning-prompts-dialog");
+        const menu = dialog.querySelector("#planning-prompt-menu");
+        if (!menu) break;
+        if (menu.matches(":popover-open")) {
+          menu.hidePopover();
+          break;
+        }
+        const kind = button.dataset.prompt;
+        menu.innerHTML = [
+          ["tomorrow", "Yarın hatırlat"],
+          ["week", "1 hafta sonra hatırlat"],
+          ["never", "Bir daha önerme"],
+        ]
+          .map(
+            ([until, text]) =>
+              `<button type="button" class="quick-priority-option" role="menuitem" data-action="planning-prompt-dismiss" data-until="${until}" data-id="${esc(id)}" data-prompt="${esc(kind)}">${text}</button>`,
+          )
+          .join("");
+        menu.style.left = "8px";
+        menu.style.top = "8px";
+        menu.showPopover();
+        button.setAttribute("aria-expanded", "true");
+        menu.addEventListener(
+          "toggle",
+          (event) => {
+            if (event.newState === "closed")
+              button.setAttribute("aria-expanded", "false");
+          },
+          { once: true },
+        );
+        const rect = button.getBoundingClientRect();
+        const bounds = menu.getBoundingClientRect();
+        menu.style.left = `${Math.max(8, Math.min(rect.right - bounds.width, innerWidth - bounds.width - 8))}px`;
+        menu.style.top = `${Math.max(8, Math.min(rect.bottom + 4, innerHeight - bounds.height - 8))}px`;
+        menu.querySelector("button")?.focus({ preventScroll: true });
+        break;
+      }
+      case "planning-prompt-dismiss":
+      case "planning-prompt-restore": {
+        const kind = button.dataset.prompt;
+        const record = state.records.find((item) => item.id === id);
+        if (!record || !promptKinds[kind]) break;
+        const dialog = document.querySelector("#planning-prompts-dialog");
+        const restore = action === "planning-prompt-restore";
+        const until = button.dataset.until;
+        const row = dialog.querySelector(
+          `[data-prompt-record="${CSS.escape(id)}"]`,
+        );
+        const neighbour = (row?.nextElementSibling || row?.previousElementSibling)
+          ?.dataset.promptRecord;
+        const value = restore
+          ? null
+          : until === "never"
+            ? "never"
+            : promptDay(until === "week" ? 7 : 1);
+        dialog.querySelector("#planning-prompt-menu")?.hidePopover?.();
+        let next;
+        try {
+          next = withPromptDismissal(record, kind, value);
+        } catch (error) {
+          toast(error.message, true);
+          break;
+        }
+        if (
+          saveRecords(
+            state.records.map((item) => (item.id === id ? next : item)),
+            restore
+              ? "Öneriyi geri getirme"
+              : until === "never"
+                ? "Öneriyi gizleme"
+                : "Öneriyi erteleme",
+          )
+        )
+          toast(
+            restore
+              ? "Kayıt yeniden önerilecek."
+              : until === "never"
+                ? "Bu kayıt bu öneride bir daha çıkmayacak. Gizlenenlerden geri getirebilirsin."
+                : until === "week"
+                  ? "Öneri 1 hafta sonra yeniden görünecek."
+                  : "Öneri yarın yeniden görünecek.",
+          );
+        renderPlanningPrompt();
+        (
+          (restore &&
+            dialog.querySelector(
+              `[data-prompt-record="${CSS.escape(id)}"] button`,
+            )) ||
+          (neighbour &&
+            dialog.querySelector(
+              `[data-prompt-record="${CSS.escape(neighbour)}"] button`,
+            )) ||
+          dialog.querySelector(".planning-hidden-toggle") ||
+          dialog.querySelector(".modal-footer .btn.primary")
+        )?.focus({ preventScroll: true });
+        break;
+      }
+      case "planning-hidden-toggle": {
+        planningShowHidden = !planningShowHidden;
+        renderPlanningPrompt();
+        document
+          .querySelector("#planning-prompts-dialog .planning-hidden-toggle")
+          ?.focus({ preventScroll: true });
+        break;
+      }
       case "planning-review": {
         const record = state.records.find((item) => item.id === id);
         if (!record || !active(effectiveRecord(record))) break;
@@ -4140,6 +4306,8 @@ export async function startMainApp() {
   state.records = workspaceStore.records;
   preferences = workspaceStore.preferences;
   initWorkSessions();
+  // Reminders read the notes only once the workspace store exists.
+  reminderBell?.refresh();
   function activateMainWindow(id = null) {
     window.focus();
     const record = state.records.find((item) => item.id === id);

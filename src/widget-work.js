@@ -5,6 +5,12 @@ import { createWorkspaceStore } from "./workspace-store.js";
 import { syncActionLinks } from "./action-links.js";
 import { stampWaitingClosures } from "./waiting-age.js";
 import { cleanupMeetingContacts } from "./meeting-contact-cleanup.js";
+import {
+  dueReminders,
+  formatReminder,
+  snoozedMinute,
+  withNoteReminder,
+} from "./note-reminders.js";
 
 const CLOSED = new Set(["completed", "cancelled", "transferred"]);
 const PRIORITY_RANK = { urgent: 0, high: 1, normal: 2, low: 3 };
@@ -114,6 +120,9 @@ export function createWidgetWork({
   const journalPanel = root.querySelector(".wb-journal");
   const journalTitle = root.querySelector(".wb-journal-title");
   const journalList = root.querySelector(".wb-journal-list");
+  const reminderStrip = document.getElementById("widget-reminders");
+  const reminderList = document.getElementById("widget-reminder-list");
+  let reminderSaving = false;
   const storage = window.localStorage;
 
   let workspace = null;
@@ -473,8 +482,65 @@ export function createWidgetWork({
     );
   }
 
+  /** Due note reminders stay on top of both widget views until answered. */
+  function renderReminders() {
+    if (!reminderStrip || !reminderList) return;
+    let due = [];
+    try {
+      due = workspace && !unavailable ? dueReminders(workspace.notes) : [];
+    } catch {
+      due = [];
+    }
+    reminderStrip.hidden = !due.length;
+    setList(
+      reminderList,
+      due
+        .slice(0, 3)
+        .map(
+          (note) =>
+            `<li class="widget-reminder" data-note-id="${escapeHtml(note.id)}"><span class="widget-reminder-copy"><span class="widget-reminder-when">${escapeHtml(formatReminder(note.remindAt))}</span><span class="widget-reminder-text" title="${escapeHtml(note.text)}">${escapeHtml(note.text.split("\n")[0])}</span></span><button type="button" data-wb="reminder-done" data-id="${escapeHtml(note.id)}"${reminderSaving ? " disabled" : ""}>Tamam</button><button type="button" data-wb="reminder-hour" data-id="${escapeHtml(note.id)}" title="1 saat sonra yeniden hatırlat"${reminderSaving ? " disabled" : ""}>1 saat</button></li>`,
+        )
+        .join("") +
+        (due.length > 3
+          ? `<li class="widget-reminder-more">+${due.length - 3} hatırlatma daha · ODAK’taki zilden görebilirsin</li>`
+          : ""),
+    );
+  }
+
+  function answerReminder(id, action) {
+    if (!workspace || unavailable || reminderSaving) return;
+    synchronize();
+    const expected = workspace.notes;
+    try {
+      reminderSaving = true;
+      const next = withNoteReminder(
+        expected,
+        id,
+        action === "done" ? null : snoozedMinute("hour"),
+        new Date().toISOString(),
+      );
+      workspace.saveNotes(
+        next,
+        action === "done" ? "Hatırlatmayı kapatma" : "Hatırlatmayı erteleme",
+      );
+      lastRaw = storage.getItem(storageKey);
+    } catch (failure) {
+      synchronize();
+      onMessage(
+        failure?.name === "WorkspaceConflictError"
+          ? "Notlar başka bir pencerede değişti. Güncel hatırlatmalar yüklendi; yeniden deneyebilirsin."
+          : failure?.message || "Hatırlatma kaydedilemedi.",
+        "error",
+      );
+    } finally {
+      reminderSaving = false;
+      render();
+    }
+  }
+
   function render() {
     if (destroyed) return;
+    renderReminders();
     renderJournal();
     const today = localDate();
     const current = unavailable ? null : selected();
@@ -576,6 +642,16 @@ export function createWidgetWork({
     if (destroyed) return;
     synchronize();
     render();
+  }
+
+  function onReminderClick(event) {
+    const control = event.target.closest?.("[data-wb]");
+    if (!control || !reminderStrip?.contains(control) || control.disabled)
+      return;
+    answerReminder(
+      control.dataset.id,
+      control.dataset.wb === "reminder-done" ? "done" : "hour",
+    );
   }
 
   function onClick(event) {
@@ -682,6 +758,7 @@ export function createWidgetWork({
     destroyed = true;
     window.clearTimeout(saveTimer);
     root.removeEventListener("click", onClick);
+    reminderStrip?.removeEventListener("click", onReminderClick);
     note.removeEventListener("input", onInput);
     note.removeEventListener("blur", onBlur);
     document.removeEventListener("keydown", onKeydown, true);
@@ -689,6 +766,7 @@ export function createWidgetWork({
 
   setup();
   root.addEventListener("click", onClick);
+  reminderStrip?.addEventListener("click", onReminderClick);
   note.addEventListener("input", onInput);
   note.addEventListener("blur", onBlur);
   document.addEventListener("keydown", onKeydown, true);

@@ -86,6 +86,15 @@ değişmemiş formu kaydetmek yeni kayıt/geçmiş oluşturmaz. Genel Yeni kayı
 başka listeye eklenirse o liste açılır; panel/takvim içindeki yeni adımlar
 bulundukları bağlama döner. Mevcut hedefi bağla alanı aday yokken de görünür.
 
+HATIRLATMALAR (1.4.0)
+
+Notlar kartında not eklerken veya düzenlerken Hatırlat seçilip tarih ve saat
+girilir. Üst çubuktaki zil, zamanı gelen hatırlatma sayısını gösterir; zile
+tıklayınca Tamam, 1 saat ve Yarın 09:00 seçenekleri çıkar. ODAK açıkken
+zamanı gelen hatırlatma bir kez kısa uyarıyla bildirilir; ses veya Windows
+bildirimi yoktur. Widget açıksa zamanı gelenler widget'ın en üstünde durur.
+ODAK ve widget kapalıyken hatırlatma çalmaz; açılınca kaçırılanlar görünür.
+
 Genel bakışın altındaki takip ve hedef alanları ikişer kart gösterir.
 Yanlarındaki Notlar alanı bağımsız maddeler tutar; ekleme/düzenleme/silme
 tek Geri al adımıdır. Not silme onay istemez; Geri al ile geri getirilebilir.
@@ -568,6 +577,10 @@ dönemi gösterilir. Haftalıklar bu haftaya, aylıklar bu aya taşınabilir.
 Her düğme ilgili kayıtları açar; arama bu önerileri de süzer. Sayılar
 birleştirilmez; şeridi açmak kayıt değiştirmez veya zorunlu işlem başlatmaz.
 Öneri yoksa şerit görünmez.
+Her öneri satırındaki ⋯ düğmesi Yarın hatırlat, 1 hafta sonra hatırlat ve
+Bir daha önerme seçeneklerini açar. Gizlenenleri göster ile ertelenen ve
+gizlenen kayıtlar görülür, Yeniden öner ile geri getirilir. Her biri tek
+Geri al adımıdır.
 
 Güncel işler filtresi Açık işler / Bugün teslim / Geciken / Bugünün odağı
 seçeneklerini sunar. Bugün teslim, teslim tarihi bugün olan işleri gösterir.

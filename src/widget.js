@@ -107,6 +107,24 @@ export const widgetDocumentHtml = `<!doctype html>
     .widget-view-toggle[aria-pressed="true"] { color:#174d43; border-color:#a8c5a0; background:#eaf2e4; }
     .widget-shell[data-view="work"] :is(.widget-day-tabs,.widget-work,.widget-session) { display:none; }
     .widget-shell[data-view="agenda"] .widget-workbench { display:none; }
+    .widget-reminders { flex:0 0 auto; min-width:0; border:1px solid #e5c082; border-radius:10px; background:#fff6e3; }
+    .widget-reminders[hidden] { display:none; }
+    .widget-reminders ul { list-style:none; margin:0; padding:0; }
+    .widget-reminder { display:flex; align-items:center; gap:6px; min-width:0; padding:6px 8px; border-bottom:1px solid #f0dcb4; }
+    .widget-reminder:last-child { border-bottom:0; }
+    .widget-reminder-copy { display:flex; flex-direction:column; flex:1 1 auto; min-width:0; }
+    .widget-reminder-when { color:#955400; font-size:10px; font-weight:650; }
+    .widget-reminder-text { overflow:hidden; color:#4a3a14; font-size:12px; font-weight:600; text-overflow:ellipsis; white-space:nowrap; }
+    .widget-reminder button { flex:0 0 auto; min-height:26px; padding:3px 8px; border:1px solid #e5c082; border-radius:6px; background:#fff; color:#7a4a08; font-size:11px; font-weight:600; }
+    .widget-reminder button[data-wb="reminder-done"] { border-color:#174d43; background:#174d43; color:#fff; }
+    .widget-reminder button:disabled { opacity:.55; cursor:default; }
+    .widget-reminder-more { padding:5px 8px; color:#7a5a1d; font-size:10px; }
+    [data-theme="dark"] .widget-reminders { border-color:#8a6a35; background:#2e2719; }
+    [data-theme="dark"] .widget-reminder { border-color:#5b4a2a; }
+    [data-theme="dark"] :is(.widget-reminder-when,.widget-reminder-more) { color:#efd09a; }
+    [data-theme="dark"] .widget-reminder-text { color:#f3e6c8; }
+    [data-theme="dark"] .widget-reminder button { color:#efd09a; background:#18191b; border-color:#8a6a35; }
+    [data-theme="dark"] .widget-reminder button[data-wb="reminder-done"] { color:#122e23; background:#9dd8b7; border-color:#9dd8b7; }
     .widget-workbench { display:flex; flex-direction:column; gap:8px; flex:1 1 auto; min-height:0; min-width:0; overflow:hidden; }
     .widget-workbench[data-mode="idle"] { overflow-y:auto; overscroll-behavior:contain; }
     .widget-workbench [hidden] { display:none !important; }
@@ -205,6 +223,7 @@ export const widgetDocumentHtml = `<!doctype html>
 <body>
   <main class="widget-shell" data-view="work">
     <header class="widget-header"><h1>ODAK</h1><div class="widget-header-tools"><span class="widget-live">Çalışma</span><button type="button" class="widget-view-toggle" id="widget-view-toggle" aria-pressed="false" aria-controls="widget-agenda-views" title="Ajandayı göster"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4m8-4v4M4 10h16"/></svg><span>Ajanda</span></button><button type="button" class="widget-pin" id="widget-pin" aria-label="Üstte tut" aria-pressed="false" title="Üstte tut Windows paketiyle kullanılabilir." disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m16 3 5 5-4 1-3 4v4l-2 2-3-6-6-3 2-2h4l4-3zM9 15l-6 6"/></svg></button></div></header>
+    <section class="widget-reminders" id="widget-reminders" aria-label="Zamanı gelen hatırlatmalar" hidden><ul id="widget-reminder-list"></ul></section>
     <section class="widget-workbench" id="widget-workbench" aria-label="Çalışma" data-mode="idle">
       <div class="wb-active" hidden><div class="wb-heading"><span class="wb-phase"></span><div class="wb-title-line"><button type="button" class="wb-title" data-wb="open"></button><span class="wb-heading-journal"></span></div></div><label class="wb-note-field"><span class="wb-note-label">Çalışma notu</span><textarea id="widget-work-note" maxlength="10000" placeholder="Çalışırken notlarını buraya yaz…"></textarea></label><p class="wb-error" role="alert" hidden></p><div class="wb-conflict" hidden><button type="button" data-wb="use-current">Güncel notu yükle</button><button type="button" data-wb="save-local">Bu notu kaydet</button></div><div class="wb-controls"><button type="button" class="wb-toggle" data-wb="toggle"></button><button type="button" class="wb-finish" data-wb="finish"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6h12v12H6z"/></svg><span>Bitir</span></button></div><div class="wb-finish-controls" hidden><button type="button" data-wb="finish-cancel">Vazgeç</button><button type="button" class="wb-save" data-wb="finish-save">Kaydet ve bitir</button></div></div>
       <p class="wb-idle" hidden><span class="wb-idle-text"></span></p>

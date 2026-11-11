@@ -1,0 +1,47 @@
+/* Planning suggestions can be postponed, hidden and brought back. */
+.planning-prompt-more {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  min-width: 30px;
+  padding: 4px;
+}
+
+.planning-prompt-more svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 3;
+  stroke-linecap: round;
+}
+
+#planning-prompts-dialog .modal-footer .planning-hidden-toggle {
+  margin-right: auto;
+  color: var(--theme-muted, #5d715a);
+  font-size: 12px;
+}
+
+.planning-hidden {
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--theme-border, #dce5d5);
+}
+
+.planning-hidden h3 {
+  margin: 0 0 4px;
+  color: var(--theme-muted, #64775f);
+  font-size: 12px;
+}
+
+.planning-hidden .planning-prompt-list > li > span {
+  color: var(--theme-muted, #5d715a);
+}
+
+.planning-prompt-menu {
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  min-width: 200px;
+}

@@ -1,6 +1,6 @@
 # Odak
 
-PC kullanımına odaklanan, Türkçe kişisel iş ve hedef takibi. HTML/CSS/JavaScript tabanlıdır. Güncel sürüm: **1.3.1**.
+PC kullanımına odaklanan, Türkçe kişisel iş ve hedef takibi. HTML/CSS/JavaScript tabanlıdır. Güncel sürüm: **1.4.0**.
 
 ## Kullanım
 
@@ -167,6 +167,8 @@ Bekleyen konu için e-posta veya telefon gibi bir **günlük temas adımı** aç
 - **Hedeflere adım planla**: Bu haftanın açık hedeflerinden sayısal hedefi ve uygun bağlı günlük işi olmayanlar.
 - **Beklemeyi netleştir**: Kimden beklendiği veya **sonraki takip tarihi** eksik açık bekleyen konular; tarihsiz konular **Takip gerekenler**’de görünmediği için burada hatırlatılır. **Son gelişme** yalnız iki haftadır bekleyen ve hiç takip kaydı olmayan konularda istenir; yeni açılan konu bu yüzden işaretlenmez. Beklemede olan günlük işlerden bekleme nedeni boş olanlar da buradadır. Her satırda neyin eksik olduğu yazar; **Bilgi ekle** formu doğrudan ilk eksik alanda açar.
 - **İşleri gözden geçir**: En az yedi takvim günüdür güncellenmeyen ve üzerinde çalışılmayan açık günlük işler. Çalışılan iş ile son yedi günde çalışma notu yazılan veya duraklatılan işler dahil edilmez. Her işin yanında **Hâlâ geçerli / Tamamla / İptal / İşi aç** bulunur. **Hâlâ geçerli** işi güncellenmiş sayar ve yedi gün listeden düşürür; üç işlem de tek **Geri al** adımıdır. İşlemden sonra klavye odağı sıradaki işe geçer.
+
+Her öneri satırının sonundaki **⋯** düğmesi **Yarın hatırlat**, **1 hafta sonra hatırlat** ve **Bir daha önerme** seçeneklerini açar. Ertelenen kayıt o gün gelene kadar, gizlenen kayıt kalıcı olarak yalnız o öneriden çıkar; başka öneriler etkilenmez ve kaydın güncelleme tarihi değişmez. Dialogun altındaki **Gizlenenleri göster** ertelenen ve gizlenen kayıtları ne zaman döneceğiyle listeler; **Yeniden öner** geri getirir. Bu seçimler kaydın içinde saklanır, yedeğe girer ve her biri tek **Geri al** adımıdır.
 - **Kalan hedefleri planla**: Önceki hafta ve aylardan kalan açık hedefler; türü ve dönemi gösterilir. Haftalık hedefi bu haftaya, aylık hedefi bu aya taşıyabilirsiniz.
 
 Her düğme ilgili kayıtları gösterir; buradan kaydı açıp karar verirsiniz. Arama bu önerileri de süzer. Sayılar birleştirilmez; şeridi açmak kayıt veya durum değiştirmez ve zorunlu bir işlem başlatmaz. Öneri yoksa şerit görünmez. Eski dört büyük gündem kartı kaldırılmıştır.
@@ -314,6 +316,8 @@ Takip kartlarında yalnız tarih, takip sonucu ve sonraki takip tarihi gösteril
 Ayarlar’daki eski Listeler bölümü ve buna ait yardım metni kaldırıldı. Tarihsel proje kodu, iş türü ve liste tercihleri yedeklerde korunur. Bekleme bilgisi penceresinde de Enter kaydeder, Shift+Enter alt satır ekler.
 
 Genel bakışın alt satırında Takip gerekenler ve haftanın hedefleri ikişer kart gösterir. İkisinde de ikiden fazla kart varsa başlıktaki ← → düğmeleri sonraki ve önceki kartları gösterir; arama yapılınca ilk sayfaya dönülür. Bekleyen konular bağlantısı tüm konulara, Haftalık plan bağlantısı tüm hedeflere açılır. Yanlarındaki Notlar alanı iş ve hedeflerden bağımsız maddeler tutar; not ekleme, düzenleme ve silme tek Geri al adımıdır. Not silme ek onay istemeden gerçekleşir; yanlışlıkla silinen not Geri al ile döner. Enter kaydeder, Shift+Enter alt satır ekler. Notlar JSON yedeğine dahildir; not içermeyen eski kayıt yedeği mevcut notları korur.
+
+**Hatırlatmalar.** Notlar kartında bir not eklerken veya düzenlerken **Hatırlat** seçilirse tarih (takvimden) ve saat girilir; varsayılan bugünün bir sonraki tam saatidir (en erken 09:00, 21:00’den sonra yarın 09:00). Hatırlatmalı notta “Bugün 14:00 / Yarın 09:00 / 12 Kas 14:00” etiketi görünür; zamanı gelince etiket amber olur. Üst çubuktaki **zil**, zamanı gelen hatırlatma sayısını gösterir. Zile tıklamak **Zamanı gelenler** ve **Yaklaşanlar** listesini açar: **Tamam** hatırlatmayı kapatır (not kalır), **1 saat** ve **Yarın 09:00** erteler, yaklaşan hatırlatmada **Düzenle** notu açar. Hepsi tek **Geri al** adımıdır. Zamanı gelen hatırlatma ODAK açıkken bir kez kısa bir uyarıyla bildirilir; ses veya Windows bildirimi yoktur. Widget açıksa zamanı gelen hatırlatmalar widget’ın en üstünde **Tamam / 1 saat** düğmeleriyle durur. ODAK ve widget kapalıyken hatırlatma çalmaz; bir sonraki açılışta zil ve widget kaçırılanları gösterir. Hatırlatmalar notlarla birlikte JSON yedeğine girer.
 
 Çalışma alanını sıfırlama onayı, **Sıfırla** düğmesinin yakınında uygulamanın kendi küçük penceresinde açılır. Pencere ekranın içinde kalır; Vazgeç, çarpı, Escape veya dışına tıklamak kayıtları değiştirmez. Sıfırlama ayrıca onaylanır ve tek **Geri al** adımıyla geri döner.
 

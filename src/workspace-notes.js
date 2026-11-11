@@ -1,7 +1,26 @@
 export const MAX_WORKSPACE_NOTES = 100;
 export const MAX_WORKSPACE_NOTE_LENGTH = 2000;
 
-const fields = new Set(["id", "text", "createdAt", "updatedAt"]);
+const fields = new Set(["id", "text", "createdAt", "updatedAt", "remindAt"]);
+
+/** A reminder is a local wall-clock minute, "YYYY-MM-DDTHH:MM". */
+export function validRemindAt(value) {
+  if (
+    typeof value !== "string" ||
+    !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value)
+  )
+    return false;
+  const [date, time] = value.split("T");
+  const [year, month, day] = date.split("-").map(Number);
+  const [hour, minute] = time.split(":").map(Number);
+  if (hour > 23 || minute > 59) return false;
+  const local = new Date(year, month - 1, day, hour, minute);
+  return (
+    local.getFullYear() === year &&
+    local.getMonth() === month - 1 &&
+    local.getDate() === day
+  );
+}
 
 function plainObject(value) {
   return (
@@ -40,7 +59,8 @@ export function validNotes(value) {
       !note.text.trim() ||
       note.text.length > MAX_WORKSPACE_NOTE_LENGTH ||
       !timestamp(note.createdAt) ||
-      !timestamp(note.updatedAt)
+      !timestamp(note.updatedAt) ||
+      (Object.hasOwn(note, "remindAt") && !validRemindAt(note.remindAt))
     )
       return false;
     ids.add(note.id);
@@ -54,11 +74,12 @@ export function normalizeNotes(value) {
     throw new Error(
       `Notlar geçersiz. En fazla ${MAX_WORKSPACE_NOTES} madde ve her maddede ${MAX_WORKSPACE_NOTE_LENGTH} karakter kullanılabilir.`,
     );
-  return value.map(({ id, text, createdAt, updatedAt }) => ({
+  return value.map(({ id, text, createdAt, updatedAt, ...rest }) => ({
     id,
     text,
     createdAt,
     updatedAt,
+    ...(Object.hasOwn(rest, "remindAt") ? { remindAt: rest.remindAt } : {}),
   }));
 }
 

@@ -359,7 +359,7 @@ test("live discovery takes priority over a leftover presence with a newer focus 
   env.values.delete(ghostKey);
 });
 
-test("a leftover held presence does not report an existing main after its browser lock disappears", async () => {
+test("a fresh main presence prevents a second main even when the browser lock is not visible", async () => {
   const env = environment();
   const scope = "file:///C:/ODAK/TAKIP.html";
   env.values.set(
@@ -374,9 +374,11 @@ test("a leftover held presence does not report an existing main after its browse
     }),
   );
   const widget = createWindowCoordinator({ window: env.createWindow() });
+  // With file:// windows the lock list can be per window; never duplicate.
   assert.deepEqual(await widget.activateMain(), {
-    existing: false,
+    existing: true,
     focused: false,
+    unresponsive: true,
   });
   widget.stop();
 });

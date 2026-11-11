@@ -1,4 +1,4 @@
-import { localDate } from "./model.js";
+import { PRIORITIES, localDate } from "./model.js";
 import { appendWorkLog } from "./work-journal.js";
 import { createWorkSessionStore } from "./work-session-store.js";
 import { createWorkspaceStore } from "./workspace-store.js";
@@ -26,6 +26,8 @@ const escapeHtml = (value) =>
       ],
   );
 const icons = {
+  chevron:
+    '<svg class="wb-row-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>',
   journal:
     '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5H6a2 2 0 0 0-2 2v13h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M8 3h8v4H8zM8 12h8M8 16h5"/></svg>',
   play: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>',
@@ -136,6 +138,7 @@ export function createWidgetWork({
   let saveTimer = null;
   let destroyed = false;
   let journalId = null;
+  let detailId = null;
   const listMarkup = new WeakMap();
 
   function setup() {
@@ -450,10 +453,44 @@ export function createWidgetWork({
     return shortDate.format(new Date(`${record.dueDate}T12:00:00`));
   }
 
-  function row(record, action, today) {
+  /** What a row shows when its title is clicked, without leaving the widget. */
+  function rowDetail(record, entry, today) {
+    const lines = [];
+    const due = record.dueDate
+      ? `${shortDate.format(new Date(`${record.dueDate}T12:00:00`))}${record.dueDate < today ? " (gecikti)" : record.dueDate === today ? " (bugün)" : ""}`
+      : "Tarih yok";
+    const priority = PRIORITIES[record.priority]?.label || "Normal";
+    lines.push(
+      `<p class="wb-detail-facts"><span>Teslim: ${escapeHtml(due)}</span><span>${escapeHtml(priority)}</span></p>`,
+    );
+    const description = String(record.description || "").trim();
+    if (description)
+      lines.push(`<p class="wb-detail-text">${escapeHtml(description)}</p>`);
+    const draft = draftText(entry).trim();
+    if (draft)
+      lines.push(
+        `<p class="wb-detail-note"><strong>Çalışma notu:</strong> ${escapeHtml(draft)}</p>`,
+      );
+    const last = [...savedLog(record)].sort(
+      (a, b) =>
+        String(b.date).localeCompare(String(a.date)) ||
+        String(b.endedAt || "").localeCompare(String(a.endedAt || "")),
+    )[0];
+    if (last)
+      lines.push(
+        `<p class="wb-detail-note"><strong>Son çalışma ${escapeHtml(shortDate.format(new Date(`${last.date}T12:00:00`)))}:</strong> ${last.note?.trim() ? escapeHtml(last.note.trim()) : "Sonuç yazılmamış."}</p>`,
+      );
+    lines.push(
+      `<button type="button" class="wb-detail-edit" data-wb="edit" data-id="${escapeHtml(record.id)}">ODAK’ta düzenle</button>`,
+    );
+    return `<div class="wb-row-detail" id="wb-detail-${escapeHtml(record.id)}">${lines.join("")}</div>`;
+  }
+
+  function row(record, action, today, entry = null) {
     const due = dueLabel(record, today);
     const resume = action === "resume";
-    return `<li class="wb-row" data-id="${escapeHtml(record.id)}"><button type="button" class="wb-row-title" data-wb="open" data-id="${escapeHtml(record.id)}" title="${escapeHtml(record.title)}">${escapeHtml(record.title)}</button>${due ? `<span class="wb-row-due${due === "Gecikti" ? " is-overdue" : due === "Bugün" ? " is-today" : ""}">${escapeHtml(due)}</span>` : ""}${journalButton(record)}<button type="button" class="wb-row-start${resume ? " is-paused" : ""}" data-wb="${resume ? "resume" : "start"}" data-id="${escapeHtml(record.id)}" aria-label="${escapeHtml(record.title)}: ${resume ? "çalışmaya devam et" : "çalışmaya başla"}" title="${resume ? "Devam et" : "Çalışmaya başla"}"${unavailable || finishing ? " disabled" : ""}>${resume ? icons.resume : icons.play}</button></li>`;
+    const open = detailId === record.id;
+    return `<li class="wb-row${open ? " is-open" : ""}" data-id="${escapeHtml(record.id)}"><button type="button" class="wb-row-title" data-wb="detail" data-id="${escapeHtml(record.id)}" aria-expanded="${open}" aria-controls="wb-detail-${escapeHtml(record.id)}" title="${escapeHtml(record.title)}">${icons.chevron}<span>${escapeHtml(record.title)}</span></button>${due ? `<span class="wb-row-due${due === "Gecikti" ? " is-overdue" : due === "Bugün" ? " is-today" : ""}">${escapeHtml(due)}</span>` : ""}${journalButton(record)}<button type="button" class="wb-row-start${resume ? " is-paused" : ""}" data-wb="${resume ? "resume" : "start"}" data-id="${escapeHtml(record.id)}" aria-label="${escapeHtml(record.title)}: ${resume ? "çalışmaya devam et" : "çalışmaya başla"}" title="${resume ? "Devam et" : "Çalışmaya başla"}"${unavailable || finishing ? " disabled" : ""}>${resume ? icons.resume : icons.play}</button>${open ? rowDetail(record, entry, today) : ""}</li>`;
   }
 
   function renderJournal() {
@@ -624,7 +661,7 @@ export function createWidgetWork({
     setList(
       pausedList,
       paused
-        .map((entry) => row(find(entry.recordId), "resume", today))
+        .map((entry) => row(find(entry.recordId), "resume", today, entry))
         .join(""),
     );
     // While a work runs the note gets the room; once paused, another can start.
@@ -658,8 +695,13 @@ export function createWidgetWork({
     const control = event.target.closest?.("[data-wb]");
     if (!control || !root.contains(control) || control.disabled) return;
     const action = control.dataset.wb;
-    if (action === "open") onOpenRecord(control.dataset.id);
-    else if (action === "journal") {
+    if (action === "open" || action === "edit")
+      onOpenRecord(control.dataset.id);
+    else if (action === "detail") {
+      // One row opens at a time; clicking its title again closes it.
+      detailId = detailId === control.dataset.id ? null : control.dataset.id;
+      render();
+    } else if (action === "journal") {
       journalId = control.dataset.id;
       render();
       root

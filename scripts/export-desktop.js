@@ -786,6 +786,13 @@ boyutuna müdahale edilmez.
 Windows paketinde başlıktaki Üstte tut düğmesi widget'ı diğer pencerelerin
 üstünde tutar; tekrar basmak normal sıraya döndürür. Seçim açık widget
 içindir. Normal tarayıcı açılışında bu düğme kullanılamaz.
+WIDGET: IS AYRINTISI (1.4.7)
+
+Siradaki isler ve Duraklatilanlar listesinde bir isin adina tiklamak isi
+widget icinde acar: teslim, oncelik, aciklama, calisma notu ve son calisma
+sonucu gorunur. ODAK'ta duzenle ana uygulamada formu acar; ada tekrar
+tiklamak kapatir. ODAK'i ac, acik bir ODAK varsa ikinci pencere acmaz.
+
 WIDGET: CALISMA GORUNUMU (1.2.0)
 
 Widget Çalışma görünümüyle açılır. Bir iş çalışılıyorsa veya

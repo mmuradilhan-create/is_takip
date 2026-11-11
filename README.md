@@ -1,8 +1,10 @@
 # Odak
 
-PC kullanımına odaklanan, Türkçe kişisel iş ve hedef takibi. HTML/CSS/JavaScript tabanlıdır. Güncel sürüm: **1.4.6**.
+PC kullanımına odaklanan, Türkçe kişisel iş ve hedef takibi. HTML/CSS/JavaScript tabanlıdır. Güncel sürüm: **1.4.7**.
 
 Not, bekleme bilgisi ve çalışma kaydı formlarında Enter kaydeder, Shift+Enter alt satıra geçer; bu kısayol formun altında yazı olarak gösterilmez, ekran okuyuculara açıklama olarak verilir. Bir form metin alanındayken Enter veya Escape ile kaydedilip kapatılınca odak, formu açan düğmeye (örneğin **Not ekle**) alt çizgisiz döner; alt çizgi yeniden Tab veya ok tuşlarıyla gezinince görünür. Kaydedilmemiş değişiklik sorusu da uygulamanın diğer pencereleri gibi kalın yeşil çerçeve göstermez. Bekleyen konular listesindeki durum, tarih ve bekleme kutuları Günlük işler ve hedeflerdeki gibi 96×30 pikseldir; uzun durum adı iki satıra geçer.
+
+**1.4.7.** Hedef listelerinde **İlerleme** sütunu durum ve tarih kutuları gibi 96×30 bir kutudur: kutu ilerledikçe soldan dolar, içinde “5 / 100” veya bağlı işlerde “1 / 2” yazar (alt hedeflerin ortalamasında yüzde); yüzde ve açıklama kutunun üzerine gelince görünür. Başlık yanındaki simgeler (üst hedef, toplantı/bekleyen kaynağı, not, takip geçmişi) ve zil gibi simge düğmeleri, açtıkları paneli veya pencereyi ikinci basışta kapatır; açılan pencere simgenin üstünü kapatmışsa pencerenin kendi kapatma düğmesi kullanılır. Kaydedilmemiş değişiklik varsa yine önce sorulur. Fareyle basılan simgeler panel kapandıktan sonra koyu kalmaz; odak işareti yalnız Tab, ok tuşları veya düğmede Enter/Space ile görünür. Widget’ta Sıradaki işler ve Duraklatılanlar listesinde bir işin adına tıklamak, ana uygulamayı açmadan işi widget içinde açar: teslim tarihi, öncelik, açıklamanın ilk satırları, varsa çalışma notu ve son çalışma sonucu görünür; **ODAK’ta düzenle** ana uygulamada formu açar. Aynı ada tekrar tıklamak kapatır; aynı anda bir iş açık kalır. Widget’taki **ODAK’ı aç**, açık bir ODAK penceresi varsa ikinci bir pencere açmaz: onu öne getirir veya Windows izin vermezse görev çubuğundan geçmeni söyler.
 
 ## Kullanım
 

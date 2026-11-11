@@ -1,8 +1,9 @@
 /**
- * Saving or cancelling a form with Enter or Escape inside a text field hands
- * focus back to the button that opened it. Browsers then draw that button's
- * keyboard cue as if it had been reached with Tab. Keep it quiet until the
- * next navigation key or pointer press.
+ * Focus cues are for keyboard use. When a panel or form closes, focus goes
+ * back to the button that opened it and browsers often draw that button's
+ * keyboard cue even after a mouse click, or after Enter or Escape in a text
+ * field. A pointer press and Enter or Escape in a text field quiet the cue;
+ * Tab, arrows, or Enter, Space or Escape on a control bring it back.
  */
 export function trackKeyboardFocus(doc = globalThis.document) {
   const root = doc?.documentElement;
@@ -21,7 +22,7 @@ export function trackKeyboardFocus(doc = globalThis.document) {
       delete root.dataset.focusQuiet;
   };
   const onPointerdown = () => {
-    delete root.dataset.focusQuiet;
+    root.dataset.focusQuiet = "";
   };
   doc.addEventListener("keydown", onKeydown, true);
   doc.addEventListener("pointerdown", onPointerdown, true);

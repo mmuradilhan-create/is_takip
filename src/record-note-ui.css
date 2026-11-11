@@ -200,7 +200,7 @@
 
 .record-history-trigger:hover,
 .record-history-trigger[aria-expanded="true"],
-.record-history-trigger:focus-visible {
+:where(:root:not([data-focus-quiet])) .record-history-trigger:focus-visible {
   border-color: var(--theme-border, #dce5d5);
   background: var(--theme-hover, #eff5e9);
   color: var(--theme-ink, #405b49);

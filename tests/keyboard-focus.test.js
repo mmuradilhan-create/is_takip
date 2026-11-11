@@ -15,7 +15,7 @@ function fakeDocument() {
 const field = { matches: () => true };
 const button = { matches: () => false };
 
-test("Enter or Escape in a text field quiets the focus cue until navigation or a click", () => {
+test("a pointer press or Enter or Escape in a text field quiets the focus cue until keyboard navigation", () => {
   const doc = fakeDocument();
   const stop = trackKeyboardFocus(doc);
   const quiet = () => Object.hasOwn(doc.documentElement.dataset, "focusQuiet");
@@ -29,9 +29,9 @@ test("Enter or Escape in a text field quiets the focus cue until navigation or a
   assert.equal(quiet(), false);
   doc.fire("keydown", { key: "Escape", target: field });
   assert.equal(quiet(), true, "cancelling a form from its text field");
+  doc.fire("keydown", { key: "Tab", target: button });
   doc.fire("pointerdown");
-  assert.equal(quiet(), false);
-  doc.fire("keydown", { key: "Escape", target: field });
+  assert.equal(quiet(), true, "a mouse press is not keyboard use");
   doc.fire("keydown", { key: "ArrowDown", target: button });
   assert.equal(quiet(), false);
   doc.fire("keydown", { key: "Enter", target: field });

@@ -334,11 +334,10 @@ export function createWindowCoordinator({
         snapshot.held?.some(
           (lock) => lock.name === lockName(operation.role),
         ) === true;
-      // A file origin may allow query() while refusing request().
-      if (!existing)
-        existing = freshPresence(operation.role).some(
-          (presence) => presence.lockState !== "held",
-        );
+      // A file origin may keep locks per window, so a live main can be
+      // missing from query(). Any fresh presence counts: opening a second
+      // ODAK is worse than one "already open" note after a crash.
+      if (!existing) existing = freshPresence(operation.role).length > 0;
     } catch {
       existing = freshPresence(operation.role).length > 0;
     }

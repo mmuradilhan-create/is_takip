@@ -30,7 +30,8 @@
 }
 
 :is(.record-source-link, .record-parent-link):hover,
-:is(.record-source-link, .record-parent-link):focus-visible {
+:where(:root:not([data-focus-quiet]))
+  :is(.record-source-link, .record-parent-link):focus-visible {
   background: var(--theme-hover, #eaf2e3);
   color: var(--theme-accent, #4c7047);
 }

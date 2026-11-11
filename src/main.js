@@ -70,6 +70,7 @@ import "./settings-hidden-prompts.css";
 import "./window-min-size.css";
 import "./progress-chip.css";
 import { trackKeyboardFocus } from "./keyboard-focus.js";
+import { trackTriggerToggle } from "./trigger-toggle.js";
 import { bellIcon, createWorkspaceNotesUI } from "./workspace-notes-ui.js";
 import { normalizeNotes, notesFromBackup } from "./workspace-notes.js";
 import { exportWorkDrafts, workDraftsFromBackup } from "./work-draft-backup.js";
@@ -3348,10 +3349,52 @@ export async function startMainApp() {
     },
     { passive: false },
   );
+  // A title icon opens its goal, meeting or waiting panel; the same icon
+  // closes it again (pointer presses are caught by trackTriggerToggle, Enter
+  // and Space on a focused icon here).
+  const iconPanels = {
+    "goal-details": ["#goal-detail-panel", "goalId", () => goalPanel],
+    "meeting-record-details": [
+      "#meeting-record-panel",
+      "recordId",
+      () => meetingRecordPanel,
+    ],
+    "waiting-record-details": [
+      "#waiting-record-panel",
+      "recordId",
+      () => waitingRecordPanel,
+    ],
+  };
+  const iconPanelShowing = (button) => {
+    const entry = iconPanels[button?.dataset?.action];
+    const panel = entry && document.querySelector(entry[0]);
+    return Boolean(panel?.open && panel.dataset[entry[1]] === button.dataset.id);
+  };
+  trackTriggerToggle({
+    doc: document,
+    // Record panels close through their own API so their state resets.
+    close: (overlay) => {
+      const entry = Object.values(iconPanels).find(([selector]) =>
+        overlay.matches(selector),
+      );
+      if (!entry) return false;
+      entry[2]()?.close();
+      return true;
+    },
+  });
   app.addEventListener("click", async (event) => {
     const button = event.target.closest("[data-action]");
     if (!button) return;
     const { action, id, view, filter } = button.dataset;
+    if (
+      button.matches(".record-context-link") &&
+      iconPanels[action] &&
+      iconPanelShowing(button)
+    ) {
+      event.preventDefault();
+      iconPanels[action][2]()?.close();
+      return;
+    }
     const card = button.closest(".dashboard-detail-card");
     if (button === card) {
       const interactive = event.target.closest(

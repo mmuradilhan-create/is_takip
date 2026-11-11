@@ -1467,6 +1467,14 @@ export function createWorkSessionUI({
     button,
     refresh,
     getRunningRecordId,
+    /** Last note or state change of every unfinished work, by record. */
+    activity() {
+      return new Map(
+        store.snapshot.entries
+          .filter((entry) => entry.status !== "finished")
+          .map((entry) => [entry.recordId, entry.updatedAt]),
+      );
+    },
     getDraftSnapshot() {
       rememberCaret();
       store.synchronize();

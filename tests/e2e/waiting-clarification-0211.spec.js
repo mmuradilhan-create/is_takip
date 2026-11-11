@@ -44,9 +44,13 @@ function fixture() {
       expectedFrom: "   ",
       latestUpdate: "Özgün son gelişme.",
     }),
+    // 1.3.0: a missing latest update matters after two weeks without any
+    // recorded follow-up.
     topic("missing-update", "İmalat gelişme eksik", {
       expectedFrom: "Tedarik birimi",
       latestUpdate: "   ",
+      lastFollowUpDate: "",
+      followUpLog: [],
     }),
     topic("missing-both", "İmalat iki bilgi eksik"),
     topic("complete", "İmalat bilgileri tam", {

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { createRecord } from "../src/model.js";
-import { selectPlanningPrompts } from "../src/planning-prompts.js";
+import { selectPlanningPrompts, waitingGaps } from "../src/planning-prompts.js";
 
 const today = "2026-11-07";
 const stamp = "2026-11-07T10:00:00.000Z";
@@ -232,4 +232,70 @@ test("all suggestions retain original records and leave frozen saved records and
     reviewRecords: [],
     previousGoals: [],
   });
+});
+
+test("waiting topics need a contact and a next follow-up date; a latest update only after two quiet weeks", () => {
+  const topic = (id, input = {}) =>
+    record(id, {
+      type: "waiting",
+      status: "waiting_response",
+      expectedFrom: "Tedarikçi",
+      nextFollowUpDate: "2026-11-10",
+      sourceDate: "2026-11-05",
+      ...input,
+    });
+  const followUpLog = [
+    { id: "f1", date: "2026-10-20", note: "", createdAt: stamp },
+  ];
+  const records = [
+    topic("complete", { latestUpdate: "Teklif istendi" }),
+    topic("new-without-update"),
+    topic("no-contact", { expectedFrom: " " }),
+    topic("no-date", { nextFollowUpDate: "" }),
+    topic("quiet-two-weeks", { sourceDate: "2026-10-24" }),
+    topic("quiet-but-followed", { sourceDate: "2026-10-01", followUpLog }),
+    topic("thirteen-days", { sourceDate: "2026-10-25" }),
+    topic("closed-no-date", { status: "completed", nextFollowUpDate: "" }),
+  ];
+  assert.deepEqual(
+    ids(selectPlanningPrompts(records, { today }).waitingDetails),
+    ["no-contact", "no-date", "quiet-two-weeks"],
+  );
+  assert.deepEqual(waitingGaps(records[4], today), ["latestUpdate"]);
+  assert.deepEqual(
+    waitingGaps(
+      topic("everything", {
+        expectedFrom: "",
+        nextFollowUpDate: "",
+        sourceDate: "2026-10-01",
+      }),
+      today,
+    ),
+    ["expectedFrom", "nextFollowUpDate", "latestUpdate"],
+  );
+  assert.deepEqual(
+    waitingGaps(record("daily-waiting", { status: "waiting" }), today),
+    ["waitingReason"],
+  );
+});
+
+test("review suggestions skip jobs with a recent work note or pause and keep untouched ones", () => {
+  const old = "2026-10-20T10:00:00.000Z";
+  const records = [
+    record("untouched", { updatedAt: old }),
+    record("noted-yesterday", { updatedAt: old }),
+    record("noted-long-ago", { updatedAt: old }),
+  ];
+  const activity = new Map([
+    ["noted-yesterday", Date.parse("2026-11-06T15:00:00.000Z")],
+    ["noted-long-ago", Date.parse("2026-10-25T15:00:00.000Z")],
+  ]);
+  assert.deepEqual(
+    ids(selectPlanningPrompts(records, { today, activity }).reviewRecords),
+    ["noted-long-ago", "untouched"].sort(),
+  );
+  assert.deepEqual(
+    ids(selectPlanningPrompts(records, { today }).reviewRecords).sort(),
+    ["noted-long-ago", "noted-yesterday", "untouched"],
+  );
 });

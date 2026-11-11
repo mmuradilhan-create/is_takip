@@ -123,7 +123,7 @@ export function waitingStateMigrationInfo(records) {
 export function listReviewRecords(
   records,
   today = localToday(),
-  { runningRecordId = null } = {},
+  { runningRecordId = null, activity = null } = {},
 ) {
   if (!Array.isArray(records))
     throw new TypeError(
@@ -140,7 +140,14 @@ export function listReviewRecords(
       )
         return false;
       const updated = updatedDay(record.updatedAt);
-      return updated !== null && currentDay - updated >= 7;
+      if (updated === null || currentDay - updated < 7) return false;
+      // A work note written or paused recently counts as activity too.
+      const touched = activity?.get?.(record.id);
+      if (Number.isSafeInteger(touched) && touched >= 0) {
+        const day = updatedDay(new Date(touched).toISOString());
+        if (day !== null && currentDay - day < 7) return false;
+      }
+      return true;
     })
     .sort(
       (first, second) =>

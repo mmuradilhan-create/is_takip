@@ -440,7 +440,8 @@ sonraki takip ve son gelişme ayrı gösterilir. Düzenleme formunda Kimden
 bekleniyor?, Son takip, Sonraki takip ve Son gelişme başlık/durumla ilk
 bölümdedir; diğer alanlar sonradan gelen açık Ek bilgiler altındadır. Teslim tarihi
 alanı kullanılmaz; eski teslim tarihleri saklanır. Açık konuda kimden beklendiği
-veya son gelişme eksikse Beklemeyi netleştir önerisi görünür; ikisi de
+veya sonraki takip tarihi eksikse Beklemeyi netleştir önerisi görünür; iki
+haftadır hiç takip edilmemiş konuda son gelişme de istenir. Eksikler
 tamamlanınca veya konu kapanınca o konu öneriden çıkar. Süre, Beklemeye başlama tarihi
 ile bugün arasındaki takvim günü farkıdır; günlük hesaplanır ve 103 gün
 gibi kısa gösterilir. Başlangıç tarihi üzerine gelince okunur; tarih
@@ -551,10 +552,14 @@ Eski dört büyük kartın yerinde Planını netleştir şeridi vardır.
 Yalnız uygun kayıt bulunan öneriler görünür:
 Hedeflere adım planla: Bu haftanın sayısal hedefi ve uygun bağlı günlük
 işi olmayan açık hedefleri.
-Beklemeyi netleştir: Bekleme nedeni boş olan Beklemede günlük işler ve
-kimden beklendiği veya son gelişmesi eksik bekleyen konular. Alanlar isteğe bağlıdır.
-İşleri gözden geçir: En az yedi takvim günüdür güncellenmeyen açık günlük
-işler. Üzerinde çalışılan iş sayılmaz.
+Beklemeyi netleştir: Kimden beklendiği veya sonraki takip tarihi eksik
+bekleyen konular (tarihsiz konu Takip gerekenler'de görünmez), iki haftadır
+takip edilmemiş konularda son gelişme ve bekleme nedeni boş Beklemede günlük
+işler. Satırda eksik olan yazar; Bilgi ekle o alana gider.
+İşleri gözden geçir: En az yedi takvim günüdür güncellenmeyen ve üzerinde
+çalışılmayan açık günlük işler; son yedi günde çalışma notu yazılan iş
+sayılmaz. Hâlâ geçerli, Tamamla ve İptal doğrudan listede yapılır; Hâlâ
+geçerli işi yedi gün listeden düşürür. Her biri tek Geri al adımıdır.
 Kalan hedefleri planla: Önceki hafta ve ayların açık hedefleri; türü ve
 dönemi gösterilir. Haftalıklar bu haftaya, aylıklar bu aya taşınabilir.
 Her düğme ilgili kayıtları açar; arama bu önerileri de süzer. Sayılar

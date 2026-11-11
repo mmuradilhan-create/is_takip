@@ -101,7 +101,7 @@ import { createDashboardCalendar } from "./dashboard-calendar.js";
 import { selectDayFocus, toggleDayFocus } from "./day-focus.js";
 import { proposeGoalLinks, applyGoalLinks } from "./goal-link-review.js";
 import { normalizePreferences, applyTheme, watchTheme } from "./preferences.js";
-import { selectPlanningPrompts } from "./planning-prompts.js";
+import { selectPlanningPrompts, waitingGaps } from "./planning-prompts.js";
 import { parentGoalType, goalChildren } from "./goal-hierarchy.js";
 import { unlinkGoalChild } from "./goal-child-unlink.js";
 import { createWaitingInfoUI } from "./waiting-info-ui.js";
@@ -1147,6 +1147,7 @@ export async function startMainApp() {
       return (
         listReviewRecords([r], today(), {
           runningRecordId: workSessions?.getRunningRecordId() || null,
+          activity: workSessions?.activity?.() || null,
         }).length > 0
       );
     if (r.type === "waiting") {
@@ -1315,6 +1316,7 @@ export async function startMainApp() {
       today: today(),
       query: state.search,
       runningRecordId: workSessions?.getRunningRecordId() || null,
+      activity: workSessions?.activity?.() || null,
     });
   }
   const promptKinds = {
@@ -1329,13 +1331,14 @@ export async function startMainApp() {
       title: "Beklemeyi netleştir",
       symbol: "clock",
       description:
-        "Bekleyen konularda kimden beklendiğini ve son gelişmeyi; beklemedeki işlerde bekleme nedenini tamamlayabilirsin.",
+        "Kimden beklendiği veya sonraki takip tarihi eksik bekleyen konular; tarihsiz konular Takip gerekenler’de görünmez. İki haftadır hiç takip edilmemiş konularda son gelişme, beklemedeki işlerde bekleme nedeni de istenir.",
     },
     review: {
       key: "reviewRecords",
       title: "İşleri gözden geçir",
       symbol: "inbox",
-      description: "En az 7 gündür güncellenmeyen açık işler.",
+      description:
+        "En az 7 gündür güncellenmeyen ve üzerinde çalışılmayan açık işler. Hâlâ geçerliyse işaretle; 7 gün boyunca listede görünmez.",
     },
     previous: {
       key: "previousGoals",
@@ -1361,12 +1364,37 @@ export async function startMainApp() {
     const dialog = document.querySelector("#planning-prompts-dialog");
     if (!dialog.open) dialog.showModal();
   }
+  const waitingGapLabels = {
+    expectedFrom: "Kimden bekleniyor",
+    nextFollowUpDate: "Sonraki takip tarihi",
+    latestUpdate: "Son gelişme",
+    waitingReason: "Bekleme nedeni",
+  };
+  function planningPromptDetail(record) {
+    if (planningPromptKind === "previous")
+      return `<small class="planning-prompt-period">${record.type === "monthly" ? "Aylık hedef" : "Haftalık hedef"} · ${esc(record.periodKey || "Önceki dönem")}</small>`;
+    if (planningPromptKind === "waiting") {
+      const gaps = waitingGaps(record, today());
+      return gaps.length
+        ? `<small class="planning-prompt-period planning-prompt-gaps">Eksik: ${gaps.map((gap) => esc(waitingGapLabels[gap])).join(" · ")}</small>`
+        : "";
+    }
+    return "";
+  }
+  function planningPromptActions(record) {
+    const open = `<button type="button" class="btn small" data-action="planning-prompt-record" data-id="${esc(record.id)}" data-prompt="${planningPromptKind}">${planningPromptKind === "waiting" ? "Bilgi ekle" : planningPromptKind === "review" ? "İşi aç" : "Hedefi aç"}${icon("arrow")}</button>`;
+    if (planningPromptKind === "previous")
+      return `${open}${carryPlanningButton(record, makePlanningPeriod(record.type, today()))}`;
+    if (planningPromptKind === "review")
+      return `<button type="button" class="btn small planning-review-keep" data-action="planning-review" data-review="keep" data-id="${esc(record.id)}" title="İş hâlâ geçerli; 7 gün boyunca bu listede görünmez">Hâlâ geçerli</button><button type="button" class="btn small" data-action="planning-review" data-review="completed" data-id="${esc(record.id)}">Tamamla</button><button type="button" class="btn small" data-action="planning-review" data-review="cancelled" data-id="${esc(record.id)}">İptal</button>${open}`;
+    return open;
+  }
   function renderPlanningPrompt() {
     if (!planningPromptKind) return;
     const config = promptKinds[planningPromptKind];
     const records = planningSuggestions()[config.key];
     const dialog = document.querySelector("#planning-prompts-dialog");
-    dialog.innerHTML = `<div class="modal-header"><h2>${config.title}</h2><button type="button" class="close-modal" data-action="close" aria-label="Pencereyi kapat">${icon("close")}</button></div><div class="modal-body"><p class="field-help">${config.description}</p>${records.length ? `<ul class="planning-prompt-list">${records.map((record) => `<li data-prompt-record="${esc(record.id)}"><span>${esc(record.title)}${planningPromptKind === "previous" ? `<small class="planning-prompt-period">${record.type === "monthly" ? "Aylık hedef" : "Haftalık hedef"} · ${esc(record.periodKey || "Önceki dönem")}</small>` : ""}</span><div class="planning-prompt-row-actions"><button type="button" class="btn small" data-action="planning-prompt-record" data-id="${esc(record.id)}" data-prompt="${planningPromptKind}">${planningPromptKind === "waiting" ? "Bilgi ekle" : planningPromptKind === "review" ? "İşi aç" : "Hedefi aç"}${icon("arrow")}</button>${planningPromptKind === "previous" ? carryPlanningButton(record, makePlanningPeriod(record.type, today())) : ""}</div></li>`).join("")}</ul>` : `<p class="soft-empty">Burada planlanacak kayıt kalmadı.</p>`}</div><div class="modal-footer"><button type="button" class="btn primary" data-action="close">Kapat</button></div>`;
+    dialog.innerHTML = `<div class="modal-header"><h2>${config.title}</h2><button type="button" class="close-modal" data-action="close" aria-label="Pencereyi kapat">${icon("close")}</button></div><div class="modal-body"><p class="field-help">${config.description}</p>${records.length ? `<ul class="planning-prompt-list">${records.map((record) => `<li data-prompt-record="${esc(record.id)}"><span>${esc(record.title)}${planningPromptDetail(record)}</span><div class="planning-prompt-row-actions">${planningPromptActions(record)}</div></li>`).join("")}</ul>` : `<p class="soft-empty">Burada planlanacak kayıt kalmadı.</p>`}</div><div class="modal-footer"><button type="button" class="btn primary" data-action="close">Kapat</button></div>`;
   }
   function focusList() {
     const options = {
@@ -3374,15 +3402,58 @@ export async function startMainApp() {
       case "planning-prompt":
         openPlanningPrompt(button.dataset.prompt);
         break;
+      case "planning-review": {
+        const record = state.records.find((item) => item.id === id);
+        if (!record || !active(effectiveRecord(record))) break;
+        const row = button.closest("[data-prompt-record]");
+        const neighbour = (
+          row?.nextElementSibling || row?.previousElementSibling
+        )?.dataset.promptRecord;
+        if (button.dataset.review === "keep") {
+          // Confirming a job is still valid counts as its update.
+          if (
+            saveRecords(
+              state.records.map((item) =>
+                item.id === id
+                  ? { ...item, updatedAt: new Date().toISOString() }
+                  : item,
+              ),
+              "İşi gözden geçirme",
+            )
+          )
+            toast(
+              "İş güncel olarak işaretlendi; 7 gün boyunca listede görünmez.",
+            );
+        } else if (["completed", "cancelled"].includes(button.dataset.review))
+          setRecordStatus(id, button.dataset.review);
+        renderPlanningPrompt();
+        // Keep the keyboard in the list: move to the next job left to review.
+        const dialog = document.querySelector("#planning-prompts-dialog");
+        const stays = dialog.querySelector(
+          `[data-prompt-record="${CSS.escape(id)}"] [data-review="keep"]`,
+        );
+        (
+          stays ||
+          (neighbour &&
+            dialog.querySelector(
+              `[data-prompt-record="${CSS.escape(neighbour)}"] [data-review="keep"]`,
+            )) ||
+          dialog.querySelector(".modal-footer .btn.primary")
+        )?.focus({ preventScroll: true });
+        break;
+      }
       case "planning-prompt-record":
         document.querySelector("#planning-prompts-dialog").close();
         if (button.dataset.prompt === "waiting") {
           const record = state.records.find((item) => item.id === id);
           if (record?.type === "waiting") {
             openEditor(id);
-            const name = String(record.expectedFrom || "").trim()
-              ? "latestUpdate"
-              : "expectedFrom";
+            const name =
+              waitingGaps(record, today()).find((gap) =>
+                ["expectedFrom", "nextFollowUpDate", "latestUpdate"].includes(
+                  gap,
+                ),
+              ) || "expectedFrom";
             document.querySelector(`#record-form [name="${name}"]`)?.focus();
           } else waitingDetails?.open(id);
         } else if (button.dataset.prompt === "review") openEditor(id);

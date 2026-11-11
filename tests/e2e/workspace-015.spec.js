@@ -280,7 +280,7 @@ test("planning suggestions open the relevant context, keep waiting details optio
   await page.locator('.planning-prompts [data-prompt="waiting"]').click();
   await expect(
     page.locator("#planning-prompts-dialog .field-help"),
-  ).toContainText("kimden beklendiğini ve son gelişmeyi");
+  ).toContainText("Kimden beklendiği veya sonraki takip tarihi eksik");
   await expect(
     page.locator("#planning-prompts-dialog .field-help"),
   ).not.toContainText("neden ve sonraki adımı");

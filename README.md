@@ -1,6 +1,6 @@
 # Odak
 
-PC kullanımına odaklanan, Türkçe kişisel iş ve hedef takibi. HTML/CSS/JavaScript tabanlıdır. Güncel sürüm: **1.2.1**.
+PC kullanımına odaklanan, Türkçe kişisel iş ve hedef takibi. HTML/CSS/JavaScript tabanlıdır. Güncel sürüm: **1.3.0**.
 
 ## Kullanım
 
@@ -165,8 +165,8 @@ Bekleyen konu için e-posta veya telefon gibi bir **günlük temas adımı** aç
 Üstteki **Planını netleştir** şeridi isteğe bağlı dört öneri sunar; yalnızca uygun kayıt bulunan düğmeler görünür:
 
 - **Hedeflere adım planla**: Bu haftanın açık hedeflerinden sayısal hedefi ve uygun bağlı günlük işi olmayanlar.
-- **Beklemeyi netleştir**: Beklemede olan günlük işlerden bekleme nedeni boş olanlar. Bu alan isteğe bağlıdır. Bekleyen konularda kimden beklendiği ve son gelişme eksikleri de burada görünür.
-- **İşleri gözden geçir**: En az yedi takvim günüdür güncellenmeyen açık günlük işler. Üzerinde çalışılan iş dahil edilmez.
+- **Beklemeyi netleştir**: Kimden beklendiği veya **sonraki takip tarihi** eksik açık bekleyen konular; tarihsiz konular **Takip gerekenler**’de görünmediği için burada hatırlatılır. **Son gelişme** yalnız iki haftadır bekleyen ve hiç takip kaydı olmayan konularda istenir; yeni açılan konu bu yüzden işaretlenmez. Beklemede olan günlük işlerden bekleme nedeni boş olanlar da buradadır. Her satırda neyin eksik olduğu yazar; **Bilgi ekle** formu doğrudan ilk eksik alanda açar.
+- **İşleri gözden geçir**: En az yedi takvim günüdür güncellenmeyen ve üzerinde çalışılmayan açık günlük işler. Çalışılan iş ile son yedi günde çalışma notu yazılan veya duraklatılan işler dahil edilmez. Her işin yanında **Hâlâ geçerli / Tamamla / İptal / İşi aç** bulunur. **Hâlâ geçerli** işi güncellenmiş sayar ve yedi gün listeden düşürür; üç işlem de tek **Geri al** adımıdır. İşlemden sonra klavye odağı sıradaki işe geçer.
 - **Kalan hedefleri planla**: Önceki hafta ve aylardan kalan açık hedefler; türü ve dönemi gösterilir. Haftalık hedefi bu haftaya, aylık hedefi bu aya taşıyabilirsiniz.
 
 Her düğme ilgili kayıtları gösterir; buradan kaydı açıp karar verirsiniz. Arama bu önerileri de süzer. Sayılar birleştirilmez; şeridi açmak kayıt veya durum değiştirmez ve zorunlu bir işlem başlatmaz. Öneri yoksa şerit görünmez. Eski dört büyük gündem kartı kaldırılmıştır.

@@ -357,6 +357,19 @@ export function createRecordNoteUI({
     if (hoverControl === control) hoverControl = null;
     win.clearTimeout(openTimer);
     openTimer = null;
+    // A short note closes at once, like connection bubbles. Only a note that
+    // scrolls keeps the grace period so the pointer can reach and scroll it.
+    if (
+      kind === "note" &&
+      trigger === control &&
+      !popup.contains(event.relatedTarget) &&
+      body.scrollHeight <= body.clientHeight + 1
+    ) {
+      win.clearTimeout(hideTimer);
+      hideTimer = null;
+      if (!pinned && !focusInside()) close();
+      return;
+    }
     scheduleHide();
   }
 

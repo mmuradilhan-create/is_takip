@@ -237,8 +237,8 @@ test("action headers and controls share compact left alignment across meeting, g
           "waiting",
           waiting.id,
           ".waiting-table",
-          3,
-          124,
+          2,
+          100,
           ".record-edit-trigger",
         ],
       ]) {

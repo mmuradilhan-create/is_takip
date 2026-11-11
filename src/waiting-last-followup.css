@@ -1,0 +1,36 @@
+/* "Takip ettim" sits beside the last follow-up date it updates. */
+.full-table.waiting-table > thead > tr > th.waiting-last-col {
+  width: 136px;
+}
+
+.full-table.waiting-table > thead > tr > th.row-action-col {
+  width: 88px;
+}
+
+.waiting-last-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.waiting-last-cell > .waiting-last-date {
+  flex: 0 1 auto;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.waiting-table .waiting-last-cell > .waiting-followup-trigger {
+  flex: 0 0 26px;
+  width: 26px;
+  min-width: 26px;
+  height: 26px;
+  min-height: 26px;
+  padding: 5px;
+}
+
+.waiting-table .waiting-last-cell > .waiting-followup-trigger > svg {
+  flex: 0 0 13px;
+  width: 13px;
+  height: 13px;
+}

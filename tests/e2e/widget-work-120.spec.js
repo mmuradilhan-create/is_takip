@@ -105,10 +105,19 @@ test("the widget opens on work, starts next work, saves its note and finishes it
   await widget.keyboard.press("Control+p");
   await expect(widget.locator(".wb-phase")).toHaveText("Duraklatıldı");
   await expect(widget.locator('[data-wb="toggle"]')).toHaveText("Devam et");
+  // 1.2.1: a paused work folds to a compact summary without its note field.
+  await expect(widget.locator("#widget-workbench")).toHaveAttribute(
+    "data-phase",
+    "paused",
+  );
+  await expect(note).toBeHidden();
+  await expect(widget.locator('[data-wb="finish"]')).toBeVisible();
   // A paused work leaves room to pick another one.
   expect(await upcoming(widget)).toEqual(["running", "later"]);
   await widget.locator('[data-wb="toggle"]').click();
   await expect(widget.locator(".wb-phase")).toHaveText("Çalışıyor");
+  await expect(note).toBeVisible();
+  await expect(note).toBeFocused();
 
   await widget.keyboard.press("Control+Enter");
   await expect(widget.locator(".wb-phase")).toHaveText("Sonuç kaydı");
@@ -258,7 +267,15 @@ test("paused work resumes from the widget, the agenda stays one click away, and 
   await widget.locator('.wb-row[data-id="later"] [data-wb="start"]').click();
   // A running work keeps the room for its note; pausing shows the next work.
   await expect(widget.locator(".wb-upcoming")).toBeHidden();
+  // Leaving the note saves it; the same press must still pause the work.
+  await widget.locator("#widget-work-note").fill("Kısa not");
   await widget.locator('[data-wb="toggle"]').click();
+  await expect(widget.locator(".wb-phase")).toHaveText("Duraklatıldı");
+  expect(
+    (await sessions(widget)).entries.find(
+      (entry) => entry.recordId === "later",
+    ),
+  ).toMatchObject({ status: "paused", draftNote: "Kısa not" });
   await widget.locator('.wb-row[data-id="today"] [data-wb="start"]').click();
   await expect(widget.locator(".wb-title")).toHaveText(
     "Bugün teslim edilecek iş",
@@ -302,4 +319,72 @@ test("paused work resumes from the widget, the agenda stays one click away, and 
   await toggle.click();
   await expect(widget.locator("#widget-workbench")).toBeVisible();
   await expect(widget.locator(".wb-title")).toHaveText("Sonraki hafta teslimi");
+});
+
+test("the mouse wheel scrolls next work wherever the pointer rests, including in a small paused widget", async ({
+  context,
+}) => {
+  const many = Array.from({ length: 14 }, (_, index) =>
+    make({ id: `job-${index}`, title: `Sıradaki iş numarası ${index + 1}` }),
+  );
+  await context.clock.setFixedTime(NOW);
+  await context.addInitScript(
+    ({ key, raw }) => {
+      if (localStorage.getItem(key) === null) localStorage.setItem(key, raw);
+    },
+    { key: KEY, raw: JSON.stringify({ version: 1, records: many }) },
+  );
+  const widget = await openWidget(context);
+  const list = widget.locator("#wb-upcoming-list");
+  async function wheel(target) {
+    const point = await target.evaluate((element) => {
+      const rect = element.getBoundingClientRect();
+      const top = Math.max(rect.top, 0);
+      const bottom = Math.min(rect.bottom, innerHeight);
+      return { x: rect.left + rect.width / 3, y: (top + bottom) / 2 };
+    });
+    await widget.mouse.move(point.x, point.y);
+    await widget.mouse.wheel(0, 120);
+  }
+  await expect(list).toHaveCSS("overscroll-behavior-y", "auto");
+  await wheel(list);
+  await expect
+    .poll(() => list.evaluate((element) => element.scrollTop))
+    .toBe(120);
+  // A periodic refresh keeps the same rows and their scroll position.
+  await widget.evaluate(() => window.dispatchEvent(new Event("odak:refresh")));
+  await wheel(list);
+  await expect
+    .poll(() => list.evaluate((element) => element.scrollTop))
+    .toBe(240);
+  for (const id of ["job-13", "job-12", "job-11", "job-10"]) {
+    await widget.locator(`.wb-row[data-id="${id}"] [data-wb="start"]`).click();
+    await widget.locator('[data-wb="toggle"]').click();
+  }
+  await widget.setViewportSize({ width: 340, height: 300 });
+  const bench = widget.locator("#widget-workbench");
+  expect(
+    await bench.evaluate(
+      (element) => element.scrollHeight > element.clientHeight,
+    ),
+  ).toBe(true);
+  await wheel(widget.locator(".wb-active"));
+  await expect
+    .poll(() => bench.evaluate((element) => element.scrollTop))
+    .toBeGreaterThan(0);
+  // Nothing in the paused work view overlaps at this size.
+  expect(
+    await widget.evaluate(() => {
+      const boxes = [
+        ...document.querySelectorAll(
+          ".wb-heading, .wb-controls, .wb-paused, .wb-upcoming",
+        ),
+      ]
+        .filter((element) => element.offsetParent)
+        .map((element) => element.getBoundingClientRect());
+      return boxes
+        .slice(1)
+        .every((box, index) => box.top >= boxes[index].bottom - 0.5);
+    }),
+  ).toBe(true);
 });

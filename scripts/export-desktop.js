@@ -761,6 +761,8 @@ kaydedilir ve sol alttaki çalışma notuyla aynıdır. Duraklat / Devam et ve
 Bitir ana penceredeki gibi çalışır (Ctrl+P, Ctrl+Enter). Bitir'de not Sonuç
 olarak hazır gelir; Kaydet ve bitir sonucu çalışma geçmişine yazar, ana
 penceredeki Geri al ile geri alınabilir.
+Duraklatılan iş küçük bir özete iner (iş adı, geçmiş simgesi, Devam et / Bitir);
+Devam et notu yeniden açar.
 Duraklatılan işler ▶ Devam et ile, çalışılan iş yokken veya iş duraklatılmışken
 Sıradaki işler ▶ ile başlatılır. Her işin yanındaki çalışma geçmişi simgesi o
 işin kayıtlı sonuçlarını widget içinde gösterir.

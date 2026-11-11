@@ -292,7 +292,11 @@ export function createWidgetWork({
     if (!flush() && editor?.dirty) return;
     if (current.entry.status === "running")
       store.pause(current.entry.recordId, current.entry.sessionId);
-    else store.start(current.entry.recordId, { trackTime: false });
+    else if (store.start(current.entry.recordId, { trackTime: false })) {
+      render();
+      note.focus({ preventScroll: true });
+      return;
+    }
     render();
   }
 
@@ -481,6 +485,12 @@ export function createWidgetWork({
     }
     const working = Boolean(current && editor);
     root.dataset.mode = working ? "working" : "idle";
+    // A paused work folds to a compact summary, like the sidebar work card.
+    root.dataset.phase = working
+      ? finish
+        ? "finish"
+        : current.entry.status
+      : "idle";
     active.hidden = !working;
     idle.hidden = working;
     if (working) {
@@ -510,11 +520,18 @@ export function createWidgetWork({
       controls.hidden = finishingDraft;
       finishControls.hidden = !finishingDraft;
       toggle.dataset.state = running ? "running" : "paused";
-      toggle.innerHTML = `${running ? icons.pause : icons.resume}<span>${running ? "Duraklat" : "Devam et"}</span>`;
+      // Rewrite controls only when their state changes: replacing a pressed
+      // button's content between mousedown and mouseup drops the click.
+      if (toggle.dataset.rendered !== toggle.dataset.state) {
+        toggle.innerHTML = `${running ? icons.pause : icons.resume}<span>${running ? "Duraklat" : "Devam et"}</span>`;
+        toggle.dataset.rendered = toggle.dataset.state;
+      }
       toggle.disabled = finishing;
       finishButton.disabled = finishing;
       saveButton.disabled = finishing || editor.conflict;
-      saveButton.textContent = finishing ? "Kaydediliyor…" : "Kaydet ve bitir";
+      const saveText = finishing ? "Kaydediliyor…" : "Kaydet ve bitir";
+      if (saveButton.textContent !== saveText)
+        saveButton.textContent = saveText;
     } else {
       idle.querySelector(".wb-idle-text").textContent =
         unavailable || "Şu an çalışılan iş yok. Aşağıdan birini başlat.";

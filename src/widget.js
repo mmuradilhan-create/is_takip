@@ -133,10 +133,20 @@ export const widgetDocumentHtml = `<!doctype html>
     .wb-idle { margin:0; padding:12px 10px; border:1px dashed #cfdcc8; border-radius:10px; color:#6b7e64; font-size:11px; line-height:1.45; text-align:center; }
     .wb-paused,.wb-upcoming { display:flex; flex-direction:column; flex:0 0 auto; min-height:0; overflow:hidden; border:1px solid #dfe7da; border-radius:10px; background:#fff; }
     .widget-workbench[data-mode="working"] :is(.wb-paused,.wb-upcoming) { max-height:118px; }
+    .widget-workbench { overflow-y:auto; overscroll-behavior:contain; }
+    .widget-workbench > .wb-active { min-height:auto; }
+    .widget-workbench[data-phase="paused"] > .wb-active { flex:0 0 auto; gap:8px; }
+    .widget-workbench[data-phase="paused"] .wb-note-field { display:none; }
+    .widget-workbench[data-phase="paused"] .wb-title { -webkit-line-clamp:1; }
+    .widget-workbench[data-phase="paused"] > .wb-upcoming,.widget-workbench[data-mode="idle"] > .wb-upcoming { flex:1 1 auto; max-height:none; min-height:72px; }
+    .widget-workbench[data-mode="idle"] > .wb-paused { flex:0 0 auto; max-height:118px; }
+    .widget-workbench[data-mode="idle"] > .wb-upcoming > ul { flex:1 1 auto; }
+    .widget-workbench[data-phase="paused"] > .wb-paused { flex:0 0 auto; }
+    .widget-workbench[data-phase="paused"] > :is(.wb-paused,.wb-upcoming) > ul { flex:1 1 auto; }
     #widget-status[data-tone="info"] { color:#3f6a4f; }
     [data-theme="dark"] #widget-status[data-tone="info"] { color:#9dd8b7; }
     .wb-paused h2,.wb-upcoming h2 { flex:0 0 auto; margin:0; padding:7px 10px; border-bottom:1px solid #e8eee4; color:#64775f; font-size:10px; font-weight:650; line-height:1.3; }
-    .wb-paused ul,.wb-upcoming ul { list-style:none; min-height:0; margin:0; padding:0; overflow-y:auto; overscroll-behavior:contain; }
+    .wb-paused ul,.wb-upcoming ul { list-style:none; min-height:0; margin:0; padding:0; overflow-y:auto; }
     .wb-row { display:flex; align-items:center; gap:6px; min-width:0; padding:6px 8px 6px 10px; border-bottom:1px solid #edf0e9; }
     .wb-row:last-child { border-bottom:0; }
     .wb-row-title { flex:1 1 auto; min-width:0; margin:0; padding:0; overflow:hidden; border:0; background:none; color:#304d37; font-size:12px; font-weight:600; line-height:1.35; text-align:left; text-overflow:ellipsis; white-space:nowrap; }

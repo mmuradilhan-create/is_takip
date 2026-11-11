@@ -1,6 +1,6 @@
 # Odak
 
-PC kullanımına odaklanan, Türkçe kişisel iş ve hedef takibi. HTML/CSS/JavaScript tabanlıdır. Güncel sürüm: **1.2.0**.
+PC kullanımına odaklanan, Türkçe kişisel iş ve hedef takibi. HTML/CSS/JavaScript tabanlıdır. Güncel sürüm: **1.2.1**.
 
 ## Kullanım
 
@@ -201,7 +201,7 @@ Takip kartlarında bekleyen konuların sonraki takip tarihleri esas alınır: **
 
 Genel bakış, uygulama içinde kompakt özet ekranıdır. Sağ üstteki **Widget** düğmesi, ana ekranı koruyarak **ayrı ve küçük bir pencere** açar. Widget **Çalışma** görünümüyle açılır; Excel, e-posta veya başka bir programın yanında açık tutulup çalışırken not almak içindir:
 
-- Bir iş çalışılıyorsa veya duraklatılmışsa üstte işin adı, durumu ve **Çalışma notu** alanı bulunur. Yazılanlar kısa bir beklemeden sonra kendiliğinden kaydedilir; sol alttaki çalışma notuyla aynı nottur. **Duraklat / Devam et** ve **Bitir** ana penceredeki gibi çalışır; **Ctrl+P** duraklatır veya sürdürür, **Ctrl+Enter** bitirme adımını açar. Enter not alanında işlem yapmaz; Shift+Enter alt satır ekler. Bitirmede not **Sonuç** olarak hazır gelir; **Kaydet ve bitir** sonucu işin çalışma geçmişine yazar ve ana penceredeki **Geri al** ile tek adımda geri alınır. **Vazgeç** veya Escape işi duraklatılmış bırakır.
+- Bir iş çalışılıyorsa veya duraklatılmışsa üstte işin adı, durumu ve **Çalışma notu** alanı bulunur. Yazılanlar kısa bir beklemeden sonra kendiliğinden kaydedilir; sol alttaki çalışma notuyla aynı nottur. **Duraklat / Devam et** ve **Bitir** ana penceredeki gibi çalışır; **Ctrl+P** duraklatır veya sürdürür, **Ctrl+Enter** bitirme adımını açar. Enter not alanında işlem yapmaz; Shift+Enter alt satır ekler. Bitirmede not **Sonuç** olarak hazır gelir; **Kaydet ve bitir** sonucu işin çalışma geçmişine yazar ve ana penceredeki **Geri al** ile tek adımda geri alınır. **Vazgeç** veya Escape işi duraklatılmış bırakır. Duraklatılan iş, sol alttaki çalışma kartı gibi küçük bir özete iner: durum, tek satır iş adı, çalışma geçmişi simgesi ve **Devam et / Bitir**; not alanı gizlenir ve kalan yer listelere kalır. **Devam et** notu yeniden açar ve imleci içine koyar. Fare tekerleği, imlecin altındaki listeyi kaydırır; liste sonuna gelince kaydırma widget alanına geçer. Çok küçük pencerede parçalar üst üste binmez, alan kaydırılır.
 - Duraklatılmış işler **Duraklatılanlar** altında ▶ **Devam et** ile durur. Çalışılan iş yokken veya iş duraklatılmışken **Sıradaki işler** açık günlük işleri gösterir: önce bugünün odağı, sonra devam eden işler, gecikmiş ve bugün teslim edilecekler, sonra tarihli ve tarihsiz işler. ▶ işi başlatır; başka bir iş çalışıyorsa o duraklatılır. İş adına tıklamak kaydı ana pencerede açar.
 - Her işin yanında günlük işlerdeki **çalışma geçmişi** simgesi vardır; kaydı olan işte lila görünür. Simge, o işin kayıtlı sonuçlarını tarihleriyle widget'ın içinde gösterir; **Geri** veya Escape çalışma görünümüne döner. Düzenleme ana penceredeki iş günlüğünden yapılır.
 - Not ana pencerede ve widget'ta aynı anda değişirse hiçbiri sessizce üzerine yazılmaz: yazılan metin korunur, **Güncel notu yükle / Bu notu kaydet** seçenekleri çıkar.

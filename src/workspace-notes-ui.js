@@ -127,7 +127,7 @@ export function createWorkspaceNotesUI({
     }
     const disabled =
       readError || saving || deleting || notes.length >= MAX_WORKSPACE_NOTES;
-    return `<section class="panel dashboard-notes-panel" aria-label="Bağımsız notlar"><div class="panel-header dashboard-panel-header"><div class="dashboard-panel-heading"><h2>Notlar<span class="dashboard-panel-count">${notes.length}</span></h2></div><button type="button" class="text-btn workspace-note-add" data-action="workspace-note-new" aria-haspopup="dialog" aria-controls="workspace-note-editor"${disabled ? " disabled" : ""}${notes.length >= MAX_WORKSPACE_NOTES ? ` title="En fazla ${MAX_WORKSPACE_NOTES} not tutulabilir"` : ""}>${plusIcon}<span>Not ekle</span></button></div><div class="workspace-notes-content" tabindex="0" aria-label="Not maddeleri">${notes.length ? `<ul class="workspace-notes-list">${notes.map((note) => `<li data-note-id="${escapeHtml(note.id)}"><div class="workspace-note-row"><div class="workspace-note-copy"><p class="workspace-note-text">${escapeHtml(note.text)}</p>${note.remindAt ? `<span class="workspace-note-reminder${reminderTime(note.remindAt) <= Date.now() ? " is-due" : ""}" title="Hatırlatma: ${escapeHtml(formatReminder(note.remindAt))}">${bellIcon}${escapeHtml(formatReminder(note.remindAt))}</span>` : ""}</div><div class="workspace-note-actions"><button type="button" class="workspace-note-control" data-action="workspace-note-edit" data-note-id="${escapeHtml(note.id)}" aria-label="Notu düzenle: ${escapeHtml(note.text.slice(0, 80))}" aria-haspopup="dialog" aria-controls="workspace-note-editor" title="Notu düzenle">${editIcon}</button><button type="button" class="workspace-note-control" data-action="workspace-note-delete" data-note-id="${escapeHtml(note.id)}" aria-label="Notu sil: ${escapeHtml(note.text.slice(0, 80))}" title="Notu sil">${deleteIcon}</button></div></div></li>`).join("")}</ul>` : '<p class="workspace-notes-empty">Henüz not yok.</p>'}<p id="workspace-notes-panel-error" class="error-message" role="alert"${readError || panelError ? "" : " hidden"}>${escapeHtml(readError || panelError)}</p></div></section>`;
+    return `<section class="panel dashboard-notes-panel" aria-label="Bağımsız notlar"><div class="panel-header dashboard-panel-header"><div class="dashboard-panel-heading"><h2>Notlar<span class="dashboard-panel-count">${notes.length}</span></h2></div><button type="button" class="text-btn workspace-note-add" data-action="workspace-note-new" aria-haspopup="dialog" aria-controls="workspace-note-editor"${disabled ? " disabled" : ""}${notes.length >= MAX_WORKSPACE_NOTES ? ` title="En fazla ${MAX_WORKSPACE_NOTES} not tutulabilir"` : ""}>${plusIcon}<span>Not ekle</span></button></div><div class="workspace-notes-content" tabindex="0" aria-label="Not maddeleri">${notes.length ? `<ul class="workspace-notes-list">${notes.map((note) => `<li data-note-id="${escapeHtml(note.id)}"><div class="workspace-note-row"><div class="workspace-note-copy"><p class="workspace-note-text">${escapeHtml(note.text)}</p>${note.remindAt ? `<button type="button" class="workspace-note-reminder${reminderTime(note.remindAt) <= Date.now() ? " is-due" : ""}" data-action="workspace-note-reminder" data-note-id="${escapeHtml(note.id)}" data-remind-at="${escapeHtml(note.remindAt)}" aria-haspopup="dialog" aria-controls="workspace-note-editor" aria-label="Hatırlatma ${escapeHtml(formatReminder(note.remindAt))}: hatırlatmayı düzenle" title="Hatırlatmayı düzenle">${bellIcon}${escapeHtml(formatReminder(note.remindAt))}</button>` : ""}</div><div class="workspace-note-actions"><button type="button" class="workspace-note-control" data-action="workspace-note-edit" data-note-id="${escapeHtml(note.id)}" aria-label="Notu düzenle: ${escapeHtml(note.text.slice(0, 80))}" aria-haspopup="dialog" aria-controls="workspace-note-editor" title="Notu düzenle">${editIcon}</button><button type="button" class="workspace-note-control" data-action="workspace-note-delete" data-note-id="${escapeHtml(note.id)}" aria-label="Notu sil: ${escapeHtml(note.text.slice(0, 80))}" title="Notu sil">${deleteIcon}</button></div></div></li>`).join("")}</ul>` : '<p class="workspace-notes-empty">Henüz not yok.</p>'}<p id="workspace-notes-panel-error" class="error-message" role="alert"${readError || panelError ? "" : " hidden"}>${escapeHtml(readError || panelError)}</p></div></section>`;
   }
 
   function refresh() {
@@ -202,7 +202,7 @@ export function createWorkspaceNotesUI({
     }
   }
 
-  function open(id, control) {
+  function open(id, control, { focusReminder = false } = {}) {
     if (destroyed || saving || deleting) return;
     try {
       if (dialog.open) {
@@ -228,7 +228,11 @@ export function createWorkspaceNotesUI({
       dialog.innerHTML = `<form id="workspace-note-form"><div class="modal-header"><h2>${title}</h2><button type="button" class="close-modal" data-action="workspace-note-close" aria-label="Pencereyi kapat">${closeIcon}</button></div><div class="modal-body workspace-note-editor-body"><p class="workspace-note-availability" role="status" hidden></p><label class="field"><span id="workspace-note-label">Not</span><textarea name="text" rows="6" maxlength="${MAX_WORKSPACE_NOTE_LENGTH}" required aria-labelledby="workspace-note-label" aria-describedby="workspace-note-shortcuts" placeholder="Aklında kalmasını istediğin bir not yaz.">${escapeHtml(initialText)}</textarea><small id="workspace-note-shortcuts">Enter ile kaydet, Shift+Enter ile alt satıra geç.</small></label><fieldset class="workspace-note-reminder-fields" aria-label="Hatırlatma"><label class="workspace-note-remind-toggle"><input type="checkbox" name="remind"${reminding ? " checked" : ""}>${bellIcon}<span>Hatırlat</span></label><div class="workspace-note-remind-when"${reminding ? "" : " hidden"}><label class="field"><span>Tarih</span>${dateInput({ name: "remindDate", id: "workspace-note-remind-date", value: reminder.slice(0, 10), label: "Hatırlatma tarihi" })}</label><label class="field"><span>Saat</span><input type="time" name="remindTime" value="${escapeHtml(reminder.slice(11))}" step="300" aria-label="Hatırlatma saati"></label></div></fieldset><p id="workspace-note-error" class="error-message" role="alert" hidden></p></div><div class="modal-footer"><button type="button" class="btn" data-action="workspace-note-close">Vazgeç</button><button type="submit" class="btn primary">Kaydet</button></div></form>`;
       dialog.showModal();
       initialState = formState();
-      field().focus({ preventScroll: true });
+      const reminderField = dialog.querySelector('[name="remindDate"]');
+      if (focusReminder && reminderField) {
+        reminderField.focus({ preventScroll: true });
+        reminderField.select();
+      } else field().focus({ preventScroll: true });
     } catch (error) {
       onError(error instanceof Error ? error.message : String(error));
     }
@@ -366,6 +370,7 @@ export function createWorkspaceNotesUI({
         "workspace-note-new",
         "workspace-note-edit",
         "workspace-note-delete",
+        "workspace-note-reminder",
       ].includes(action)
     )
       return;
@@ -373,6 +378,8 @@ export function createWorkspaceNotesUI({
     event.stopPropagation();
     if (action === "workspace-note-delete")
       deleteNote(control.dataset.noteId, control);
+    else if (action === "workspace-note-reminder")
+      open(control.dataset.noteId, control, { focusReminder: true });
     else
       open(
         action === "workspace-note-edit" ? control.dataset.noteId : null,

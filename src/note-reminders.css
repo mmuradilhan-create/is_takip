@@ -9,6 +9,9 @@
 
 .workspace-note-reminder {
   display: inline-flex;
+  margin: 0;
+  font-family: inherit;
+  cursor: pointer;
   align-items: center;
   align-self: flex-start;
   gap: 4px;
@@ -87,11 +90,32 @@
   min-height: 36px;
 }
 
-.reminder-trigger {
+/* The bell is framed like Undo and Settings; a due reminder only tints it. */
+.topbar .reminder-trigger {
   position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  min-height: 40px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: #fff;
+  color: #456346;
 }
 
-.reminder-trigger svg {
+.topbar .reminder-trigger:hover {
+  background: #edf3e8;
+  border-color: #bdcdb5;
+}
+
+.topbar .reminder-trigger svg {
+  width: 19px;
+  height: 19px;
   fill: none;
   stroke: currentColor;
   stroke-width: 1.8;
@@ -99,21 +123,27 @@
   stroke-linejoin: round;
 }
 
-.reminder-trigger.is-due {
-  border-color: #e5c082;
-  background: #fff1d7;
-  color: #955400;
+.topbar .reminder-trigger.is-due {
+  border-color: #e7c88f;
+  background: #fff7e8;
+  color: #9a5a08;
+}
+
+.topbar .reminder-trigger.is-due:hover {
+  background: #fdefd3;
 }
 
 .reminder-count {
   position: absolute;
-  top: -5px;
-  right: -5px;
+  top: -6px;
+  right: -6px;
   min-width: 17px;
   height: 17px;
   padding: 0 4px;
+  border: 2px solid var(--theme-bg, #f6f8f3);
   border-radius: 9px;
-  background: #b4561c;
+  background: #c26a1e;
+  box-sizing: content-box;
   color: #fff;
   font-size: 10px;
   font-weight: 700;
@@ -240,4 +270,22 @@
   min-height: 28px;
   padding: 4px 10px;
   font-size: 11px;
+}
+
+@media (max-width: 760px) {
+  .topbar {
+    grid-template-columns: minmax(0, 1fr) auto auto auto auto;
+    grid-template-areas:
+      "title calendar reminder undo settings"
+      "search search search search new";
+  }
+
+  .topbar .reminder-trigger {
+    grid-area: reminder;
+    width: 36px;
+    height: 38px;
+    min-width: 36px;
+    min-height: 38px;
+    border-radius: 9px;
+  }
 }

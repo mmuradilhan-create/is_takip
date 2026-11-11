@@ -2,6 +2,7 @@ import { normalizeNotes } from "./workspace-notes.js";
 import {
   dueReminders,
   formatReminder,
+  reminderTime,
   snoozedMinute,
   upcomingReminders,
   withNoteReminder,
@@ -106,6 +107,14 @@ export function createReminderBell({
     button.title = due.length
       ? `${due.length} hatırlatmanın zamanı geldi`
       : "Hatırlatmalar";
+    // Note tags turn amber as their minute passes, without a full render.
+    const at = now();
+    for (const tag of root.querySelectorAll(
+      ".workspace-note-reminder[data-remind-at]",
+    )) {
+      const time = reminderTime(tag.dataset.remindAt);
+      tag.classList.toggle("is-due", time !== null && time <= at);
+    }
     const fresh = due.filter((note) => !alerted.has(key(note)));
     for (const note of fresh) alerted.add(key(note));
     if (fresh.length)

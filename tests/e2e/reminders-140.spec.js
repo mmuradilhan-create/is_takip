@@ -305,3 +305,49 @@ test("Settings lists postponed and hidden suggestions by kind and brings one bac
     ),
   ).toHaveText("1");
 });
+
+test("a note's reminder tag turns due as its minute passes and opens the editor on the reminder date", async ({
+  context,
+}) => {
+  // 17:54:30 in Europe/Istanbul; the reminder is due at 17:55.
+  await context.clock.install({ time: new Date("2026-11-11T14:54:30.000Z") });
+  await context.addInitScript(
+    ({ key, value }) => {
+      if (localStorage.getItem(key) === null) localStorage.setItem(key, value);
+    },
+    {
+      key: KEY,
+      value: JSON.stringify({
+        version: 1,
+        records: [],
+        odak: {
+          version: 1,
+          notes: [note("soon", { remindAt: "2026-11-11T17:55" })],
+        },
+      }),
+    },
+  );
+  const page = await context.newPage();
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/");
+  const tag = page.locator(".workspace-note-reminder");
+  const bell = page.locator("#reminder-button");
+  await expect(tag).toHaveText("Bugün 17:55");
+  await expect(tag).not.toHaveClass(/is-due/);
+  await expect(bell).not.toHaveClass(/is-due/);
+  await context.clock.runFor(60000);
+  await expect(tag).toHaveClass(/is-due/);
+  await expect(bell).toHaveClass(/is-due/);
+  await expect(bell.locator(".reminder-count")).toHaveText("1");
+  // The bell keeps the framed look of Undo and Settings when due.
+  const frame = await bell.evaluate((element) => {
+    const style = getComputedStyle(element);
+    return [style.borderTopWidth, style.borderTopStyle, style.borderRadius];
+  });
+  expect(frame).toEqual(["1px", "solid", "11px"]);
+  await tag.click();
+  const editor = page.locator("#workspace-note-editor");
+  await expect(editor).toBeVisible();
+  await expect(editor.locator('[name="remindDate"]')).toBeFocused();
+  await expect(editor.locator('[name="remind"]')).toBeChecked();
+});

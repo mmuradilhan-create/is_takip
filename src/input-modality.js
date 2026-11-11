@@ -14,7 +14,20 @@ const NAVIGATION_KEYS = new Set([
   "PageDown",
 ]);
 
-/** Focus restoration follows the last real input, not a programmatic focus(). */
+const typing = (target) =>
+  target?.matches?.("input, textarea, select, [contenteditable='true']");
+
+/**
+ * Focus restoration follows the last real input, not a programmatic focus().
+ *
+ * Two marks are kept on the root:
+ * - data-input-modality: "pointer" or "keyboard", from the last real input.
+ * - data-focus-quiet: set by a pointer press, or by Enter or Escape inside a
+ *   text field (saving or cancelling a form), and cleared by Tab, arrows or
+ *   Enter, Space or Escape on a control. When a window closes, focus returns
+ *   to the button that opened it and browsers often draw its keyboard cue;
+ *   while quiet, the app's focus underline and darker icon states stay off.
+ */
 export function installInputModality(document = globalThis.document) {
   const root = document.documentElement;
   const owner = document.defaultView;
@@ -24,6 +37,13 @@ export function installInputModality(document = globalThis.document) {
   let inputGeneration = 0;
   let restoreFrame = null;
   let restoredFocus = null;
+  // The input generation when each dialog actually closed. Its "close" event
+  // arrives later, after the user may have pressed another key.
+  const closedAt = new WeakMap();
+  const quiet = (value) => {
+    if (value) root.setAttribute("data-focus-quiet", "");
+    else root.removeAttribute("data-focus-quiet");
+  };
   const returnTargets =
     ".task-name, .focus-title, .goal-child-title, .dashboard-goal-title, .followup-title, .dashboard-detail-card, [data-record-row]";
   const set = (value) => {
@@ -49,6 +69,7 @@ export function installInputModality(document = globalThis.document) {
     if (event.isPrimary !== false) {
       newInput();
       set("pointer");
+      quiet(true);
     }
   }
 
@@ -62,18 +83,40 @@ export function installInputModality(document = globalThis.document) {
   function onKeyDown(event) {
     newInput();
     if (
-      !event.isComposing &&
-      !event.ctrlKey &&
-      !event.altKey &&
-      !event.metaKey &&
-      NAVIGATION_KEYS.has(event.key)
+      event.isComposing ||
+      event.ctrlKey ||
+      event.altKey ||
+      event.metaKey ||
+      !NAVIGATION_KEYS.has(event.key)
     )
-      set("keyboard");
+      return;
+    set("keyboard");
+    if (typing(event.target)) {
+      // Arrows inside a text field edit it; Enter or Escape there submits or
+      // cancels a form and hands focus back to the button that opened it.
+      if (event.key === "Enter" || event.key === "Escape") quiet(true);
+      else if (event.key === "Tab") quiet(false);
+      return;
+    }
+    quiet(false);
   }
+
+  const observer =
+    typeof owner.MutationObserver === "function"
+      ? new owner.MutationObserver((records) => {
+          for (const record of records)
+            if (record.target.matches?.("dialog") && !record.target.open)
+              closedAt.set(record.target, inputGeneration);
+        })
+      : null;
 
   function onDialogClose(event) {
     if (!event.target.matches?.("dialog")) return;
-    const generation = inputGeneration;
+    // Only focus that returned before any newer input counts as restored.
+    const generation = closedAt.has(event.target)
+      ? closedAt.get(event.target)
+      : inputGeneration;
+    closedAt.delete(event.target);
     const markReturnedFocus = () => {
       if (destroyed || generation !== inputGeneration) return;
       const active = document.activeElement;
@@ -96,6 +139,8 @@ export function installInputModality(document = globalThis.document) {
   function destroy() {
     if (destroyed) return;
     destroyed = true;
+    observer?.disconnect();
+    quiet(false);
     clearRestoredFocus();
     document.removeEventListener("pointerdown", onPointerDown, true);
     document.removeEventListener("pointermove", onPointerMove, true);
@@ -111,5 +156,10 @@ export function installInputModality(document = globalThis.document) {
   document.addEventListener("pointermove", onPointerMove, true);
   document.addEventListener("keydown", onKeyDown, true);
   document.addEventListener("close", onDialogClose, true);
+  observer?.observe(root, {
+    subtree: true,
+    attributes: true,
+    attributeFilter: ["open"],
+  });
   return destroy;
 }

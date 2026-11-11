@@ -69,7 +69,6 @@ import "./planning-dismiss.css";
 import "./settings-hidden-prompts.css";
 import "./window-min-size.css";
 import "./progress-chip.css";
-import { trackKeyboardFocus } from "./keyboard-focus.js";
 import { trackTriggerToggle } from "./trigger-toggle.js";
 import { bellIcon, createWorkspaceNotesUI } from "./workspace-notes-ui.js";
 import { normalizeNotes, notesFromBackup } from "./workspace-notes.js";
@@ -219,7 +218,6 @@ import {
 
 export async function startMainApp() {
   const desktopMode = location.hash.split("?")[0] === "#desktop";
-  trackKeyboardFocus(document);
   const paths = {
     undo: "m9 14-5-5 5-5M4 9h10a6 6 0 0 1 0 12h-1",
     widget: "M3 4h18v16H3zM12 12h7v6h-7z",

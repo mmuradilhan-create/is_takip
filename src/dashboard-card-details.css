@@ -37,12 +37,12 @@
   text-decoration: none;
 }
 
-:root[data-focus-source="keyboard"]
+:where(:root:not([data-focus-quiet]))
   .dashboard-rows
   .dashboard-bottom-row
   .dashboard-detail-card:focus-visible
   :is(.dashboard-goal-title, .followup-title),
-:root[data-focus-source="keyboard"]
+:where(:root:not([data-focus-quiet]))
   .dashboard-rows
   .dashboard-bottom-row
   .dashboard-detail-card
@@ -73,7 +73,7 @@
   box-shadow: none;
 }
 
-:root[data-focus-source="keyboard"]
+:where(:root:not([data-focus-quiet]))
   .dashboard-rows
   .dashboard-bottom-row
   button.followup-detail-trigger:focus-visible {

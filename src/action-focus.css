@@ -3,7 +3,7 @@
   background-color: transparent;
 }
 
-:is(#app, .calendar-dialog, .odak-date-picker)
+:is(#app, .calendar-dialog, .odak-date-picker, .app-confirm-dialog)
   :is(
     button,
     a,
@@ -19,8 +19,8 @@
   box-shadow: none;
 }
 
-:root[data-focus-source="keyboard"]
-  :is(#app, .calendar-dialog, .odak-date-picker)
+:where(:root:not([data-focus-quiet]))
+  :is(#app, .calendar-dialog, .odak-date-picker, .app-confirm-dialog)
   :is(button, a, summary, [data-goal-section-heading]):focus-visible:not(
     :disabled
   ) {
@@ -29,8 +29,8 @@
   text-decoration-thickness: 1px;
 }
 
-:root[data-focus-source="keyboard"]
-  :is(#app, .calendar-dialog, .odak-date-picker)
+:where(:root:not([data-focus-quiet]))
+  :is(#app, .calendar-dialog, .odak-date-picker, .app-confirm-dialog)
   :is(button, a, summary):focus-visible:not(:disabled)
   svg {
   stroke-width: 2.4;
@@ -54,14 +54,14 @@
   background: var(--theme-hover, #f6f8f3);
 }
 
-:is(#app, .calendar-dialog, .odak-date-picker)
+:is(#app, .calendar-dialog, .odak-date-picker, .app-confirm-dialog)
   :is(input, select, textarea):focus:not(:disabled) {
   outline: none;
   outline-offset: 0;
   box-shadow: none;
 }
 
-:is(#app, .calendar-dialog, .odak-date-picker)
+:is(#app, .calendar-dialog, .odak-date-picker, .app-confirm-dialog)
   :is(input, select, textarea):focus:not(:disabled):not(:invalid):not(
     [aria-invalid="true"],
     .invalid,
@@ -87,7 +87,7 @@
   border-color: var(--theme-accent, #6ea28e);
 }
 
-:is(#app, .calendar-dialog, .odak-date-picker)
+:is(#app, .calendar-dialog, .odak-date-picker, .app-confirm-dialog)
   input:is([type="checkbox"], [type="radio"]):focus-visible {
   outline: 1px solid currentColor;
   outline-offset: -2px;

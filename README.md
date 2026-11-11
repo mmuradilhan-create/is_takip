@@ -2,7 +2,7 @@
 
 PC kullanımına odaklanan, Türkçe kişisel iş ve hedef takibi. HTML/CSS/JavaScript tabanlıdır. Güncel sürüm: **1.4.6**.
 
-Not, bekleme bilgisi ve çalışma kaydı formlarında Enter kaydeder, Shift+Enter alt satıra geçer; bu kısayol formun altında yazı olarak gösterilmez, ekran okuyuculara açıklama olarak verilir. Düğme ve bağlantılardaki odak alt çizgisi yalnız Tab veya ok tuşlarıyla gezinirken görünür; fareyle tıklanan bir düğmeye, örneğin bir form kapanınca odak geri döndüğünde alt çizgi çıkmaz.
+Not, bekleme bilgisi ve çalışma kaydı formlarında Enter kaydeder, Shift+Enter alt satıra geçer; bu kısayol formun altında yazı olarak gösterilmez, ekran okuyuculara açıklama olarak verilir. Bir form metin alanındayken Enter veya Escape ile kaydedilip kapatılınca odak, formu açan düğmeye (örneğin **Not ekle**) alt çizgisiz döner; alt çizgi yeniden Tab veya ok tuşlarıyla gezinince görünür. Kaydedilmemiş değişiklik sorusu da uygulamanın diğer pencereleri gibi kalın yeşil çerçeve göstermez. Bekleyen konular listesindeki durum, tarih ve bekleme kutuları Günlük işler ve hedeflerdeki gibi 96×30 pikseldir; uzun durum adı iki satıra geçer.
 
 ## Kullanım
 

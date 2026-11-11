@@ -3,7 +3,7 @@
  * every status and date control has one size, every icon button is 30x30.
  */
 .full-table.waiting-table {
-  --waiting-control-width: 112px;
+  --waiting-control-width: 96px;
 }
 
 .full-table.waiting-table > thead > tr > th:nth-child(2) {
@@ -31,4 +31,9 @@
   line-height: 12px;
   text-align: center;
   white-space: nowrap;
+}
+
+/* Like the daily list, a long status such as "Cevap bekleniyor" wraps. */
+.full-table.waiting-table > tbody > tr > td > .status-trigger {
+  white-space: normal;
 }

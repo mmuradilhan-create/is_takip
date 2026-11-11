@@ -72,7 +72,7 @@ test("waiting columns read status, last and next follow-up, then a toned waiting
       "BUTTON",
     );
     const box = await chip(page, id).boundingBox();
-    expect([Math.round(box.width), Math.round(box.height)]).toEqual([112, 30]);
+    expect([Math.round(box.width), Math.round(box.height)]).toEqual([96, 30]);
   }
   await expect(chip(page, "month")).toHaveAttribute(
     "title",

@@ -16,7 +16,7 @@
   background-color: #f4f8f2;
 }
 
-:root[data-focus-source="keyboard"]
+:where(:root:not([data-focus-quiet]))
   [data-record-row]:focus-visible
   :is(.task-name, .focus-title, .followup-title) {
   text-decoration: underline;

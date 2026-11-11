@@ -99,7 +99,7 @@ test("waiting rows keep edit and plus in the action column and put the follow-up
       }),
     );
   expect(controls).toHaveLength(9);
-  expect(new Set(controls)).toEqual(new Set(["112x30"]));
+  expect(new Set(controls)).toEqual(new Set(["96x30"]));
   await expect(
     cell("closed").locator(".waiting-followup-trigger svg path"),
   ).toHaveAttribute("d", "M3 11a9 9 0 1 1 2.7 6.4M3 4v7h7M12 7v5l3 2");

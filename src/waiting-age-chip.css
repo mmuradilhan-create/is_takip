@@ -1,6 +1,6 @@
 /* Waiting length reads like the other date controls and edits its start. */
 .full-table.waiting-table > thead > tr > th.waiting-age-col {
-  width: calc(var(--waiting-control-width, 112px) + 24px);
+  width: calc(var(--waiting-control-width, 96px) + 24px);
 }
 
 .full-table.waiting-table
@@ -12,7 +12,7 @@
   align-items: center;
   justify-content: center;
   gap: 5px;
-  width: var(--waiting-control-width, 112px);
+  width: var(--waiting-control-width, 96px);
   max-width: 100%;
   height: 30px;
   min-height: 30px;

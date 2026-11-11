@@ -42,7 +42,7 @@
 }
 
 .record-context-link:hover,
-:root[data-focus-source="keyboard"] .record-context-link:focus-visible {
+:where(:root:not([data-focus-quiet])) .record-context-link:focus-visible {
   color: var(--theme-accent, var(--green));
   text-decoration: underline;
   text-underline-offset: 2px;

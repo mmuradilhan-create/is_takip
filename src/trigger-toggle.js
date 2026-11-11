@@ -15,6 +15,10 @@ export function trackTriggerToggle({
   const openedBy = new WeakMap();
   let swallowUntil = 0;
   let pressed = null;
+  let interaction = 0;
+  const nextInteraction = () => {
+    interaction += 1;
+  };
   const overlays = () =>
     [...doc.querySelectorAll("dialog[open], [popover]")].filter(
       (item) => !item.matches("[popover]") || item.matches(":popover-open"),
@@ -71,8 +75,14 @@ export function trackTriggerToggle({
       pressed?.trigger === trigger ? pressed.before : new Set(overlays());
     pressed = null;
     remember(trigger, before);
-    win.setTimeout(() => remember(trigger, before), 0);
-    win.setTimeout(() => remember(trigger, before), 250);
+    // A window that opens late still belongs to this icon, but only until
+    // the next press or key: then it was opened by something else.
+    const turn = ++interaction;
+    const later = () => {
+      if (turn === interaction) remember(trigger, before);
+    };
+    win.setTimeout(later, 0);
+    win.setTimeout(later, 250);
   }
 
   function shut(overlay) {
@@ -86,6 +96,7 @@ export function trackTriggerToggle({
   }
 
   function onPointerdown(event) {
+    nextInteraction();
     if (event.button !== 0) return;
     const open = overlays().reverse();
     const pressedIcon = event.target.closest?.("button, [role='button']");
@@ -115,8 +126,10 @@ export function trackTriggerToggle({
 
   win.addEventListener("click", onClick, true);
   win.addEventListener("pointerdown", onPointerdown, true);
+  win.addEventListener("keydown", nextInteraction, true);
   return () => {
     win.removeEventListener("click", onClick, true);
     win.removeEventListener("pointerdown", onPointerdown, true);
+    win.removeEventListener("keydown", nextInteraction, true);
   };
 }

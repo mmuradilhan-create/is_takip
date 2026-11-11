@@ -1,0 +1,29 @@
+/*
+ * Title icons (goal link, source, waiting info, note, history) behave the same
+ * in every list: they stay on the title's first line, and the title text wraps
+ * before an icon ever moves to a line of its own.
+ */
+.task-name-line > .record-title-content,
+.waiting-table
+  .task-name-line:has(> a.task-name):has(
+    > :is(.record-note-trigger, .record-history-trigger)
+  ) {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: flex-start;
+  gap: 6px;
+  min-width: 0;
+}
+
+.task-name-line > .record-title-content > :is(.task-name, .focus-title),
+.waiting-table .task-name-line > a.task-name {
+  display: block;
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.task-name-line > .record-title-content > :not(.task-name, .focus-title),
+.task-name-line > :is(.record-note-trigger, .record-history-trigger) {
+  flex: 0 0 auto;
+  margin: 0;
+}

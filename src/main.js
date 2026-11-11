@@ -57,6 +57,9 @@ import "./action-focus.css";
 import "./goal-transfer-ui.css";
 import "./workspace-notes-ui.css";
 import "./compact-filter-row.css";
+import "./title-icon-wrap.css";
+import "./sticky-topbar.css";
+import "./dashboard-weekly-paging.css";
 import { createWorkspaceNotesUI } from "./workspace-notes-ui.js";
 import { normalizeNotes, notesFromBackup } from "./workspace-notes.js";
 import { exportWorkDrafts, workDraftsFromBackup } from "./work-draft-backup.js";
@@ -314,6 +317,7 @@ export async function startMainApp() {
     focusFilter: "open",
     attentionPage: 1,
     attentionPageSize: 2,
+    weeklyPage: 1,
     onlyUnlinked: false,
     workContext: "all",
     weeklyBacklogOpen: false,
@@ -1529,15 +1533,25 @@ export async function startMainApp() {
   function parentContextLabel(text) {
     return `${icon("target")}<span class="record-context-text">${esc(text)}</span>`;
   }
-  function weeklyDashboardPanel() {
-    const { records, total, period, isUpcoming } = selectDashboardWeek(
-      state.records,
-      {
-        today: today(),
-        query: state.search,
-        limit: 2,
-      },
-    );
+  function weeklyDashboardPanel(pageSize = dashboardCardColumns()) {
+    const {
+      records: weekRecords,
+      total,
+      period,
+      isUpcoming,
+    } = selectDashboardWeek(state.records, {
+      today: today(),
+      query: state.search,
+      limit: Infinity,
+    });
+    const pageCount = Math.max(1, Math.ceil(total / pageSize));
+    state.weeklyPage = Math.max(1, Math.min(pageCount, state.weeklyPage));
+    const start = (state.weeklyPage - 1) * pageSize;
+    const records = weekRecords.slice(start, start + pageSize);
+    const pagination =
+      pageCount > 1
+        ? `<nav class="weekly-goal-pagination" aria-label="Haftalık hedef kartı sayfaları"><button type="button" class="weekly-goal-prev" data-action="weekly-goal-page" data-page="${state.weeklyPage - 1}" aria-label="Önceki hedefler" title="Önceki hedefler" ${state.weeklyPage === 1 ? "disabled" : ""}>${icon("arrow")}</button><span class="weekly-goal-page-label" aria-live="polite">Sayfa ${state.weeklyPage} / ${pageCount}</span><button type="button" data-action="weekly-goal-page" data-page="${state.weeklyPage + 1}" aria-label="Sonraki hedefler" title="Sonraki hedefler" ${state.weeklyPage === pageCount ? "disabled" : ""}>${icon("arrow")}</button></nav>`
+        : "";
     const nextWeek = shiftPlanningPeriod(
       makePlanningPeriod("weekly", today()),
       1,
@@ -1545,7 +1559,7 @@ export async function startMainApp() {
     const weekCaption = isUpcoming
       ? `${period.key === nextWeek.key ? "Gelecek hafta" : "Sıradaki hafta"} · ${period.label}`
       : period.label;
-    return `<section class="panel weekly-dashboard-panel"><div class="panel-header dashboard-panel-header"><div class="dashboard-panel-heading"><h2>${isUpcoming ? "Yaklaşan haftanın hedefleri" : "Bu haftanın hedefleri"}<span class="dashboard-panel-count">${total}</span></h2></div><button type="button" class="text-btn dashboard-panel-link" data-action="dashboard-weekly" data-week="${esc(period.key)}" title="${esc(weekCaption)}">Haftalık plan ${icon("arrow")}</button></div>
+    return `<section class="panel weekly-dashboard-panel"><div class="panel-header dashboard-panel-header"><div class="dashboard-panel-heading"><h2>${isUpcoming ? "Yaklaşan haftanın hedefleri" : "Bu haftanın hedefleri"}<span class="dashboard-panel-count">${total}</span></h2></div>${pagination}<button type="button" class="text-btn dashboard-panel-link" data-action="dashboard-weekly" data-week="${esc(period.key)}" title="${esc(weekCaption)}">Haftalık plan ${icon("arrow")}</button></div>
       ${
         records.length
           ? `<ul class="dashboard-goals" tabindex="0" aria-label="Haftalık hedefler">${records
@@ -1600,7 +1614,7 @@ export async function startMainApp() {
   }
   function dashboard() {
     const columns = dashboardCardColumns();
-    return `${stats()}<div class="dashboard-workspace dashboard-rows" data-card-columns="${columns}" style="--dashboard-card-columns:${columns}"><div class="dashboard-top-row"><div class="dashboard-main-column">${focusList()}</div><aside class="dashboard-followups">${dashboardCalendar?.render() || ""}</aside></div><div class="dashboard-bottom-row">${attentionPanel(columns)}${weeklyDashboardPanel()}${workspaceNotes?.render() || ""}</div></div>`;
+    return `${stats()}<div class="dashboard-workspace dashboard-rows" data-card-columns="${columns}" style="--dashboard-card-columns:${columns}"><div class="dashboard-top-row"><div class="dashboard-main-column">${focusList()}</div><aside class="dashboard-followups">${dashboardCalendar?.render() || ""}</aside></div><div class="dashboard-bottom-row">${attentionPanel(columns)}${weeklyDashboardPanel(columns)}${workspaceNotes?.render() || ""}</div></div>`;
   }
   function planningPeriodBar() {
     if (!Object.hasOwn(state.planningPeriods, state.view)) return "";
@@ -1964,6 +1978,7 @@ export async function startMainApp() {
     closeRecordPreviews();
     state.view = view;
     state.attentionPage = 1;
+    state.weeklyPage = 1;
     if (view === "dashboard") state.focusFilter = "open";
     state.onlyUnlinked = false;
     state.status = "all";
@@ -3573,6 +3588,26 @@ export async function startMainApp() {
         state.focusFilter = filter;
         renderContent();
         break;
+      case "weekly-goal-page": {
+        const requested = Number(button.dataset.page);
+        if (!Number.isInteger(requested) || requested < 1) break;
+        const direction = button.getAttribute("aria-label");
+        state.weeklyPage = requested;
+        renderContent();
+        const controls = [
+          ...document.querySelectorAll(
+            ".weekly-goal-pagination button:not(:disabled)",
+          ),
+        ];
+        const nextFocus =
+          controls.find(
+            (control) => control.getAttribute("aria-label") === direction,
+          ) ||
+          controls[0] ||
+          document.querySelector(".dashboard-goals");
+        nextFocus?.focus({ preventScroll: true });
+        break;
+      }
       case "attention-page": {
         const requested = Number(button.dataset.page);
         if (!Number.isInteger(requested) || requested < 1) break;
@@ -3695,6 +3730,7 @@ export async function startMainApp() {
       state.search = event.target.value.trim();
       state.listPage = 1;
       state.attentionPage = 1;
+      state.weeklyPage = 1;
       renderContent();
     }
   });

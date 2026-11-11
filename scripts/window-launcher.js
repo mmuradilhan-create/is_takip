@@ -3,6 +3,7 @@ import {
   WIDGET_OUTER_FALLBACK,
   WIDGET_VIEWPORT,
 } from "../src/window-size.js";
+import { TASKBAR_IDS, taskbarIdentityType } from "./taskbar-identity.js";
 
 function nativeWindowTypes() {
   const nativeWidgetCode = `public static class OdakWidgetBounds {
@@ -158,7 +159,7 @@ public static bool Maximize(IntPtr h) {
 /** One session-local helper handles new ODAK windows from either role. */
 export function windowHelperSource() {
   const types = nativeWindowTypes();
-  const native = `using System; using System.Collections.Generic; using System.Text; using System.Runtime.InteropServices;\n${types.widget}\n${types.main}`;
+  const native = `using System; using System.Collections.Generic; using System.Text; using System.Runtime.InteropServices;\n${types.widget}\n${types.main}\n${taskbarIdentityType()}`;
   return `$ErrorActionPreference='Stop'
 $sid=[Security.Principal.WindowsIdentity]::GetCurrent().User.Value
 $prefix='Local\\ODAK.WindowSizing.'+$sid
@@ -178,6 +179,18 @@ try {
   Add-Type -TypeDefinition @'
 ${native}
 '@
+  # Taskbar identity: pinning an ODAK window pins its own launcher, not Chrome.
+  $identity=@{}
+  $folder=$PSScriptRoot
+  if ($folder) {
+    $command=Join-Path $env:SystemRoot 'System32\\cmd.exe'
+    foreach ($role in @(@{ Key='main'; Id='${TASKBAR_IDS.main}'; File='ODAK.cmd'; Icon='ODAK.ico'; Name='ODAK' },@{ Key='widget'; Id='${TASKBAR_IDS.widget}'; File='ODAK-Widget.cmd'; Icon='ODAK-Widget.ico'; Name='ODAK Widget' })) {
+      $file=Join-Path $folder $role.File
+      $icon=Join-Path $folder $role.Icon
+      if (!(Test-Path -LiteralPath $icon -PathType Leaf)) { $icon=Join-Path $folder 'ODAK.ico' }
+      if (Test-Path -LiteralPath $file -PathType Leaf) { $identity[$role.Key]=@{ Id=$role.Id; Command=([char]34+$command+[char]34+' /d /s /c '+[char]34+[char]34+$file+[char]34+[char]34); Name=$role.Name; Icon=($icon+',0') } }
+    }
+  }
   $seen=[Collections.Generic.HashSet[IntPtr]]::new()
   foreach ($h in @([OdakMainBounds]::Windows($false))) { [void]$seen.Add($h) }
   $settling=@{}
@@ -191,16 +204,18 @@ ${native}
     if ($wake.WaitOne(0)) { $lastSeen=$now; $idleGrace=30000 }
     $alive=[Collections.Generic.HashSet[IntPtr]]::new()
     foreach ($h in @([OdakMainBounds]::Windows($false))) { [void]$alive.Add($h) }
-    foreach ($h in @($seen)) { if (!$alive.Contains($h)) { [void]$seen.Remove($h); $settling.Remove($h); [OdakMainBounds]::Forget($h); [OdakWidgetBounds]::Forget($h); [OdakWidgetBounds]::ForgetPin($h) } }
+    foreach ($h in @($seen)) { if (!$alive.Contains($h)) { [void]$seen.Remove($h); $settling.Remove($h); [OdakMainBounds]::Forget($h); [OdakWidgetBounds]::Forget($h); [OdakWidgetBounds]::ForgetPin($h); [OdakTaskbar]::Forget($h) } }
     [OdakWidgetBounds]::ReleasePins()
     $mains=@([OdakMainBounds]::Windows($true))
     $widgets=@([OdakWidgetBounds]::Windows($true))
     if ($mains.Count+$widgets.Count -gt 0) { $lastSeen=$now; $idleGrace=5000 }
     foreach ($h in $mains) {
+      if ($identity.main) { [void][OdakTaskbar]::Tag($h,$identity.main.Id,$identity.main.Command,$identity.main.Name,$identity.main.Icon) }
       if ($seen.Add($h)) { $settling[$h]=@{ Role='main'; Until=$now+2500 } }
     }
     foreach ($h in $widgets) {
       [OdakWidgetBounds]::SyncPin($h)
+      if ($identity.widget) { [void][OdakTaskbar]::Tag($h,$identity.widget.Id,$identity.widget.Command,$identity.widget.Name,$identity.widget.Icon) }
       if ($seen.Add($h)) { $settling[$h]=@{ Role='widget'; Until=$now+2500 } }
     }
     foreach ($h in @($settling.Keys)) {

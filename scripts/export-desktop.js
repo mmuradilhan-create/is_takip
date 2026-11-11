@@ -31,10 +31,15 @@ ODAK-Kisayol-Kur.cmd dosyasina cift tiklayin. Masaustune ve Baslat menusune
 ODAK simgeli kisayollar eklenir. Sonra masaustundeki ODAK simgesinden acin.
 Widget icin kucuk pencere isaretli ayri bir ODAK Widget kisayolu da olusur.
 
-Gorev cubugu: Baslat menusunde ODAK'i bulun, sag tiklayin ve varsa
-Diğer > Gorev cubuguna sabitle secenegini kullanin. Windows her kisayolda
-bu secenegi sunmayabilir; calisan pencere Chrome altinda gorunebilir.
-Paket klasorunu tasirsaniz kisayol kurulumunu yeniden calistirin.
+Gorev cubugu: ODAK kendi ODAK simgesiyle, Chrome'dan ayri bir dugme olarak
+gorunur. ODAK acikken gorev cubugundaki ODAK simgesine sag tiklayip
+"Gorev cubuguna sabitle"yi secin; sabitlenen simge ODAK'i yeniden acar.
+Baslat menusundeki ODAK kisayolu da ayni dugmeyi kullanir.
+Daha once ODAK yerine Chrome sabitlendiyse o simgeyi "Gorev cubugundan
+kaldir" ile kaldirip ODAK'i yeniden sabitleyin. Kisayol kurulumunu bu
+surumle bir kez yeniden calistirin.
+Paket klasorunu tasirsaniz kisayol kurulumunu yeniden calistirin ve
+ODAK'i yeniden sabitleyin.
 
 Bu paket, Windows'ta kurulu Google Chrome'un uygulama modunu kullanır.
 Sekme ve adres çubuğu görünmez; Windows'un başlık, küçültme, büyütme ve
@@ -55,6 +60,12 @@ Tarihin altında yerel saat daha büyük saat:dakika olarak görünür; dakika
 geçişinde ve pencereye dönünce güncellenir. Kayıtları veya açık formları değiştirmez.
 
 LISTE DUZENI
+
+Üst çubuk tüm sayfalarda sabittir; liste kaydırılırken arama ve düğmeler
+görünür kalır. Başlık yanındaki hedef, not ve bekleme simgeleri başlığın ilk
+satırında kalır; yer daralınca önce başlık metni alt satıra geçer.
+Genel bakışta Bu haftanın hedefleri de Takip gerekenler gibi ← → düğmeleriyle
+ikişer kart sayfalanır.
 
 Takip kartlarında Takip ettim ve Bağlı işler sayacı yan yanadır. Bağlı işler,
 bekleyen konudaki günlük iş listesini açar; yeni iş eklenebilir, mevcut iş

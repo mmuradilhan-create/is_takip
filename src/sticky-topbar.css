@@ -1,0 +1,11 @@
+/* The page title and its actions stay in place while a page scrolls. */
+.main > .topbar {
+  position: sticky;
+  top: 0;
+  z-index: 15;
+}
+
+/* Keyboard focus and scrolled-to rows are not hidden under the sticky bar. */
+html {
+  scroll-padding-top: 104px;
+}

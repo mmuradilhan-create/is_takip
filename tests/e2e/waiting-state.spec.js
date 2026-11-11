@@ -320,7 +320,11 @@ test("review suggestions use seven local calendar days, exclude closed work and 
     ).sort(),
   ).toEqual(["review-boundary", "review-old"]);
   expect(await saved(page)).toBe(before);
-  await dialog.locator('[data-prompt-record="review-boundary"] button').click();
+  await dialog
+    .locator(
+      '[data-prompt-record="review-boundary"] [data-action="planning-prompt-record"]',
+    )
+    .click();
   await expect(form(page).locator('[name="title"]')).toHaveValue(
     "Tam yedi günlük açık iş",
   );
@@ -328,7 +332,8 @@ test("review suggestions use seven local calendar days, exclude closed work and 
   expect(await saved(page)).toBe(before);
   await page.locator('[data-action="work-pause"]').click();
   await dashboard(page);
-  await expect(review.locator(".planning-prompt-count")).toHaveText("3");
+  // 1.3.0: a work just paused was worked on this week and stays out.
+  await expect(review.locator(".planning-prompt-count")).toHaveText("2");
   expect(await saved(page)).toBe(before);
   await expect(
     page.getByRole("button", { name: "Geri al", exact: true }),

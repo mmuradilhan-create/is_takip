@@ -82,7 +82,8 @@ function fixture({ emptyAttention = false } = {}) {
             title: `Tedarik ${index + 1} yanıtını ve malzeme doğrulamasını bekle`,
             status: "waiting_response",
             expectedFrom: "Tedarik birimi",
-            sourceDate: "2026-10-28",
+            // Two quiet weeks keep the planning strip in this layout.
+            sourceDate: "2026-10-20",
             nextFollowUpDate: index === 0 ? "2026-11-06" : "2026-11-07",
             description: "Kullanıcının gerçek notu korunmalı.",
           }),

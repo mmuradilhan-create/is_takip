@@ -124,6 +124,7 @@ function fixture() {
       title: "Kişisi ve gelişmesi tamam dış yanıt",
       expectedFrom: "Üretim",
       latestUpdate: "Yanıt istendi.",
+      nextFollowUpDate: "2026-11-14",
       nextAction: "",
     }),
   ];

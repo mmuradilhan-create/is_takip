@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 import { createRecord } from "../../src/model.js";
+import { showAgenda } from "./widget-support.js";
 
 const KEY = "is-takip-v1";
 const NOW = new Date("2026-11-07T12:00:00.000Z");
@@ -110,6 +111,7 @@ async function fixturePage(page, embeddedRecords) {
     }),
   );
   await page.goto("/standalone-test.html#widget");
+  await showAgenda(page);
 }
 
 test("standalone agenda renders today's dated work and follow-ups without touching saved records or history", async ({
@@ -123,6 +125,7 @@ test("standalone agenda renders today's dated work and follow-ups without touchi
   });
   await seed(page, saved);
   await page.goto("/#widget");
+  await showAgenda(page);
   await expect(page).toHaveTitle("ODAK · Özet");
   await expect(page.locator("#widget-today-count")).toHaveText("3");
   await expect(page.locator("#widget-tomorrow-count")).toHaveText("1");
@@ -192,11 +195,13 @@ test("standalone summary follows another window, keeps running alone, and polls 
   const widget = await context.newPage();
   const saved = { version: 1, records: records() };
   await source.goto("/#widget");
+  await showAgenda(source);
   await source.evaluate(
     ({ key, saved }) => localStorage.setItem(key, JSON.stringify(saved)),
     { key: KEY, saved },
   );
   await widget.goto("/#widget");
+  await showAgenda(widget);
   await expect(widget.locator("#widget-today-count")).toHaveText("3");
   await expect(widget.locator("#widget-tomorrow-count")).toHaveText("1");
   await widget.locator('[data-widget-day="tomorrow"]').click();
@@ -321,6 +326,7 @@ test("opening an existing main window preserves its view, search and unsaved for
     .fill("Kaydedilmemiş taslak");
   const before = await main.evaluate((key) => localStorage.getItem(key), KEY);
   await widget.goto("/#widget");
+  await showAgenda(widget);
 
   for (let attempt = 1; attempt <= 2; attempt++) {
     await widget
@@ -355,6 +361,7 @@ test("widget tasks reuse the existing main and open a separate main after main c
   await main.goto("/#desktop");
   await expect(main.locator("#page-title")).toHaveText("Genel bakış");
   await widget.goto("/#widget");
+  await showAgenda(widget);
   await widget.locator('[data-record-id="urgent-task"]').click();
   await expect(main.locator("#editor")).toBeVisible();
   await expect(main.locator('#record-form [name="title"]')).toHaveValue(
@@ -393,6 +400,7 @@ test("existing main activation also works through storage when BroadcastChannel 
   await main.goto("/#desktop");
   await expect(main.locator("#page-title")).toHaveText("Genel bakış");
   await widget.goto("/#widget");
+  await showAgenda(widget);
   await widget.getByRole("button", { name: "ODAK’ı aç", exact: true }).click();
   await expect
     .poll(() => main.evaluate(() => window.odakFocusCalls))
@@ -423,6 +431,7 @@ test("a different HTML file is not treated as this widget's main window", async 
   await main.goto("/other-workspace.html#desktop");
   await expect(main.locator("#page-title")).toHaveText("Genel bakış");
   await widget.goto("/#widget");
+  await showAgenda(widget);
   const opening = widget.waitForEvent("popup");
   await widget.getByRole("button", { name: "ODAK’ı aç", exact: true }).click();
   const correctMain = await opening;
@@ -446,6 +455,7 @@ test("the compact widget fits three two-line tasks and its open button in 380 by
   await page.setViewportSize({ width: 380, height: 420 });
   await seed(page, JSON.stringify({ version: 1, records: items }));
   await page.goto("/#widget");
+  await showAgenda(page);
   await expect(page.locator("#widget-tasks .widget-task")).toHaveCount(3);
   await expect(page.locator("#widget-open-main")).toBeInViewport({ ratio: 1 });
   expect(

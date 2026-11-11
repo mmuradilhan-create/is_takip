@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { createRecord } from "../../src/model.js";
+import { showAgenda } from "./widget-support.js";
 
 const KEY = "is-takip-v1";
 const NOW = new Date("2026-11-07T12:00:00.000Z");
@@ -56,6 +57,7 @@ async function openWidget(main) {
   await main.getByRole("button", { name: "Widget aç", exact: true }).click();
   const widget = await opening;
   await expect(widget.locator("#widget-open-main")).toBeVisible();
+  await showAgenda(widget);
   return widget;
 }
 
@@ -304,6 +306,7 @@ async function openClockedWidget(main, context) {
     main.getByRole("button", { name: "Widget aç", exact: true }).click(),
   );
   await expect(widget.locator("#widget-open-main")).toBeVisible();
+  // No click here: the first user interaction ends the one-time sizing.
   return widget;
 }
 
@@ -438,6 +441,7 @@ test("native sizing stays the only owner while widget and record routes retain t
     expect(await main.evaluate(() => window.widgetResizeRequests)).toEqual([]);
 
     await main.close();
+    await showAgenda(widget);
     const reopened = await clockedPopup(widget, context, () =>
       widget.locator('[data-record-id="widget-persistent-urgent"]').click(),
     );

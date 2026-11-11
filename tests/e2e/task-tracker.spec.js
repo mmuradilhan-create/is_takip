@@ -9,6 +9,7 @@ import {
   readAttentionCards,
 } from "./attention-support.js";
 import { appConfirms } from "./app-confirm-support.js";
+import { showAgenda } from "./widget-support.js";
 
 const RECORDS_KEY = "is-takip-v1";
 const PREFERENCES_KEY = `${RECORDS_KEY}-preferences`;
@@ -1698,6 +1699,7 @@ test("PC widget handles blocked popups, shows dated daily and planning work with
     page.getByRole("button", { name: "Widget aç", exact: true }).click(),
   ]);
   await widget.waitForLoadState();
+  await showAgenda(widget);
   await expect(widget.locator("#widget-today-count")).toHaveText("5");
   await expect(widget.locator("#widget-tomorrow-count")).toHaveText("1");
   const widgetIds = () =>
@@ -1715,9 +1717,13 @@ test("PC widget handles blocked popups, shows dated daily and planning work with
   expect(await widgetIds()).toEqual(["widget-low"]);
   await widget.locator('[data-widget-day="today"]').click();
   expect(await readRecords(page)).toEqual(records);
+  // 1.2.0: the work note is the widget's only editable field.
   await expect(
-    widget.locator("input, textarea, select, .status-trigger, .work-start"),
+    widget.locator(
+      "input, textarea:not(#widget-work-note), select, .status-trigger, .work-start",
+    ),
   ).toHaveCount(0);
+  await expect(widget.locator("textarea")).toHaveCount(1);
   await page.getByRole("button", { name: "Widget aç", exact: true }).click();
   expect(page.context().pages()).toHaveLength(2);
   await chooseStatus(

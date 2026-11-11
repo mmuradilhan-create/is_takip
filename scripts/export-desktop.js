@@ -708,7 +708,7 @@ MEVCUT KAYITLARINLA DEVAM ETMEK İÇİN
    TAKIP.html dosyasının BULUNDUĞU AYNI KLASÖRE koy. Yeni TAKIP.html ile
    eskisini değiştir; dosya adını değiştirme.
 4. Ana uygulama için ODAK.cmd'ye çift tıkla.
-5. Mini ajanda için ODAK-Widget.cmd'ye çift tıkla. Ana uygulama kapalıyken
+5. Widget (çalışma notu ve mini ajanda) için ODAK-Widget.cmd'ye çift tıkla. Ana uygulama kapalıyken
    de açılır; Bugün / Yarın sekmeleri aynı kayıt alanını izler.
 
 İstersen bu iki CMD dosyasının Windows masaüstünde kısayolunu oluştur.
@@ -732,7 +732,7 @@ Yedekleme > Yedeği yükle ile geri yükleyebilirsin.
 PENCERELER ARASINDA GEÇİŞ
 
 ODAK.cmd ile açılan ana uygulamadaki Widget düğmesi, AYRI ve küçük bir
-Mini ajanda açar; ana ODAK ekranı açık ve aynı görünümde kalır.
+widget açar; ana ODAK ekranı açık ve aynı görünümde kalır.
 Bugün / Yarın sekmeleri, takvimde o güne ait açık teslim ve sonraki takip
 kayıtlarını gösterir. Gecikenler, tarihi bugünden önce olan açık teslim
 ve takipleri en eski tarihten başlayarak gerçek tarihleriyle gösterir.
@@ -753,8 +753,22 @@ boyutuna müdahale edilmez.
 Windows paketinde başlıktaki Üstte tut düğmesi widget'ı diğer pencerelerin
 üstünde tutar; tekrar basmak normal sıraya döndürür. Seçim açık widget
 içindir. Normal tarayıcı açılışında bu düğme kullanılamaz.
-Çalışılan günlük iş varsa altta iş adı ve Çalışıyor / Duraklatıldı durumu
-görünür. Widget oturumu yalnız okur; başlatma, devralma veya kaydetme yapmaz.
+WIDGET: CALISMA GORUNUMU (1.2.0)
+
+Widget Çalışma görünümüyle açılır. Bir iş çalışılıyorsa veya
+duraklatılmışsa üstte o işin Çalışma notu alanı vardır; yazdıkların kendiliğinden
+kaydedilir ve sol alttaki çalışma notuyla aynıdır. Duraklat / Devam et ve
+Bitir ana penceredeki gibi çalışır (Ctrl+P, Ctrl+Enter). Bitir'de not Sonuç
+olarak hazır gelir; Kaydet ve bitir sonucu çalışma geçmişine yazar, ana
+penceredeki Geri al ile geri alınabilir.
+Duraklatılan işler ▶ Devam et ile, çalışılan iş yokken veya iş duraklatılmışken
+Sıradaki işler ▶ ile başlatılır. Her işin yanındaki çalışma geçmişi simgesi o
+işin kayıtlı sonuçlarını widget içinde gösterir.
+Not iki pencerede aynı anda değişirse üzerine yazılmaz; Güncel notu yükle /
+Bu notu kaydet seçenekleri çıkar.
+Başlıktaki Ajanda düğmesi Bugün / Yarın / Gecikenler ajandasını açar; ajandada
+çalışılan iş altta adıyla görünür. Widget'ı kapatmak, widget'ta çalışan işi
+duraklatır; not korunur.
 
 ODAK-Pencere.ps1, başlatıcı tarafından gizli çalıştırılan pencere yardımcısıdır.
 Araç çubuğundaki Widget ve widget'taki ODAK'ı aç dahil yeni ODAK pencerelerini

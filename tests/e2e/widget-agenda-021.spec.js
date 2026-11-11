@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { createRecord } from "../../src/model.js";
+import { showAgenda } from "./widget-support.js";
 
 const KEY = "is-takip-v1";
 const NOW = new Date("2026-11-07T12:00:00.000Z");
@@ -87,6 +88,7 @@ async function seed(
 
 async function openWidget(page) {
   await page.goto("/#widget");
+  await showAgenda(page);
   await expect(page.locator("#widget-open-main")).toBeVisible();
 }
 

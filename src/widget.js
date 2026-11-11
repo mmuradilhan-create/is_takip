@@ -102,13 +102,107 @@ export const widgetDocumentHtml = `<!doctype html>
     [data-theme="dark"] #widget-session-phase { color:#b7bbc2; }
     [data-theme="dark"] #widget-session-title { color:#e9eaec; }
     [data-theme="dark"] #widget-session-time { color:#9dd8b7; }
+    .widget-view-toggle { display:inline-flex; align-items:center; gap:5px; min-height:26px; padding:3px 8px; border:1px solid #dce5d7; border-radius:6px; color:#5d715a; background:#fff; font-size:11px; font-weight:600; }
+    .widget-view-toggle svg { width:14px; height:14px; fill:none; stroke:currentColor; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
+    .widget-view-toggle[aria-pressed="true"] { color:#174d43; border-color:#a8c5a0; background:#eaf2e4; }
+    .widget-shell[data-view="work"] :is(.widget-day-tabs,.widget-work,.widget-session) { display:none; }
+    .widget-shell[data-view="agenda"] .widget-workbench { display:none; }
+    .widget-workbench { display:flex; flex-direction:column; gap:8px; flex:1 1 auto; min-height:0; min-width:0; overflow:hidden; }
+    .widget-workbench[data-mode="idle"] { overflow-y:auto; overscroll-behavior:contain; }
+    .widget-workbench [hidden] { display:none !important; }
+    .wb-active { display:flex; flex-direction:column; gap:6px; flex:1 1 auto; min-height:0; min-width:0; padding:10px; border:1px solid #dfe7da; border-radius:10px; background:#fff; }
+    .wb-heading { display:flex; flex-direction:column; gap:2px; min-width:0; }
+    .wb-phase { color:#3f7a52; font-size:10px; font-weight:650; line-height:1.3; }
+    .wb-phase[data-phase="paused"] { color:#8a6a2a; }
+    .wb-phase[data-phase="finish"] { color:#476982; }
+    .wb-title { display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; min-width:0; margin:0; padding:0; border:0; background:none; color:#304d37; font-size:12px; font-weight:650; line-height:1.35; text-align:left; overflow-wrap:anywhere; }
+    .wb-title:hover { color:#174d43; text-decoration:underline; }
+    .wb-note-field { display:flex; flex-direction:column; gap:3px; flex:1 1 auto; min-height:0; }
+    .wb-note-label { color:#6b7e64; font-size:10px; }
+    #widget-work-note { flex:1 1 auto; width:100%; min-height:64px; margin:0; padding:8px; resize:none; border:1px solid #cfdcc8; border-radius:8px; background:#fbfcf9; color:#294735; font:inherit; font-size:12px; line-height:1.45; }
+    #widget-work-note:focus { outline:none; border-color:#87b89d; box-shadow:0 0 0 2px #d7e9dd; }
+    .wb-error { margin:0; color:#9c4a36; font-size:10px; line-height:1.35; }
+    .wb-conflict { display:flex; gap:6px; }
+    .wb-conflict button { flex:1 1 0; min-height:26px; padding:3px 6px; border:1px solid #e2cf9e; border-radius:6px; background:#fbf6e8; color:#7a5a1d; font-size:10px; }
+    .wb-controls,.wb-finish-controls { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:6px; flex:0 0 auto; }
+    .wb-controls button,.wb-finish-controls button { display:inline-flex; align-items:center; justify-content:center; gap:6px; min-width:0; min-height:32px; padding:5px 8px; border:1px solid #cfdcc8; border-radius:8px; background:#fff; color:#2f5a3f; font-size:12px; font-weight:600; }
+    .wb-controls button:disabled,.wb-finish-controls button:disabled { opacity:.55; cursor:default; }
+    .wb-controls svg { width:13px; height:13px; flex:0 0 13px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+    .wb-toggle,.wb-save { border-color:#174d43 !important; background:#174d43 !important; color:#fff !important; }
+    .wb-toggle:hover,.wb-save:hover { background:#256354 !important; }
+    .wb-idle { margin:0; padding:12px 10px; border:1px dashed #cfdcc8; border-radius:10px; color:#6b7e64; font-size:11px; line-height:1.45; text-align:center; }
+    .wb-paused,.wb-upcoming { display:flex; flex-direction:column; flex:0 0 auto; min-height:0; overflow:hidden; border:1px solid #dfe7da; border-radius:10px; background:#fff; }
+    .widget-workbench[data-mode="working"] :is(.wb-paused,.wb-upcoming) { max-height:118px; }
+    #widget-status[data-tone="info"] { color:#3f6a4f; }
+    [data-theme="dark"] #widget-status[data-tone="info"] { color:#9dd8b7; }
+    .wb-paused h2,.wb-upcoming h2 { flex:0 0 auto; margin:0; padding:7px 10px; border-bottom:1px solid #e8eee4; color:#64775f; font-size:10px; font-weight:650; line-height:1.3; }
+    .wb-paused ul,.wb-upcoming ul { list-style:none; min-height:0; margin:0; padding:0; overflow-y:auto; overscroll-behavior:contain; }
+    .wb-row { display:flex; align-items:center; gap:6px; min-width:0; padding:6px 8px 6px 10px; border-bottom:1px solid #edf0e9; }
+    .wb-row:last-child { border-bottom:0; }
+    .wb-row-title { flex:1 1 auto; min-width:0; margin:0; padding:0; overflow:hidden; border:0; background:none; color:#304d37; font-size:12px; font-weight:600; line-height:1.35; text-align:left; text-overflow:ellipsis; white-space:nowrap; }
+    .wb-row-title:hover { color:#174d43; text-decoration:underline; }
+    .wb-row-due { flex:0 0 auto; color:#6c7b65; font-size:10px; white-space:nowrap; }
+    .wb-row-due.is-today { color:#955400; }
+    .wb-row-due.is-overdue { color:#ac2d24; }
+    .wb-title-line { display:flex; align-items:flex-start; gap:6px; min-width:0; }
+    .wb-title-line > .wb-title { flex:1 1 auto; }
+    .wb-heading-journal { display:inline-flex; flex:0 0 auto; }
+    .wb-journal-trigger { display:inline-flex; align-items:center; justify-content:center; flex:0 0 26px; width:26px; height:26px; padding:5px; border:1px solid #d2decc; border-radius:6px; background:#fff; color:#71816c; }
+    .wb-journal-trigger svg { width:13px; height:13px; fill:none; stroke:currentColor; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
+    .wb-journal-trigger.has-entries { color:#76529c; background:#f1eafa; border-color:#c4abdf; }
+    .wb-journal-trigger.has-entries:hover { color:#654285; background:#e9def5; border-color:#b895d6; }
+    .widget-workbench[data-journal="open"] > :not(.wb-journal) { display:none !important; }
+    .wb-journal { display:flex; flex-direction:column; flex:1 1 auto; min-height:0; overflow:hidden; border:1px solid #dfe7da; border-radius:10px; background:#fff; }
+    .wb-journal-header { display:flex; align-items:center; gap:8px; flex:0 0 auto; min-width:0; padding:8px 10px; border-bottom:1px solid #e8eee4; }
+    .wb-journal-back { display:inline-flex; align-items:center; gap:4px; flex:0 0 auto; min-height:26px; padding:3px 8px; border:1px solid #d2decc; border-radius:6px; background:#fff; color:#2f5a3f; font-size:11px; font-weight:600; }
+    .wb-journal-back svg { width:13px; height:13px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+    .wb-journal-heading { display:flex; flex-direction:column; min-width:0; }
+    .wb-journal-heading > span { color:#76529c; font-size:10px; font-weight:650; }
+    .wb-journal-title { overflow:hidden; color:#304d37; font-size:12px; text-overflow:ellipsis; white-space:nowrap; }
+    .wb-journal-list { list-style:none; min-height:0; margin:0; padding:0; overflow-y:auto; overscroll-behavior:contain; }
+    .wb-journal-entry { padding:8px 10px; border-bottom:1px solid #edf0e9; }
+    .wb-journal-entry:last-child { border-bottom:0; }
+    .wb-journal-entry time { color:#6c7b65; font-size:10px; font-weight:600; }
+    .wb-journal-entry p { margin:3px 0 0; color:#304d37; font-size:12px; line-height:1.45; white-space:pre-wrap; overflow-wrap:anywhere; }
+    .wb-journal-empty-note,.wb-journal-none { color:#6c7b65; font-size:11px; }
+    .wb-journal-none { padding:14px 10px; line-height:1.45; text-align:center; }
+    [data-theme="dark"] :is(.wb-journal,.wb-journal-back,.wb-journal-trigger:not(.has-entries)) { color:#d3d8d1; background:#18191b; border-color:#3d4249; }
+    [data-theme="dark"] .wb-journal-trigger.has-entries { color:#d4b9f2; background:#30253d; border-color:#75608e; }
+    [data-theme="dark"] :is(.wb-journal-header,.wb-journal-entry) { border-color:#353b40; }
+    [data-theme="dark"] :is(.wb-journal-title,.wb-journal-entry p) { color:#e9eaec; }
+    [data-theme="dark"] :is(.wb-journal-entry time,.wb-journal-empty-note,.wb-journal-none) { color:#b7bbc2; }
+    [data-theme="dark"] .wb-journal-heading > span { color:#d4b9f2; }
+    .wb-row-start { display:inline-flex; align-items:center; justify-content:center; flex:0 0 26px; width:26px; height:26px; padding:5px; border:1px solid #cfdcc8; border-radius:6px; background:#fff; color:#2f6a49; }
+    .wb-row-start:disabled { opacity:.5; cursor:default; }
+    .wb-row-start svg { width:13px; height:13px; fill:currentColor; stroke:none; }
+    .wb-row-start.is-paused { border-color:#e2cf9e; background:#fbf6e8; color:#8a6a2a; }
+    .wb-row-start.is-paused svg { fill:none; stroke:currentColor; stroke-width:1.8; stroke-linejoin:round; }
+    [data-theme="dark"] :is(.widget-view-toggle,.wb-active,.wb-paused,.wb-upcoming,.wb-row-start,.wb-controls button,.wb-finish-controls button) { color:#d3d8d1; background:#18191b; border-color:#3d4249; }
+    [data-theme="dark"] .widget-view-toggle[aria-pressed="true"] { color:#c3e7ce; background:#263b2c; border-color:#719b74; }
+    [data-theme="dark"] :is(.wb-title,.wb-row-title) { color:#e9eaec; }
+    [data-theme="dark"] :is(.wb-note-label,.wb-row-due,.wb-idle,.wb-paused h2,.wb-upcoming h2) { color:#b7bbc2; }
+    [data-theme="dark"] :is(.wb-paused h2,.wb-upcoming h2,.wb-row) { border-color:#353b40; }
+    [data-theme="dark"] .wb-idle { border-color:#3d4249; }
+    [data-theme="dark"] #widget-work-note { color:#e9eaec; background:#111214; border-color:#3d4249; }
+    [data-theme="dark"] .wb-phase { color:#9dd8b7; }
+    [data-theme="dark"] .wb-phase[data-phase="paused"] { color:#efd09a; }
+    [data-theme="dark"] .wb-row-start.is-paused { color:#efd09a; background:#38362a; border-color:#686148; }
+    [data-theme="dark"] :is(.wb-toggle,.wb-save) { color:#122e23 !important; background:#9dd8b7 !important; border-color:#9dd8b7 !important; }
+    [data-theme="dark"] .wb-error { color:#ffb9ae; }
     @media(max-width:310px) { .widget-shell { padding:9px; gap:7px; } .widget-task { padding:8px; } .widget-day-tabs { gap:4px; } .widget-day-tab { padding:6px 4px; gap:4px; font-size:10px; } .widget-day-count { min-width:18px; padding:1px 3px; } }
   </style>
 </head>
 <body>
-  <main class="widget-shell">
-    <header class="widget-header"><h1>ODAK</h1><div class="widget-header-tools"><span class="widget-live">Mini ajanda</span><button type="button" class="widget-pin" id="widget-pin" aria-label="Üstte tut" aria-pressed="false" title="Üstte tut Windows paketiyle kullanılabilir." disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m16 3 5 5-4 1-3 4v4l-2 2-3-6-6-3 2-2h4l4-3zM9 15l-6 6"/></svg></button></div></header>
-    <nav class="widget-day-tabs" aria-label="Ajanda günü"><button type="button" class="widget-day-tab" data-widget-day="today" aria-pressed="true">Bugün <span class="widget-day-count" id="widget-today-count">0</span></button><button type="button" class="widget-day-tab" data-widget-day="tomorrow" aria-pressed="false">Yarın <span class="widget-day-count" id="widget-tomorrow-count">0</span></button><button type="button" class="widget-day-tab" data-widget-day="overdue" aria-pressed="false">Gecikenler <span class="widget-day-count" id="widget-overdue-count">0</span></button></nav>
+  <main class="widget-shell" data-view="work">
+    <header class="widget-header"><h1>ODAK</h1><div class="widget-header-tools"><span class="widget-live">Çalışma</span><button type="button" class="widget-view-toggle" id="widget-view-toggle" aria-pressed="false" aria-controls="widget-agenda-views" title="Ajandayı göster"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4m8-4v4M4 10h16"/></svg><span>Ajanda</span></button><button type="button" class="widget-pin" id="widget-pin" aria-label="Üstte tut" aria-pressed="false" title="Üstte tut Windows paketiyle kullanılabilir." disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m16 3 5 5-4 1-3 4v4l-2 2-3-6-6-3 2-2h4l4-3zM9 15l-6 6"/></svg></button></div></header>
+    <section class="widget-workbench" id="widget-workbench" aria-label="Çalışma" data-mode="idle">
+      <div class="wb-active" hidden><div class="wb-heading"><span class="wb-phase"></span><div class="wb-title-line"><button type="button" class="wb-title" data-wb="open"></button><span class="wb-heading-journal"></span></div></div><label class="wb-note-field"><span class="wb-note-label">Çalışma notu</span><textarea id="widget-work-note" maxlength="10000" placeholder="Çalışırken notlarını buraya yaz…"></textarea></label><p class="wb-error" role="alert" hidden></p><div class="wb-conflict" hidden><button type="button" data-wb="use-current">Güncel notu yükle</button><button type="button" data-wb="save-local">Bu notu kaydet</button></div><div class="wb-controls"><button type="button" class="wb-toggle" data-wb="toggle"></button><button type="button" class="wb-finish" data-wb="finish"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6h12v12H6z"/></svg><span>Bitir</span></button></div><div class="wb-finish-controls" hidden><button type="button" data-wb="finish-cancel">Vazgeç</button><button type="button" class="wb-save" data-wb="finish-save">Kaydet ve bitir</button></div></div>
+      <p class="wb-idle" hidden><span class="wb-idle-text"></span></p>
+      <section class="wb-paused" aria-label="Duraklatılan işler" hidden><h2>Duraklatılanlar</h2><ul id="wb-paused-list"></ul></section>
+      <section class="wb-upcoming" aria-label="Sıradaki işler" hidden><h2>Sıradaki işler</h2><ul id="wb-upcoming-list"></ul></section>
+      <section class="wb-journal" aria-label="Çalışma geçmişi" hidden><header class="wb-journal-header"><button type="button" class="wb-journal-back" data-wb="journal-close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12H4m5-5-5 5 5 5"/></svg><span>Geri</span></button><div class="wb-journal-heading"><span>Çalışma geçmişi</span><strong class="wb-journal-title"></strong></div></header><ol class="wb-journal-list"></ol></section>
+    </section>
+    <nav class="widget-day-tabs" id="widget-agenda-views" aria-label="Ajanda günü"><button type="button" class="widget-day-tab" data-widget-day="today" aria-pressed="true">Bugün <span class="widget-day-count" id="widget-today-count">0</span></button><button type="button" class="widget-day-tab" data-widget-day="tomorrow" aria-pressed="false">Yarın <span class="widget-day-count" id="widget-tomorrow-count">0</span></button><button type="button" class="widget-day-tab" data-widget-day="overdue" aria-pressed="false">Gecikenler <span class="widget-day-count" id="widget-overdue-count">0</span></button></nav>
     <section class="widget-work" aria-label="Seçili günün ajandası">
       <header class="widget-work-header"><time id="widget-date"></time><span id="widget-task-count"></span></header>
       <ul id="widget-tasks" tabindex="0" aria-label="Seçili günün teslimleri ve takipleri"></ul>

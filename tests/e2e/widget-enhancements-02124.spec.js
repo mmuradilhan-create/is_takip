@@ -4,6 +4,7 @@ import {
 } from "./work-session-support.js";
 import { test, expect } from "@playwright/test";
 import { createRecord } from "../../src/model.js";
+import { showAgenda } from "./widget-support.js";
 
 const KEY = "is-takip-v1";
 const SESSION = "is-takip-v1-work-session";
@@ -149,6 +150,7 @@ async function write(page, key, value) {
 async function open(page, hash = "widget") {
   await page.goto(`/#${hash}`);
   await expect(page.locator("#widget-open-main")).toBeVisible();
+  await showAgenda(page);
 }
 async function unchanged(page, raw) {
   expect(await read(page)).toBe(raw);
@@ -243,6 +245,7 @@ test("pin capability is explicit and pinning changes only the title while select
   }
   await open(page, "widget?windowSizing=native&windowPin=native");
   await page.reload();
+  await showAgenda(page);
   const pin = page.locator("#widget-pin");
   await day(page, "overdue").click();
   const size = await page.evaluate(() => [innerWidth, innerHeight]);

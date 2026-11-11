@@ -1,6 +1,7 @@
 import { selectListStatus } from "./list-scope-helper.js";
 import { test, expect } from "@playwright/test";
 import { createRecord } from "../../src/model.js";
+import { showAgenda } from "./widget-support.js";
 
 const KEY = "is-takip-v1";
 const NOW = new Date("2026-11-07T12:00:00.000Z");
@@ -263,6 +264,7 @@ test("dashboard and linked details share deadline tones while the mini agenda sh
   try {
     await widget.clock.install({ time: NOW });
     await widget.goto("/#widget");
+    await showAgenda(widget);
     await expect(widget.locator("#widget-today-count")).toHaveText("2");
     await expect(widget.locator("#widget-tomorrow-count")).toHaveText("0");
     await expect(widget.locator("#widget-date")).toHaveAttribute(

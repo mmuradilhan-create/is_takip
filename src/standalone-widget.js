@@ -1,6 +1,7 @@
 import { validateStore } from "./model.js";
 import { renderWidgetSummary, widgetDocumentHtml } from "./widget.js";
 import { createWindowCoordinator } from "./window-coordinator.js";
+import { createWidgetWork } from "./widget-work.js";
 import {
   desktopWindowFeatures,
   fitWidgetWindow,
@@ -72,7 +73,13 @@ export function startStandaloneWidget() {
   let activationMessage = "";
   let mainPopup = null;
   let view = "today";
+  let pane = "work";
   let pinned = false;
+  let workMessage = "";
+  let workTone = "";
+  let workMessageTimer = null;
+  const shell = document.querySelector(".widget-shell");
+  const paneToggle = document.getElementById("widget-view-toggle");
   const stopTheme = watchTheme(document, () => preferences, window);
   const windows = createWindowCoordinator({
     onActivateWidget: () => {
@@ -101,6 +108,7 @@ export function startStandaloneWidget() {
     document.getElementById("widget-task-count").textContent = "—";
     document.getElementById("widget-tasks").innerHTML =
       '<li class="widget-empty">Kayıtlar okunamıyor.</li>';
+    delete document.getElementById("widget-status").dataset.tone;
     document.getElementById("widget-status").textContent =
       "Kayıtlar okunamadı. Verilerin değiştirilmedi; ODAK’ı açarak kontrol edebilirsin.";
   }
@@ -125,8 +133,36 @@ export function startStandaloneWidget() {
     renderWidgetSession(document, summary);
   }
 
+  function showStatus() {
+    if (failed) return;
+    // Work messages belong to the work view; the agenda keeps its own status.
+    const message = pane === "work" ? workMessage : "";
+    const status = document.getElementById("widget-status");
+    status.textContent = message || activationMessage;
+    if (message && workTone === "info") status.dataset.tone = "info";
+    else delete status.dataset.tone;
+  }
+
+  function setPane(next) {
+    pane = next;
+    const agenda = pane === "agenda";
+    shell.dataset.view = pane;
+    paneToggle.setAttribute("aria-pressed", String(agenda));
+    paneToggle.title = agenda ? "Çalışmaya dön" : "Ajandayı göster";
+    paneToggle.querySelector("span").textContent = agenda
+      ? "Çalışma"
+      : "Ajanda";
+    document.querySelector(".widget-live").textContent = agenda
+      ? "Mini ajanda"
+      : "Çalışma";
+    if (agenda) refresh(true);
+    else work?.refresh();
+    showStatus();
+  }
+
   function refresh(force = false) {
     if (stopped) return;
+    work?.refresh();
     try {
       const raw = window.localStorage.getItem(STORAGE_KEY);
       const legacyRaw = window.localStorage.getItem(PREFERENCES_KEY);
@@ -161,8 +197,8 @@ export function startStandaloneWidget() {
         previousLegacyPreferences = legacyRaw;
       }
       renderWidgetSummary(document, records, new Date(), { view });
-      document.getElementById("widget-status").textContent = activationMessage;
       failed = false;
+      showStatus();
       refreshSession();
     } catch {
       failed = true;
@@ -234,6 +270,10 @@ export function startStandaloneWidget() {
   document.body.addEventListener("click", (event) => {
     const target = event.target;
     if (!(target instanceof Element)) return;
+    if (target.closest("#widget-view-toggle")) {
+      setPane(pane === "agenda" ? "work" : "agenda");
+      return;
+    }
     if (target.closest("#widget-pin")) {
       if (pinSupported) {
         pinned = !pinned;
@@ -257,6 +297,7 @@ export function startStandaloneWidget() {
   const onStorage = (event) => {
     if (event.key === WORK_SESSION_KEY) {
       refreshSession();
+      work?.refresh();
       return;
     }
     if (
@@ -279,11 +320,36 @@ export function startStandaloneWidget() {
     window.removeEventListener("storage", onStorage);
     window.removeEventListener("focus", onFocus);
     window.removeEventListener("odak:refresh", onFocus);
+    work?.destroy();
+    window.clearTimeout(workMessageTimer);
     windows.stop();
     stopSizing();
     stopTheme();
   }
   window.addEventListener("pagehide", stop, { once: true });
+  let work = null;
+  try {
+    work = createWidgetWork({
+      document,
+      window,
+      storageKey: STORAGE_KEY,
+      preferencesKey: PREFERENCES_KEY,
+      onOpenRecord: (id) => openMain(id),
+      onMessage: (message, tone = "error") => {
+        workMessage = message;
+        workTone = tone;
+        showStatus();
+        window.clearTimeout(workMessageTimer);
+        workMessageTimer = window.setTimeout(() => {
+          workMessage = "";
+          showStatus();
+        }, 6000);
+      },
+    });
+  } catch {
+    // The agenda stays available when the work view cannot start.
+    setPane("agenda");
+  }
   refresh(true);
   stopSizing = fitWidgetWindow(window);
   return { refresh: () => refresh(true), stop };

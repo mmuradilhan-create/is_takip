@@ -37,9 +37,11 @@ test("external waiting suggestions cover either or both blank details, including
       description: "Gerçek not",
       nextAction: "Tekrar sor.",
     }),
+    // 1.3.0: a complete topic also has its next follow-up date.
     record("complete", {
       expectedFrom: "Tedarik birimi",
       latestUpdate: "Yanıt cuma günü gelecek.",
+      nextFollowUpDate: "2026-11-10",
     }),
   ];
   const before = JSON.stringify(records);
@@ -144,6 +146,7 @@ test("Turkish search limits context suggestions without mutating source values o
     record("complete-match", {
       expectedFrom: "İPEK",
       latestUpdate: "Bilgi tamam.",
+      nextFollowUpDate: "2026-11-10",
     }),
     record("closed-match", { expectedFrom: "İPEK", status: "completed" }),
     record("other", { expectedFrom: "Başka kişi" }),

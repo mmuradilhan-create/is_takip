@@ -256,7 +256,10 @@ async function sizingContext(browser, baseURL) {
     locale: "tr-TR",
     timezoneId: "Europe/Istanbul",
   });
-  await context.clock.install({ time: NOW });
+  await context.clock.install({
+    // Start a second early so pausing at NOW never has to rewind.
+    time: new Date(new Date(NOW).getTime() - 1000),
+  });
   await context.clock.pauseAt(NOW);
   await context.addInitScript(
     ({ key, records }) => {

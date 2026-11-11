@@ -104,6 +104,8 @@ export function createWidgetWork({
   const active = root.querySelector(".wb-active");
   const phase = root.querySelector(".wb-phase");
   const title = root.querySelector(".wb-title");
+  const titleText = root.querySelector(".wb-title-text");
+  const activeDetail = root.querySelector("#wb-active-detail");
   const label = root.querySelector(".wb-note-label");
   const note = root.querySelector("#widget-work-note");
   const error = root.querySelector(".wb-error");
@@ -139,6 +141,7 @@ export function createWidgetWork({
   let destroyed = false;
   let journalId = null;
   let detailId = null;
+  let activeDetailId = null;
   const listMarkup = new WeakMap();
 
   function setup() {
@@ -454,7 +457,7 @@ export function createWidgetWork({
   }
 
   /** What a row shows when its title is clicked, without leaving the widget. */
-  function rowDetail(record, entry, today) {
+  function detailLines(record, entry, today) {
     const lines = [];
     const due = record.dueDate
       ? `${shortDate.format(new Date(`${record.dueDate}T12:00:00`))}${record.dueDate < today ? " (gecikti)" : record.dueDate === today ? " (bugün)" : ""}`
@@ -483,7 +486,11 @@ export function createWidgetWork({
     lines.push(
       `<button type="button" class="wb-detail-edit" data-wb="edit" data-id="${escapeHtml(record.id)}">ODAK’ta düzenle</button>`,
     );
-    return `<div class="wb-row-detail" id="wb-detail-${escapeHtml(record.id)}">${lines.join("")}</div>`;
+    return lines.join("");
+  }
+
+  function rowDetail(record, entry, today) {
+    return `<div class="wb-row-detail" id="wb-detail-${escapeHtml(record.id)}">${detailLines(record, entry, today)}</div>`;
   }
 
   function row(record, action, today, entry = null) {
@@ -605,9 +612,17 @@ export function createWidgetWork({
           ? "Çalışıyor"
           : "Duraklatıldı";
       phase.dataset.phase = finishingDraft ? "finish" : current.entry.status;
-      title.textContent = current.record.title;
+      titleText.textContent = current.record.title;
       title.title = current.record.title;
       title.dataset.id = current.record.id;
+      // The working note is in the text box, so the details leave it out.
+      const detailOpen = activeDetailId === current.record.id;
+      title.setAttribute("aria-expanded", String(detailOpen));
+      activeDetail.hidden = !detailOpen;
+      setList(
+        activeDetail,
+        detailOpen ? detailLines(current.record, null, today) : "",
+      );
       setList(headingJournal, journalButton(current.record));
       label.textContent = finishingDraft
         ? "Sonuç (isteğe bağlı)"
@@ -697,7 +712,11 @@ export function createWidgetWork({
     const action = control.dataset.wb;
     if (action === "open" || action === "edit")
       onOpenRecord(control.dataset.id);
-    else if (action === "detail") {
+    else if (action === "active-detail") {
+      const id = control.dataset.id;
+      activeDetailId = activeDetailId === id ? null : id;
+      render();
+    } else if (action === "detail") {
       // One row opens at a time; clicking its title again closes it.
       detailId = detailId === control.dataset.id ? null : control.dataset.id;
       render();

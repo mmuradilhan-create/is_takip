@@ -154,8 +154,7 @@ async function desktopGeometry(page) {
   // Below 1280px the calendar sits under current work so titles keep room.
   if (bounds.width >= 1280)
     expect(Math.abs(bounds.focus.y - bounds.calendar.y)).toBeLessThanOrEqual(1);
-  else
-    expect(bounds.calendar.y).toBeGreaterThanOrEqual(bounds.focus.bottom);
+  else expect(bounds.calendar.y).toBeGreaterThanOrEqual(bounds.focus.bottom);
   if (bounds.width >= 1280)
     expect(
       Math.abs(bounds.focus.height - bounds.calendar.height),

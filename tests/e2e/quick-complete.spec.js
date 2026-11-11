@@ -36,7 +36,10 @@ const oldLog = {
 };
 
 async function seed(page, records) {
-  await page.clock.install({ time: START });
+  await page.clock.install({
+    // Start a second early so pausing at START never has to rewind.
+    time: new Date(new Date(START).getTime() - 1000),
+  });
   await page.clock.pauseAt(START);
   await page.addInitScript(
     ({ key, sessionKey, records }) => {

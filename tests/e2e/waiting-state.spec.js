@@ -28,7 +28,10 @@ const closeEditor = (page) =>
   page.locator('#editor [data-action="close"]').last().click();
 
 async function seed(page, records) {
-  await page.clock.install({ time: NOW });
+  await page.clock.install({
+    // Start a second early so pausing at NOW never has to rewind.
+    time: new Date(new Date(NOW).getTime() - 1000),
+  });
   await page.clock.pauseAt(NOW);
   await page.addInitScript(
     ({ key, migrationKey, records }) => {

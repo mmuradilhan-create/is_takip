@@ -43,7 +43,10 @@ async function seed(
     },
   });
   if (advanceClock) {
-    await page.clock.install({ time: now });
+    await page.clock.install({
+      // Start a second early so pausing at now never has to rewind.
+      time: new Date(new Date(now).getTime() - 1000),
+    });
     await page.clock.pauseAt(now);
   } else {
     // Hold the calendar date while keeping discovery and activation timers live.

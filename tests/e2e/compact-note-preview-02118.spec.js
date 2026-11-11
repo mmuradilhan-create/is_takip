@@ -49,7 +49,10 @@ async function view(page, type) {
 
 async function seed(page, description = NOTE, { fakeClock = false } = {}) {
   if (fakeClock) {
-    await page.clock.install({ time: NOW });
+    await page.clock.install({
+      // Start a second early so pausing at NOW never has to rewind.
+      time: new Date(new Date(NOW).getTime() - 1000),
+    });
     await page.clock.pauseAt(NOW);
     await page.clock.setFixedTime(NOW);
   } else await page.clock.setFixedTime(NOW);

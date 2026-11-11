@@ -792,6 +792,7 @@ Siradaki isler ve Duraklatilanlar listesinde bir isin adina tiklamak isi
 widget icinde acar: teslim, oncelik, aciklama, calisma notu ve son calisma
 sonucu gorunur. ODAK'ta duzenle ana uygulamada formu acar; ada tekrar
 tiklamak kapatir. ODAK'i ac, acik bir ODAK varsa ikinci pencere acmaz.
+Calisilan isin ustteki basligi da ayni ayrintiyi widget icinde acar (1.4.8).
 
 WIDGET: CALISMA GORUNUMU (1.2.0)
 

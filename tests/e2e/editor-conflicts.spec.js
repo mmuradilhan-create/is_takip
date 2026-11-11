@@ -49,7 +49,10 @@ function fixture() {
 
 async function seed(page) {
   const original = fixture();
-  await page.clock.install({ time: NOW });
+  await page.clock.install({
+    // Start a second early so pausing at NOW never has to rewind.
+    time: new Date(new Date(NOW).getTime() - 1000),
+  });
   await page.clock.pauseAt(NOW);
   await page.addInitScript(
     ({ key, records }) => {
@@ -77,7 +80,10 @@ async function seed(page) {
 
 async function secondWindow(context) {
   const other = await context.newPage();
-  await other.clock.install({ time: NOW });
+  await other.clock.install({
+    // Start a second early so pausing at NOW never has to rewind.
+    time: new Date(new Date(NOW).getTime() - 1000),
+  });
   await other.clock.pauseAt(NOW);
   await other.goto("/");
   return other;

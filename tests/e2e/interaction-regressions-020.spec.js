@@ -38,7 +38,10 @@ async function seed(page, additional = []) {
     }),
     ...additional,
   ];
-  await page.clock.install({ time: NOW });
+  await page.clock.install({
+    // Start a second early so pausing at NOW never has to rewind.
+    time: new Date(new Date(NOW).getTime() - 1000),
+  });
   await page.clock.pauseAt(NOW);
   await page.addInitScript(
     ({ key, initial }) => {
@@ -173,7 +176,10 @@ test("a changed reminder in another tab preserves the follow-up draft and blocks
     .fill("Korunacak yerel sonuç taslağı.");
 
   const other = await context.newPage();
-  await other.clock.install({ time: NOW });
+  await other.clock.install({
+    // Start a second early so pausing at NOW never has to rewind.
+    time: new Date(new Date(NOW).getTime() - 1000),
+  });
   await other.clock.pauseAt(NOW);
   await other.goto("/");
   await goToWaiting(other);

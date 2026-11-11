@@ -53,6 +53,49 @@ const odak = {
   },
 };
 
+async function openWidget(context) {
+  await context.clock.setFixedTime(NOW);
+  const raw = JSON.stringify({ version: 1, records, odak });
+  await context.addInitScript(
+    ({ key, raw }) => {
+      if (localStorage.getItem(key) === null) localStorage.setItem(key, raw);
+    },
+    { key: KEY, raw },
+  );
+  const widget = await context.newPage();
+  await widget.setViewportSize({ width: 380, height: 420 });
+  await widget.goto("/#widget");
+  return widget;
+}
+
+test("the title of the work in progress opens its details in the widget too", async ({
+  context,
+}) => {
+  const widget = await openWidget(context);
+  await widget.locator('[data-wb="resume"][data-id="paused"]').click();
+  const title = widget.locator(".wb-active .wb-title");
+  const detail = widget.locator("#wb-active-detail");
+  await expect(title).toHaveText("Kabuk gk kb rev ver");
+  await expect(title).toHaveAttribute("aria-expanded", "false");
+  await expect(detail).toBeHidden();
+  await title.click();
+  await expect(title).toHaveAttribute("aria-expanded", "true");
+  await expect(detail.locator(".wb-detail-facts")).toHaveText(
+    /Teslim: Tarih yok\s*Normal/,
+  );
+  // The working note stays in its own box rather than repeating here.
+  await expect(detail.locator(".wb-detail-note")).toHaveCount(0);
+  await expect(widget.locator("#widget-work-note")).toHaveValue(
+    "Revizyon notu yarım",
+  );
+  await expect(
+    detail.getByRole("button", { name: "ODAK’ta düzenle" }),
+  ).toBeVisible();
+  await title.click();
+  await expect(detail).toBeHidden();
+  await expect(title).toHaveAttribute("aria-expanded", "false");
+});
+
 test("a widget work title opens its details in place and only the edit button goes to ODAK", async ({
   context,
 }) => {

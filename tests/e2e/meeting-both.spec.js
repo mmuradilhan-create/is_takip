@@ -45,7 +45,10 @@ const undo = (page) =>
   page.getByRole("button", { name: "Geri al", exact: true }).click();
 
 async function seed(page, items) {
-  await page.clock.install({ time: NOW });
+  await page.clock.install({
+    // Start a second early so pausing at NOW never has to rewind.
+    time: new Date(new Date(NOW).getTime() - 1000),
+  });
   await page.clock.pauseAt(NOW);
   await page.addInitScript(
     ({ key, items }) => {
@@ -249,7 +252,10 @@ test("an existing action is read-only and reused while only the missing external
   }, KEY);
   await existingOpen.focus();
   const other = await context.newPage();
-  await other.clock.install({ time: NOW });
+  await other.clock.install({
+    // Start a second early so pausing at NOW never has to rewind.
+    time: new Date(new Date(NOW).getTime() - 1000),
+  });
   await other.clock.pauseAt(NOW);
   await other.goto("/");
   await other.locator('#nav [data-view="daily"]').click();
@@ -328,7 +334,10 @@ test("a concurrent saved action is reused without overwriting either draft and a
     .locator('[name="waitingNextFollowUpDate"]')
     .fill("19.11.2026");
   const other = await context.newPage();
-  await other.clock.install({ time: NOW });
+  await other.clock.install({
+    // Start a second early so pausing at NOW never has to rewind.
+    time: new Date(new Date(NOW).getTime() - 1000),
+  });
   await other.clock.pauseAt(NOW);
   await other.goto("/");
   await other.locator('#nav [data-view="meeting"]').click();

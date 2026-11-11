@@ -135,8 +135,14 @@ export const widgetDocumentHtml = `<!doctype html>
     .wb-phase { color:#3f7a52; font-size:10px; font-weight:650; line-height:1.3; }
     .wb-phase[data-phase="paused"] { color:#8a6a2a; }
     .wb-phase[data-phase="finish"] { color:#476982; }
-    .wb-title { display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; min-width:0; margin:0; padding:0; border:0; background:none; color:#304d37; font-size:12px; font-weight:650; line-height:1.35; text-align:left; overflow-wrap:anywhere; }
-    .wb-title:hover { color:#174d43; text-decoration:underline; }
+    .wb-title { display:flex; align-items:flex-start; gap:3px; min-width:0; margin:0; padding:0; border:0; background:none; color:#304d37; font-size:12px; font-weight:650; line-height:1.35; text-align:left; }
+    .wb-title-text { display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; min-width:0; overflow:hidden; overflow-wrap:anywhere; }
+    .wb-title > .wb-row-chevron { margin-top:2px; }
+    .wb-title:hover { color:#174d43; }
+    .wb-title[aria-expanded="true"] > .wb-row-chevron { transform:rotate(90deg); }
+    .widget-workbench .wb-title[aria-expanded="true"] > .wb-title-text { display:block; -webkit-line-clamp:unset; }
+    .wb-active-detail { margin:6px 0 0 15px; }
+    .wb-row-detail[hidden] { display:none; }
     .wb-note-field { display:flex; flex-direction:column; gap:3px; flex:1 1 auto; min-height:0; }
     .wb-note-label { color:#6b7e64; font-size:10px; }
     #widget-work-note { flex:1 1 auto; width:100%; min-height:64px; margin:0; padding:8px; resize:none; border:1px solid #cfdcc8; border-radius:8px; background:#fbfcf9; color:#294735; font:inherit; font-size:12px; line-height:1.45; }
@@ -157,7 +163,7 @@ export const widgetDocumentHtml = `<!doctype html>
     .widget-workbench > .wb-active { min-height:auto; }
     .widget-workbench[data-phase="paused"] > .wb-active { flex:0 0 auto; gap:8px; }
     .widget-workbench[data-phase="paused"] .wb-note-field { display:none; }
-    .widget-workbench[data-phase="paused"] .wb-title { -webkit-line-clamp:1; }
+    .widget-workbench[data-phase="paused"] .wb-title-text { -webkit-line-clamp:1; }
     .widget-workbench[data-phase="paused"] > .wb-upcoming,.widget-workbench[data-mode="idle"] > .wb-upcoming { flex:1 1 auto; max-height:none; min-height:72px; }
     .widget-workbench[data-mode="idle"] > .wb-paused { flex:0 0 auto; max-height:118px; }
     .widget-workbench[data-mode="idle"] > .wb-upcoming > ul { flex:1 1 auto; }
@@ -243,7 +249,7 @@ export const widgetDocumentHtml = `<!doctype html>
     <header class="widget-header"><h1>ODAK</h1><div class="widget-header-tools"><span class="widget-live">Çalışma</span><button type="button" class="widget-view-toggle" id="widget-view-toggle" aria-controls="widget-agenda-views" title="Ajandayı göster"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4m8-4v4M4 10h16"/></svg><span>Ajanda</span></button><button type="button" class="widget-pin" id="widget-pin" aria-label="Üstte tut" aria-pressed="false" title="Üstte tut Windows paketiyle kullanılabilir." disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m16 3 5 5-4 1-3 4v4l-2 2-3-6-6-3 2-2h4l4-3zM9 15l-6 6"/></svg></button></div></header>
     <section class="widget-reminders" id="widget-reminders" aria-label="Zamanı gelen hatırlatmalar" hidden><ul id="widget-reminder-list"></ul></section>
     <section class="widget-workbench" id="widget-workbench" aria-label="Çalışma" data-mode="idle">
-      <div class="wb-active" hidden><div class="wb-heading"><span class="wb-phase"></span><div class="wb-title-line"><button type="button" class="wb-title" data-wb="open"></button><span class="wb-heading-journal"></span></div></div><label class="wb-note-field"><span class="wb-note-label">Çalışma notu</span><textarea id="widget-work-note" maxlength="10000" placeholder="Çalışırken notlarını buraya yaz…"></textarea></label><p class="wb-error" role="alert" hidden></p><div class="wb-conflict" hidden><button type="button" data-wb="use-current">Güncel notu yükle</button><button type="button" data-wb="save-local">Bu notu kaydet</button></div><div class="wb-controls"><button type="button" class="wb-toggle" data-wb="toggle"></button><button type="button" class="wb-finish" data-wb="finish"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6h12v12H6z"/></svg><span>Bitir</span></button></div><div class="wb-finish-controls" hidden><button type="button" data-wb="finish-cancel">Vazgeç</button><button type="button" class="wb-save" data-wb="finish-save">Kaydet ve bitir</button></div></div>
+      <div class="wb-active" hidden><div class="wb-heading"><span class="wb-phase"></span><div class="wb-title-line"><button type="button" class="wb-title" data-wb="active-detail" aria-expanded="false" aria-controls="wb-active-detail"><svg class="wb-row-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg><span class="wb-title-text"></span></button><span class="wb-heading-journal"></span></div><div class="wb-row-detail wb-active-detail" id="wb-active-detail" hidden></div></div><label class="wb-note-field"><span class="wb-note-label">Çalışma notu</span><textarea id="widget-work-note" maxlength="10000" placeholder="Çalışırken notlarını buraya yaz…"></textarea></label><p class="wb-error" role="alert" hidden></p><div class="wb-conflict" hidden><button type="button" data-wb="use-current">Güncel notu yükle</button><button type="button" data-wb="save-local">Bu notu kaydet</button></div><div class="wb-controls"><button type="button" class="wb-toggle" data-wb="toggle"></button><button type="button" class="wb-finish" data-wb="finish"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6h12v12H6z"/></svg><span>Bitir</span></button></div><div class="wb-finish-controls" hidden><button type="button" data-wb="finish-cancel">Vazgeç</button><button type="button" class="wb-save" data-wb="finish-save">Kaydet ve bitir</button></div></div>
       <p class="wb-idle" hidden><span class="wb-idle-text"></span></p>
       <section class="wb-paused" aria-label="Duraklatılan işler" hidden><h2>Duraklatılanlar</h2><ul id="wb-paused-list"></ul></section>
       <section class="wb-upcoming" aria-label="Sıradaki işler" hidden><h2>Sıradaki işler</h2><ul id="wb-upcoming-list"></ul></section>

@@ -63,7 +63,10 @@ function fixture() {
 }
 
 async function clock(page) {
-  await page.clock.install({ time: START });
+  await page.clock.install({
+    // Start a second early so pausing at START never has to rewind.
+    time: new Date(new Date(START).getTime() - 1000),
+  });
   await page.clock.pauseAt(START);
 }
 

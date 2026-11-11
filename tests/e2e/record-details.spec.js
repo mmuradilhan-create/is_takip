@@ -63,7 +63,10 @@ function fixture() {
 }
 
 async function seed(page, records = fixture()) {
-  await page.clock.install({ time: NOW });
+  await page.clock.install({
+    // Start a second early so pausing at NOW never has to rewind.
+    time: new Date(new Date(NOW).getTime() - 1000),
+  });
   await page.clock.pauseAt(NOW);
   await page.addInitScript(
     ({ key, cleanupKey, records }) => {

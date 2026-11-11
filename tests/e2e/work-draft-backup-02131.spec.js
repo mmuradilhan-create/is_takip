@@ -167,7 +167,10 @@ async function seed(
   };
   const raw = JSON.stringify(value);
   const legacyRaw = JSON.stringify(fixture.sessions);
-  await context.clock.install({ time: NOW });
+  await context.clock.install({
+    // Start a second early so pausing at NOW never has to rewind.
+    time: new Date(new Date(NOW).getTime() - 1000),
+  });
   await context.clock.pauseAt(NOW);
   await context.clock.setFixedTime(NOW);
   await context.addInitScript(

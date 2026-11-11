@@ -27,7 +27,10 @@ const undo = (page) =>
   page.getByRole("button", { name: "Geri al", exact: true }).click();
 
 async function seed(page, records, now = NOW) {
-  await page.clock.install({ time: now });
+  await page.clock.install({
+    // Start a second early so pausing at now never has to rewind.
+    time: new Date(new Date(now).getTime() - 1000),
+  });
   await page.clock.pauseAt(now);
   await page.addInitScript(
     ({ key, records }) => {

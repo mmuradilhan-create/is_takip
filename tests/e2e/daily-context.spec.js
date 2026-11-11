@@ -10,7 +10,10 @@ const row = (page, id) =>
 
 async function seedDailyContext(page, records) {
   const time = new Date("2026-11-07T12:00:00Z");
-  await page.clock.install({ time });
+  await page.clock.install({
+    // Start a second early so pausing at time never has to rewind.
+    time: new Date(new Date(time).getTime() - 1000),
+  });
   await page.clock.pauseAt(time);
   await page.addInitScript(
     ({ key, records }) => {

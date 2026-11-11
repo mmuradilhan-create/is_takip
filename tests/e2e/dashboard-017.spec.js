@@ -39,7 +39,10 @@ const reviewRow = (page, id) =>
   reviewDialog(page).locator(`[data-review-record="${id}"]`);
 
 async function seed(page, items) {
-  await page.clock.install({ time: NOW });
+  await page.clock.install({
+    // Start a second early so pausing at NOW never has to rewind.
+    time: new Date(new Date(NOW).getTime() - 1000),
+  });
   await page.clock.pauseAt(NOW);
   await page.addInitScript(
     ({ key, sessionKey, value }) => {
@@ -60,7 +63,10 @@ async function seed(page, items) {
 
 async function secondWindow(context) {
   const page = await context.newPage();
-  await page.clock.install({ time: NOW });
+  await page.clock.install({
+    // Start a second early so pausing at NOW never has to rewind.
+    time: new Date(new Date(NOW).getTime() - 1000),
+  });
   await page.clock.pauseAt(NOW);
   await page.goto("/");
   await expect(page.locator("#page-title")).toHaveText("Genel bakış");

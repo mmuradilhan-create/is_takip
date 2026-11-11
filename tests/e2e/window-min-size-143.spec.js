@@ -31,7 +31,7 @@ test("a narrow main window keeps a 960px page and scrolls sideways instead of sq
   page,
 }) => {
   await seed(page);
-  await page.setViewportSize({ width: 860, height: 640 });
+  await page.setViewportSize({ width: 860, height: 700 });
   await page.goto("/");
   await expect(page.locator(".focus-row").first()).toBeVisible();
   expect(await pageWidth(page)).toBe(960);
@@ -56,7 +56,7 @@ test("a narrow main window keeps a 960px page and scrolls sideways instead of sq
       .evaluate((item) => Math.round(item.getBoundingClientRect().top)),
   ).toBe(0);
 
-  // Wide windows and phone-sized windows keep their own layouts.
+  // Wide and phone-sized windows keep their own layouts.
   await page.evaluate(() => window.scrollTo(0, 0));
   const overflow = () =>
     page.evaluate(
@@ -67,6 +67,9 @@ test("a narrow main window keeps a 960px page and scrolls sideways instead of sq
   await page.setViewportSize({ width: 1024, height: 700 });
   await expect.poll(overflow).toBeLessThanOrEqual(0);
   await page.setViewportSize({ width: 700, height: 700 });
+  await expect.poll(overflow).toBeLessThanOrEqual(0);
+  // Short windows keep their compact layout without sideways scrolling.
+  await page.setViewportSize({ width: 850, height: 480 });
   await expect.poll(overflow).toBeLessThanOrEqual(0);
 });
 

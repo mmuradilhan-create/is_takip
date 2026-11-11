@@ -1,9 +1,10 @@
 /*
  * Below a usable width the app stops squeezing: the page keeps a fixed
  * minimum and scrolls sideways instead. Phone-sized windows (760px and less)
- * keep their own single-column layout.
+ * and short windows (650px and less, which have their own compact layout)
+ * keep their layouts.
  */
-@media (min-width: 761px) and (max-width: 959px) {
+@media (min-width: 761px) and (max-width: 959px) and (min-height: 651px) {
   .layout {
     min-width: 960px;
   }

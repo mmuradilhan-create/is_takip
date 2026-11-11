@@ -306,7 +306,7 @@ test("journal icons fill lilac only for saved entries and follow session save, d
   );
   const empty = row.locator(".work-journal-trigger");
   const populated = page.locator(
-    '.work-journal-trigger[data-id="regression-journal-saved"]',
+    '.full-table .work-journal-trigger[data-id="regression-journal-saved"]',
   );
   await expect(empty).not.toHaveClass(/has-entries/);
   await expect(empty).toHaveAttribute("data-session-count", "0");

@@ -83,7 +83,10 @@ const undo = (page) =>
 
 async function openJournal(page) {
   await page.locator('#nav [data-view="daily"]').click();
-  await page.locator(`.work-journal-trigger[data-id="${DAILY_ID}"]`).click();
+  // The sidebar work card carries the same journal button for active work.
+  await page
+    .locator(`.full-table .work-journal-trigger[data-id="${DAILY_ID}"]`)
+    .click();
   await expect(page.locator("#work-journal-dialog")).toBeVisible();
 }
 

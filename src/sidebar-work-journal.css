@@ -573,3 +573,30 @@
     font-size: 8px;
   }
 }
+
+/* A paused job's name fills its row up to the icons, so the hand does not
+   turn into an arrow in the empty space after a short name. */
+.work-paused-row > .work-paused-title {
+  justify-self: stretch;
+  width: 100%;
+  text-align: left;
+}
+
+/* While a job is paused, a click on the card's heading or blank space opens
+   or folds its note, so those parts show a hand. The footer, the paused list
+   and the note box do something else and keep their own cursors. */
+#sidebar-work-journal[data-phase="paused"],
+#sidebar-work-journal[data-phase="paused"] .sidebar-journal-heading,
+#sidebar-work-journal[data-phase="paused"] .sidebar-journal-heading * {
+  cursor: pointer;
+}
+
+#sidebar-work-journal[data-phase="paused"]
+  :is(
+    .sidebar-journal-footer,
+    .work-paused-list,
+    .work-running-summary,
+    .work-note-field
+  ) {
+  cursor: default;
+}

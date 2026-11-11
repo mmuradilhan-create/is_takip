@@ -26,7 +26,8 @@
   font-weight: 600;
   line-height: 12px;
   font-variant-numeric: tabular-nums;
-  cursor: default;
+  /* Like the rest of the row: a click opens the goal. */
+  cursor: inherit;
 }
 
 .full-table .metric-cell .progress-chip-fill {

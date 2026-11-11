@@ -320,6 +320,8 @@ test("simplified copy keeps real notes and list filters reset without touching r
 test("sidebar working notes keep idle compact and inline finish controls bounded without covering navigation on short PC windows", async ({
   page,
 }) => {
+  // Many window sizes and every card control are checked; allow the time.
+  test.slow();
   const original = await seed(page);
   const originalBytes = await saved(page);
   const savedCount = original

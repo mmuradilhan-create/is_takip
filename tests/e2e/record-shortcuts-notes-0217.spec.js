@@ -477,16 +477,14 @@ test("waiting history icons keep actual saved contacts separate from note previe
         height: rect.height,
       };
     };
-    const last = fragments.at(-1);
+    const first = fragments[0];
     return {
       lines: new Set(fragments.map((rect) => Math.round(rect.top))).size,
-      last: {
-        left: last.left,
-        right: last.right,
-        top: last.top,
-        bottom: last.bottom,
-        height: last.height,
+      first: {
+        top: first.top,
+        height: first.height,
       },
+      textRight: Math.max(...fragments.map((rect) => rect.right)),
       icons: ["record-note", "waiting-history"].map((action) =>
         bounds(record.querySelector(`[data-action="${action}"]`)),
       ),
@@ -495,19 +493,23 @@ test("waiting history icons keep actual saved contacts separate from note previe
     };
   });
   expect(geometry.lines).toBeGreaterThanOrEqual(2);
-  let previous = geometry.last;
+  // 1.1.0: icons stay on the title's first line, right of the wrapped text.
+  let previousRight = geometry.textRight;
   for (const icon of geometry.icons) {
-    const sameLine =
+    expect(
       Math.abs(
-        icon.top + icon.height / 2 - previous.top - previous.height / 2,
-      ) <= 8;
-    if (sameLine) expect(icon.left).toBeGreaterThanOrEqual(previous.right - 1);
-    else expect(icon.top).toBeGreaterThanOrEqual(previous.bottom - 2);
+        icon.top +
+          icon.height / 2 -
+          geometry.first.top -
+          geometry.first.height / 2,
+      ),
+    ).toBeLessThanOrEqual(8);
+    expect(icon.left).toBeGreaterThanOrEqual(previousRight - 1);
+    previousRight = icon.right;
     expect(icon.left).toBeGreaterThanOrEqual(geometry.cell.left);
     expect(icon.right).toBeLessThanOrEqual(geometry.cell.right);
     expect(icon.top).toBeGreaterThanOrEqual(geometry.row.top);
     expect(icon.bottom).toBeLessThanOrEqual(geometry.row.bottom);
-    previous = icon;
   }
   await page.screenshot({
     path: testInfo.outputPath("waiting-inline-note-history-icons.png"),

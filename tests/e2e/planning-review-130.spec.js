@@ -91,7 +91,7 @@ test("review suggestions are answered in place: still valid, complete or cancel,
     await row("keep")
       .locator("button")
       .evaluateAll((items) => items.map((item) => item.textContent.trim())),
-  ).toEqual(["Hâlâ geçerli", "Tamamla", "İptal", "İşi aç"]);
+  ).toEqual(["Hâlâ geçerli", "Tamamla", "İptal", "İşi aç", ""]);
 
   await row("keep").locator('[data-review="keep"]').click();
   expect(await rows(page)).toEqual(["drop", "finish"]);

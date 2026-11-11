@@ -186,7 +186,9 @@ test("optional planning prompts replace repeated cards while weekly, attention a
   await expect(promptDialog.locator(".field-help")).toContainText("İstersen");
   await expect(promptDialog.locator("[data-prompt-record]")).toHaveCount(1);
   await promptDialog
-    .locator('[data-prompt-record="current-week"] button')
+    .locator(
+      '[data-prompt-record="current-week"] [data-action="planning-prompt-record"]',
+    )
     .click();
   await expect(page.locator("#goal-detail-panel .goal-panel-title")).toHaveText(
     "Bu haftanın açık hedefi",

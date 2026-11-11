@@ -286,7 +286,7 @@ test("planning suggestions open the relevant context, keep waiting details optio
   ).not.toContainText("neden ve sonraki adımı");
   await page
     .locator(
-      '#planning-prompts-dialog [data-prompt-record="prompt-waiting"] button',
+      '#planning-prompts-dialog [data-prompt-record="prompt-waiting"] [data-action="planning-prompt-record"]',
     )
     .click();
   const details = page.locator("#waiting-details-dialog");

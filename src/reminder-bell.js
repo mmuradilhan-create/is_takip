@@ -65,7 +65,7 @@ export function createReminderBell({
   function row(note, due) {
     const when = formatReminder(note.remindAt, new Date(now()));
     const actions = due
-      ? `<button type="button" class="btn small primary" data-reminder="done" data-note-id="${escapeHtml(note.id)}">Tamam</button><button type="button" class="btn small" data-reminder="hour" data-note-id="${escapeHtml(note.id)}" title="1 saat sonra yeniden hatırlat">1 saat</button><button type="button" class="btn small" data-reminder="tomorrow" data-note-id="${escapeHtml(note.id)}" title="Yarın 09:00’da yeniden hatırlat">Yarın 09:00</button>`
+      ? `<button type="button" class="btn small primary" data-reminder="done" data-note-id="${escapeHtml(note.id)}">Tamam</button><button type="button" class="btn small" data-reminder="hour" data-note-id="${escapeHtml(note.id)}" title="1 saat sonra, çeyrek saate yuvarlanarak yeniden hatırlat">1 saat</button><button type="button" class="btn small" data-reminder="tomorrow" data-note-id="${escapeHtml(note.id)}" title="Yarın 09:00’da yeniden hatırlat">Yarın 09:00</button>`
       : `<button type="button" class="btn small" data-reminder="edit" data-note-id="${escapeHtml(note.id)}">Düzenle</button>`;
     return `<li class="reminder-row${due ? " is-due" : ""}" data-note-id="${escapeHtml(note.id)}"><div class="reminder-copy"><span class="reminder-when">${bellIcon}${escapeHtml(when)}</span><p class="reminder-text">${escapeHtml(note.text)}</p></div><div class="reminder-actions">${actions}</div></li>`;
   }

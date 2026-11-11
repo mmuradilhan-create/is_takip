@@ -59,7 +59,13 @@ export function formatReminder(remindAt, now = new Date()) {
 
 /** Snoozed minute: one hour from now, or tomorrow at 09:00. */
 export function snoozedMinute(kind, now = new Date()) {
-  if (kind === "hour") return localMinute(new Date(now.getTime() + 3600000));
+  if (kind === "hour") {
+    // An hour from now, rounded up to the next quarter hour (18:53 → 20:00).
+    const later = new Date(now.getTime() + 3600000);
+    later.setSeconds(0, 0);
+    later.setMinutes(Math.ceil(later.getMinutes() / 15) * 15);
+    return localMinute(later);
+  }
   if (kind === "tomorrow") {
     const tomorrow = new Date(
       now.getFullYear(),

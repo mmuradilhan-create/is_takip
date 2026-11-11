@@ -82,6 +82,23 @@ test("reminder labels, snoozes and defaults use the local calendar", () => {
     snoozedMinute("hour", new Date(2026, 10, 11, 23, 30)),
     "2026-11-12T00:30",
   );
+  // One hour later, rounded up to a quarter hour so snoozes stay readable.
+  assert.equal(
+    snoozedMinute("hour", new Date(2026, 10, 11, 18, 53)),
+    "2026-11-11T20:00",
+  );
+  assert.equal(
+    snoozedMinute("hour", new Date(2026, 10, 11, 18, 0, 40)),
+    "2026-11-11T19:00",
+  );
+  assert.equal(
+    snoozedMinute("hour", new Date(2026, 10, 11, 18, 1)),
+    "2026-11-11T19:15",
+  );
+  assert.equal(
+    snoozedMinute("hour", new Date(2026, 10, 11, 23, 50)),
+    "2026-11-12T01:00",
+  );
   assert.equal(snoozedMinute("tomorrow", now), "2026-11-12T09:00");
   assert.throws(() => snoozedMinute("later", now));
   assert.equal(defaultReminder(now), "2026-11-11T09:00");

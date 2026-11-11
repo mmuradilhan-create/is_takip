@@ -408,3 +408,25 @@ test("reminders set for later leave a numberless dot and name the next one in th
   await expect(bell).not.toHaveClass(/has-upcoming/);
   await expect(bell).toHaveAttribute("title", "Hatırlatmalar");
 });
+
+test("a reminder at an odd minute can be moved to any other minute", async ({
+  context,
+}) => {
+  await seed(context, {
+    notes: [
+      note("odd", { text: "Teklifi kontrol et", remindAt: "2026-11-08T19:53" }),
+    ],
+  });
+  const page = await context.newPage();
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/");
+  await page.locator('[data-action="workspace-note-edit"]').click();
+  const editor = page.locator("#workspace-note-editor");
+  const time = editor.locator('[name="remindTime"]');
+  await expect(time).toHaveValue("19:53");
+  await time.fill("15:00");
+  expect(await time.evaluate((input) => input.validity.valid)).toBe(true);
+  await editor.locator('[type="submit"]').click();
+  await expect(editor).toBeHidden();
+  expect((await notesOf(page))[0].remindAt).toBe("2026-11-08T15:00");
+});

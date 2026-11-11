@@ -1,6 +1,9 @@
 export const WIDGET_VIEWPORT = Object.freeze({ width: 380, height: 420 });
 export const WIDGET_OUTER_FALLBACK = Object.freeze({ width: 400, height: 480 });
-export const MAIN_VIEWPORT = Object.freeze({ width: 1920, height: 1080 });
+/** Recommended main content size: the widest layouts fit without squeezing. */
+export const MAIN_VIEWPORT = Object.freeze({ width: 1440, height: 900 });
+/** Room left for a browser window frame around the content. */
+const MAIN_FRAME = Object.freeze({ width: 16, height: 80 });
 const widgetSizing = new WeakMap();
 
 function positive(value, fallback) {
@@ -30,23 +33,37 @@ export function windowRoleHash(role, win = globalThis.window, parameters = {}) {
   return query.size ? `${role}?${query}` : role;
 }
 
-/** Request the monitor's work area for a newly created main window. */
+/**
+ * A new main window opens at the recommended size, centered in the monitor's
+ * work area; a smaller work area is used whole instead.
+ */
 export function desktopWindowFeatures(metrics = {}) {
   const screen = metrics.screen || {};
-  const width = Math.max(
+  const availWidth = Math.max(
     1,
     Math.round(positive(screen.availWidth, MAIN_VIEWPORT.width)),
   );
-  const height = Math.max(
+  const availHeight = Math.max(
     1,
     Math.round(positive(screen.availHeight, MAIN_VIEWPORT.height)),
   );
-  const left = Number.isFinite(screen.availLeft)
+  const availLeft = Number.isFinite(screen.availLeft)
     ? Math.round(screen.availLeft)
     : 0;
-  const top = Number.isFinite(screen.availTop)
+  const availTop = Number.isFinite(screen.availTop)
     ? Math.round(screen.availTop)
     : 0;
+  const fits =
+    availWidth >= MAIN_VIEWPORT.width + MAIN_FRAME.width &&
+    availHeight >= MAIN_VIEWPORT.height + MAIN_FRAME.height;
+  const width = fits ? MAIN_VIEWPORT.width : availWidth;
+  const height = fits ? MAIN_VIEWPORT.height : availHeight;
+  const left = fits
+    ? availLeft + Math.floor((availWidth - width - MAIN_FRAME.width) / 2)
+    : availLeft;
+  const top = fits
+    ? availTop + Math.floor((availHeight - height - MAIN_FRAME.height) / 2)
+    : availTop;
   return `popup=yes,width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`;
 }
 

@@ -43,12 +43,13 @@ ODAK'i yeniden sabitleyin.
 
 Bu paket, Windows'ta kurulu Google Chrome'un uygulama modunu kullanır.
 Sekme ve adres çubuğu görünmez; Windows'un başlık, küçültme, büyütme ve
-kapatma düğmeleri kalır. Ana uygulama büyütülmüş açılır; görev çubuğu görünür.
+kapatma düğmeleri kalır. Ana uygulama tam ekran değil, önerilen boyutta açılır;
+görev çubuğu görünür.
 Ana uygulama ve widget Türkçe belgeler olarak otomatik çeviriden hariç tutulur.
-Pencere boyutu ekranın kullanılabilir alanına uyar. Ana pencereyi başlığa
-çift tıklayarak normal boyuta döndürünce nominal 1920x1080 içerik ölçüsü,
-Windows ekran ölçeğine göre uygulanır; ekran küçükse kullanılabilir alana
-sığar. Nominal ölçü değiştirilmez. Widget küçük kalır.
+Ana pencere ekranın ortasında 1440x900 içerik alanıyla açılır (Windows ekran
+ölçeğine göre). Bu ölçüde bütün ekranlar sıkışmadan, Takvim Güncel işler'in
+yanında görünür. Ekran bu boyuta yetmiyorsa ana pencere büyütülmüş açılır.
+Sonra elle büyütmek veya boyutlandırmak serbesttir. Widget 380x420 açılır.
 Ana pencere 960 pikselden fazla daraltılırsa sayfa sıkışmaz, yana kayar;
 1280 pikselden dar pencerede Takvim Güncel işler'in altına iner. Widget
 300x320 pikselden küçültülürse içerik kaydırılarak okunur.
@@ -94,6 +95,8 @@ HATIRLATMALAR (1.4.0)
 Notlar kartında not eklerken veya düzenlerken Hatırlat seçilip tarih ve saat
 girilir. Üst çubuktaki zil, zamanı gelen hatırlatma sayısını gösterir; zile
 tıklayınca Tamam, 1 saat ve Yarın 09:00 seçenekleri çıkar.
+1 saat ertelemesi çeyrek saate yuvarlanır (18:53 -> 20:00); saat alanına
+istenen her dakika yazılabilir.
 Zamanı gelmemiş hatırlatmalar sayılmaz; zilde sayısız gri bir nokta durur,
 üzerine gelince yaklaşan sayısı ve sıradaki saat yazar. ODAK açıkken
 zamanı gelen hatırlatma bir kez kısa uyarıyla bildirilir; ses veya Windows
@@ -801,8 +804,8 @@ duraklatır; not korunur.
 
 ODAK-Pencere.ps1, başlatıcı tarafından gizli çalıştırılan pencere yardımcısıdır.
 Araç çubuğundaki Widget ve widget'taki ODAK'ı aç dahil yeni ODAK pencerelerini
-ayarlar; zaten açık pencerelerin boyutuna dokunmaz. Ana ekran büyütülmüş,
-widget küçük açılır. İkisinin ölçüsü Chrome'un süreç geneline uygulanmaz.
+ayarlar; zaten açık pencerelerin boyutuna dokunmaz. Ana ekran önerilen
+1440x900 boyutta (sığmazsa büyütülmüş), widget küçük açılır. İkisinin ölçüsü Chrome'un süreç geneline uygulanmaz.
 Son ODAK penceresi kapanınca yardımcı da kısa süre sonra kapanır. Eksikse
 veya başlatılamazsa uygulama yine açılır ve boyut ayarının uygulanamadığı
 bildirilir; dosyayı HTML ve CMD dosyalarıyla aynı klasörde tut.

@@ -116,8 +116,9 @@ static string Class(IntPtr h) { var c=new StringBuilder(128); GetClassName(h,c,c
 static bool IsMain(IntPtr h) { var t=new StringBuilder(512); GetWindowText(h,t,t.Capacity); return IsWindowVisible(h) && Class(h).StartsWith("Chrome_WidgetWin_") && Array.IndexOf(Titles,t.ToString())>=0; }
 public static IntPtr[] Windows(bool mainOnly) { var found=new List<IntPtr>(); EnumWindows(delegate(IntPtr h,IntPtr p) { if(mainOnly?IsMain(h):Class(h).StartsWith("Chrome_WidgetWin_")) found.Add(h); return true; },IntPtr.Zero); return found.ToArray(); }
 public static void Forget(IntPtr h) { Prepared.Remove(h); }
-// Prepare each new main HWND once; Windows owns later restores and user resizing.
-public static bool Maximize(IntPtr h) {
+// Place each new main HWND once at the recommended size, centered; a screen too
+// small for it opens maximized. Windows owns later restores and user resizing.
+public static bool Arrange(IntPtr h) {
   if(h==IntPtr.Zero || !IsMain(h)) return false;
   if(Prepared.ContainsKey(h)) return true;
   IntPtr previous=IntPtr.Zero;
@@ -146,8 +147,8 @@ public static bool Maximize(IntPtr h) {
     // WINDOWPLACEMENT uses workspace coordinates except for tool windows.
     if((ex&0x80)==0) { left-=monitor.Work.L-monitor.Bounds.L; top-=monitor.Work.T-monitor.Bounds.T; }
     placement.Normal.L=left; placement.Normal.T=top; placement.Normal.Rt=left+width; placement.Normal.B=top+height;
-    // Store the restore rectangle before maximizing, including already maximized HWNDs.
-    placement.Flags=0; placement.Show=3;
+    // The restore rectangle is stored either way, including for already maximized HWNDs.
+    placement.Flags=0; placement.Show=fit<1.0?3:1;
     if(!SetWindowPlacement(h,ref placement)) return false;
     Prepared[h]=true; return true;
   } finally { SetThreadDpiAwarenessContext(previous); }
@@ -223,7 +224,7 @@ ${native}
       if (!$alive.Contains($h)) { $settling.Remove($h); [OdakMainBounds]::Forget($h); [OdakWidgetBounds]::Forget($h); continue }
       if ($entry.Role -eq 'widget') {
         if ([OdakWidgetBounds]::Fit($h,$now,($now -ge $entry.Until))) { $settling.Remove($h); [OdakWidgetBounds]::Forget($h) }
-      } elseif ([OdakMainBounds]::Maximize($h) -or $now -ge $entry.Until) { $settling.Remove($h) }
+      } elseif ([OdakMainBounds]::Arrange($h) -or $now -ge $entry.Until) { $settling.Remove($h) }
     }
     if ($mains.Count+$widgets.Count -eq 0 -and $now-$lastSeen -ge $idleGrace) {
       try { $exitLock=$launch.WaitOne(0) } catch [Threading.AbandonedMutexException] { $exitLock=$true }

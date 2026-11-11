@@ -137,11 +137,24 @@ test("native helper only settles newly identified ODAK roles and releases later 
   );
   assert(
     helper.includes(
-      "} elseif ([OdakMainBounds]::Maximize($h) -or $now -ge $entry.Until) { $settling.Remove($h) }",
+      "} elseif ([OdakMainBounds]::Arrange($h) -or $now -ge $entry.Until) { $settling.Remove($h) }",
     ),
   );
   assert(helper.includes('Class(h).StartsWith("Chrome_WidgetWin_")'));
   assert(helper.includes("if(h==IntPtr.Zero || !Widget(h)) return true"));
+});
+
+test("native main windows open normal at the recommended size and maximize only when it does not fit", () => {
+  const arrange = helper.slice(
+    helper.indexOf("public static bool Arrange(IntPtr h)"),
+  );
+  assert(
+    arrange.includes(
+      "int targetWidth=(int)Math.Round(1440*dpi/96.0),targetHeight=(int)Math.Round(900*dpi/96.0);",
+    ),
+  );
+  assert(arrange.includes("placement.Flags=0; placement.Show=fit<1.0?3:1;"));
+  assert.doesNotMatch(arrange, /placement\.Show=3;/);
 });
 
 test("native widget observes stable bounds before one size change and reserves fallback for the deadline", () => {
@@ -224,7 +237,7 @@ test("native pinning changes only widget z-order once per requested state transi
   );
   assert(transition >= 0 && apply > transition);
   assert.equal((pin.match(/SetWindowPos\(/g) || []).length, 1);
-  assert.doesNotMatch(pin, /ShowWindow|PendingWindows|resize|Maximize/);
+  assert.doesNotMatch(pin, /ShowWindow|PendingWindows|resize|Maximize|Arrange/);
   assert(
     helper.includes(
       "foreach ($h in $widgets) {\n      [OdakWidgetBounds]::SyncPin($h)",
@@ -296,7 +309,7 @@ test("native pin ownership is released when a live window leaves the widget role
   assert.equal((release.match(/SetWindowPos\(/g) || []).length, 1);
   assert.doesNotMatch(
     release,
-    /ShowWindow|PendingWindows|Maximize|new IntPtr\(-1\)/,
+    /ShowWindow|PendingWindows|Maximize|Arrange|new IntPtr\(-1\)/,
   );
   const sweep = helper.indexOf("[OdakWidgetBounds]::ReleasePins()");
   assert(

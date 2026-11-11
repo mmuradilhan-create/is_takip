@@ -178,8 +178,15 @@ test("a widget survives main closure and opens a separate main without becoming 
   const requests = await widget.evaluate(() => window.mainWindowRequests);
   expect(requests).toHaveLength(1);
   const requested = new URLSearchParams(requests[0].replaceAll(",", "&"));
-  for (const [key, value] of Object.entries(workArea))
-    expect(Number(requested.get(key))).toBe(value);
+  // The main window asks for the recommended 1440x900, centered in the area.
+  expect(
+    Object.fromEntries(
+      ["width", "height", "left", "top"].map((key) => [
+        key,
+        Number(requested.get(key)),
+      ]),
+    ),
+  ).toEqual({ width: 1440, height: 900, left: 232, top: 30 });
   await expect
     .poll(async () => {
       const size = await reopened.evaluate(() => ({

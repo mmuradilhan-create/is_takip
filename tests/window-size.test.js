@@ -16,7 +16,7 @@ const windowFeatures = (metrics) =>
       .map((feature) => feature.split("=")),
   );
 
-test("new main windows use available monitor work area in CSS pixels and preserve negative monitor origins", () => {
+test("new main windows open at the recommended size centered in the work area, or use a smaller work area whole with negative origins", () => {
   const metrics = {
     innerWidth: 380,
     innerHeight: 420,
@@ -50,7 +50,25 @@ test("new main windows use available monitor work area in CSS pixels and preserv
     }),
     {
       ...windowFeatures(metrics),
-      width: "1920",
+      width: "1440",
+      height: "900",
+      left: "232",
+      top: "30",
+    },
+  );
+  // A work area just too small for the frame falls back to the whole area.
+  assert.deepEqual(
+    windowFeatures({
+      screen: {
+        availWidth: 1455,
+        availHeight: 1040,
+        availLeft: 0,
+        availTop: 0,
+      },
+    }),
+    {
+      ...windowFeatures(metrics),
+      width: "1455",
       height: "1040",
       left: "0",
       top: "0",
@@ -61,8 +79,8 @@ test("new main windows use available monitor work area in CSS pixels and preserv
 test("unknown monitor geometry uses bounded main-window defaults rather than invalid popup values", () => {
   const fallback = {
     popup: "yes",
-    width: "1920",
-    height: "1080",
+    width: "1440",
+    height: "900",
     left: "0",
     top: "0",
     resizable: "yes",

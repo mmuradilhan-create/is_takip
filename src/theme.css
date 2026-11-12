@@ -102,7 +102,6 @@
     .work-journal-entry,
     .followup-list > li,
     .followup-foot,
-    .followup-tracking,
     .focus-row,
     .weekly-backlog-body,
     .weekly-backlog li,
@@ -259,7 +258,6 @@
     .followup-order,
     .followup-meta,
     .followup-foot,
-    .followup-last,
     .followup-panel .waiting-age,
     .attention-panel .waiting-age,
     .waiting-table .waiting-age,
@@ -981,14 +979,6 @@
   color: #ffdfda;
   background: #6e3e36;
   border-color: #b57e70;
-}
-
-/* Card buttons on the overview share one dark tone in both card panels. */
-[data-theme="dark"]
-  .dashboard-rows
-  .dashboard-bottom-row
-  :is(.followup-card-actions > button, .dashboard-goal-actions > button) {
-  background-color: var(--theme-raised);
 }
 
 /* Every enabled drop-down shows a hand, like the list filters. */

@@ -138,25 +138,6 @@
   white-space: nowrap;
 }
 
-.followup-tracking {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 6px;
-  margin-top: 5px;
-  padding-left: 28px;
-}
-
-.followup-tracking > :first-child {
-  justify-self: start;
-  min-width: 0;
-  max-width: 100%;
-}
-
-.followup-tracking > :last-child {
-  justify-self: end;
-}
-
 .followup-panel .waiting-followup-trigger {
   min-height: 26px;
   gap: 4px;
@@ -171,47 +152,6 @@
   width: 12px;
   height: 12px;
   flex: 0 0 12px;
-}
-
-.followup-last {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 4px 7px;
-  min-width: 0;
-  margin-top: 6px;
-  padding-left: 28px;
-  color: #65755c;
-  font-size: 10px;
-  line-height: 1.4;
-}
-
-.followup-last svg {
-  width: 11px;
-  height: 11px;
-  flex: 0 0 11px;
-}
-
-.followup-last > span {
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-
-.followup-wait-info {
-  display: grid;
-  align-content: center;
-  gap: 2px;
-  min-width: 0;
-}
-
-.followup-wait-info > .waiting-age {
-  justify-self: start;
-  text-align: left;
-}
-
-.followup-wait-info > .followup-last {
-  margin: 0;
-  padding: 0;
 }
 
 .followup-panel .waiting-followup-trigger:focus-visible {
@@ -329,13 +269,8 @@
     padding-bottom: 4px;
   }
 
-  .followup-panel .followup-meta,
-  .followup-tracking {
+  .followup-panel .followup-meta {
     margin-top: 4px;
-  }
-
-  .followup-wait-info {
-    gap: 1px;
   }
 }
 

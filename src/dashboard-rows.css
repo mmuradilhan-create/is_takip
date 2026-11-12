@@ -166,12 +166,6 @@
   padding-left: 0;
 }
 
-.dashboard-rows .dashboard-bottom-row .followup-tracking {
-  margin-top: auto;
-  padding-top: 7px;
-  padding-left: 0;
-}
-
 /* The subject uses the free middle space; status, dates and actions stay below. */
 .dashboard-workspace.dashboard-rows
   .dashboard-bottom-row
@@ -198,13 +192,6 @@
   -webkit-line-clamp: var(--followup-subject-lines);
 }
 
-.dashboard-workspace.dashboard-rows
-  .dashboard-bottom-row
-  .attention-list
-  .followup-tracking {
-  margin-top: 0;
-}
-
 /* Goal metadata shares the same bottom anchor as follow-up metadata. */
 .dashboard-workspace.dashboard-rows
   .dashboard-bottom-row
@@ -213,17 +200,6 @@
   flex: 1 1 0;
   height: auto;
   max-height: none;
-}
-
-.dashboard-workspace.dashboard-rows
-  .dashboard-bottom-row
-  .dashboard-goals
-  .dashboard-goal-progress {
-  flex: 0 0 22px;
-  min-height: 22px;
-  height: 22px;
-  margin-top: 0;
-  padding-top: 8px;
 }
 
 @media (min-width: 1536px) and (min-height: 741px) {
@@ -242,15 +218,6 @@
     .followup-title-line {
     --followup-subject-lines: 2;
   }
-}
-
-.dashboard-rows .dashboard-bottom-row .followup-last {
-  padding-left: 0;
-}
-
-.dashboard-rows .dashboard-bottom-row .dashboard-goal-progress {
-  flex: 0 0 auto;
-  margin-top: 9px;
 }
 
 .dashboard-rows .dashboard-bottom-row .dashboard-goal-linked {

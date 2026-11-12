@@ -135,7 +135,6 @@
   max-width: 100%;
 }
 
-.attention-panel .followup-tracking,
 .attention-panel .meeting-route-actions {
   min-width: 0;
   margin-top: auto;
@@ -159,18 +158,9 @@
   white-space: normal;
 }
 
-.attention-panel .followup-wait-info {
-  min-width: 0;
-}
-
-.attention-panel .waiting-age,
-.attention-panel .followup-last {
+.attention-panel .waiting-age {
   color: var(--theme-muted, #74836a);
   font-size: 10px;
-}
-
-.attention-panel .followup-last {
-  margin-top: 2px;
 }
 
 .attention-panel .waiting-followup-trigger {

@@ -178,3 +178,30 @@ test("a short follow-up history preview opens and closes like the note preview",
     90,
   );
 });
+
+test("a short waiting reason bubble closes as soon as the pointer leaves, like the others", async ({
+  page,
+}) => {
+  await seed(page, [
+    make({
+      id: "blocked",
+      title: "Arka Kanatlara revizyon ver",
+      status: "waiting",
+      waitingReason: "Deneme",
+    }),
+  ]);
+  const trigger = page.locator(
+    '.focus-row[data-id="blocked"] .waiting-info-trigger',
+  );
+  const bubble = page.locator("#waiting-info-popover");
+  const box = await trigger.boundingBox();
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await expect(bubble).toBeVisible();
+  await expect(bubble).toContainText("Deneme");
+  const start = await page.evaluate(() => performance.now());
+  await page.mouse.move(box.x - 250, box.y + 250);
+  await expect(bubble).toBeHidden();
+  expect((await page.evaluate(() => performance.now())) - start).toBeLessThan(
+    90,
+  );
+});

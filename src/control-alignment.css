@@ -45,12 +45,13 @@
 }
 
 /* Matching column and control widths keep status and both action routes aligned. */
+/* Same 112px columns and 96x30 boxes as the daily, goal and waiting lists. */
 .full-table.meeting-table > thead > tr > th.meeting-source-status-col {
-  width: 128px;
+  width: 112px;
 }
 
 .full-table.meeting-table > thead > tr > th.meeting-linked-heading {
-  width: 132px;
+  width: 112px;
 }
 
 .full-table.meeting-table
@@ -92,7 +93,7 @@
   align-items: center;
   justify-content: center;
   gap: 5px;
-  width: 112px;
+  width: 96px;
   max-width: 100%;
   height: 30px;
   min-height: 30px;

@@ -213,8 +213,14 @@ test("action headers and controls share compact left alignment across meeting, g
       await expect(waitingRoute).toHaveText("Takip oluştur");
       for (const route of [dailyRoute, waitingRoute]) {
         const bounds = await route.boundingBox();
-        expect(bounds.width).toBeGreaterThanOrEqual(110);
+        // The same 96x30 box as the other lists, with its text fully shown.
+        expect(Math.round(bounds.width)).toBe(96);
         expect(bounds.height).toBe(30);
+        expect(
+          await route.evaluate(
+            (item) => item.scrollWidth <= item.clientWidth + 1,
+          ),
+        ).toBe(true);
       }
       await dailyRoute.click();
       await expect(form.locator('[name="id"]')).toHaveValue(daily.id);

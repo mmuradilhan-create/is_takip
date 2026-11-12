@@ -233,6 +233,19 @@ export function createWaitingInfoUI({
     if (hoverControl === control) hoverControl = null;
     win.clearTimeout(openTimer);
     openTimer = null;
+    // Like the note preview and connection bubbles: a short bubble closes as
+    // soon as the pointer leaves. Only scrollable content keeps the grace
+    // period so the pointer can reach it.
+    if (
+      trigger === control &&
+      !popup.contains(event.relatedTarget) &&
+      body.scrollHeight <= body.clientHeight + 1
+    ) {
+      win.clearTimeout(hideTimer);
+      hideTimer = null;
+      if (!focusInside()) close();
+      return;
+    }
     scheduleHide();
   }
 

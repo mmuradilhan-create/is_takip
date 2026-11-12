@@ -1,6 +1,6 @@
 # Odak
 
-PC kullanımına odaklanan, Türkçe kişisel iş ve hedef takibi. HTML/CSS/JavaScript tabanlıdır. Güncel sürüm: **1.7.0**.
+PC kullanımına odaklanan, Türkçe kişisel iş ve hedef takibi. HTML/CSS/JavaScript tabanlıdır. Güncel sürüm: **1.7.1**.
 
 Not, bekleme bilgisi ve çalışma kaydı formlarında Enter kaydeder, Shift+Enter alt satıra geçer; bu kısayol formun altında yazı olarak gösterilmez, ekran okuyuculara açıklama olarak verilir. Bir form metin alanındayken Enter veya Escape ile kaydedilip kapatılınca odak, formu açan düğmeye (örneğin **Not ekle**) alt çizgisiz döner; alt çizgi yeniden Tab veya ok tuşlarıyla gezinince görünür. Kaydedilmemiş değişiklik sorusu da uygulamanın diğer pencereleri gibi kalın yeşil çerçeve göstermez. Bekleyen konular listesindeki durum, tarih ve bekleme kutuları Günlük işler ve hedeflerdeki gibi 96×30 pikseldir; uzun durum adı iki satıra geçer.
 
@@ -17,6 +17,8 @@ Not, bekleme bilgisi ve çalışma kaydı formlarında Enter kaydeder, Shift+Ent
 **1.6.1.** Genel bakış tek ekrana sığarken pencere yüksekliği 680 ile 800 piksel arasında değiştikçe takvim, kart satırı ve boşluklar kademesiz küçülüp büyür; eskiden 740 pikselde hepsi birden bir basamak değişip “atlıyordu”. Yalnız takvimin Teslim/Takip açıklama satırı 740 pikselin altında gizlenir.
 
 **1.7.0 · Dar pencere.** Uygulama hiçbir boyutta yana kaymaz ve Genel bakışta takvim hep Güncel işler’in yanında kalır. 761–1199 piksel genişlikte sol menü 64 piksellik **simge şeridine** iner: yazılar gizlenir (üzerine gelince adı görünür), açık kayıt sayıları simgenin köşesinde küçük rozettir, sıfır olanlar görünmez. **Çalışma notu** kartı şeritte tek düğmedir; çalışılırken yeşil, duraklatılmışken amber nokta taşır. Tıklayınca kart menünün yanında açılır; dışarı tıklamak veya Escape kapatır, bir işe başlanınca kendiliğinden açılır. Bu aralıkta takvim sütunu genişliğe göre 300’den 220 piksele kademesiz daralır; 1000 pikselin altında satır kutuları biraz küçülür ve alt satırda iki kart yan yana, Notlar altta durur (sayfa aşağı doğru uzar); 900 pikselin altında Güncel işler satırı öncelik kutusunu göstermez (öncelik kayıtta ve listelerde durur).
+
+**1.7.1.** Güncel işler’de bekleyen işin yanındaki saat simgesinin bekleme nedeni balonu da diğer balonlar gibi fare çekilince hemen kapanır (yalnız kaydırılabilen uzun metin kısa bir süre açık kalır). Toplantı aksiyonları listesindeki durum ve “İş oluştur / Takip oluştur” kutuları diğer listeler gibi 96×30’dur. Koyu temada Genel bakış kartlarındaki düğmeler iki kartta da aynı tondadır; açılır seçim kutuları her yerde el imleci gösterir.
 
 ## Kullanım
 

@@ -982,3 +982,16 @@
   background: #6e3e36;
   border-color: #b57e70;
 }
+
+/* Card buttons on the overview share one dark tone in both card panels. */
+[data-theme="dark"]
+  .dashboard-rows
+  .dashboard-bottom-row
+  :is(.followup-card-actions > button, .dashboard-goal-actions > button) {
+  background-color: var(--theme-raised);
+}
+
+/* Every enabled drop-down shows a hand, like the list filters. */
+select:not(:disabled) {
+  cursor: pointer;
+}

@@ -1008,7 +1008,8 @@ test("meeting source status, routes and pencil share compact left-aligned column
             Math.abs(column.firstLeft - column.headingLeft),
           ).toBeLessThanOrEqual(1);
           expect(column.controls).toEqual([
-            { width: index === 3 ? 30 : 112, height: 30, fits: true },
+            // 96x30 boxes like the daily, goal and waiting lists.
+            { width: index === 3 ? 30 : 96, height: 30, fits: true },
           ]);
         }
       }

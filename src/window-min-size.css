@@ -25,9 +25,38 @@
   }
 }
 
-/* Current work keeps the full width until the calendar fits beside it. */
-@media (max-width: 1279px) {
+/*
+ * The overview never moves the calendar under current work on a desktop.
+ * From 1200px it keeps its one-screen format, the calendar narrowing to
+ * 288px on the way; a narrower window of normal height keeps a 1200px
+ * overview and scrolls sideways instead of rearranging it.
+ */
+@media (min-width: 1200px) and (max-width: 1279px) {
   .dashboard-rows > .dashboard-top-row {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) clamp(288px, 24vw, 390px);
+  }
+}
+
+@media (min-width: 761px) and (max-width: 1199px) and (min-height: 651px) {
+  .layout:has(> .main.is-dashboard) {
+    min-width: 1200px;
+  }
+
+  .layout:has(> .main.is-dashboard) > .sidebar {
+    position: sticky;
+    inset: 0 auto auto auto;
+    top: 0;
+    align-self: start;
+    height: 100vh;
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .layout:has(> .main.is-dashboard) > .main {
+    grid-row: 1;
+  }
+
+  .dashboard-rows > .dashboard-top-row {
+    grid-template-columns: minmax(0, 1fr) 288px;
   }
 }

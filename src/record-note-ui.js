@@ -301,7 +301,8 @@ export function createRecordNoteUI({
         if (hoverControl === control || control.contains(owner.activeElement))
           show(control.dataset.id, control, false);
       },
-      kindFor(control) === "note" ? 80 : 150,
+      // Notes and follow-up history open alike.
+      80,
     );
   }
 
@@ -357,10 +358,9 @@ export function createRecordNoteUI({
     if (hoverControl === control) hoverControl = null;
     win.clearTimeout(openTimer);
     openTimer = null;
-    // A short note closes at once, like connection bubbles. Only a note that
-    // scrolls keeps the grace period so the pointer can reach and scroll it.
+    // A short note or history closes at once, like connection bubbles. Only
+    // one that scrolls keeps the grace period so the pointer can reach it.
     if (
-      kind === "note" &&
       trigger === control &&
       !popup.contains(event.relatedTarget) &&
       body.scrollHeight <= body.clientHeight + 1

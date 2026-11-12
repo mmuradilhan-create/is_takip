@@ -33,13 +33,15 @@ test("a narrow main window keeps a 960px page and scrolls sideways instead of sq
   await seed(page);
   await page.setViewportSize({ width: 860, height: 700 });
   await page.goto("/");
-  await expect(page.locator(".focus-row").first()).toBeVisible();
+  await page.locator('#nav [data-view="daily"]').click();
+  await expect(page.locator(".task-name").first()).toBeVisible();
   expect(await pageWidth(page)).toBe(960);
-  const titleWidth = await page
-    .locator(".focus-row .focus-title")
-    .first()
-    .evaluate((item) => item.getBoundingClientRect().width);
-  expect(titleWidth).toBeGreaterThan(120);
+  expect(
+    await page
+      .locator(".task-name")
+      .first()
+      .evaluate((item) => item.getBoundingClientRect().width),
+  ).toBeGreaterThan(120);
 
   // The menu moves away with the page; the top bar still stays on top.
   await page.evaluate(() => window.scrollTo(100, 300));
@@ -73,32 +75,35 @@ test("a narrow main window keeps a 960px page and scrolls sideways instead of sq
   await expect.poll(overflow).toBeLessThanOrEqual(0);
 });
 
-test("between 1100 and 1279px the calendar moves under current work so titles keep their room", async ({
+test("the overview never puts the calendar under current work on a desktop; narrow windows keep a 1200px overview", async ({
   page,
 }) => {
   await seed(page);
-  await page.setViewportSize({ width: 1150, height: 800 });
+  await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/");
   const focus = page.locator(".dashboard-top-row .dashboard-main-column");
   const calendar = page.locator(".dashboard-top-row .dashboard-followups");
   await expect(focus.locator(".focus-row").first()).toBeVisible();
-  const [focusBox, calendarBox] = [
-    await focus.boundingBox(),
-    await calendar.boundingBox(),
-  ];
-  expect(calendarBox.y).toBeGreaterThanOrEqual(focusBox.y + focusBox.height);
-  expect(
-    await focus
-      .locator(".focus-title")
-      .first()
-      .evaluate((item) => item.getBoundingClientRect().width),
-  ).toBeGreaterThan(200);
-
-  // From 1280px the calendar sits beside current work again.
-  await page.setViewportSize({ width: 1440, height: 900 });
-  await expect
-    .poll(async () => (await calendar.boundingBox()).y)
-    .toBe((await focus.boundingBox()).y);
+  for (const width of [1440, 1260, 1200, 1150, 1000, 860]) {
+    await page.setViewportSize({ width, height: 800 });
+    await expect
+      .poll(async () => (await calendar.boundingBox()).y)
+      .toBe((await focus.boundingBox()).y);
+    if (width < 1200) expect(await pageWidth(page)).toBe(1200);
+    else expect(await pageWidth(page)).toBeLessThanOrEqual(width);
+    // Titles keep their room beside the status, priority and date boxes.
+    expect(
+      await focus
+        .locator(".focus-row")
+        .first()
+        .evaluate(
+          (row) =>
+            row
+              .querySelector(".focus-title")
+              .parentElement.getBoundingClientRect().width,
+        ),
+    ).toBeGreaterThan(150);
+  }
 });
 
 test("the widget stops at 300 x 320 and scrolls in a smaller window", async ({

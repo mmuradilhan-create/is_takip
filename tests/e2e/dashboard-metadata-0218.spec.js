@@ -859,7 +859,7 @@ test("dense previews keep two shared cards beside independent notes and every go
       .locator(".weekly-dashboard-panel")
       .boundingBox();
     const notesBounds = await notes.boundingBox();
-    if (viewport.width >= 1280) {
+    if (viewport.width >= 1200) {
       for (const bounds of [attentionPanelBounds, goalPanelBounds, notesBounds])
         expect(bounds.height).toBeCloseTo(
           viewport.height <= 740 ? 210 : 220,
@@ -902,7 +902,7 @@ test("dense previews keep two shared cards beside independent notes and every go
       const subjectBounds = await subject.boundingBox();
       await expect(subject).toHaveCSS(
         "font-size",
-        viewport.width >= 1280 &&
+        viewport.width >= 1200 &&
           viewport.height >= 640 &&
           viewport.height <= 740
           ? "11px"
@@ -915,7 +915,7 @@ test("dense previews keep two shared cards beside independent notes and every go
       const visibleLines =
         viewport.width >= 1536 && viewport.height > 740
           ? 4
-          : viewport.width >= 1280 &&
+          : viewport.width >= 1200 &&
               viewport.width < 1536 &&
               viewport.height <= 740
             ? 2

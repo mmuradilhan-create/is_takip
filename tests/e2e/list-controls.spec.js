@@ -709,12 +709,13 @@ test("filters remain one reachable row beside a fixed native sort icon across ev
         await expectSingleFilterRow(focusFilters);
         expect(await saved(page)).toBe(before);
       }
+      // The overview keeps a 1200px format in narrower normal-height windows.
       expect(
         await page.evaluate(
           () =>
             document.documentElement.scrollWidth <=
-            (innerWidth > 760 && innerWidth < 960 && innerHeight > 650
-              ? 960
+            (innerWidth > 760 && innerWidth < 1200 && innerHeight > 650
+              ? 1200
               : innerWidth),
         ),
       ).toBe(true);

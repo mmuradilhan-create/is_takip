@@ -1,6 +1,6 @@
 # Odak
 
-PC kullanımına odaklanan, Türkçe kişisel iş ve hedef takibi. HTML/CSS/JavaScript tabanlıdır. Güncel sürüm: **1.5.1**.
+PC kullanımına odaklanan, Türkçe kişisel iş ve hedef takibi. HTML/CSS/JavaScript tabanlıdır. Güncel sürüm: **1.5.2**.
 
 Not, bekleme bilgisi ve çalışma kaydı formlarında Enter kaydeder, Shift+Enter alt satıra geçer; bu kısayol formun altında yazı olarak gösterilmez, ekran okuyuculara açıklama olarak verilir. Bir form metin alanındayken Enter veya Escape ile kaydedilip kapatılınca odak, formu açan düğmeye (örneğin **Not ekle**) alt çizgisiz döner; alt çizgi yeniden Tab veya ok tuşlarıyla gezinince görünür. Kaydedilmemiş değişiklik sorusu da uygulamanın diğer pencereleri gibi kalın yeşil çerçeve göstermez. Bekleyen konular listesindeki durum, tarih ve bekleme kutuları Günlük işler ve hedeflerdeki gibi 96×30 pikseldir; uzun durum adı iki satıra geçer.
 
@@ -9,6 +9,8 @@ Not, bekleme bilgisi ve çalışma kaydı formlarında Enter kaydeder, Shift+Ent
 **1.4.9.** Klavyeyle çalışırken bir pencere kapanıp hemen Tab’a basıldığında, yeni odaklanan başlığın alt çizgisi bazen kayboluyordu; bu düzeltildi. Odak işaretlerini yöneten iki ayrı mekanizma tek modülde birleştirildi.
 
 **1.5.0.** Sayıyla ölçülen açık hedeflerde (ör. 0 / 7 rapor) satırın üzerine gelince ilerleme kutusunun solunda **−**, sağında **+** belirir; her basış 1 azaltır veya artırır ve tek **Geri al** adımıdır, 0’ın altına inilmez. Bağlı işlerden veya alt hedeflerden hesaplanan ilerlemede ve kapalı hedeflerde bu düğmeler yoktur. Genel bakıştaki hedef kartlarında ayrı çubuk satırı kalktı: **İlerleme** düğmesi kendisi dolan kutudur, içinde “1 / 3” yazar, yüzde üzerine gelince görünür; tıklamak yine ilerleme bölümünü açar. Kartın durum satırı yandaki Takip gerekenler kartıyla aynı hizada kalır. İmleçler tıklamanın yaptığı işe göre: ilerleme kutusu satır gibi el gösterir; çalışma notu kartında iş duraklatılmışken başlık ve boş alan (notu açıp kapatır) el, diğer yerler ok gösterir.
+
+**1.5.2.** Genel bakışta Takvim masaüstünde artık hiçbir genişlikte Güncel işler’in altına inmez. Tek ekran düzeni (takvim yanda, üç kart altta) 1200 pikselden itibaren korunur; takvim sütunu gerekirse 288 piksele kadar daralır. 1200 pikselden dar ama normal yükseklikteki pencerede Genel bakış 1200 piksel genişliğini korur ve yana kayar; menü sayfayla birlikte kayar. Yalnız telefon boyu ve 650 pikselden kısa dar pencereler kendi küçük düzenini kullanır. Bekleyen konuların takip geçmişi önizlemesi (saat simgesi) not önizlemesiyle aynı çalışır: kısa sürede açılır, fare çıkınca hemen kapanır; yalnız kaydırılabilen uzun içerik kısa bir süre açık kalır.
 
 ## Kullanım
 

@@ -360,7 +360,7 @@
 }
 
 /* Keep status and date together when three supporting panels narrow the cards. */
-@media (min-width: 1280px) and (max-width: 1535px) {
+@media (min-width: 1200px) and (max-width: 1535px) {
   .dashboard-rows
     .dashboard-bottom-row
     :is(li.followup-row, .dashboard-goal-row) {

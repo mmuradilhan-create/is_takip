@@ -123,7 +123,7 @@ async function fitsViewport(page) {
     windowScroll: scrollY,
   }));
   expect(metrics.width).toBeLessThanOrEqual(metrics.viewportWidth + 1);
-  if (metrics.viewportWidth >= 1280 && metrics.viewportHeight >= 640) {
+  if (metrics.viewportWidth >= 1200 && metrics.viewportHeight >= 640) {
     expect(metrics.height).toBeLessThanOrEqual(metrics.viewportHeight + 1);
     expect(metrics.windowScroll).toBe(0);
   }
@@ -155,7 +155,7 @@ async function panelBottomsAlign(page) {
           Math.abs(attention.height - weekly.height),
           Math.abs(attention.bottom - weekly.bottom),
         ];
-        if (innerWidth >= 1280) {
+        if (innerWidth >= 1200) {
           differences.push(
             Math.abs(focus.y - calendar.y),
             Math.abs(focus.height - calendar.height),
@@ -180,7 +180,7 @@ async function panelBottomsAlign(page) {
 async function fixedCalendarBoxes(page) {
   await compact(page).scrollIntoViewIfNeeded();
   const anchor = await compact(page).boundingBox();
-  const flowing = page.viewportSize().width < 1280;
+  const flowing = page.viewportSize().width < 1200;
   const result = {};
   for (const selector of [
     ".calendar-navigation",

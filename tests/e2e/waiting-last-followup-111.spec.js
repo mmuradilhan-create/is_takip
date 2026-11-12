@@ -142,3 +142,39 @@ test("a short note preview closes as soon as the pointer leaves, like connection
   expect(note).toBeLessThan(90);
   expect(goal).toBeLessThan(90);
 });
+
+test("a short follow-up history preview opens and closes like the note preview", async ({
+  page,
+}) => {
+  await seed(page, [
+    make({
+      id: "waiting",
+      type: "waiting",
+      title: "Bekleyen konu",
+      status: "waiting_response",
+      expectedFrom: "Tedarikçi",
+      sourceDate: "2026-10-01",
+      followUpLog: [
+        {
+          id: "log",
+          date: "2026-11-02",
+          note: "Deneme",
+          createdAt: "2026-11-02T09:00:00.000Z",
+        },
+      ],
+    }),
+  ]);
+  await page.locator('#nav [data-view="waiting"]').click();
+  const trigger = page.locator('tr[data-id="waiting"] .record-history-trigger');
+  const popup = page.locator("#record-note-popover");
+  const box = await trigger.boundingBox();
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await expect(popup).toBeVisible();
+  await expect(popup).toContainText("Deneme");
+  const start = await page.evaluate(() => performance.now());
+  await page.mouse.move(box.x - 250, box.y + 250);
+  await expect(popup).toBeHidden();
+  expect((await page.evaluate(() => performance.now())) - start).toBeLessThan(
+    90,
+  );
+});

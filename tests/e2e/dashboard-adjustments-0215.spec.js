@@ -239,12 +239,12 @@ async function sharedHeaders(page, expectedWaitingCount = "1") {
       x: document.documentElement.scrollWidth > innerWidth + 1,
       y: document.documentElement.scrollHeight > innerHeight + 1,
     })),
-  ).toEqual({ x: false, y: page.viewportSize().width < 1280 });
+  ).toEqual({ x: false, y: page.viewportSize().width < 1200 });
   const notes = page.locator(".dashboard-bottom-row > .dashboard-notes-panel");
   const notesHeader = headers[2];
   expect(notesHeader.fontSize).toBe(headers[0].fontSize);
   expect(notesHeader.lineHeight).toBe(headers[0].lineHeight);
-  if (page.viewportSize().width >= 1280) {
+  if (page.viewportSize().width >= 1200) {
     expect(Math.abs(notesHeader.box.y - headers[0].box.y)).toBeLessThanOrEqual(
       1,
     );

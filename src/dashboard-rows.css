@@ -235,7 +235,7 @@
   }
 }
 
-@media (min-width: 1280px) and (max-width: 1535px) and (max-height: 740px) {
+@media (min-width: 1200px) and (max-width: 1535px) and (max-height: 740px) {
   .dashboard-workspace.dashboard-rows
     .dashboard-bottom-row
     .attention-list
@@ -275,7 +275,7 @@
 }
 
 /* Bounded desktop rows retain their headers while only record lists scroll. */
-@media (min-width: 1280px) and (min-height: 640px) {
+@media (min-width: 1200px) and (min-height: 640px) {
   .main.is-dashboard .dashboard-content .dashboard-workspace.dashboard-rows {
     flex: 1 1 0;
     grid-template-rows: minmax(0, 1fr) 220px;
@@ -343,7 +343,7 @@
   }
 }
 
-@media (min-width: 1280px) and (min-height: 640px) and (max-height: 740px) {
+@media (min-width: 1200px) and (min-height: 640px) and (max-height: 740px) {
   .main.is-dashboard > .dashboard-content {
     padding-top: 12px;
     padding-bottom: 12px;
@@ -381,14 +381,15 @@
   }
 }
 
-/* Small windows use ordinary page flow instead of clipping either row. */
-@media (max-width: 1099px) {
+/* Only phones and short narrow windows put the calendar under current work;
+   other narrow windows keep the desktop format (see window-min-size.css). */
+@media (max-width: 760px), (max-width: 1099px) and (max-height: 650px) {
   .dashboard-rows > .dashboard-top-row {
     grid-template-columns: minmax(0, 1fr);
   }
 }
 
-@media (max-width: 1279px) {
+@media (max-width: 1199px) {
   .dashboard-rows .dashboard-calendar {
     height: 356px;
     min-height: 0;
@@ -401,7 +402,7 @@
   }
 }
 
-@media (min-width: 1280px) and (min-height: 640px) and (max-height: 740px) {
+@media (min-width: 1200px) and (min-height: 640px) and (max-height: 740px) {
   .main.is-dashboard .dashboard-rows .dashboard-calendar {
     grid-template-rows: auto auto auto minmax(0, 1fr);
   }
@@ -476,7 +477,7 @@
   height: 14px;
 }
 
-@media (min-width: 1280px) and (min-height: 640px) and (max-height: 740px) {
+@media (min-width: 1200px) and (min-height: 640px) and (max-height: 740px) {
   .dashboard-rows .dashboard-bottom-row .dashboard-panel-header {
     min-height: 42px;
     padding: 6px 10px;
@@ -484,7 +485,7 @@
 }
 
 /* Pagination stays beside the common two-line heading on bounded desktops. */
-@media (min-width: 1280px) and (min-height: 640px) {
+@media (min-width: 1200px) and (min-height: 640px) {
   .dashboard-rows .dashboard-bottom-row .dashboard-panel-header {
     flex-wrap: nowrap;
   }
@@ -521,8 +522,8 @@
   }
 }
 
-/* Intermediate windows keep both card panels together and put notes below. */
-@media (min-width: 761px) and (max-width: 1279px) {
+/* Short intermediate windows keep both card panels together, notes below. */
+@media (min-width: 761px) and (max-width: 1199px) and (max-height: 650px) {
   .dashboard-rows > .dashboard-bottom-row {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }

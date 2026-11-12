@@ -39,7 +39,7 @@
   transform: rotate(180deg);
 }
 
-@media (min-width: 1280px) and (min-height: 640px) {
+@media (min-width: 1200px) and (min-height: 640px) {
   .dashboard-rows .dashboard-panel-header .weekly-goal-pagination {
     flex: 0 0 auto;
     gap: 4px;

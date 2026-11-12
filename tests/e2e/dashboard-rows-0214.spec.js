@@ -151,11 +151,9 @@ async function desktopGeometry(page) {
       scroll: scrollY,
     };
   });
-  // Below 1280px the calendar sits under current work so titles keep room.
-  if (bounds.width >= 1280)
-    expect(Math.abs(bounds.focus.y - bounds.calendar.y)).toBeLessThanOrEqual(1);
-  else expect(bounds.calendar.y).toBeGreaterThanOrEqual(bounds.focus.bottom);
-  if (bounds.width >= 1280)
+  // On a desktop the calendar always stays beside current work.
+  expect(Math.abs(bounds.focus.y - bounds.calendar.y)).toBeLessThanOrEqual(1);
+  if (bounds.width >= 1200)
     expect(
       Math.abs(bounds.focus.height - bounds.calendar.height),
     ).toBeLessThanOrEqual(1);
@@ -166,11 +164,9 @@ async function desktopGeometry(page) {
   expect(
     Math.abs(bounds.attention.width - bounds.weekly.width),
   ).toBeLessThanOrEqual(1);
-  expect(bounds.attention.y).toBeGreaterThanOrEqual(
-    Math.max(bounds.focus.bottom, bounds.calendar.bottom),
-  );
+  expect(bounds.attention.y).toBeGreaterThanOrEqual(bounds.focus.bottom);
   expect(bounds.documentWidth).toBeLessThanOrEqual(bounds.width + 1);
-  if (bounds.width >= 1280) {
+  if (bounds.width >= 1200) {
     const compactHeight = bounds.height <= 740 ? 210 : 220;
     for (const panel of [bounds.attention, bounds.weekly, bounds.notes])
       expect(panel.height).toBeCloseTo(compactHeight, 0);

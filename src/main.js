@@ -69,6 +69,7 @@ import "./planning-dismiss.css";
 import "./settings-hidden-prompts.css";
 import "./window-min-size.css";
 import "./progress-chip.css";
+import "./dashboard-fluid-height.css";
 import { trackTriggerToggle } from "./trigger-toggle.js";
 import {
   HistoryConflictError,

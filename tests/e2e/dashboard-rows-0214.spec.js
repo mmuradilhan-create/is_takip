@@ -167,7 +167,11 @@ async function desktopGeometry(page) {
   expect(bounds.attention.y).toBeGreaterThanOrEqual(bounds.focus.bottom);
   expect(bounds.documentWidth).toBeLessThanOrEqual(bounds.width + 1);
   if (bounds.width >= 1200) {
-    const compactHeight = bounds.height <= 740 ? 210 : 220;
+    // 210px at 680px tall, 220px at 800px, smooth in between.
+    const compactHeight = Math.min(
+      220,
+      Math.max(210, 210 + (bounds.height - 680) / 12),
+    );
     for (const panel of [bounds.attention, bounds.weekly, bounds.notes])
       expect(panel.height).toBeCloseTo(compactHeight, 0);
     expect(bounds.headers).toHaveLength(3);

@@ -122,7 +122,11 @@ for (const viewport of [
       .boundingBox();
     const weekly = await page.locator(".weekly-dashboard-panel").boundingBox();
     const notes = await page.locator(".dashboard-notes-panel").boundingBox();
-    const compactHeight = viewport.height <= 740 ? 210 : 220;
+    // 210px at 680px tall, 220px at 800px, smooth in between.
+    const compactHeight = Math.min(
+      220,
+      Math.max(210, 210 + (viewport.height - 680) / 12),
+    );
     for (const panel of [attention, weekly, notes])
       expect(panel.height).toBeCloseTo(compactHeight, 0);
     const headerHeights = await page

@@ -1,6 +1,6 @@
 # Odak
 
-PC kullanımına odaklanan, Türkçe kişisel iş ve hedef takibi. HTML/CSS/JavaScript tabanlıdır. Güncel sürüm: **1.6.0**.
+PC kullanımına odaklanan, Türkçe kişisel iş ve hedef takibi. HTML/CSS/JavaScript tabanlıdır. Güncel sürüm: **1.6.1**.
 
 Not, bekleme bilgisi ve çalışma kaydı formlarında Enter kaydeder, Shift+Enter alt satıra geçer; bu kısayol formun altında yazı olarak gösterilmez, ekran okuyuculara açıklama olarak verilir. Bir form metin alanındayken Enter veya Escape ile kaydedilip kapatılınca odak, formu açan düğmeye (örneğin **Not ekle**) alt çizgisiz döner; alt çizgi yeniden Tab veya ok tuşlarıyla gezinince görünür. Kaydedilmemiş değişiklik sorusu da uygulamanın diğer pencereleri gibi kalın yeşil çerçeve göstermez. Bekleyen konular listesindeki durum, tarih ve bekleme kutuları Günlük işler ve hedeflerdeki gibi 96×30 pikseldir; uzun durum adı iki satıra geçer.
 
@@ -13,6 +13,8 @@ Not, bekleme bilgisi ve çalışma kaydı formlarında Enter kaydeder, Shift+Ent
 **1.5.2.** Genel bakışta Takvim masaüstünde artık hiçbir genişlikte Güncel işler’in altına inmez. Tek ekran düzeni (takvim yanda, üç kart altta) 1200 pikselden itibaren korunur; takvim sütunu gerekirse 288 piksele kadar daralır. 1200 pikselden dar ama normal yükseklikteki pencerede Genel bakış 1200 piksel genişliğini korur ve yana kayar; menü sayfayla birlikte kayar. Yalnız telefon boyu ve 650 pikselden kısa dar pencereler kendi küçük düzenini kullanır. Bekleyen konuların takip geçmişi önizlemesi (saat simgesi) not önizlemesiyle aynı çalışır: kısa sürede açılır, fare çıkınca hemen kapanır; yalnız kaydırılabilen uzun içerik kısa bir süre açık kalır.
 
 **1.6.0 · İşlem geçmişi.** Ayarlar’da, Gizlenen öneriler gibi kapalı gelen **İşlem geçmişi** bölümü, geri alınabilen son işlemleri (uygulama en fazla 30 işlem tutar) en yenisi 1 olacak şekilde listeler; her satırda işlemin adı ve etkilediği kayıt veya not görünür. Bir satırdaki **Geri al** yalnız o işlemi geri alır; ondan sonraki işlemler yerinde kalır. Bu geri alma da listeye “Geri alındı: …” olarak eklenir ve üst çubuktaki **Geri al** ile geri alınabilir. Seçilen işlemden sonra aynı kayıt, not veya görünüm ayarı yeniden değiştiyse, o değişikliğin üzerine yazmamak için sorulur: onaylanırsa en son işlemden seçilen işleme kadar hepsi sırayla geri alınır. Çalışma notunu da değiştiren işlemler tek başına geri alınamaz; onlar için de aynı soru gelir.
+
+**1.6.1.** Genel bakış tek ekrana sığarken pencere yüksekliği 680 ile 800 piksel arasında değiştikçe takvim, kart satırı ve boşluklar kademesiz küçülüp büyür; eskiden 740 pikselde hepsi birden bir basamak değişip “atlıyordu”. Yalnız takvimin Teslim/Takip açıklama satırı 740 pikselin altında gizlenir.
 
 ## Kullanım
 

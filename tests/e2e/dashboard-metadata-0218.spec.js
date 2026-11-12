@@ -862,7 +862,7 @@ test("dense previews keep two shared cards beside independent notes and every go
     if (viewport.width >= 1200) {
       for (const bounds of [attentionPanelBounds, goalPanelBounds, notesBounds])
         expect(bounds.height).toBeCloseTo(
-          viewport.height <= 740 ? 210 : 220,
+          Math.min(220, Math.max(210, 210 + (viewport.height - 680) / 12)),
           0,
         );
       for (const header of await page

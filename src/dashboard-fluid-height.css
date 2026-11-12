@@ -1,0 +1,74 @@
+/*
+ * On a bounded desktop the overview fits one screen. Between 680px and 800px
+ * of window height its calendar and spacing shrink smoothly with the height
+ * instead of switching in one step at 740px, so resizing does not jump.
+ * Each value below runs from its short-window size to its tall-window size.
+ */
+@media (min-width: 1200px) and (min-height: 640px) {
+  .main.is-dashboard > .dashboard-content {
+    padding-top: clamp(12px, calc(12px + (100vh - 680px) * 0.08333), 22px);
+    padding-bottom: clamp(12px, calc(12px + (100vh - 680px) * 0.03333), 16px);
+  }
+
+  .main.is-dashboard .dashboard-content .dashboard-workspace.dashboard-rows {
+    gap: clamp(10px, calc(10px + (100vh - 680px) * 0.03333), 14px);
+    grid-template-rows: minmax(0, 1fr) clamp(
+        210px,
+        calc(210px + (100vh - 680px) * 0.08333),
+        220px
+      );
+  }
+
+  .main.is-dashboard
+    .dashboard-rows
+    > :is(.dashboard-top-row, .dashboard-bottom-row) {
+    gap: clamp(10px, calc(10px + (100vh - 680px) * 0.03333), 14px);
+  }
+
+  .main.is-dashboard
+    .dashboard-rows
+    .dashboard-bottom-row
+    .dashboard-panel-header {
+    padding-top: clamp(6px, calc(6px + (100vh - 680px) * 0.025), 9px);
+    padding-bottom: clamp(6px, calc(6px + (100vh - 680px) * 0.025), 9px);
+  }
+
+  .main.is-dashboard .dashboard-calendar .calendar-heading {
+    padding: clamp(1px, calc(1px + (100vh - 680px) * 0.025), 4px)
+      clamp(6px, calc(6px + (100vh - 680px) * 0.01667), 8px);
+  }
+
+  .main.is-dashboard .dashboard-calendar .calendar-heading h2 {
+    font-size: clamp(10px, calc(10px + (100vh - 680px) * 0.00833), 11px);
+  }
+
+  .main.is-dashboard
+    .dashboard-calendar
+    :is(.calendar-nav, .calendar-today, .calendar-expand) {
+    min-height: clamp(20px, calc(20px + (100vh - 680px) * 0.01667), 22px);
+  }
+
+  .main.is-dashboard .dashboard-calendar .calendar-weekdays {
+    line-height: clamp(14px, calc(14px + (100vh - 680px) * 0.01667), 16px);
+  }
+
+  .main.is-dashboard .dashboard-calendar .calendar-day {
+    min-height: clamp(20px, calc(20px + (100vh - 680px) * 0.03333), 24px);
+    padding-top: clamp(0px, calc(0px + (100vh - 680px) * 0.00833), 1px);
+    padding-bottom: clamp(0px, calc(0px + (100vh - 680px) * 0.00833), 1px);
+    font-size: clamp(10px, calc(10px + (100vh - 680px) * 0.00833), 11px);
+    line-height: clamp(11px, calc(11px + (100vh - 680px) * 0.00833), 12px);
+  }
+
+  .main.is-dashboard .dashboard-calendar .calendar-counts {
+    min-height: clamp(7px, calc(7px + (100vh - 680px) * 0.00833), 8px);
+    font-size: clamp(7px, calc(7px + (100vh - 680px) * 0.00833), 8px);
+    line-height: clamp(7px, calc(7px + (100vh - 680px) * 0.00833), 8px);
+  }
+
+  .main.is-dashboard .dashboard-calendar .calendar-day-agenda {
+    padding: clamp(4px, calc(4px + (100vh - 680px) * 0.01667), 6px)
+      clamp(6px, calc(6px + (100vh - 680px) * 0.01667), 8px)
+      clamp(6px, calc(6px + (100vh - 680px) * 0.01667), 8px);
+  }
+}

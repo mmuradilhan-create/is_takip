@@ -805,6 +805,12 @@ islemler kalir; bu da ust cubuktaki Geri al ile geri alinabilir. Ayni kayit
 sonradan yeniden degistiyse sorulur ve onaylanirsa o isleme kadar hepsi
 sirayla geri alinir.
 
+MENUYU DARALT (1.11.0)
+
+1200 piksel ve ustu genislikte ODAK logosunun yanindaki < dugmesi sol menuyu
+simge seridine indirir; seritteki > dugmesi geri acar. Secim bu tarayicida
+hatirlanir ve Geri al gecmisine girmez. Daha dar pencerede serit otomatiktir.
+
 HEDEF ILERLEMESI (1.5.0)
 
 Sayiyla olculen acik hedeflerde satirin (Genel bakista kutunun) uzerine

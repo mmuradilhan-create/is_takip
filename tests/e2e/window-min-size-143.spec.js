@@ -143,3 +143,41 @@ test("a small widget never scrolls sideways; below 320px tall it scrolls down", 
     sideways: false,
   });
 });
+
+test("on wide screens the chevron collapses the menu to the rail and back, and the choice is kept", async ({
+  page,
+}) => {
+  await seed(page);
+  await page.setViewportSize({ width: 1536, height: 800 });
+  await page.goto("/");
+  const sidebar = page.locator(".sidebar");
+  const chevron = page.locator(".sidebar-collapse");
+  const width = async () => Math.round((await sidebar.boundingBox()).width);
+  await expect(chevron).toHaveAccessibleName("Menüyü daralt");
+  await expect(chevron).toHaveAttribute("aria-expanded", "true");
+  expect(await width()).toBe(238);
+  await chevron.click();
+  await expect.poll(width).toBe(64);
+  await expect(chevron).toHaveAccessibleName("Menüyü genişlet");
+  await expect(chevron).toBeFocused();
+  const daily = page.locator('#nav [data-view="daily"]');
+  await expect(daily).toHaveAttribute("title", "Günlük işler");
+  await daily.click();
+  await expect(page.locator("#page-title")).toHaveText("Günlük işler");
+  expect(await overflow(page)).toBeLessThanOrEqual(0);
+  // Kept across reloads; a narrow window keeps its automatic rail.
+  await page.reload();
+  await expect.poll(width).toBe(64);
+  await page.setViewportSize({ width: 1000, height: 800 });
+  await expect(chevron).toBeHidden();
+  await expect.poll(width).toBe(64);
+  await page.setViewportSize({ width: 1536, height: 800 });
+  await chevron.click();
+  await expect.poll(width).toBe(238);
+  await page.reload();
+  await expect.poll(width).toBe(238);
+  // No Undo entry: it is a view choice, not a change to the records.
+  await expect(
+    page.getByRole("button", { name: "Geri al", exact: true }),
+  ).toBeDisabled();
+});

@@ -2937,7 +2937,7 @@ export async function startMainApp() {
     }
   }
 
-  app.innerHTML = `<div class="layout"><div class="mobile-backdrop" data-action="menu"></div><aside class="sidebar"><div class="brand-lockup"><div class="brand"><span class="brand-name" id="brand-name"><span class="brand-accessible-name">ODAK</span><svg class="brand-lettering" viewBox="0 0 200 48" aria-hidden="true"><path fill-rule="evenodd" d="M15 2H29Q42 2 42 15V31Q42 44 29 44H15Q2 44 2 31V15Q2 2 15 2ZM16 11Q12 11 12 16V30Q12 35 16 35H28Q32 35 32 30V16Q32 11 28 11Z"/><path fill-rule="evenodd" d="M51 2H72Q93 2 93 23Q93 44 72 44H51ZM61 11V35H71Q83 35 83 23Q83 11 71 11Z"/><path fill-rule="evenodd" d="M119 2H130L148 44H137L133 34H116L112 44H101ZM119 26H130L124.5 12Z"/><path d="M157 2H167V19L183 2H196L176 23L198 44H184L167 27V44H157Z"/></svg></span></div></div><p class="nav-label">ÇALIŞMA ALANI</p><nav id="nav" class="nav" aria-label="Ana menü"></nav><button type="button" class="rail-journal-toggle" data-action="rail-journal" aria-controls="sidebar-work-journal" aria-expanded="false" aria-label="Çalışma notu" title="Çalışma notu">${icon("notes")}<span class="rail-journal-dot" aria-hidden="true"></span></button></aside><main class="main"><header class="topbar"><div class="topbar-start"><button type="button" class="mobile-toggle" data-action="menu" aria-label="Menüyü aç" aria-expanded="false">${icon("menu")}</button><div class="page-heading"><h1 id="page-title">Genel bakış</h1></div></div><div class="topbar-right"><div class="search">${icon("search")}<input type="search" id="global-search" placeholder="Kayıtlarında ara…" aria-label="Kayıtlarında ara" autocomplete="off"></div><button type="button" class="btn primary new-record" data-action="new" aria-label="Yeni kayıt" title="Yeni kayıt">${icon("plus")}<span>Yeni kayıt</span></button><button type="button" class="btn widget-trigger" data-action="open-widget" aria-label="Widget aç" title="Mini ajandayı aç">${icon("widget")}<span>Widget</span></button><button type="button" class="btn calendar-trigger" data-action="open-calendar" aria-label="Takvimi aç" title="Takvimi aç">${icon("calendar")}<span>Takvim</span></button><span class="today">${icon("calendar")}<span class="today-copy"><time id="topbar-date" class="today-date"></time><time id="topbar-clock" class="today-clock"></time></span></span><button type="button" id="reminder-button" class="icon-btn reminder-trigger" aria-haspopup="dialog" aria-controls="reminder-panel" aria-expanded="false" aria-label="Hatırlatmalar" title="Hatırlatmalar">${bellIcon}<span class="reminder-count" hidden></span></button><button type="button" id="undo-button" class="icon-btn undo-trigger" data-action="undo" aria-label="Geri al" aria-keyshortcuts="Control+Z Meta+Z" title="Geri alınacak işlem yok" disabled>${icon("undo")}</button><button type="button" class="icon-btn settings-trigger" data-action="settings" aria-label="Ayarlar" title="Ayarlar">${icon("settings")}</button></div></header>${storageError || bootstrapNotice ? `<div class="unsaved-warning" role="alert">${esc(storageError || bootstrapNotice)}</div>` : ""}<div class="content" id="content"></div></main></div><dialog class="modal" id="editor" aria-label="Kayıt formu"></dialog><dialog class="modal" id="settings-dialog" aria-label="Ayarlar"></dialog><dialog class="modal" id="workspace-reset-dialog" aria-labelledby="workspace-reset-title" aria-describedby="workspace-reset-description"></dialog><dialog class="modal" id="planning-prompts-dialog" aria-label="Planını netleştir"></dialog><dialog class="modal goal-links-review-dialog" id="goal-links-review-dialog" aria-label="Hedef bağlantılarını gözden geçir"></dialog><div id="status-menu" class="status-menu" popover="auto" role="menu" aria-label="Durum seç"></div>`;
+  app.innerHTML = `<div class="layout"><div class="mobile-backdrop" data-action="menu"></div><aside class="sidebar"><div class="brand-lockup"><div class="brand"><span class="brand-name" id="brand-name"><span class="brand-accessible-name">ODAK</span><svg class="brand-lettering" viewBox="0 0 200 48" aria-hidden="true"><path fill-rule="evenodd" d="M15 2H29Q42 2 42 15V31Q42 44 29 44H15Q2 44 2 31V15Q2 2 15 2ZM16 11Q12 11 12 16V30Q12 35 16 35H28Q32 35 32 30V16Q32 11 28 11Z"/><path fill-rule="evenodd" d="M51 2H72Q93 2 93 23Q93 44 72 44H51ZM61 11V35H71Q83 35 83 23Q83 11 71 11Z"/><path fill-rule="evenodd" d="M119 2H130L148 44H137L133 34H116L112 44H101ZM119 26H130L124.5 12Z"/><path d="M157 2H167V19L183 2H196L176 23L198 44H184L167 27V44H157Z"/></svg></span></div><button type="button" class="sidebar-collapse" data-action="sidebar-collapse" aria-label="Menüyü daralt" title="Menüyü daralt" aria-controls="nav" aria-expanded="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></button></div><p class="nav-label">ÇALIŞMA ALANI</p><nav id="nav" class="nav" aria-label="Ana menü"></nav><button type="button" class="rail-journal-toggle" data-action="rail-journal" aria-controls="sidebar-work-journal" aria-expanded="false" aria-label="Çalışma notu" title="Çalışma notu">${icon("notes")}<span class="rail-journal-dot" aria-hidden="true"></span></button></aside><main class="main"><header class="topbar"><div class="topbar-start"><button type="button" class="mobile-toggle" data-action="menu" aria-label="Menüyü aç" aria-expanded="false">${icon("menu")}</button><div class="page-heading"><h1 id="page-title">Genel bakış</h1></div></div><div class="topbar-right"><div class="search">${icon("search")}<input type="search" id="global-search" placeholder="Kayıtlarında ara…" aria-label="Kayıtlarında ara" autocomplete="off"></div><button type="button" class="btn primary new-record" data-action="new" aria-label="Yeni kayıt" title="Yeni kayıt">${icon("plus")}<span>Yeni kayıt</span></button><button type="button" class="btn widget-trigger" data-action="open-widget" aria-label="Widget aç" title="Mini ajandayı aç">${icon("widget")}<span>Widget</span></button><button type="button" class="btn calendar-trigger" data-action="open-calendar" aria-label="Takvimi aç" title="Takvimi aç">${icon("calendar")}<span>Takvim</span></button><span class="today">${icon("calendar")}<span class="today-copy"><time id="topbar-date" class="today-date"></time><time id="topbar-clock" class="today-clock"></time></span></span><button type="button" id="reminder-button" class="icon-btn reminder-trigger" aria-haspopup="dialog" aria-controls="reminder-panel" aria-expanded="false" aria-label="Hatırlatmalar" title="Hatırlatmalar">${bellIcon}<span class="reminder-count" hidden></span></button><button type="button" id="undo-button" class="icon-btn undo-trigger" data-action="undo" aria-label="Geri al" aria-keyshortcuts="Control+Z Meta+Z" title="Geri alınacak işlem yok" disabled>${icon("undo")}</button><button type="button" class="icon-btn settings-trigger" data-action="settings" aria-label="Ayarlar" title="Ayarlar">${icon("settings")}</button></div></header>${storageError || bootstrapNotice ? `<div class="unsaved-warning" role="alert">${esc(storageError || bootstrapNotice)}</div>` : ""}<div class="content" id="content"></div></main></div><dialog class="modal" id="editor" aria-label="Kayıt formu"></dialog><dialog class="modal" id="settings-dialog" aria-label="Ayarlar"></dialog><dialog class="modal" id="workspace-reset-dialog" aria-labelledby="workspace-reset-title" aria-describedby="workspace-reset-description"></dialog><dialog class="modal" id="planning-prompts-dialog" aria-label="Planını netleştir"></dialog><dialog class="modal goal-links-review-dialog" id="goal-links-review-dialog" aria-label="Hedef bağlantılarını gözden geçir"></dialog><div id="status-menu" class="status-menu" popover="auto" role="menu" aria-label="Durum seç"></div>`;
   document
     .querySelector("#editor")
     .addEventListener("close", restoreMeetingRoute);
@@ -3554,10 +3554,34 @@ export async function startMainApp() {
   const railQuery = window.matchMedia(
     "(min-width: 761px) and (max-width: 1199px)",
   );
+  // From 1200px the menu can be collapsed to the same rail by hand; the
+  // choice is a per-browser convenience, not part of the records or Undo.
+  const wideQuery = window.matchMedia("(min-width: 1200px)");
+  const SIDEBAR_KEY = "odak-sidebar";
   const railSidebar = document.querySelector(".sidebar");
   const railToggle = railSidebar.querySelector(".rail-journal-toggle");
+  const collapseButton = railSidebar.querySelector(".sidebar-collapse");
+  function sidebarCollapsed() {
+    try {
+      return localStorage.getItem(SIDEBAR_KEY) === "rail";
+    } catch {
+      return false;
+    }
+  }
+  const isRail = () => document.documentElement.dataset.sidebar === "rail";
+  function applySidebar() {
+    const wasRail = isRail();
+    const rail =
+      railQuery.matches || (wideQuery.matches && sidebarCollapsed());
+    document.documentElement.dataset.sidebar = rail ? "rail" : "full";
+    const label = rail ? "Menüyü genişlet" : "Menüyü daralt";
+    collapseButton.setAttribute("aria-label", label);
+    collapseButton.title = label;
+    collapseButton.setAttribute("aria-expanded", String(!rail));
+    if (wasRail !== rail) setRailJournal(false);
+  }
   function setRailJournal(open, { focus = false } = {}) {
-    if (open && !railQuery.matches) open = false;
+    if (open && !isRail()) open = false;
     railSidebar.dataset.railJournal = open ? "open" : "closed";
     railToggle.setAttribute("aria-expanded", String(open));
     if (open && focus)
@@ -3567,7 +3591,12 @@ export async function startMainApp() {
       )?.focus({ preventScroll: true });
   }
   setRailJournal(false);
-  railQuery.addEventListener("change", () => setRailJournal(false));
+  applySidebar();
+  railQuery.addEventListener("change", applySidebar);
+  wideQuery.addEventListener("change", applySidebar);
+  window.addEventListener("storage", (event) => {
+    if (event.key === SIDEBAR_KEY) applySidebar();
+  });
   document.addEventListener(
     "pointerdown",
     (event) => {
@@ -3595,7 +3624,7 @@ export async function startMainApp() {
   const railPhaseWatch = new MutationObserver(() => {
     const phase = document.querySelector("#sidebar-work-journal")?.dataset.phase;
     railSidebar.dataset.railPhase = phase || "idle";
-    if (railQuery.matches && (phase === "running" || phase === "finish"))
+    if (isRail() && (phase === "running" || phase === "finish"))
       setRailJournal(true);
   });
   const watchRailJournal = () => {
@@ -3813,6 +3842,18 @@ export async function startMainApp() {
         menu.style.left = `${Math.max(8, Math.min(rect.right - bounds.width, innerWidth - bounds.width - 8))}px`;
         menu.style.top = `${Math.max(8, Math.min(rect.bottom + 4, innerHeight - bounds.height - 8))}px`;
         menu.querySelector("button")?.focus({ preventScroll: true });
+        break;
+      }
+      case "sidebar-collapse": {
+        try {
+          localStorage.setItem(SIDEBAR_KEY, isRail() ? "full" : "rail");
+        } catch {
+          /* Without storage the choice lasts until the window closes. */
+          document.documentElement.dataset.sidebar = isRail() ? "full" : "rail";
+          break;
+        }
+        applySidebar();
+        collapseButton.focus({ preventScroll: true });
         break;
       }
       case "rail-journal":

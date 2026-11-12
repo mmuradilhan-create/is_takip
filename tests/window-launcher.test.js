@@ -153,7 +153,14 @@ test("native main windows open normal at the recommended size and maximize only 
       "int targetWidth=(int)Math.Round(1440*dpi/96.0),targetHeight=(int)Math.Round(900*dpi/96.0);",
     ),
   );
-  assert(arrange.includes("placement.Flags=0; placement.Show=fit<1.0?3:1;"));
+  assert(arrange.includes("placement.Flags=0; placement.Show=fits?1:3;"));
+  // Width and height are clamped separately: a short screen keeps 1440 wide.
+  assert(
+    arrange.includes(
+      "int fitWidth=Math.Min(targetWidth,Math.Max(1,monitor.Work.W-frameWidth)),fitHeight=Math.Min(targetHeight,Math.Max(1,monitor.Work.H-frameHeight));",
+    ),
+  );
+  assert.doesNotMatch(arrange, /targetWidth\*fit/);
   assert.doesNotMatch(arrange, /placement\.Show=3;/);
 });
 

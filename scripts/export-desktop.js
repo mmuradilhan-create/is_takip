@@ -49,6 +49,8 @@ Ana uygulama ve widget Türkçe belgeler olarak otomatik çeviriden hariç tutul
 Ana pencere ekranın ortasında 1440x900 içerik alanıyla açılır (Windows ekran
 ölçeğine göre). Bu ölçüde bütün ekranlar sıkışmadan, Takvim Güncel işler'in
 yanında görünür. Ekran bu boyuta yetmiyorsa ana pencere büyütülmüş açılır.
+Baslik cubuguna cift tiklayinca pencere 1440 genisligini korur; yalniz
+yuksekligi ekrana sigacak kadar kisalir, Takvim yine yan tarafta kalir.
 Sonra elle büyütmek veya boyutlandırmak serbesttir. Widget 380x420 açılır.
 Ana pencere 960 pikselden fazla daraltılırsa sayfa sıkışmaz, yana kayar;
 1280 pikselden dar pencerede Takvim Güncel işler'in altına iner. Widget

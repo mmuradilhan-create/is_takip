@@ -141,14 +141,17 @@ public static bool Arrange(IntPtr h) {
       if(view.W>0 && view.H>0) { width=targetWidth+outer.W-view.W; height=targetHeight+outer.H-view.H; }
     }
     int frameWidth=Math.Max(0,width-targetWidth),frameHeight=Math.Max(0,height-targetHeight);
-    double fit=Math.Min(1.0,Math.Min(Math.Max(1,monitor.Work.W-frameWidth)/(double)targetWidth,Math.Max(1,monitor.Work.H-frameHeight)/(double)targetHeight));
-    width=Math.Min(monitor.Work.W,(int)Math.Round(targetWidth*fit)+frameWidth); height=Math.Min(monitor.Work.H,(int)Math.Round(targetHeight*fit)+frameHeight);
+    // Clamp each side on its own: a short screen keeps the full recommended
+    // width, so the restored window still gets the wide desktop layout.
+    int fitWidth=Math.Min(targetWidth,Math.Max(1,monitor.Work.W-frameWidth)),fitHeight=Math.Min(targetHeight,Math.Max(1,monitor.Work.H-frameHeight));
+    bool fits=fitWidth==targetWidth && fitHeight==targetHeight;
+    width=Math.Min(monitor.Work.W,fitWidth+frameWidth); height=Math.Min(monitor.Work.H,fitHeight+frameHeight);
     int left=monitor.Work.L+(monitor.Work.W-width)/2,top=monitor.Work.T+(monitor.Work.H-height)/2;
     // WINDOWPLACEMENT uses workspace coordinates except for tool windows.
     if((ex&0x80)==0) { left-=monitor.Work.L-monitor.Bounds.L; top-=monitor.Work.T-monitor.Bounds.T; }
     placement.Normal.L=left; placement.Normal.T=top; placement.Normal.Rt=left+width; placement.Normal.B=top+height;
     // The restore rectangle is stored either way, including for already maximized HWNDs.
-    placement.Flags=0; placement.Show=fit<1.0?3:1;
+    placement.Flags=0; placement.Show=fits?1:3;
     if(!SetWindowPlacement(h,ref placement)) return false;
     Prepared[h]=true; return true;
   } finally { SetThreadDpiAwarenessContext(previous); }

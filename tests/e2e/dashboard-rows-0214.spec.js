@@ -279,7 +279,9 @@ test("dashboard keeps three compact desktop panels and moves notes below the two
     const visibleCards = Math.min(await cardColumns(page), 4);
     await expect(attentionRows(page)).toHaveCount(visibleCards);
     const cards = attentionRows(page);
-    await expect(cards.locator(".quick-complete")).toHaveCount(0);
+    await expect(
+      cards.locator(".followup-title-line > .quick-complete"),
+    ).toHaveCount(visibleCards);
     await expect(cards.locator(".status-trigger")).toHaveCount(visibleCards);
     await expect(cards.locator('[data-action="waiting-followup"]')).toHaveCount(
       visibleCards,
@@ -305,7 +307,9 @@ test("dashboard keeps three compact desktop panels and moves notes below the two
     await expect(goals).toHaveCount(2);
     for (const goal of await goals.all()) {
       await goal.scrollIntoViewIfNeeded();
-      await expect(goal.locator(".dashboard-card-facts button")).toHaveCount(2);
+      await expect(
+        goal.locator(".dashboard-card-facts button:not(.card-progress-step)"),
+      ).toHaveCount(2);
       await expect(
         goal.locator(".dashboard-goal-meta-controls .status-trigger"),
       ).toHaveCount(1);
@@ -638,7 +642,9 @@ test("one upcoming goal and one waiting card show their full content without a r
       expect(part.right).toBeLessThanOrEqual(parts.box.right);
       expect(part.bottom).toBeLessThanOrEqual(parts.box.bottom);
     }
-    await expect(card.locator(".quick-complete")).toHaveCount(0);
+    await expect(
+      card.locator(".followup-title-line > .quick-complete"),
+    ).toHaveCount(1);
     await expect(card.locator(".status-trigger")).toHaveCount(1);
     await desktopGeometry(page);
     expect(await saved(page)).toBe(original);

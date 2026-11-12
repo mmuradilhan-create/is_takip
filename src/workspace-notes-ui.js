@@ -242,7 +242,9 @@ export function createWorkspaceNotesUI({
       const reminderField = dialog.querySelector('[name="remindDate"]');
       if (focusReminder && reminderField) {
         reminderField.focus({ preventScroll: true });
-        reminderField.select();
+        // The caret waits at the end; nothing is highlighted.
+        const end = reminderField.value.length;
+        reminderField.setSelectionRange(end, end);
       } else field().focus({ preventScroll: true });
     } catch (error) {
       onError(error instanceof Error ? error.message : String(error));

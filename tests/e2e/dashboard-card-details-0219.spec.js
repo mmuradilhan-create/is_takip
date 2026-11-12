@@ -353,6 +353,11 @@ test("follow-up card bodies, titles and card keyboard actions open read-only det
     fullPage: false,
   });
   await waiting(page).focus();
+  // The card's tick box comes first, then the title.
+  await page.keyboard.press("Tab");
+  await expect(
+    waiting(page).locator(".followup-title-line > .quick-complete"),
+  ).toBeFocused();
   await page.keyboard.press("Tab");
   await expect(title).toBeFocused();
   await expect(title).toHaveCSS("text-decoration-line", /underline/);

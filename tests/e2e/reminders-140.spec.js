@@ -351,6 +351,15 @@ test("a note's reminder tag turns due as its minute passes and opens the editor 
   await expect(editor).toBeVisible();
   await expect(editor.locator('[name="remindDate"]')).toBeFocused();
   await expect(editor.locator('[name="remind"]')).toBeChecked();
+  // Focused, not highlighted: the caret waits at the end of the date.
+  expect(
+    await editor
+      .locator('[name="remindDate"]')
+      .evaluate((field) => [
+        field.selectionStart === field.selectionEnd,
+        field.selectionEnd === field.value.length,
+      ]),
+  ).toEqual([true, true]);
 });
 
 test("reminders set for later leave a numberless dot and name the next one in the tooltip", async ({
@@ -498,4 +507,27 @@ test("reminder date and time move with arrow buttons and keys in 24-hour quarter
     "24 saat",
   );
   expect((await notesOf(page))[0].remindAt).toBe("2026-11-13T14:30");
+});
+
+test("pressing the reminder arrows quickly never highlights the Tarih or Saat labels", async ({
+  context,
+}) => {
+  await seed(context, {
+    notes: [
+      note("odd", { text: "Teklifi kontrol et", remindAt: "2026-11-12T09:00" }),
+    ],
+  });
+  const page = await context.newPage();
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/");
+  await page.locator('[data-action="workspace-note-edit"]').click();
+  const editor = page.locator("#workspace-note-editor");
+  const selected = () =>
+    page.evaluate(() => String(window.getSelection()).trim());
+  await editor.getByRole("button", { name: "Sonraki gün" }).dblclick();
+  expect(await selected()).toBe("");
+  await editor.getByRole("button", { name: "15 dakika sonra" }).dblclick();
+  expect(await selected()).toBe("");
+  await expect(editor.locator('[name="remindDate"]')).toHaveValue("14.11.2026");
+  await expect(editor.locator('[name="remindTime"]')).toHaveValue("09:30");
 });

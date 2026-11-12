@@ -328,9 +328,7 @@ test("the dashboard previews two current goals with numeric progress while the f
   const lastProgress = goal(page, "plan-current-second").locator(
     '[data-action="goal-progress-open"]',
   );
-  await expect(lastProgress).toHaveText(
-    /^(\d+ \/ \d+|%\d+|Ölçüm yok)$/,
-  );
+  await expect(lastProgress).toHaveText(/^(\d+ \/ \d+|%\d+|Ölçüm yok)$/);
   await lastProgress.click();
   const lastPanel = page.locator("#goal-detail-panel");
   await expect(lastPanel).toBeVisible();
@@ -502,7 +500,10 @@ test("one paged attention panel reaches all dated overdue and near records, keep
   await expect(
     page.locator(".dashboard-followups .attention-panel"),
   ).toHaveCount(0);
-  await expect(attentionRows(page).locator(".quick-complete")).toHaveCount(0);
+  // Each card carries one tick box at the start of its title.
+  await expect(
+    attentionRows(page).locator(".followup-title-line > .quick-complete"),
+  ).toHaveCount(2);
   await expect(attentionRows(page).locator(".status-trigger")).toHaveCount(2);
   const followupDates = attentionRows(page).locator(
     '[data-action="edit-next-followup"]',

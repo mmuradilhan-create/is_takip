@@ -229,3 +229,156 @@
     display: none;
   }
 }
+
+/*
+ * The tick box sits at the start of the title's first line; only that line
+ * steps aside for it, the rest of the title runs full width underneath.
+ */
+.dashboard-workspace.dashboard-rows
+  .dashboard-bottom-row
+  :is(.followup-title-line, .dashboard-goal-title-line) {
+  position: relative;
+  display: block;
+}
+
+#app
+  .dashboard-workspace.dashboard-rows
+  .dashboard-bottom-row
+  :is(.followup-title-line, .dashboard-goal-title-line)
+  > :is(.quick-complete, .completion-mark) {
+  position: absolute;
+  top: -1px;
+  left: 0;
+  z-index: 1;
+  width: 17px;
+  min-width: 17px;
+  height: 17px;
+  min-height: 17px;
+  margin: 0;
+  padding: 0;
+  border-radius: 5px;
+}
+
+.dashboard-workspace.dashboard-rows
+  .dashboard-bottom-row
+  :is(.followup-title-line, .dashboard-goal-title-line)
+  > :is(.quick-complete, .completion-mark)
+  svg {
+  width: 10px;
+  height: 10px;
+}
+
+.dashboard-workspace.dashboard-rows
+  .dashboard-bottom-row
+  :is(.followup-title-line, .dashboard-goal-title-line)
+  > :is(.followup-title, .dashboard-goal-title) {
+  text-indent: 23px;
+}
+
+/* İlerleme on a card: − and + sit inside the box's edges when wanted. */
+.dashboard-workspace.dashboard-rows .dashboard-bottom-row .card-progress {
+  position: relative;
+  display: flex;
+  min-width: 0;
+}
+
+.dashboard-workspace.dashboard-rows
+  .dashboard-bottom-row
+  .card-progress
+  > .card-progress-step {
+  position: absolute;
+  top: 50%;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--theme-border, #cfdcc8);
+  border-radius: 5px;
+  background: var(--theme-raised, #fff);
+  color: var(--theme-ink, #2f5a3f);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-50%);
+  transition: opacity 0.12s;
+  cursor: pointer;
+}
+
+.dashboard-workspace.dashboard-rows
+  .dashboard-bottom-row
+  .card-progress
+  > .card-progress-step[data-step="-1"] {
+  left: 4px;
+}
+
+.dashboard-workspace.dashboard-rows
+  .dashboard-bottom-row
+  .card-progress
+  > .card-progress-step[data-step="1"] {
+  right: 4px;
+}
+
+.dashboard-workspace.dashboard-rows
+  .dashboard-bottom-row
+  .card-progress:is(:hover, :focus-within)
+  > .card-progress-step {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.dashboard-workspace.dashboard-rows
+  .dashboard-bottom-row
+  .card-progress
+  > .card-progress-step:hover:not(:disabled) {
+  background: var(--theme-hover, #edf3e8);
+}
+
+.dashboard-workspace.dashboard-rows
+  .dashboard-bottom-row
+  .card-progress
+  > .card-progress-step:disabled {
+  color: var(--theme-faint, #a9b5a3);
+  cursor: default;
+}
+
+@media (hover: none) {
+  .dashboard-workspace.dashboard-rows
+    .dashboard-bottom-row
+    .card-progress
+    > .card-progress-step {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+@container (max-width: 160px) {
+  .dashboard-workspace.dashboard-rows
+    .dashboard-bottom-row
+    .card-progress
+    > .card-progress-step {
+    width: 16px;
+    height: 18px;
+    font-size: 12px;
+  }
+
+  .dashboard-workspace.dashboard-rows
+    .dashboard-bottom-row
+    .card-progress
+    > .card-progress-step[data-step="-1"] {
+    left: 2px;
+  }
+
+  .dashboard-workspace.dashboard-rows
+    .dashboard-bottom-row
+    .card-progress
+    > .card-progress-step[data-step="1"] {
+    right: 2px;
+  }
+}

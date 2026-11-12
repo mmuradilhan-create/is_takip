@@ -1069,8 +1069,9 @@ test("dense previews keep two shared cards beside independent notes and every go
       await expect(
         item.locator(".dashboard-goal-meta, .dashboard-goal-linked"),
       ).toHaveCount(0);
+      // Status, date, priority and progress (− and + appear only on hover).
       const controls = item.locator(
-        ".dashboard-goal-meta-controls button, .dashboard-card-facts button",
+        ".dashboard-goal-meta-controls button, .dashboard-card-facts button:not(.card-progress-step)",
       );
       await expect(controls).toHaveCount(4);
       for (const control of await controls.all()) {

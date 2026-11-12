@@ -166,7 +166,6 @@
   margin: 0;
 }
 
-
 /* The bell is framed like Undo and Settings; a due reminder only tints it. */
 .topbar .reminder-trigger {
   position: relative;
@@ -394,4 +393,14 @@
     min-height: 38px;
     border-radius: 9px;
   }
+}
+
+/* Quick presses on the arrows count as double clicks; they must not
+   highlight the "Tarih" / "Saat" labels. The fields stay selectable. */
+.workspace-note-reminder-fields {
+  user-select: none;
+}
+
+.workspace-note-reminder-fields input {
+  user-select: text;
 }

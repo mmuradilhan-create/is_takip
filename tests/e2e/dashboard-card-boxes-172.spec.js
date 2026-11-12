@@ -122,18 +122,19 @@ for (const viewport of [
     await expect(
       goal.locator('.dashboard-goal-meta-controls [data-action="edit-date"]'),
     ).toHaveText("15 Kas");
-    await expect(goal.locator(".dashboard-card-facts > *")).toHaveText([
-      "Normal",
-      "2 / 7",
-    ]);
     await expect(
       goal.locator(
-        '.dashboard-card-facts > [data-action="goal-progress-open"]',
+        '.dashboard-card-facts :is([data-action="edit-priority"], [data-action="goal-progress-open"])',
+      ),
+    ).toHaveText(["Normal", "2 / 7"]);
+    await expect(
+      goal.locator(
+        '.dashboard-card-facts [data-action="goal-progress-open"]',
       ),
     ).toHaveAttribute("title", /^%29 · /);
     await expect(
       plain.locator(
-        '.dashboard-card-facts > [data-action="goal-progress-open"]',
+        '.dashboard-card-facts [data-action="goal-progress-open"]',
       ),
     ).toHaveText("Ölçüm yok");
     // No separate button row: linked jobs are in the details.
@@ -227,4 +228,77 @@ test("each card box takes the colours of the same box in its list", async ({
     date: card.date,
     progress: card.progress,
   });
+});
+
+test("cards carry the list's tick box on the title's first line only, and a waiting topic asks what happened", async ({
+  page,
+}) => {
+  await open(page, { width: 1536, height: 800 });
+  const waiting = page.locator('.followup-row[data-id="wait-long"]');
+  const tick = waiting.locator(".followup-title-line > .quick-complete");
+  const title = waiting.locator(".followup-title");
+  await expect(tick).toBeVisible();
+  const [box, text] = await Promise.all([
+    tick.boundingBox(),
+    title.boundingBox(),
+  ]);
+  // Same top as the first line; later lines start under the box, not beside it.
+  expect(Math.abs(box.y - text.y)).toBeLessThanOrEqual(2);
+  const lines = await title.evaluate((element) => {
+    const range = document.createRange();
+    range.selectNodeContents(element);
+    return [...range.getClientRects()].map((rect) => Math.round(rect.left));
+  });
+  expect(lines.length).toBeGreaterThan(1);
+  expect(lines[0]).toBeGreaterThanOrEqual(Math.round(box.x + box.width));
+  expect(lines[1]).toBeLessThan(Math.round(box.x + box.width));
+  // Ticking a waiting card asks "Ne oldu?" and closes it on Enter.
+  await tick.click();
+  await expect(page.locator("#outcome-prompt label")).toHaveText("Ne oldu?");
+  await page.keyboard.press("Enter");
+  await expect(waiting).toHaveCount(0);
+  // A goal card's tick completes it straight away.
+  const goal = page.locator('.dashboard-goal-row[data-goal-id="goal-plain"]');
+  await goal.locator(".dashboard-goal-title-line > .quick-complete").click();
+  await expect(page.locator("#outcome-prompt")).toBeHidden();
+  const saved = await page.evaluate(() =>
+    JSON.parse(localStorage.getItem("is-takip-v1")),
+  );
+  expect(saved.records.find((item) => item.id === "goal-plain").status).toBe(
+    "completed",
+  );
+});
+
+test("a counted goal's card box shows − and + inside its edges on hover, keeping its size", async ({
+  page,
+}) => {
+  await open(page, { width: 1280, height: 720 });
+  const goal = page.locator(
+    '.dashboard-goal-row[data-goal-id="goal-measured"]',
+  );
+  const progress = goal.locator(".card-progress");
+  const box = goal.locator('[data-action="goal-progress-open"]');
+  const plus = progress.locator('[data-step="1"]');
+  const minus = progress.locator('[data-step="-1"]');
+  const before = await box.boundingBox();
+  await expect(plus).toHaveCSS("opacity", "0");
+  await progress.hover();
+  await expect(plus).toHaveCSS("opacity", "1");
+  for (const step of [plus, minus]) {
+    const edge = await step.boundingBox();
+    expect(edge.x).toBeGreaterThanOrEqual(before.x);
+    expect(edge.x + edge.width).toBeLessThanOrEqual(before.x + before.width);
+  }
+  await plus.click();
+  await expect(box).toHaveText("3 / 7");
+  await minus.click();
+  await minus.click();
+  await expect(box).toHaveText("1 / 7");
+  expect(await box.boundingBox()).toEqual(before);
+  // Goals without their own count have no steps.
+  await expect(
+    page.locator(
+      '.dashboard-goal-row[data-goal-id="goal-plain"] .card-progress-step',
+    ),
+  ).toHaveCount(0);
 });

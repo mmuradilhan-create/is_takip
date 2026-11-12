@@ -36,7 +36,7 @@ const records = [
 const stored = (page) =>
   page.evaluate((key) => JSON.parse(localStorage.getItem(key)), KEY);
 
-test("only a measured open goal gets − and + beside its progress box, each press one undo step", async ({
+test("only a measured open goal gets − and + inside its progress box, each press one undo step", async ({
   page,
 }) => {
   await page.clock.setFixedTime(new Date("2026-11-11T09:00:00.000Z"));
@@ -67,6 +67,13 @@ test("only a measured open goal gets − and + beside its progress box, each pre
   await row("measured").hover();
   await expect(plus).toHaveCSS("opacity", "1");
   await expect(minus).toBeDisabled();
+  // They sit inside the box's own edges, so the column keeps its width.
+  const chip = await row("measured").locator(".progress-chip").boundingBox();
+  for (const step of [minus, plus]) {
+    const edge = await step.boundingBox();
+    expect(edge.x).toBeGreaterThanOrEqual(chip.x);
+    expect(edge.x + edge.width).toBeLessThanOrEqual(chip.x + chip.width);
+  }
 
   await plus.click();
   await plus.click();

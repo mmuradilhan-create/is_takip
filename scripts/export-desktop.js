@@ -807,10 +807,12 @@ sirayla geri alinir.
 
 HEDEF ILERLEMESI (1.5.0)
 
-Sayiyla olculen acik hedeflerde satirin uzerine gelince ilerleme kutusunun
-yaninda - ve + belirir; her basis 1 degistirir ve tek Geri al adimidir.
+Sayiyla olculen acik hedeflerde satirin (Genel bakista kutunun) uzerine
+gelince ilerleme kutusunun ic kenarlarinda - ve + belirir; kutu ve sutun
+boyu degismez. Her basis 1 degistirir ve tek Geri al adimidir.
 Bagli islerden veya alt hedeflerden hesaplanan ilerlemede bu dugmeler yoktur.
-Genel bakista hedef kartinin Ilerleme dugmesi dolan kutudur ("1 / 3").
+Genel bakistaki takip ve hedef kartlarinda tamamlama kutusu basligin ilk
+satirinin basindadir; basligin diger satirlari tam genislikte devam eder.
 
 WIDGET: IS AYRINTISI (1.4.7)
 

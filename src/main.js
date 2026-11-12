@@ -537,7 +537,7 @@ export async function startMainApp() {
     const body = entries.length
       ? `<p class="settings-history-help">1 en son işlemdir. Bir işlemi geri almak yalnız onu geri alır; sonraki işlemler yerinde kalır.</p><section class="settings-hidden-group" aria-label="Son işlemler"><ul>${rows}</ul></section>`
       : '<p class="settings-hidden-empty">Henüz geri alınabilecek işlem yok.</p>';
-    return `<details class="settings-hidden-prompts settings-history"${open ? " open" : ""}><summary><span class="settings-summary-icon">${icon("undo")}</span><span>İşlem geçmişi</span><span class="settings-hidden-count" aria-label="${entries.length} işlem">${entries.length}</span><span class="settings-chevron">${icon("chevron")}</span></summary><div class="settings-hidden-body">${body}</div></details>`;
+    return `<details class="settings-history"${open ? " open" : ""}><summary><span class="settings-summary-icon">${icon("undo")}</span><span>İşlem geçmişi</span><span class="settings-hidden-count" aria-label="${entries.length} işlem">${entries.length}</span><span class="settings-chevron">${icon("chevron")}</span></summary><div class="settings-hidden-body">${body}</div></details>`;
   }
   function refreshSettingsHistory(focusIndex = 0) {
     const current = document.querySelector("#settings-dialog .settings-history");

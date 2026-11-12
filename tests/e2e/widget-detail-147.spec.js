@@ -155,3 +155,42 @@ test("a widget work title opens its details in place and only the edit button go
     "CİRİT VIR dokümanlarını incele",
   );
 });
+
+test("the open work detail stays above the note and buttons, running or paused", async ({
+  context,
+}) => {
+  const widget = await openWidget(context);
+  const below = (upper, lower) =>
+    widget.evaluate(
+      ([upper, lower]) =>
+        document.querySelector(upper).getBoundingClientRect().bottom <=
+        document.querySelector(lower).getBoundingClientRect().top + 0.5,
+      [upper, lower],
+    );
+  const inside = (inner, outer) =>
+    widget.evaluate(
+      ([inner, outer]) => {
+        const a = document.querySelector(inner).getBoundingClientRect();
+        const b = document.querySelector(outer).getBoundingClientRect();
+        return a.top >= b.top - 0.5 && a.bottom <= b.bottom + 0.5;
+      },
+      [inner, outer],
+    );
+  await widget.locator('[data-wb="start"][data-id="late"]').click();
+  await widget.locator(".wb-active .wb-title").click();
+  const detail = widget.locator("#wb-active-detail");
+  await expect(detail.locator(".wb-detail-edit")).toBeVisible();
+  // Running: description, last work and the edit button all sit in the box.
+  expect(
+    await inside("#wb-active-detail .wb-detail-edit", "#wb-active-detail"),
+  ).toBe(true);
+  expect(await below("#wb-active-detail", ".wb-note-field")).toBe(true);
+  // Paused: the controls move up, still under the detail.
+  await widget.locator('[data-wb="toggle"]').click();
+  await expect(widget.locator(".wb-note-field")).toBeHidden();
+  await expect(detail).toBeVisible();
+  expect(
+    await inside("#wb-active-detail .wb-detail-edit", "#wb-active-detail"),
+  ).toBe(true);
+  expect(await below("#wb-active-detail", ".wb-controls")).toBe(true);
+});

@@ -5,6 +5,13 @@ test("the overview shrinks smoothly with window height instead of jumping at 740
 }) => {
   await page.setViewportSize({ width: 1440, height: 820 });
   await page.goto("/");
+  // Measure only once the overview has drawn its calendar and cards.
+  await expect(
+    page.locator(".dashboard-rows .dashboard-calendar .calendar-day").first(),
+  ).toBeVisible();
+  await expect(
+    page.locator(".dashboard-bottom-row > .attention-panel"),
+  ).toBeVisible();
   const measure = () =>
     page.evaluate(() => {
       const calendar = document.querySelector(

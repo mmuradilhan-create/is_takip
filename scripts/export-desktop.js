@@ -294,7 +294,7 @@ boş hedefe ölçüm uydurulmaz. Kapalı hedefte hızlı ölçüm düzenlenmez.
 Mevcut değer taslağı
 kaydedilene veya Güncel değeri al ile sıfırlanana kadar tutulur.
 
-Tabloda ilerleme 5 / 100, 1 / 2, 3 alt hedef, Tamamlandı veya Ölçüm yok
+Tabloda ilerleme 5 / 100, 1 / 2, %67, %100 veya Ölçüm yok
 gibi kısa gösterilir. Özetin açıklaması ölçümün tamamını verir;
 satır/başlık hedef panelini açar. Uzun ve çok satırlı ölçümler panelde
 satırlara bölünür. Görüntüleme hesaplama yöntemini veya kayıtları değiştirmez.

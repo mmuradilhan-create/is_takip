@@ -221,7 +221,8 @@ for (const width of [1280, 1920]) {
       {
         type: "yearly",
         id: "progress-completed",
-        summary: "Tamamlandı",
+        // The status box already says Tamamlandı; progress shows the amount.
+        summary: "%100",
         percent: 100,
         basis: "status",
         explanation: "Hedef tamamlandı",

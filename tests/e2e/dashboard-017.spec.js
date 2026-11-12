@@ -189,7 +189,7 @@ test("an empty current week previews only the nearest upcoming week and keeps it
     .locator('[data-goal-id="upcoming-first"]')
     .locator('[data-action="goal-progress-open"]');
   await expect(upcomingProgress).toHaveText(
-    /^(\d+ \/ \d+|%\d+|Ölçüm yok|Tamamlandı)$/,
+    /^(\d+ \/ \d+|%\d+|Ölçüm yok)$/,
   );
   await upcomingProgress.click();
   await expect(goalPanel(page).locator(".goal-panel-title")).toHaveText(

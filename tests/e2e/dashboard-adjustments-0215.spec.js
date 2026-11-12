@@ -531,7 +531,7 @@ test("two-card pages keep every record reachable in both two-column and one-colu
     '[data-action="goal-progress-open"]',
   );
   await expect(progressAction).toHaveText(
-    /^(\d+ \/ \d+|%\d+|Ölçüm yok|Tamamlandı)$/,
+    /^(\d+ \/ \d+|%\d+|Ölçüm yok)$/,
   );
   // Linked jobs are inside the details; the card keeps only its four boxes.
   await expect(

@@ -329,7 +329,7 @@ test("the dashboard previews two current goals with numeric progress while the f
     '[data-action="goal-progress-open"]',
   );
   await expect(lastProgress).toHaveText(
-    /^(\d+ \/ \d+|%\d+|Ölçüm yok|Tamamlandı)$/,
+    /^(\d+ \/ \d+|%\d+|Ölçüm yok)$/,
   );
   await lastProgress.click();
   const lastPanel = page.locator("#goal-detail-panel");

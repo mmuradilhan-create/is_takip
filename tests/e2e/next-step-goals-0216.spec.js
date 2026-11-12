@@ -388,7 +388,7 @@ test("the two goal actions navigate to their exact sections and preserve metric 
   const items = await seed(page);
   const before = await saved(page);
   const progress = card(page).locator('[data-action="goal-progress-open"]');
-  await expect(progress).toHaveText(/^(\d+ \/ \d+|%\d+|Ölçüm yok|Tamamlandı)$/);
+  await expect(progress).toHaveText(/^(\d+ \/ \d+|%\d+|Ölçüm yok)$/);
   // Linked jobs are reached inside the goal opened from its card.
   await expect(
     card(page).locator('[data-action="goal-children-open"]'),

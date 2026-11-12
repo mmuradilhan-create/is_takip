@@ -143,7 +143,9 @@ export const widgetDocumentHtml = `<!doctype html>
     .wb-title:hover { color:#174d43; }
     .wb-title[aria-expanded="true"] > .wb-row-chevron { transform:rotate(90deg); }
     .widget-workbench .wb-title[aria-expanded="true"] > .wb-title-text { display:block; -webkit-line-clamp:unset; }
-    .wb-active-detail { margin:6px 0 0 15px; }
+    .wb-heading { flex:0 0 auto; }
+    /* Sized by its own lines (not the heading), and scrolls when long so the note and buttons keep their room. */
+    .wb-heading > .wb-active-detail { flex:0 0 auto; align-content:start; max-height:min(42vh, 190px); margin:6px 0 0 15px; overflow-y:auto; overscroll-behavior:contain; }
     .wb-row-detail[hidden] { display:none; }
     .wb-note-field { display:flex; flex-direction:column; gap:3px; flex:1 1 auto; min-height:0; }
     .wb-note-label { color:#6b7e64; font-size:10px; }

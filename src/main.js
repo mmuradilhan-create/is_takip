@@ -1344,7 +1344,7 @@ export async function startMainApp() {
         : progress.basis === "rollup"
           ? `%${progress.percent}`
           : record.status === "completed"
-            ? "Tamamlandı"
+            ? "%100" // the status box already says Tamamlandı
             : "Ölçüm yok";
   }
   const progressFill = (progress, summary) =>

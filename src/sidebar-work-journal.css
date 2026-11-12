@@ -98,6 +98,16 @@
   cursor: pointer;
 }
 
+/* Where text is typed, the pointer is the text cursor. */
+#app
+  #sidebar-work-journal
+  :is(
+    textarea,
+    input:not([type="button"], [type="checkbox"], [type="radio"])
+  ):not(:disabled) {
+  cursor: text;
+}
+
 .sidebar-work-journal[data-expanded="true"] {
   flex: 1 1 auto;
   /* Keep spare viewport space above the card once its height is capped. */

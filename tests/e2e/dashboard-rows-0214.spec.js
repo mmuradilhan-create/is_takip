@@ -319,7 +319,7 @@ test("dashboard keeps three compact desktop panels and moves notes below the two
       );
       for (const [action, text] of [
         ["edit-priority", /Normal|Yüksek|Düşük|Acil/],
-        ["goal-progress-open", /^(\d+ \/ \d+|%\d+|Ölçüm yok|Tamamlandı)$/],
+        ["goal-progress-open", /^(\d+ \/ \d+|%\d+|Ölçüm yok)$/],
       ]) {
         const button = goal.locator(
           `.dashboard-card-facts [data-action="${action}"]`,
@@ -593,7 +593,7 @@ test("one upcoming goal and one waiting card show their full content without a r
     await contained(goal, list);
     for (const [name, text] of [
       ["edit-priority", "Normal"],
-      ["goal-progress-open", /^(\d+ \/ \d+|%\d+|Ölçüm yok|Tamamlandı)$/],
+      ["goal-progress-open", /^(\d+ \/ \d+|%\d+|Ölçüm yok)$/],
     ]) {
       const action = goal.locator(`[data-action="${name}"]`);
       await expect(action).toHaveText(text);

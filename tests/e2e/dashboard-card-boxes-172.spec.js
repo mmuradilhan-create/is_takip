@@ -128,14 +128,10 @@ for (const viewport of [
       ),
     ).toHaveText(["Normal", "2 / 7"]);
     await expect(
-      goal.locator(
-        '.dashboard-card-facts [data-action="goal-progress-open"]',
-      ),
+      goal.locator('.dashboard-card-facts [data-action="goal-progress-open"]'),
     ).toHaveAttribute("title", /^%29 · /);
     await expect(
-      plain.locator(
-        '.dashboard-card-facts [data-action="goal-progress-open"]',
-      ),
+      plain.locator('.dashboard-card-facts [data-action="goal-progress-open"]'),
     ).toHaveText("Ölçüm yok");
     // No separate button row: linked jobs are in the details.
     await expect(
@@ -230,28 +226,61 @@ test("each card box takes the colours of the same box in its list", async ({
   });
 });
 
-test("cards carry the list's tick box on the title's first line only, and a waiting topic asks what happened", async ({
+test("the tick box shares the date's cell, the title keeps its full width, and a waiting topic asks what happened", async ({
   page,
 }) => {
+  for (const viewport of [
+    { width: 1536, height: 800 },
+    { width: 1280, height: 720 },
+    { width: 1200, height: 800 },
+  ]) {
+    await open(page, viewport);
+    for (const card of await page
+      .locator(".dashboard-bottom-row :is(.followup-row, .dashboard-goal-row)")
+      .all()) {
+      const geometry = await card.evaluate((element) => {
+        const meta = element.querySelector(
+          ":scope :is(.followup-meta, .dashboard-goal-meta-controls)",
+        );
+        const [status, cell] = meta.children;
+        const tick = cell.querySelector(":scope > .quick-complete");
+        const date = cell.querySelector(".deadline-tag");
+        const box = (node) => node.getBoundingClientRect();
+        const label = date.querySelector(".deadline-label") || date;
+        return {
+          titleTick: element.querySelectorAll(
+            ":scope :is(.followup-title-line, .dashboard-goal-title-line) .quick-complete",
+          ).length,
+          statusWidth: box(status).width,
+          cellWidth: box(cell).width,
+          tickLeft: box(tick).left - box(cell).left,
+          tickHeight: box(tick).height,
+          dateRight: box(cell).right - box(date).right,
+          sameTop: Math.abs(box(tick).top - box(date).top) < 1,
+          clipped: label.scrollWidth > label.clientWidth + 1,
+          statusFont: getComputedStyle(status).fontSize,
+          dateFont: getComputedStyle(date).fontSize,
+        };
+      });
+      expect(geometry.titleTick, `${viewport.width}`).toBe(0);
+      // Tick and date together take exactly the date's old column.
+      expect(Math.abs(geometry.cellWidth - geometry.statusWidth)).toBeLessThan(
+        1,
+      );
+      expect(Math.abs(geometry.tickLeft)).toBeLessThan(1);
+      expect(Math.abs(geometry.dateRight)).toBeLessThan(1);
+      expect(geometry.tickHeight).toBeCloseTo(30, 0);
+      expect(geometry.sameTop).toBe(true);
+      expect(geometry.clipped, `${viewport.width}`).toBe(false);
+      // Status reads at the same size as the date beside it.
+      expect(geometry.statusFont, JSON.stringify([viewport, geometry])).toBe(
+        geometry.dateFont,
+      );
+    }
+  }
   await open(page, { width: 1536, height: 800 });
   const waiting = page.locator('.followup-row[data-id="wait-long"]');
-  const tick = waiting.locator(".followup-title-line > .quick-complete");
-  const title = waiting.locator(".followup-title");
-  await expect(tick).toBeVisible();
-  const [box, text] = await Promise.all([
-    tick.boundingBox(),
-    title.boundingBox(),
-  ]);
-  // Same top as the first line; later lines start under the box, not beside it.
-  expect(Math.abs(box.y - text.y)).toBeLessThanOrEqual(2);
-  const lines = await title.evaluate((element) => {
-    const range = document.createRange();
-    range.selectNodeContents(element);
-    return [...range.getClientRects()].map((rect) => Math.round(rect.left));
-  });
-  expect(lines.length).toBeGreaterThan(1);
-  expect(lines[0]).toBeGreaterThanOrEqual(Math.round(box.x + box.width));
-  expect(lines[1]).toBeLessThan(Math.round(box.x + box.width));
+  const tick = waiting.locator(".card-date-cell > .quick-complete");
   // Ticking a waiting card asks "Ne oldu?" and closes it on Enter.
   await tick.click();
   await expect(page.locator("#outcome-prompt label")).toHaveText("Ne oldu?");
@@ -259,7 +288,7 @@ test("cards carry the list's tick box on the title's first line only, and a wait
   await expect(waiting).toHaveCount(0);
   // A goal card's tick completes it straight away.
   const goal = page.locator('.dashboard-goal-row[data-goal-id="goal-plain"]');
-  await goal.locator(".dashboard-goal-title-line > .quick-complete").click();
+  await goal.locator(".card-date-cell > .quick-complete").click();
   await expect(page.locator("#outcome-prompt")).toBeHidden();
   const saved = await page.evaluate(() =>
     JSON.parse(localStorage.getItem("is-takip-v1")),

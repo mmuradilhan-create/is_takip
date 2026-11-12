@@ -459,7 +459,7 @@ test("compact goal cards keep both labelled actions inside their bounds and keyb
     ).toHaveText(["Normal", "Ölçüm yok"]);
     await expect(
       goal.locator(".dashboard-goal-meta-controls").getByRole("button"),
-    ).toHaveText(["Yapılacak", "Tarih yok"]);
+    ).toHaveText(["Yapılacak", "", "Tarih yok"]);
     await expect(goal.locator("img")).toHaveCount(0);
     expect(
       await page.evaluate(() => window.goalActionsInjected),

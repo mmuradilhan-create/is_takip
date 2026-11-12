@@ -811,8 +811,8 @@ Sayiyla olculen acik hedeflerde satirin (Genel bakista kutunun) uzerine
 gelince ilerleme kutusunun ic kenarlarinda - ve + belirir; kutu ve sutun
 boyu degismez. Her basis 1 degistirir ve tek Geri al adimidir.
 Bagli islerden veya alt hedeflerden hesaplanan ilerlemede bu dugmeler yoktur.
-Genel bakistaki takip ve hedef kartlarinda tamamlama kutusu basligin ilk
-satirinin basindadir; basligin diger satirlari tam genislikte devam eder.
+Genel bakistaki takip ve hedef kartlarinda tamamlama kutusu tarih kutusunun
+solundadir; ikisi birlikte tek kutu genisligindedir. Baslik tam genisliktedir.
 
 WIDGET: IS AYRINTISI (1.4.7)
 

@@ -502,7 +502,7 @@ test("one paged attention panel reaches all dated overdue and near records, keep
   ).toHaveCount(0);
   // Each card carries one tick box at the start of its title.
   await expect(
-    attentionRows(page).locator(".followup-title-line > .quick-complete"),
+    attentionRows(page).locator(".card-date-cell > .quick-complete"),
   ).toHaveCount(2);
   await expect(attentionRows(page).locator(".status-trigger")).toHaveCount(2);
   const followupDates = attentionRows(page).locator(

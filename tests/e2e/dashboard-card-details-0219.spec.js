@@ -353,17 +353,13 @@ test("follow-up card bodies, titles and card keyboard actions open read-only det
     fullPage: false,
   });
   await waiting(page).focus();
-  // The card's tick box comes first, then the title.
-  await page.keyboard.press("Tab");
-  await expect(
-    waiting(page).locator(".followup-title-line > .quick-complete"),
-  ).toBeFocused();
   await page.keyboard.press("Tab");
   await expect(title).toBeFocused();
   await expect(title).toHaveCSS("text-decoration-line", /underline/);
   await expectNoFocusRectangle(title);
   for (const control of [
     waiting(page).locator('[data-action="status-menu"]'),
+    waiting(page).locator(".card-date-cell > .quick-complete"),
     waiting(page).locator('[data-action="edit-next-followup"]'),
     waiting(page).locator('[data-action="waiting-followup"]'),
     waiting(page).locator('[data-action="edit-waiting-start"]'),
@@ -376,7 +372,7 @@ test("follow-up card bodies, titles and card keyboard actions open read-only det
     await expectNoFocusRectangle(control);
     await expect(control).toHaveCSS("text-decoration-line", /underline/);
   }
-  for (let step = 0; step < 4; step++) await page.keyboard.press("Shift+Tab");
+  for (let step = 0; step < 5; step++) await page.keyboard.press("Shift+Tab");
   await expect(title).toBeFocused();
   await page.keyboard.press("Enter");
   await expectReadonlyWaiting(page, original);

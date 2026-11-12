@@ -23,6 +23,15 @@ html {
   .topbar-right .search input {
     width: 100%;
   }
+
+  /* The page title is never cut; the search box gives way first. */
+  .topbar > .topbar-start {
+    flex: 0 0 auto;
+  }
+
+  .topbar-right {
+    min-width: 0;
+  }
 }
 
 .calendar-trigger {
@@ -45,65 +54,78 @@ html {
   height: 16px;
 }
 
-/* Narrow desktop lists use a full-width controls row with a flexible search. */
-@media (min-width: 761px) and (max-width: 1099px) {
+/*
+ * Up to 1250px the title, search and actions still share one row: the search
+ * takes what is left (120–260px), and as the window narrows Widget and
+ * Takvim, then Yeni kayıt, show only their icons (names stay as tooltips).
+ */
+@media (min-width: 761px) and (max-width: 1250px) {
   .topbar {
-    flex-wrap: wrap;
-    row-gap: 10px;
+    flex-wrap: nowrap;
   }
 
-  .topbar-start {
-    flex: 1 1 100%;
+  .topbar > .topbar-start {
+    flex: 0 0 auto;
+  }
+
+  .topbar-start #page-title {
+    white-space: nowrap;
   }
 
   .topbar-right {
     display: flex;
-    flex: 1 1 100%;
-    flex-wrap: wrap;
+    flex: 1 1 auto;
+    flex-wrap: nowrap;
     justify-content: flex-end;
-    width: 100%;
-    max-width: 100%;
     min-width: 0;
   }
 
   .topbar-right .search {
-    flex: 1 1 150px;
+    flex: 1 1 260px;
     min-width: 120px;
+    max-width: 260px;
   }
 
   .topbar .search input {
     width: 100%;
+  }
+
+  .topbar-right > * {
+    flex-shrink: 0;
+  }
+
+  .topbar-right > .search {
+    flex-shrink: 1;
   }
 }
 
-/* Every section reserves the same title row at medium desktop widths. */
-@media (min-width: 1100px) and (max-width: 1250px) {
-  .topbar {
-    flex-wrap: wrap;
-    row-gap: 10px;
+@media (min-width: 761px) and (max-width: 1099px) {
+  .topbar :is(.widget-trigger, .calendar-trigger) {
+    width: 40px;
+    min-width: 40px;
+    padding: 0;
+    justify-content: center;
   }
 
-  .topbar-start {
-    flex: 1 1 100%;
+  .topbar :is(.widget-trigger, .calendar-trigger) > span {
+    display: none;
+  }
+}
+
+@media (min-width: 761px) and (max-width: 899px) {
+  .topbar .new-record {
+    width: 40px;
+    min-width: 40px;
+    padding: 0;
+    justify-content: center;
   }
 
-  .topbar-right {
-    display: flex;
-    flex: 1 1 100%;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-    width: 100%;
-    max-width: 100%;
-    min-width: 0;
+  .topbar .new-record > span {
+    display: none;
   }
 
   .topbar-right .search {
-    flex: 1 1 150px;
-    min-width: 120px;
-  }
-
-  .topbar .search input {
-    width: 100%;
+    min-width: 96px;
   }
 }
 

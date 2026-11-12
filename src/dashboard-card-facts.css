@@ -179,15 +179,15 @@
 
 /* Narrow cards drop the icons first so the values stay whole. */
 @container (max-width: 160px) {
-  /* "Cevap bekleniyor" keeps both of its words whole on two lines. */
+  /* Status keeps the same type size as its neighbours; "Cevap bekleniyor"
+     takes two lines with both words whole. */
   .dashboard-workspace.dashboard-rows
     .dashboard-bottom-row
     :is(.followup-meta, .dashboard-goal-meta-controls)
     > .badge {
     gap: 2px;
-    padding: 0 1px;
-    font-size: 9.5px;
-    letter-spacing: -0.2px;
+    padding: 0;
+    font-size: 10px;
     line-height: 11px;
   }
 
@@ -231,48 +231,145 @@
 }
 
 /*
- * The tick box sits at the start of the title's first line; only that line
- * steps aside for it, the rest of the title runs full width underneath.
+ * The tick box shares the date's cell: a narrow box of the same height on
+ * the left, the date box beside it, together one column wide.
  */
+.dashboard-workspace.dashboard-rows .dashboard-bottom-row .card-date-cell {
+  display: flex;
+  gap: 0;
+  min-width: 0;
+  container: card-date / inline-size;
+}
+
 .dashboard-workspace.dashboard-rows
   .dashboard-bottom-row
-  :is(.followup-title-line, .dashboard-goal-title-line) {
-  position: relative;
-  display: block;
+  .card-date-cell
+  > :not(.quick-complete) {
+  flex: 1 1 0;
+  min-width: 0;
 }
 
 #app
   .dashboard-workspace.dashboard-rows
   .dashboard-bottom-row
-  :is(.followup-title-line, .dashboard-goal-title-line)
-  > :is(.quick-complete, .completion-mark) {
-  position: absolute;
-  top: -1px;
-  left: 0;
-  z-index: 1;
-  width: 17px;
-  min-width: 17px;
-  height: 17px;
-  min-height: 17px;
-  margin: 0;
+  .card-date-cell
+  > .quick-complete {
+  flex: 0 0 22px;
+  width: 22px;
+  min-width: 22px;
+  height: 30px;
+  min-height: 30px;
+  margin: 0 3px 0 0;
   padding: 0;
-  border-radius: 5px;
+  border-radius: 6px;
 }
 
 .dashboard-workspace.dashboard-rows
   .dashboard-bottom-row
-  :is(.followup-title-line, .dashboard-goal-title-line)
-  > :is(.quick-complete, .completion-mark)
-  svg {
-  width: 10px;
-  height: 10px;
+  .card-date-cell
+  .deadline-tag {
+  position: relative;
+  font-size: 11px;
 }
 
+/* In the narrowest cards "bekleniyor" keeps its size with slightly tighter
+   letters instead of a smaller font. */
+@container (max-width: 120px) {
+  .dashboard-workspace.dashboard-rows
+    .dashboard-bottom-row
+    :is(.followup-meta, .dashboard-goal-meta-controls)
+    > .badge {
+    letter-spacing: -0.25px;
+  }
+}
+
+/* The date beside the tick shows its value first; the icon goes when tight. */
+@container card-date (max-width: 96px) {
+  .dashboard-workspace.dashboard-rows
+    .dashboard-bottom-row
+    .card-date-cell
+    .deadline-tag {
+    gap: 0;
+    padding: 0 3px;
+  }
+
+  .dashboard-workspace.dashboard-rows
+    .dashboard-bottom-row
+    .card-date-cell
+    .deadline-tag
+    > svg {
+    display: none;
+  }
+}
+
+/* Labels never wrap; a missing date shows just its "—" mark when tight. */
 .dashboard-workspace.dashboard-rows
   .dashboard-bottom-row
-  :is(.followup-title-line, .dashboard-goal-title-line)
-  > :is(.followup-title, .dashboard-goal-title) {
-  text-indent: 23px;
+  .card-date-cell
+  .deadline-label {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+@container card-date (max-width: 96px) {
+  .dashboard-workspace.dashboard-rows
+    .dashboard-bottom-row
+    .card-date-cell
+    .deadline-tag[data-deadline-state="missing"]
+    > svg {
+    display: block;
+  }
+
+  .dashboard-workspace.dashboard-rows
+    .dashboard-bottom-row
+    .card-date-cell
+    .deadline-tag[data-deadline-state="missing"]
+    > .deadline-label {
+    /* The button's own label still names it for screen readers. */
+    flex: 0 0 0;
+    font-size: 0;
+  }
+}
+
+@container card-date (max-width: 64px) {
+  #app
+    .dashboard-workspace.dashboard-rows
+    .dashboard-bottom-row
+    .card-date-cell
+    > .quick-complete {
+    flex-basis: 18px;
+    width: 18px;
+    min-width: 18px;
+  }
+
+  .dashboard-workspace.dashboard-rows
+    .dashboard-bottom-row
+    .card-date-cell
+    .deadline-tag {
+    padding: 0 1px;
+    font-size: 10px;
+  }
+}
+
+@container card-date (max-width: 56px) {
+  #app
+    .dashboard-workspace.dashboard-rows
+    .dashboard-bottom-row
+    .card-date-cell
+    > .quick-complete {
+    flex-basis: 16px;
+    width: 16px;
+    min-width: 16px;
+    margin-right: 1px;
+  }
+
+  .dashboard-workspace.dashboard-rows
+    .dashboard-bottom-row
+    .card-date-cell
+    .deadline-tag {
+    padding: 0;
+  }
 }
 
 /* İlerleme on a card: − and + sit inside the box's edges when wanted. */

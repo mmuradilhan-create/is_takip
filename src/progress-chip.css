@@ -134,3 +134,14 @@
     pointer-events: auto;
   }
 }
+
+/* The − and + icons, centred in their 20px boxes (lists and overview cards). */
+:is(.progress-step, .card-progress-step) > svg {
+  display: block;
+  width: 10px;
+  height: 10px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+}

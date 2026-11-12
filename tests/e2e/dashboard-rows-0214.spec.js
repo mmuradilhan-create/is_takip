@@ -280,7 +280,7 @@ test("dashboard keeps three compact desktop panels and moves notes below the two
     await expect(attentionRows(page)).toHaveCount(visibleCards);
     const cards = attentionRows(page);
     await expect(
-      cards.locator(".followup-title-line > .quick-complete"),
+      cards.locator(".card-date-cell > .quick-complete"),
     ).toHaveCount(visibleCards);
     await expect(cards.locator(".status-trigger")).toHaveCount(visibleCards);
     await expect(cards.locator('[data-action="waiting-followup"]')).toHaveCount(
@@ -636,15 +636,16 @@ test("one upcoming goal and one waiting card show their full content without a r
     });
     expect(parts.border).toBeGreaterThan(0);
     expect(parts.borderStyle).not.toBe("none");
-    for (const part of [parts.icon, parts.text]) {
+    // Beside the tick box a tight date drops its icon; what shows stays inside.
+    for (const part of [parts.icon, parts.text].filter((rect) => rect.width)) {
       expect(part.x).toBeGreaterThanOrEqual(parts.box.x);
       expect(part.y).toBeGreaterThanOrEqual(parts.box.y);
       expect(part.right).toBeLessThanOrEqual(parts.box.right);
       expect(part.bottom).toBeLessThanOrEqual(parts.box.bottom);
     }
-    await expect(
-      card.locator(".followup-title-line > .quick-complete"),
-    ).toHaveCount(1);
+    await expect(card.locator(".card-date-cell > .quick-complete")).toHaveCount(
+      1,
+    );
     await expect(card.locator(".status-trigger")).toHaveCount(1);
     await desktopGeometry(page);
     expect(await saved(page)).toBe(original);

@@ -33,7 +33,8 @@
   white-space: nowrap;
 }
 
-/* Like the daily list, a long status such as "Cevap bekleniyor" wraps. */
+/* Every status stays on one line in the list (see record-alignment-0218.css
+   for the one long label). */
 .full-table.waiting-table > tbody > tr > td > .status-trigger {
-  white-space: normal;
+  white-space: nowrap;
 }

@@ -156,3 +156,16 @@
     grid-row: 1 / 4;
   }
 }
+
+/* "Takip oluştur" and its icon stay on one line inside the 96px box. */
+.meeting-table .meeting-linked-cell .meeting-route {
+  gap: 3px;
+  padding: 0 3px;
+  white-space: nowrap;
+}
+
+.meeting-table .meeting-linked-cell .meeting-route > svg {
+  flex: 0 0 12px;
+  width: 12px;
+  height: 12px;
+}

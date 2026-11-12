@@ -63,7 +63,8 @@
   border-top: 1px solid var(--line);
 }
 
-.dashboard-goal-row:focus-within {
+/* Tinted while the keyboard is inside the card, not after a click. */
+:where(:root:not([data-focus-quiet])) .dashboard-goal-row:focus-within {
   background: #f7faf4;
 }
 

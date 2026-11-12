@@ -170,6 +170,8 @@ test("standalone agenda renders today's dated work and follow-ups without touchi
       top: screen.availTop || 0,
     };
   });
+  // An agenda title opens its details; their edit button opens ODAK.
+  await page.locator('[data-agenda-detail="urgent-task"]').click();
   const opening = page.waitForEvent("popup");
   await page.locator('[data-record-id="urgent-task"]').click();
   const main = await opening;
@@ -362,6 +364,7 @@ test("widget tasks reuse the existing main and open a separate main after main c
   await expect(main.locator("#page-title")).toHaveText("Genel bakış");
   await widget.goto("/#widget");
   await showAgenda(widget);
+  await widget.locator('[data-agenda-detail="urgent-task"]').click();
   await widget.locator('[data-record-id="urgent-task"]').click();
   await expect(main.locator("#editor")).toBeVisible();
   await expect(main.locator('#record-form [name="title"]')).toHaveValue(
@@ -407,6 +410,7 @@ test("existing main activation also works through storage when BroadcastChannel 
     .toBeGreaterThanOrEqual(1);
   await expect(widget).toHaveURL(/#widget$/);
   expect(context.pages()).toHaveLength(2);
+  await widget.locator('[data-agenda-detail="late-task"]').click();
   await widget.locator('[data-record-id="late-task"]').click();
   await expect(main.locator("#editor")).toBeVisible();
   await expect(main.locator('#record-form [name="title"]')).toHaveValue(

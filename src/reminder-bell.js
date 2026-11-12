@@ -77,7 +77,7 @@ export function createReminderBell({
     const upcoming = upcomingReminders(notes, at);
     panel.innerHTML = `<div class="reminder-panel-header"><h2>Hatırlatmalar</h2><button type="button" class="close-modal" data-reminder="close" aria-label="Hatırlatmaları kapat">${closeIcon}</button></div>${
       due.length || upcoming.length
-        ? `${due.length ? `<section aria-label="Zamanı gelenler"><h3>Zamanı gelenler</h3><ul class="reminder-list">${due.map((note) => row(note, true)).join("")}</ul></section>` : ""}${upcoming.length ? `<section aria-label="Yaklaşanlar"><h3>Yaklaşanlar</h3><ul class="reminder-list">${upcoming.map((note) => row(note, false)).join("")}</ul></section>` : ""}`
+        ? `${due.length ? `<section aria-label="Zamanı gelenler"><ul class="reminder-list">${due.map((note) => row(note, true)).join("")}</ul></section>` : ""}${upcoming.length ? `<section aria-label="Yaklaşanlar"><h3>Yaklaşanlar</h3><ul class="reminder-list">${upcoming.map((note) => row(note, false)).join("")}</ul></section>` : ""}`
         : '<p class="reminder-empty">Hatırlatma yok. Notlar kartında bir notu ekleyip veya düzenleyip <strong>Hatırlat</strong>’ı seçebilirsin.</p>'
     }`;
     for (const control of panel.querySelectorAll("[data-reminder]"))
@@ -101,10 +101,7 @@ export function createReminderBell({
     count.hidden = !due.length;
     button.classList.toggle("is-due", due.length > 0);
     // Reminders set for later only leave a quiet dot; the count is for due ones.
-    button.classList.toggle(
-      "has-upcoming",
-      !due.length && upcoming.length > 0,
-    );
+    button.classList.toggle("has-upcoming", !due.length && upcoming.length > 0);
     const parts = [];
     if (due.length) parts.push(`${due.length} hatırlatmanın zamanı geldi`);
     if (upcoming.length)

@@ -150,7 +150,7 @@ test("Excel exports retired partial statuses with the current caption without re
   const before = JSON.stringify(records);
   const exported = buildWorkbook(records);
   for (const sheet of exported.worksheets)
-    assert.equal(sheet.getCell(2, 4).value, "Devam ediyor");
+    assert.equal(sheet.getCell(2, 4).value, "Devam");
   const imported = parseWorkbook(exported);
   assert.equal(imported.records.length, types.length);
   for (const record of imported.records) {
@@ -300,7 +300,7 @@ test("tracking workbook schema preserves periods, work metadata, meeting decisio
         "Pazartesi",
         "Orta",
         "Taslak adımı",
-        "Devam ediyor",
+        "Devam",
         "06.11.2026",
         "Kontrol et",
         0,
@@ -407,7 +407,7 @@ test("tracking workbook schema preserves periods, work metadata, meeting decisio
         "Destek",
         "Hatırlatma gönderildi",
         "05.11.2026",
-        "Cevap bekleniyor",
+        "Bekleniyor",
         4,
         "",
       ],
@@ -514,5 +514,26 @@ test("extended fields and unresolved reference metadata roundtrip losslessly thr
   assert.deepEqual(
     result.records.find((record) => record.id === daily.id),
     daily,
+  );
+});
+
+test("both the short and the old long status names import (Bekleniyor / Cevap bekleniyor, Devam / Devam ediyor)", () => {
+  const result = parseWorkbook(
+    workbook({
+      "Günlük işler": [
+        ["İş", "Durum"],
+        ["Kısa", "Devam"],
+        ["Uzun", "Devam ediyor"],
+      ],
+      "Bekleyen konular": [
+        ["Konu", "Durum"],
+        ["Kısa konu", "Bekleniyor"],
+        ["Uzun konu", "Cevap bekleniyor"],
+      ],
+    }),
+  );
+  assert.deepEqual(
+    result.records.map((record) => record.status),
+    ["in_progress", "in_progress", "waiting_response", "waiting_response"],
   );
 });

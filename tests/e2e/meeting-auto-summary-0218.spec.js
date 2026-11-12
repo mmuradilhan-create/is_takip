@@ -309,8 +309,8 @@ test("linked meetings derive their read-only source status from target lifecycle
     row(page, context.id).locator(
       `.status-trigger[data-target-id="${waiting.id}"]`,
     );
-  await expect(dailyStatus()).toHaveText("Devam ediyor");
-  await expect(waitingStatus()).toHaveText("Cevap bekleniyor");
+  await expect(dailyStatus()).toHaveText("Devam");
+  await expect(waitingStatus()).toHaveText("Bekleniyor");
   await expect(
     row(page, context.id).locator(
       ".meeting-source-status-col > .status-summary",

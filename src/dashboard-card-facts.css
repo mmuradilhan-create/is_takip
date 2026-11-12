@@ -179,8 +179,7 @@
 
 /* Narrow cards drop the icons first so the values stay whole. */
 @container (max-width: 160px) {
-  /* Status keeps the same type size as its neighbours; "Cevap bekleniyor"
-     takes two lines with both words whole. */
+  /* Status keeps the same type size as its neighbours. */
   .dashboard-workspace.dashboard-rows
     .dashboard-bottom-row
     :is(.followup-meta, .dashboard-goal-meta-controls)
@@ -257,8 +256,10 @@
   flex: 0 0 22px;
   width: 22px;
   min-width: 22px;
-  height: 30px;
-  min-height: 30px;
+  /* A square like the lists' tick box, centred beside the 30px date. */
+  height: 22px;
+  min-height: 22px;
+  align-self: center;
   margin: 0 3px 0 0;
   padding: 0;
   border-radius: 6px;
@@ -272,8 +273,8 @@
   font-size: 11px;
 }
 
-/* In the narrowest cards "bekleniyor" keeps its size with slightly tighter
-   letters instead of a smaller font. */
+/* In the narrowest cards (1200px windows) a status word keeps its size with
+   slightly tighter letters instead of a smaller font. */
 @container (max-width: 120px) {
   .dashboard-workspace.dashboard-rows
     .dashboard-bottom-row
@@ -341,6 +342,8 @@
     flex-basis: 18px;
     width: 18px;
     min-width: 18px;
+    height: 18px;
+    min-height: 18px;
   }
 
   .dashboard-workspace.dashboard-rows
@@ -361,6 +364,8 @@
     flex-basis: 16px;
     width: 16px;
     min-width: 16px;
+    height: 16px;
+    min-height: 16px;
     margin-right: 1px;
   }
 

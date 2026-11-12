@@ -1,5 +1,9 @@
 import { validateStore } from "./model.js";
-import { renderWidgetSummary, widgetDocumentHtml } from "./widget.js";
+import {
+  renderWidgetSummary,
+  toggleAgendaDetail,
+  widgetDocumentHtml,
+} from "./widget.js";
 import { createWindowCoordinator } from "./window-coordinator.js";
 import { createWidgetWork } from "./widget-work.js";
 import {
@@ -285,6 +289,14 @@ export function startStandaloneWidget() {
     const day = target.closest("[data-widget-day]");
     if (day) {
       view = day.dataset.widgetDay;
+      refresh(true);
+      return;
+    }
+    // An agenda title opens its details here; only the edit button
+    // inside them opens the record in ODAK.
+    const detail = target.closest("[data-agenda-detail]");
+    if (detail) {
+      toggleAgendaDetail(detail.dataset.agendaDetail);
       refresh(true);
       return;
     }

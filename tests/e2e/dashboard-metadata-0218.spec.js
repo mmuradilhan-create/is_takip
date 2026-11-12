@@ -1138,7 +1138,7 @@ test("dense previews keep two shared cards beside independent notes and every go
   await view(page, "daily");
   const daily = row(page, "metadata-child");
   const status = daily.locator('[data-action="status-menu"]');
-  await expect(status).toHaveText("Devam ediyor");
+  await expect(status).toHaveText("Devam");
   await expect(status).toHaveCSS("white-space", "nowrap");
   expect(
     await status.evaluate(

@@ -196,7 +196,7 @@ test("moving keeps one goal identity, child links, source values, deadlines and 
     blockReason: "Yanıt bekleniyor.",
     sourceFields: {
       Hafta: "2026-W45",
-      Durum: "Devam ediyor",
+      Durum: "Devam",
       nested: { retained: [1, 2] },
       __weeklyMoves: [{ legacy: "retained" }],
     },

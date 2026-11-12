@@ -400,7 +400,7 @@ test("scope buttons replace repeated completion choices and the entire filter ca
       .selectOption(type === "meeting" ? "planned" : "in_progress");
     await expect(
       page.locator(".filter-surface:has(#status-filter) .filter-value"),
-    ).toHaveText(type === "meeting" ? "Planlanacak" : "Devam ediyor");
+    ).toHaveText(type === "meeting" ? "Planlanacak" : "Devam");
     expect(await ids(page)).toEqual(
       type === "meeting"
         ? ["scope-meeting-planned"]

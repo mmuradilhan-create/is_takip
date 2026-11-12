@@ -226,6 +226,10 @@ test("a widget task opens its record in a separate main and leaves the small wid
   await source.goto("/#desktop");
   const widget = await openWidget(source);
   await source.close();
+  // An agenda title opens its details; their edit button opens ODAK.
+  await widget
+    .locator('[data-agenda-detail="widget-persistent-urgent"]')
+    .click();
   const openingMain = widget.waitForEvent("popup");
   await widget.locator('[data-record-id="widget-persistent-urgent"]').click();
   const main = await openingMain;
@@ -240,6 +244,7 @@ test("a widget task opens its record in a separate main and leaves the small wid
   await expectCompactWindow(widget);
 
   await main.locator('#editor [data-action="close"]').first().click();
+  await widget.locator('[data-agenda-detail="widget-persistent-next"]').click();
   await widget.locator('[data-record-id="widget-persistent-next"]').click();
   await expect(main.locator('#record-form [name="title"]')).toHaveValue(
     "Takip edilecek günlük iş",
@@ -452,6 +457,11 @@ test("native sizing stays the only owner while widget and record routes retain t
 
     await main.close();
     await showAgenda(widget);
+    const urgentDetail = widget.locator(
+      '[data-agenda-detail="widget-persistent-urgent"]',
+    );
+    if ((await urgentDetail.getAttribute("aria-expanded")) !== "true")
+      await urgentDetail.click();
     const reopened = await clockedPopup(widget, context, () =>
       widget.locator('[data-record-id="widget-persistent-urgent"]').click(),
     );

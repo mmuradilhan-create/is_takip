@@ -12,7 +12,9 @@
   outline: none;
 }
 
-[data-record-row]:focus-visible {
+/* Only keyboard focus tints the row; a row that gets focus back after a
+   click (a dialog or panel closing) stays plain. */
+:where(:root:not([data-focus-quiet])) [data-record-row]:focus-visible {
   background-color: #f4f8f2;
 }
 

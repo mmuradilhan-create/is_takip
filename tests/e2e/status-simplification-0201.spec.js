@@ -194,7 +194,7 @@ test("legacy partial work uses current display states while filters, menus and b
     const legacy = row(page, `legacy-${type}`);
     const badge = legacy.locator(".status-trigger");
     await expect(badge).toHaveText(
-      type === "meeting" ? "Açık" : "Devam ediyor",
+      type === "meeting" ? "Açık" : "Devam",
     );
     await expect(badge).toHaveClass(new RegExp(`status-${displayStatus}`));
     await expect(badge).not.toHaveClass(/status-partially_completed/);

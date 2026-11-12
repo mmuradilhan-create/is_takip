@@ -1340,7 +1340,7 @@ export async function startMainApp() {
       "Hedef ilerlemesi",
       { syncLinks: false },
     );
-    if (saved) toast("İlerleme güncellendi.");
+    // The box itself shows the new count and Undo can take it back.
     return saved;
   }
   /** The count a progress box shows: "5 / 100", "1 / 2", or a percent. */
@@ -2231,6 +2231,47 @@ export async function startMainApp() {
     if (document.querySelector("dialog:modal, :popover-open")) return;
     renderedCalendarDay = today();
     render();
+  }
+  /*
+   * Week/month/year selection and list sort come back after ODAK is closed
+   * and reopened. "Bu hafta" is kept as "the current week", so it moves on
+   * with the calendar; a period picked with the arrows is kept by its date.
+   */
+  const VIEW_CHOICES_KEY = `${STORAGE_KEY}-view`;
+  const LIST_SORTS = ["created-desc", "created-asc", "due-asc", "due-desc"];
+  function saveViewChoices() {
+    try {
+      const periods = {};
+      for (const [type, period] of Object.entries(state.planningPeriods))
+        periods[type] =
+          period === null
+            ? "all"
+            : period.key === makePlanningPeriod(type, today()).key
+              ? "current"
+              : period.start;
+      localStorage.setItem(
+        VIEW_CHOICES_KEY,
+        JSON.stringify({ periods, listSort: state.listSort }),
+      );
+    } catch {
+      /* Without storage the choices last until the window closes. */
+    }
+  }
+  function restoreViewChoices() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(VIEW_CHOICES_KEY) || "null");
+      if (!saved || typeof saved !== "object") return;
+      for (const type of Object.keys(state.planningPeriods)) {
+        const choice = saved.periods?.[type];
+        if (choice === "current")
+          state.planningPeriods[type] = makePlanningPeriod(type, today());
+        else if (typeof choice === "string" && /^\d{4}-\d{2}-\d{2}$/.test(choice))
+          state.planningPeriods[type] = makePlanningPeriod(type, choice);
+      }
+      if (LIST_SORTS.includes(saved.listSort)) state.listSort = saved.listSort;
+    } catch {
+      /* A damaged entry just means the defaults. */
+    }
   }
   function navigate(view) {
     closeRecordPreviews();
@@ -4188,6 +4229,7 @@ export async function startMainApp() {
                     action === "period-prev" ? -1 : 1,
                   );
           state.listPage = 1;
+          saveViewChoices();
           renderContent();
           document
             .querySelector(`[data-action="${action}"]`)
@@ -4458,6 +4500,7 @@ export async function startMainApp() {
       state.listPage = 1;
     if (el.id === "list-sort") {
       state.listSort = el.value;
+      saveViewChoices();
       renderContent();
     }
     if (el.id === "status-filter") {
@@ -4775,6 +4818,7 @@ export async function startMainApp() {
   );
   const stopThemeWatch = watchTheme(document, () => preferences, window);
   window.addEventListener("pagehide", stopThemeWatch, { once: true });
+  restoreViewChoices();
   render();
   cleanupMeetingContactsOnce();
   migrateInbox(true);

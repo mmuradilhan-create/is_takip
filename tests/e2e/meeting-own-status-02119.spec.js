@@ -143,7 +143,7 @@ test("an unrouted meeting owns all three quick statuses and its preview while un
   const before = await seed(page, items);
   await expect(ownStatus(page, "own-source")).toHaveText("Planlanacak");
   await expect(routeStatus(page, "unrelated-source", "own-daily")).toHaveText(
-    "Devam ediyor",
+    "Devam",
   );
   await expect(routeStatus(page, "unrelated-source", "own-waiting")).toHaveText(
     "Takipte",

@@ -20,13 +20,13 @@ export const TYPES = {
 
 export const STATUSES = {
   planned: { label: "Planlandı" },
-  in_progress: { label: "Devam ediyor" },
+  in_progress: { label: "Devam" },
   waiting: { label: "Bekliyor" },
   completed: { label: "Tamamlandı" },
   partially_completed: { label: "Kısmi tamamlandı" },
   transferred: { label: "Aktarıldı" },
   follow_up: { label: "Takipte" },
-  waiting_response: { label: "Cevap bekleniyor" },
+  waiting_response: { label: "Bekleniyor" },
   cancelled: { label: "İptal edildi" },
 };
 
@@ -36,26 +36,26 @@ const GOAL_TYPES = new Set(["weekly", "monthly", "yearly"]);
 export const TYPE_STATUSES = {
   daily: {
     planned: { label: "Yapılacak" },
-    in_progress: { label: "Devam ediyor" },
+    in_progress: { label: "Devam" },
     waiting: { label: "Beklemede" },
     completed: { label: "Tamamlandı" },
     cancelled: { label: "İptal" },
   },
   weekly: {
     planned: { label: "Yapılacak" },
-    in_progress: { label: "Devam ediyor" },
+    in_progress: { label: "Devam" },
     completed: { label: "Tamamlandı" },
     cancelled: { label: "İptal" },
   },
   monthly: {
     planned: { label: "Yapılacak" },
-    in_progress: { label: "Devam ediyor" },
+    in_progress: { label: "Devam" },
     completed: { label: "Tamamlandı" },
     cancelled: { label: "İptal" },
   },
   yearly: {
     planned: { label: "Yapılacak" },
-    in_progress: { label: "Devam ediyor" },
+    in_progress: { label: "Devam" },
     completed: { label: "Tamamlandı" },
     cancelled: { label: "İptal" },
   },
@@ -67,7 +67,7 @@ export const TYPE_STATUSES = {
   waiting: {
     planned: { label: "Açık" },
     follow_up: { label: "Takipte" },
-    waiting_response: { label: "Cevap bekleniyor" },
+    waiting_response: { label: "Bekleniyor" },
     completed: { label: "Kapandı" },
   },
 };

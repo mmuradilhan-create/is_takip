@@ -404,23 +404,9 @@
   }
 }
 
-/*
- * Lists show every status on one line. "Cevap bekleniyor" is the one label
- * longer than the 96px box allows at 11px, so only it sets a touch tighter.
- */
+/* Lists show every status on one line. */
 .full-table > tbody > tr > td > .status-trigger,
 .full-table.waiting-table > tbody > tr > td > .status-trigger,
 .full-table.record-table > tbody > tr > td.status-col > .status-trigger {
   white-space: nowrap;
-}
-
-.full-table:is(.waiting-table, .record-table)
-  > tbody
-  > tr
-  > td
-  > .status-trigger.status-waiting_response {
-  gap: 2px;
-  padding-inline: 1px;
-  font-size: 10.5px;
-  letter-spacing: -0.2px;
 }

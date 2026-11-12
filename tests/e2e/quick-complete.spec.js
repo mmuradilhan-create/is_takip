@@ -83,7 +83,7 @@ test("daily quick completion takes one click, hides from open work and undo rest
   await seed(page, [original]);
   await openList(page, "daily");
   const daily = row(page, original.id);
-  await expect(daily.locator(".status-trigger")).toHaveText("Devam ediyor");
+  await expect(daily.locator(".status-trigger")).toHaveText("Devam");
   await expect(
     daily.locator(".task-title-cell > .quick-complete"),
   ).toBeVisible();
@@ -106,7 +106,7 @@ test("daily quick completion takes one click, hides from open work and undo rest
   await undo(page);
   expect(await readRecords(page)).toEqual([original]);
   await expect(daily).toBeVisible();
-  await expect(daily.locator(".status-trigger")).toHaveText("Devam ediyor");
+  await expect(daily.locator(".status-trigger")).toHaveText("Devam");
   await expect(daily.locator(".quick-complete")).toBeVisible();
 });
 

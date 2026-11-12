@@ -382,7 +382,7 @@ test("waiting context is reached from its status with escaped details and preser
   );
   await expect(
     focus(page, "daily-waiting").locator(".status-trigger"),
-  ).toContainText("Devam ediyor");
+  ).toContainText("Devam");
   expect(await saved(page)).toBe(external);
   await page.keyboard.press("Escape");
   await expect(dialog).not.toBeVisible();

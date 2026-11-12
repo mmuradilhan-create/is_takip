@@ -195,7 +195,7 @@ test("compact list controls keep their native whole-card targets and filter work
   await bar.locator("#status-filter").selectOption("in_progress");
   await expect(
     bar.locator(".filter-surface:has(#status-filter) .filter-value"),
-  ).toHaveText("Devam ediyor");
+  ).toHaveText("Devam");
   await expect(
     page.locator(".full-table > tbody > tr[data-record-row]"),
   ).toHaveCount(1);

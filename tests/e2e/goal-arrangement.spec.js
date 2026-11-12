@@ -540,6 +540,6 @@ test("a status popover remains usable after a metric draft reset rerenders its g
   await expect(child.locator(".status-trigger")).toHaveText("Beklemede");
   expect(await readSaved(page)).toBe(committed);
   await page.getByRole("button", { name: "Geri al", exact: true }).click();
-  await expect(child.locator(".status-trigger")).toHaveText("Devam ediyor");
+  await expect(child.locator(".status-trigger")).toHaveText("Devam");
   expect(await readRecords(page)).toEqual(records);
 });

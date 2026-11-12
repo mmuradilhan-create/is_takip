@@ -99,7 +99,7 @@ test("a linked meeting exposes independent job and follow-up badges and changes 
   const url = page.url();
   await expect(routeStatus(page, "dual", "own")).toHaveText("Yapılacak");
   await expect(routeStatus(page, "dual", "reply")).toHaveText(
-    "Cevap bekleniyor",
+    "Bekleniyor",
   );
   await expect(page.locator(".meeting-table thead th")).toHaveText([
     "Aksiyon / Karar",
@@ -147,9 +147,9 @@ test("a linked meeting exposes independent job and follow-up badges and changes 
   await openMenu(page, "dual", "own");
   await option(page, "own", "in_progress").click();
   await expect(menu(page)).not.toBeVisible();
-  await expect(routeStatus(page, "dual", "own")).toHaveText("Devam ediyor");
+  await expect(routeStatus(page, "dual", "own")).toHaveText("Devam");
   await expect(routeStatus(page, "dual", "reply")).toHaveText(
-    "Cevap bekleniyor",
+    "Bekleniyor",
   );
   const afterFirst = await saved(page);
   const after = await store(page);
@@ -182,7 +182,7 @@ test("a linked meeting exposes independent job and follow-up badges and changes 
   await expect(option(page, "reply", "completed")).toHaveCount(0);
   await option(page, "reply", "follow_up").click();
   await expect(routeStatus(page, "dual", "reply")).toHaveText("Takipte");
-  await expect(routeStatus(page, "dual", "own")).toHaveText("Devam ediyor");
+  await expect(routeStatus(page, "dual", "own")).toHaveText("Devam");
   const afterReply = await store(page);
   expect(afterReply.records.find((item) => item.id === "own")).toEqual(daily);
   expect(afterReply.records.find((item) => item.id === "reply")).toEqual({
@@ -292,7 +292,7 @@ test("a single external target keeps waiting statuses and keyboard access while 
   await expect(group(page, "Takibin durumu")).toHaveCount(1);
   await expect(option(page, "single-reply", "planned")).toHaveText("Açık");
   await expect(option(page, "single-reply", "waiting_response")).toHaveText(
-    "Cevap bekleniyor",
+    "Bekleniyor",
   );
   await expect(option(page, "single-reply", "follow_up")).toHaveText("Takipte");
   await expect(option(page, "single-reply", "completed")).toHaveCount(0);

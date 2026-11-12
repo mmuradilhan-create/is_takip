@@ -1753,6 +1753,8 @@ test("PC widget handles blocked popups, shows dated daily and planning work with
   await widget
     .getByRole("button", { name: "Widget normal işi", exact: true })
     .click();
+  // The title opens its details in the widget; editing opens ODAK.
+  await widget.getByRole("button", { name: "ODAK’ta düzenle" }).click();
   await expect(page.locator("#editor")).toBeVisible();
   await expect(page.locator("#record-form [name=title]")).toHaveValue(
     "Widget normal işi",
@@ -1784,7 +1786,7 @@ test("PC widget handles blocked popups, shows dated daily and planning work with
 const STATUS_SETS = {
   daily: [
     ["planned", "Yapılacak"],
-    ["in_progress", "Devam ediyor"],
+    ["in_progress", "Devam"],
     ["waiting", "Beklemede"],
     ["completed", "Tamamlandı"],
     ["cancelled", "İptal"],
@@ -1797,7 +1799,7 @@ const STATUS_SETS = {
   waiting: [
     ["planned", "Açık"],
     ["follow_up", "Takipte"],
-    ["waiting_response", "Cevap bekleniyor"],
+    ["waiting_response", "Bekleniyor"],
     ["completed", "Kapandı"],
   ],
 };

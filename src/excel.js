@@ -190,6 +190,7 @@ const STATUS_ALIASES = {
   transferred: ["Aktarıldı", "Devredildi", "Transferred"],
   follow_up: ["Takipte", "Takip ediliyor", "Follow Up"],
   waiting_response: [
+    "Bekleniyor",
     "Cevap bekleniyor",
     "Yanıt bekleniyor",
     "Waiting Response",

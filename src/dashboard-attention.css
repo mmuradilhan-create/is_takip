@@ -84,7 +84,10 @@
 }
 
 .attention-panel .attention-list > li.followup-row:hover,
-.attention-panel .attention-list > li.followup-row:focus-within {
+:where(:root:not([data-focus-quiet]))
+  .attention-panel
+  .attention-list
+  > li.followup-row:focus-within {
   background: var(--theme-hover, #fafcf7);
 }
 

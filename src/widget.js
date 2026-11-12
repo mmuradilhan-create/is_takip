@@ -1,5 +1,47 @@
 import { WIDGET_VIEWPORT, windowRoleHash } from "./window-size.js";
 import { widgetAgenda } from "./widget-agenda-model.js";
+import { PRIORITIES, statusLabel } from "./model.js";
+
+// The agenda row whose details are open inside the widget (one at a time).
+let agendaDetailId = null;
+/** Open or fold one agenda row's details; only its edit button opens ODAK. */
+export function toggleAgendaDetail(id) {
+  agendaDetailId = agendaDetailId === id ? null : id;
+}
+const shortDay = new Intl.DateTimeFormat("tr-TR", {
+  day: "numeric",
+  month: "short",
+});
+function agendaDetail(entry) {
+  const record = entry.record;
+  const day = (value) =>
+    value ? shortDay.format(new Date(`${value}T12:00:00`)) : "";
+  const facts = [
+    `${entry.kind === "followup" ? "Takip" : "Teslim"}: ${day(entry.date)}`,
+    statusLabel(record.type, record.status),
+    ...(record.type === "daily" || record.type === "weekly"
+      ? [PRIORITIES[record.priority]?.label || "Normal"]
+      : []),
+  ];
+  const lines = [
+    `<p class="wb-detail-facts">${facts.map((fact) => `<span>${escapeHtml(fact)}</span>`).join("")}</p>`,
+  ];
+  if (record.type === "waiting" && record.expectedFrom)
+    lines.push(
+      `<p class="wb-detail-note"><strong>Kimden:</strong> ${escapeHtml(record.expectedFrom)}</p>`,
+    );
+  if (record.type === "waiting" && record.latestUpdate)
+    lines.push(
+      `<p class="wb-detail-note"><strong>Son gelişme:</strong> ${escapeHtml(record.latestUpdate)}</p>`,
+    );
+  const description = String(record.description || "").trim();
+  if (description)
+    lines.push(`<p class="wb-detail-text">${escapeHtml(description)}</p>`);
+  lines.push(
+    `<button type="button" class="wb-detail-edit" data-record-id="${escapeHtml(record.id)}">ODAK’ta düzenle</button>`,
+  );
+  return `<div class="wb-row-detail widget-task-detail" id="widget-detail-${escapeHtml(record.id)}">${lines.join("")}</div>`;
+}
 
 const escapeHtml = (value) =>
   String(value ?? "").replace(
@@ -64,6 +106,7 @@ export const widgetDocumentHtml = `<!doctype html>
     .widget-task:last-child { border-bottom:0; }
     .widget-task-open { display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; width:100%; min-width:0; margin:0; padding:0; border:0; background:none; color:#304d37; font-size:12px; font-weight:600; line-height:1.35; text-align:left; overflow-wrap:anywhere; }
     .widget-task-open:hover { color:#174d43; text-decoration:underline; }
+    .widget-task > .widget-task-detail { margin:7px 0 0; }
     .widget-task-meta { display:flex; align-items:center; flex-wrap:wrap; gap:4px 7px; min-width:0; margin-top:5px; font-size:10px; line-height:1.3; color:#6c7b65; }
     .widget-event-kind { display:inline-flex; align-items:center; gap:4px; padding:2px 5px; border-radius:5px; color:#476982; background:#edf3f8; }
     .widget-event-kind.followup { color:#886028; background:#fbf2e2; }
@@ -297,9 +340,13 @@ export function renderWidgetSummary(
     list.dataset.agendaDate === agenda.selectedDate &&
     list.dataset.agendaView === agenda.view;
   const previousScroll = sameDay ? list.scrollTop : 0;
-  const focused = document.activeElement?.closest?.("[data-record-id]");
+  const focused = document.activeElement?.closest?.(
+    "[data-agenda-detail], [data-record-id]",
+  );
   const focusedId =
-    focused && list.contains(focused) ? focused.dataset.recordId : null;
+    focused && list.contains(focused)
+      ? focused.dataset.agendaDetail || focused.dataset.recordId
+      : null;
   const restoreFocus = Boolean(focusedId && document.hasFocus());
   const dateElement = document.getElementById("widget-date");
   if (agenda.view === "overdue") {
@@ -339,7 +386,7 @@ export function renderWidgetSummary(
     ? agenda.entries
         .map(
           (entry) =>
-            `<li class="widget-task" data-id="${escapeHtml(entry.record.id)}" data-entry-kind="${entry.kind}" data-entry-date="${entry.date}"><button type="button" class="widget-task-open" data-record-id="${escapeHtml(entry.record.id)}" title="${escapeHtml(entry.record.title)}">${escapeHtml(entry.record.title)}</button><div class="widget-task-meta"><span class="widget-event-kind ${entry.kind}">${eventIcons[entry.kind]}${entry.kind === "followup" ? "Takip" : "Teslim"}</span><span class="widget-record-type">${escapeHtml(typeLabels[entry.record.type] || entry.record.type)}</span>${agenda.view === "overdue" ? `<time class="widget-entry-date" datetime="${entry.date}">${(entry.date.slice(0, 4) === agenda.today.slice(0, 4) ? entryDateFormatter : olderEntryDateFormatter).format(new Date(`${entry.date}T12:00:00`))}</time>` : ""}</div></li>`,
+            `<li class="widget-task" data-id="${escapeHtml(entry.record.id)}" data-entry-kind="${entry.kind}" data-entry-date="${entry.date}"><button type="button" class="widget-task-open" data-agenda-detail="${escapeHtml(entry.record.id)}" aria-expanded="${agendaDetailId === entry.record.id}" aria-controls="widget-detail-${escapeHtml(entry.record.id)}" title="${escapeHtml(entry.record.title)}">${escapeHtml(entry.record.title)}</button><div class="widget-task-meta"><span class="widget-event-kind ${entry.kind}">${eventIcons[entry.kind]}${entry.kind === "followup" ? "Takip" : "Teslim"}</span><span class="widget-record-type">${escapeHtml(typeLabels[entry.record.type] || entry.record.type)}</span>${agenda.view === "overdue" ? `<time class="widget-entry-date" datetime="${entry.date}">${(entry.date.slice(0, 4) === agenda.today.slice(0, 4) ? entryDateFormatter : olderEntryDateFormatter).format(new Date(`${entry.date}T12:00:00`))}</time>` : ""}</div>${agendaDetailId === entry.record.id ? agendaDetail(entry) : ""}</li>`,
         )
         .join("")
     : `<li class="widget-empty"><strong>${agenda.view === "overdue" ? "Gecikmiş kayıt yok." : `${agenda.view === "tomorrow" ? "Yarın" : "Bugün"} için kayıt yok.`}</strong><span>Teslim veya takip tarihi olan açık kayıtlar burada görünür.</span></li>`;
@@ -347,8 +394,8 @@ export function renderWidgetSummary(
   if (restoreFocus) {
     const next =
       sameDay &&
-      [...list.querySelectorAll("[data-record-id]")].find(
-        (button) => button.dataset.recordId === focusedId,
+      [...list.querySelectorAll("[data-agenda-detail]")].find(
+        (button) => button.dataset.agendaDetail === focusedId,
       );
     (
       next || document.querySelector(`[data-widget-day="${agenda.view}"]`)

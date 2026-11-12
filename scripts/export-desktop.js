@@ -219,7 +219,7 @@ Tamamlamak (günlük iş, hedef) bir şey sormaz.
 Toplantı dışındaki listelerin durum menüsünde tamamlama tekrarlanmaz; listede
 tamamlanmış kayıtlar ve formdaki durum seçenekleri korunur.
 
-Eski Kısmi tamamlandı artık seçilemez; mevcut kayıt Devam ediyor olarak
+Eski Kısmi tamamlandı artık seçilemez; mevcut kayıt Devam olarak
 gösterilir ve bu filtreye dahildir. Görüntüleme, filtreleme ve yedek alma
 özgün değeri değiştirmez; durum dışındaki doğrudan düzenlemelerde de korunur.
 Bağlantısız toplantıda eski açık durumlar Açık, kapalı durumlar Kapandı görünür.
@@ -679,7 +679,7 @@ Bugünün odağı düğmeleri vardır.
 Genel bakışta Sırala yoktur; sıra çalışan iş, geciken, bugün teslim, ileri
 tarihli ve tarihsiz şeklindedir. Aynı grupta öncelik ve yakın teslim tarihi
 belirler. Gerçekten çalışan satır hafif yeşildir; duraklatınca vurgu kalkar.
-Devam ediyor durumu tek başına çalışmaya başlandığı anlamına gelmez. Arama ve
+Devam durumu tek başına çalışmaya başlandığı anlamına gelmez. Arama ve
 filtre çalışan işi de süzer. Bütün eşleşen işler doğrudan listelenir;
 altı iş sınırı ve genişletme düğmesi yoktur, liste kendi içinde kayar. Tam liste
 ekranlarındaki sıralama ve 50 kayıtlık sayfalama korunur.

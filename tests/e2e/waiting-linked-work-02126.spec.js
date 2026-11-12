@@ -264,7 +264,7 @@ test("waiting details show every open and closed daily step and preserve exact c
           ? "İptal"
           : id === "linked-b"
             ? "Yapılacak"
-            : "Devam ediyor",
+            : "Devam",
     );
     await expect(
       child(page, id).locator('[data-action="waiting-record-unlink-daily"]'),

@@ -203,7 +203,9 @@ test("every agenda type opens its saved main record and tomorrow survives live c
   for (const item of items.filter(
     (item) => item.id.startsWith("open-") && item.type !== "meeting",
   )) {
+    // The title opens its details here; the edit button opens ODAK.
     await entry(widget, item.id).locator(".widget-task-open").click();
+    await entry(widget, item.id).locator(".wb-detail-edit").click();
     await expect(main.locator("#editor")).toBeVisible();
     await expect(main.locator('#record-form [name="title"]')).toHaveValue(
       item.title,
@@ -218,6 +220,7 @@ test("every agenda type opens its saved main record and tomorrow survives live c
   expect(await saved(main)).toBe(before);
   await day(widget, "tomorrow").click();
   await entry(widget, "tomorrow-daily").locator(".widget-task-open").click();
+  await entry(widget, "tomorrow-daily").locator(".wb-detail-edit").click();
   await expect(main.locator('#record-form [name="title"]')).toHaveValue(
     "daily · tomorrow-daily",
   );
@@ -356,7 +359,7 @@ test("a long agenda scrolls only its entries with accessible pinned controls in 
         expect(rect.x + rect.width).toBeLessThanOrEqual(380);
       }
       const last = page.locator(".widget-task-open").last();
-      const lastId = await last.getAttribute("data-record-id");
+      const lastId = await last.getAttribute("data-agenda-detail");
       await last.focus();
       await page.evaluate(() =>
         window.dispatchEvent(new Event("odak:refresh")),

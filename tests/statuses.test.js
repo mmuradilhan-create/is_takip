@@ -31,7 +31,7 @@ test("daily work retains waiting while goal choices omit waiting and the retired
       Object.values(statuses).map(({ label }) => label),
       [
         "Yapılacak",
-        "Devam ediyor",
+        "Devam",
         ...(waiting ? ["Beklemede"] : []),
         "Tamamlandı",
         "İptal",
@@ -151,7 +151,7 @@ test("meeting actions offer exactly three manual states while waiting subjects r
   ]);
   assert.deepEqual(
     Object.values(waiting).map(({ label }) => label),
-    ["Açık", "Takipte", "Cevap bekleniyor", "Kapandı"],
+    ["Açık", "Takipte", "Bekleniyor", "Kapandı"],
   );
   assert.equal(statusLabel("daily", "planned"), "Yapılacak");
   assert.equal(statusLabel("meeting", "planned"), "Planlanacak");
@@ -301,7 +301,7 @@ test("partial legacy keys display and filter through in-progress choices for eve
     assert.equal(choices.partially_completed, undefined);
     assert.equal(
       choices.in_progress.label,
-      type === "meeting" ? "Açık" : "Devam ediyor",
+      type === "meeting" ? "Açık" : "Devam",
     );
     assert.equal(
       Object.keys(choices).filter((status) => status === "in_progress").length,
@@ -309,7 +309,7 @@ test("partial legacy keys display and filter through in-progress choices for eve
     );
     assert.equal(
       statusLabel(type, "partially_completed"),
-      type === "meeting" ? "Açık" : "Devam ediyor",
+      type === "meeting" ? "Açık" : "Devam",
     );
     assert.ok(
       Object.values(choices).every(({ label }) => label !== "Kısmi tamamlandı"),
@@ -372,7 +372,7 @@ test("reading legacy partial records preserves their raw keys, hierarchy, measur
     assert.equal(record.status, "partially_completed");
     assert.equal(
       statusLabel(record.type, record.status),
-      record.type === "meeting" ? "Açık" : "Devam ediyor",
+      record.type === "meeting" ? "Açık" : "Devam",
     );
     if (["weekly", "monthly", "yearly"].includes(record.type))
       assert.equal(goalProgress(record, parsed.records).percent, 40);

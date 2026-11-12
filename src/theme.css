@@ -129,11 +129,15 @@
   :is(
     tbody tr:hover,
     [data-record-row]:hover,
-    [data-record-row]:focus-visible,
     .focus-row:hover,
-    .dashboard-goal-row:focus-within,
     .agenda-stats > .stat:hover
   ) {
+  background-color: var(--theme-hover);
+}
+
+/* Focus tints rows only while the keyboard is in use. */
+:where(:root:not([data-focus-quiet]))[data-theme="dark"]
+  :is([data-record-row]:focus-visible, .dashboard-goal-row:focus-within) {
   background-color: var(--theme-hover);
 }
 

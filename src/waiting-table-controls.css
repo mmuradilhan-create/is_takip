@@ -33,8 +33,7 @@
   white-space: nowrap;
 }
 
-/* Every status stays on one line in the list (see record-alignment-0218.css
-   for the one long label). */
+/* Every status stays on one line in the list. */
 .full-table.waiting-table > tbody > tr > td > .status-trigger {
   white-space: nowrap;
 }

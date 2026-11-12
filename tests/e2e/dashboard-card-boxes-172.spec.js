@@ -255,6 +255,13 @@ test("the tick box shares the date's cell, the title keeps its full width, and a
           cellWidth: box(cell).width,
           tickLeft: box(tick).left - box(cell).left,
           tickHeight: box(tick).height,
+          tickWidth: box(tick).width,
+          tickCentred:
+            Math.abs(
+              box(tick).top +
+                box(tick).height / 2 -
+                (box(date).top + box(date).height / 2),
+            ) < 1,
           dateRight: box(cell).right - box(date).right,
           sameTop: Math.abs(box(tick).top - box(date).top) < 1,
           clipped: label.scrollWidth > label.clientWidth + 1,
@@ -269,8 +276,9 @@ test("the tick box shares the date's cell, the title keeps its full width, and a
       );
       expect(Math.abs(geometry.tickLeft)).toBeLessThan(1);
       expect(Math.abs(geometry.dateRight)).toBeLessThan(1);
-      expect(geometry.tickHeight).toBeCloseTo(30, 0);
-      expect(geometry.sameTop).toBe(true);
+      // A square like the lists' tick box, centred beside the date.
+      expect(geometry.tickHeight).toBeCloseTo(geometry.tickWidth, 0);
+      expect(geometry.tickCentred).toBe(true);
       expect(geometry.clipped, `${viewport.width}`).toBe(false);
       // Status reads at the same size as the date beside it.
       expect(geometry.statusFont, JSON.stringify([viewport, geometry])).toBe(

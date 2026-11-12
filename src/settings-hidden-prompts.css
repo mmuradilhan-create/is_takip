@@ -110,3 +110,11 @@
   font-size: 10px;
   line-height: 1.45;
 }
+
+/* Undo history: a short note above the list (the section body scrolls). */
+.settings-history .settings-history-help {
+  margin: 0 0 6px;
+  color: var(--theme-muted, #6c7b65);
+  font-size: 11px;
+  line-height: 1.4;
+}

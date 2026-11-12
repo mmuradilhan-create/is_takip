@@ -788,6 +788,14 @@ boyutuna müdahale edilmez.
 Windows paketinde başlıktaki Üstte tut düğmesi widget'ı diğer pencerelerin
 üstünde tutar; tekrar basmak normal sıraya döndürür. Seçim açık widget
 içindir. Normal tarayıcı açılışında bu düğme kullanılamaz.
+ISLEM GECMISI (1.6.0)
+
+Ayarlar > Islem gecmisi, geri alinabilen son islemleri (en fazla 30) listeler;
+1 en son islemdir. Bir satirdaki Geri al yalniz o islemi geri alir, sonraki
+islemler kalir; bu da ust cubuktaki Geri al ile geri alinabilir. Ayni kayit
+sonradan yeniden degistiyse sorulur ve onaylanirsa o isleme kadar hepsi
+sirayla geri alinir.
+
 HEDEF ILERLEMESI (1.5.0)
 
 Sayiyla olculen acik hedeflerde satirin uzerine gelince ilerleme kutusunun

@@ -70,6 +70,11 @@ import "./settings-hidden-prompts.css";
 import "./window-min-size.css";
 import "./progress-chip.css";
 import { trackTriggerToggle } from "./trigger-toggle.js";
+import {
+  HistoryConflictError,
+  describeHistoryEntry,
+  revertHistoryEntry,
+} from "./history-revert.js";
 import { bellIcon, createWorkspaceNotesUI } from "./workspace-notes-ui.js";
 import { normalizeNotes, notesFromBackup } from "./workspace-notes.js";
 import { exportWorkDrafts, workDraftsFromBackup } from "./work-draft-backup.js";
@@ -518,6 +523,89 @@ export async function startMainApp() {
     ))
       input.checked = input.value === (preferences.theme || "light");
   }
+  /** The kept undo history, newest first; any action can be undone alone. */
+  function settingsHistoryMarkup(open = false) {
+    const entries = workspaceStore?.history || [];
+    const rows = entries
+      .map((entry, index) => ({ entry, index }))
+      .reverse()
+      .map(({ entry, index }, order) => {
+        const detail = describeHistoryEntry(entry);
+        return `<li data-history-index="${index}"><span class="settings-hidden-copy"><span class="settings-hidden-title">${order + 1}. ${esc(entry.label)}</span>${detail ? `<small>${esc(detail)}</small>` : ""}</span><button type="button" class="btn small" data-action="history-revert" data-history-index="${index}" aria-label="${esc(`${order + 1}. işlemi geri al: ${entry.label}${detail ? `, ${detail}` : ""}`)}"${workspaceStore?.readOnly ? " disabled" : ""}>Geri al</button></li>`;
+      })
+      .join("");
+    const body = entries.length
+      ? `<p class="settings-history-help">1 en son işlemdir. Bir işlemi geri almak yalnız onu geri alır; sonraki işlemler yerinde kalır.</p><section class="settings-hidden-group" aria-label="Son işlemler"><ul>${rows}</ul></section>`
+      : '<p class="settings-hidden-empty">Henüz geri alınabilecek işlem yok.</p>';
+    return `<details class="settings-hidden-prompts settings-history"${open ? " open" : ""}><summary><span class="settings-summary-icon">${icon("undo")}</span><span>İşlem geçmişi</span><span class="settings-hidden-count" aria-label="${entries.length} işlem">${entries.length}</span><span class="settings-chevron">${icon("chevron")}</span></summary><div class="settings-hidden-body">${body}</div></details>`;
+  }
+  function refreshSettingsHistory(focusIndex = 0) {
+    const current = document.querySelector("#settings-dialog .settings-history");
+    if (!current) return;
+    current.outerHTML = settingsHistoryMarkup(true);
+    const section = document.querySelector("#settings-dialog .settings-history");
+    const buttons = section.querySelectorAll('[data-action="history-revert"]');
+    (
+      buttons[Math.min(focusIndex, buttons.length - 1)] ||
+      section.querySelector("summary")
+    )?.focus({ preventScroll: true });
+  }
+  /** Undo the newest actions one by one, down to and including `index`. */
+  function undoHistoryDownTo(index) {
+    const steps = (workspaceStore?.history || []).length - index;
+    let undone = 0;
+    try {
+      for (; undone < steps; undone++) workspaceStore.undo();
+      toast(`${undone} işlem geri alındı.`);
+    } catch (error) {
+      toast(
+        `${undone} işlem geri alındı; sonrakinde durdu: ${error.message || "geri alınamadı."}`,
+        true,
+      );
+    }
+    syncWorkspaceView();
+  }
+  async function revertHistoryAt(index, button) {
+    const entries = workspaceStore?.history || [];
+    const entry = entries[index];
+    if (!entry || workspaceStore.readOnly) return;
+    const order = entries.length - index;
+    if (index === entries.length - 1) {
+      undoLastAction();
+      refreshSettingsHistory(0);
+      return;
+    }
+    try {
+      const next = revertHistoryEntry(
+        {
+          records: workspaceStore.records,
+          preferences: workspaceStore.preferences,
+          ...(workspaceStore.hasNotes ? { notes: workspaceStore.notes } : {}),
+        },
+        entry,
+      );
+      workspaceStore.saveWorkspace(next, `Geri alındı: ${entry.label}`);
+      syncWorkspaceView();
+      toast(`“${entry.label}” geri alındı. Bu da geri alınabilir.`);
+      refreshSettingsHistory(order - 1);
+    } catch (error) {
+      if (!(error instanceof HistoryConflictError)) {
+        syncWorkspaceView();
+        toast(error.message || "İşlem geri alınamadı.", true);
+        return;
+      }
+      const confirmed = await confirmAction({
+        root: app,
+        title: "Bu işlem tek başına geri alınamıyor",
+        message: `${error.message} Sonraki işlemlerin üzerine yazmamak için ${order} işlemin hepsi (1’den ${order}’e) birlikte geri alınabilir.`,
+        confirmLabel: `${order} işlemi geri al`,
+        trigger: button,
+      });
+      if (!confirmed) return;
+      undoHistoryDownTo(index);
+      refreshSettingsHistory(0);
+    }
+  }
   /** Postponed and hidden planning suggestions, reachable from Settings. */
   function settingsHiddenPromptsMarkup(open = false) {
     const options = { ...planningPromptOptions(), query: "" };
@@ -560,6 +648,7 @@ export async function startMainApp() {
         .join("")}</div><div id="settings-error" role="alert"></div></section>
       <details class="settings-backup" open><summary><span class="settings-summary-icon">${icon("download")}</span><span>Yedekleme</span><span class="settings-chevron">${icon("chevron")}</span></summary><div class="settings-backup-body"><div class="settings-backup-actions"><button type="button" class="btn" data-action="backup-records" aria-label="Kayıt yedeğini indir">${icon("download")}Yedeği indir</button><button type="button" class="btn" data-action="select-backup" aria-label="Kayıt yedeğini geri yükle">${icon("upload")}Yedeği yükle</button></div><input type="file" id="restore-file" accept=".json,application/json" aria-label="Kayıt yedeği seç" hidden><div id="settings-backup-error" role="alert"></div></div></details>
       ${settingsHiddenPromptsMarkup()}
+      ${settingsHistoryMarkup()}
       <details class="settings-help"><summary><span>Yardım</span><span class="settings-chevron">${icon("chevron")}</span></summary><div class="settings-help-body"><section class="settings-goal-rules" aria-label="Hedef ilerlemesi"><h3>Hedef ilerlemesi</h3><p>Günlük iş → Haftalık → Aylık → Senelik</p><p>Bağlantılar isteğe bağlıdır. Sayısal hedef varsa kendi ölçümü kullanılır; yoksa bağlı işlerin ilerlemesi hesaplanır. Hedefi tamamlamak ayrıca senin kararındır.</p></section><section><h3>Kayıtlar ve yedekleme</h3><p>Kayıtlar ve tercihler bu tarayıcıda otomatik saklanır; HTML dosyasının içine yazılmaz. Yedeği indir, kayıtlarını, bağımsız notlarını ve bitmemiş çalışma taslaklarını JSON dosyası olarak saklar. Yedeği yükle, seçtiğin yedeği onayından sonra geri getirir.</p></section></div></details>
       ${cleanupInfo.recordsChanged ? `<section class="settings-note-cleanup"><p>${cleanupInfo.recordsChanged} kayıtta eski Gün / Gecikme / Odak Sıra aktarım satırları var.</p><button type="button" class="btn" data-action="cleanup-import-notes">Aktarım notlarını temizle</button></section>` : ""}
       ${waitingCleanupInfo.recordsChanged ? `<section class="settings-note-cleanup"><p>${waitingCleanupInfo.recordsChanged} bekleyen konuda eski Son Durum / Kaç Gün Bekledi aktarım satırları var.</p><button type="button" class="btn" data-action="cleanup-waiting-notes">Bekleyen konu notlarını düzenle</button></section>` : ""}
@@ -3583,6 +3672,10 @@ export async function startMainApp() {
         menu.querySelector("button")?.focus({ preventScroll: true });
         break;
       }
+      case "history-revert":
+        event.preventDefault();
+        await revertHistoryAt(Number(button.dataset.historyIndex), button);
+        break;
       case "planning-prompt-dismiss":
       case "planning-prompt-restore": {
         const kind = button.dataset.prompt;

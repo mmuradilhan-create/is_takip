@@ -52,33 +52,9 @@
   text-decoration-thickness: 1px;
 }
 
-/* Native activation keeps touch taps on the facts away from the follow-up action. */
-.dashboard-rows .dashboard-bottom-row button.followup-detail-trigger {
-  min-width: 0;
-  min-height: 0;
-  margin: 0;
-  padding: 0;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  text-align: left;
+/* Card titles stay selectable, so an order number can be copied. */
+.dashboard-rows .dashboard-bottom-row button.followup-title {
   user-select: text;
-  cursor: pointer;
-}
-
-.dashboard-rows .dashboard-bottom-row button.followup-detail-trigger:focus {
-  outline: none;
-  box-shadow: none;
-}
-
-:where(:root:not([data-focus-quiet]))
-  .dashboard-rows
-  .dashboard-bottom-row
-  button.followup-detail-trigger:focus-visible {
-  text-decoration: underline;
-  text-underline-offset: 3px;
 }
 
 /* A click or a returned card focus must not turn its subject into a link. */

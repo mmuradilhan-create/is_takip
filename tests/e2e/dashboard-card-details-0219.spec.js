@@ -79,43 +79,30 @@ async function expectBottomCardControls(page, sideBySide) {
         ".weekly-dashboard-panel",
         ".dashboard-notes-panel",
       ].map((selector) => rect(document.querySelector(selector))),
-      progress: rect(card.querySelector(".dashboard-goal-progress")),
-      facts: rect(waiting.querySelector(".followup-wait-info")),
-      goalButtons: [
-        ...card.querySelectorAll(".dashboard-goal-actions button"),
-      ].map(rect),
-      waitingActions: rect(waiting.querySelector(".followup-card-actions")),
-      waitingButtons: [
-        ...waiting.querySelectorAll(".followup-card-actions > button"),
-      ].map(rect),
-      goalContents: [
-        ...card.querySelectorAll(".dashboard-goal-actions button"),
-      ].map(rect),
-      waitingContents: [
-        ...waiting.querySelectorAll(
-          ".followup-fact, .followup-card-actions > button",
-        ),
-      ].map(rect),
+      goalRows: [".dashboard-goal-meta-controls", ".dashboard-card-facts"].map(
+        (selector) => [...card.querySelector(selector).children].map(rect),
+      ),
+      waitingRows: [".followup-meta", ".dashboard-card-facts"].map((selector) =>
+        [...waiting.querySelector(selector).children].map(rect),
+      ),
       bodyFits: document.documentElement.scrollWidth <= innerWidth + 1,
     };
   });
-  const actionTop = Math.min(...boxes.goalButtons.map((box) => box.top));
-  const actionBottom = Math.max(...boxes.goalButtons.map((box) => box.bottom));
-  expect(actionTop - boxes.progress.bottom).toBeGreaterThanOrEqual(3);
-  expect(actionTop - boxes.progress.bottom).toBeLessThanOrEqual(5);
-  const goalInset = boxes.goal.bottom - actionBottom;
-  const waitingInset = boxes.waiting.bottom - boxes.waitingActions.bottom;
-  expect(boxes.waitingButtons).toHaveLength(2);
-  for (const button of boxes.waitingButtons) {
-    expect(button.bottom - button.top).toBeCloseTo(28, 0);
-    expect(button.top).toBeCloseTo(boxes.waitingActions.top, 0);
-    expect(button.bottom).toBeCloseTo(boxes.waitingActions.bottom, 0);
+  // Both cards: two rows of two equal 30px boxes, 6px apart, same inset.
+  for (const rows of [boxes.goalRows, boxes.waitingRows]) {
+    expect(rows.map((row) => row.length)).toEqual([2, 2]);
+    for (const [left, right] of rows) {
+      expect(left.bottom - left.top).toBeCloseTo(30, 0);
+      expect(right.top).toBeCloseTo(left.top, 0);
+      expect(right.left - left.right).toBeCloseTo(6, 0);
+      expect(right.right - right.left).toBeCloseTo(left.right - left.left, 0);
+    }
+    expect(rows[1][0].top - rows[0][0].bottom).toBeCloseTo(6, 0);
   }
-  expect(
-    boxes.waitingButtons[1].left - boxes.waitingButtons[0].right,
-  ).toBeCloseTo(4, 0);
+  const goalInset = boxes.goal.bottom - boxes.goalRows[1][0].bottom;
+  const waitingInset = boxes.waiting.bottom - boxes.waitingRows[1][0].bottom;
   expect(goalInset).toBeGreaterThanOrEqual(8);
-  expect(goalInset).toBeLessThanOrEqual(10);
+  expect(goalInset).toBeLessThanOrEqual(18);
   expect(Math.abs(goalInset - waitingInset)).toBeLessThanOrEqual(1);
   if (sideBySide) {
     const [attentionPanel, weeklyPanel, notesPanel] = boxes.panels;
@@ -128,15 +115,12 @@ async function expectBottomCardControls(page, sideBySide) {
       Math.abs(attentionPanel.bottom - notesPanel.bottom),
     ).toBeLessThanOrEqual(1);
     expect(
-      Math.abs(actionBottom - boxes.waitingActions.bottom),
+      Math.abs(boxes.goalRows[1][0].bottom - boxes.waitingRows[1][0].bottom),
     ).toBeLessThanOrEqual(1);
-    expect(
-      Math.abs(boxes.progress.bottom - boxes.facts.bottom),
-    ).toBeLessThanOrEqual(4);
   }
   for (const [card, controls] of [
-    [boxes.goal, boxes.goalContents],
-    [boxes.waiting, boxes.waitingContents],
+    [boxes.goal, boxes.goalRows.flat()],
+    [boxes.waiting, boxes.waitingRows.flat()],
   ]) {
     for (const control of controls) {
       expect(control.left).toBeGreaterThanOrEqual(card.left);
@@ -350,7 +334,8 @@ test("follow-up card bodies, titles and card keyboard actions open read-only det
   }, initialTheme);
   await expect(waiting(page)).toHaveAttribute("role", "group");
   await expect(waiting(page)).toHaveAttribute("tabindex", "0");
-  await waiting(page).locator(".waiting-age").click();
+  // A click on the card's own surface opens its read-only details.
+  await waiting(page).click({ position: { x: 4, y: 4 } });
   await expectReadonlyWaiting(page, original);
   await closeWaiting(page);
   const expectNoFocusRectangle = async (control) => {
@@ -375,9 +360,8 @@ test("follow-up card bodies, titles and card keyboard actions open read-only det
   for (const control of [
     waiting(page).locator('[data-action="status-menu"]'),
     waiting(page).locator('[data-action="edit-next-followup"]'),
-    waiting(page).locator(".followup-detail-trigger"),
     waiting(page).locator('[data-action="waiting-followup"]'),
-    waiting(page).locator('[data-action="waiting-children-open"]'),
+    waiting(page).locator('[data-action="edit-waiting-start"]'),
   ]) {
     await page.keyboard.press("Tab");
     await expect(control).toBeFocused();
@@ -387,11 +371,7 @@ test("follow-up card bodies, titles and card keyboard actions open read-only det
     await expectNoFocusRectangle(control);
     await expect(control).toHaveCSS("text-decoration-line", /underline/);
   }
-  await page.keyboard.press("Shift+Tab");
-  await page.keyboard.press("Shift+Tab");
-  await page.keyboard.press("Shift+Tab");
-  await page.keyboard.press("Shift+Tab");
-  await page.keyboard.press("Shift+Tab");
+  for (let step = 0; step < 4; step++) await page.keyboard.press("Shift+Tab");
   await expect(title).toBeFocused();
   await page.keyboard.press("Enter");
   await expectReadonlyWaiting(page, original);
@@ -556,13 +536,16 @@ test("goal body opens the panel at its top while nested goal, follow-up and date
   await expect(progressAction).toBeFocused();
   await expect(progressAction).toHaveCSS("outline-style", "none");
   await expect(progressAction).toHaveCSS("box-shadow", "none");
-  await goal(page).locator('[data-action="goal-children-open"]').focus();
-  await page.keyboard.press("Space");
+  // Linked jobs are reached inside the details opened from the card.
   await expect(
-    goalPanel(page).locator(
-      '.goal-child-row[data-id="details-child"] .goal-child-title',
-    ),
-  ).toBeFocused();
+    goal(page).locator('[data-action="goal-children-open"]'),
+  ).toHaveCount(0);
+  await goal(page).focus();
+  await page.keyboard.press("Space");
+  await expect(goalPanel(page)).toBeVisible();
+  await goalPanel(page)
+    .locator('.goal-child-row[data-id="details-child"] .goal-child-title')
+    .focus();
   const childTitle = goalPanel(page).locator(
     '.goal-child-row[data-id="details-child"] .goal-child-title',
   );
@@ -618,56 +601,35 @@ test("goal body opens the panel at its top while nested goal, follow-up and date
   await followup(page)
     .getByRole("button", { name: "Vazgeç", exact: true })
     .click();
-  const childrenAction = waiting(page).locator(
-    '.followup-children-action[data-action="waiting-children-open"][data-id="details-waiting"]',
-  );
-  await expect(childrenAction).toHaveText("Bağlı işler 2");
-  await expect(childrenAction.locator(".followup-children-count")).toHaveText(
-    "2",
-  );
+  // Linked jobs live in the card's details, not on the card.
+  await expect(
+    waiting(page).locator('[data-action="waiting-children-open"]'),
+  ).toHaveCount(0);
   const body = waitingPanel(page).locator(".waiting-record-body");
   const childrenHeading = waitingPanel(page).locator(
     '[data-waiting-section-heading="children"]',
   );
-  for (const activate of [
-    () => childrenAction.click(),
-    async () => {
-      await childrenAction.focus();
-      await page.keyboard.press("Enter");
-    },
+  await waiting(page).locator(".followup-title").click();
+  await expect(waitingPanel(page)).toHaveAttribute(
+    "data-record-id",
+    "details-waiting",
+  );
+  await expect(childrenHeading).toHaveText("Bağlı günlük işler 2");
+  await expect(waitingPanel(page).locator(".waiting-record-child")).toHaveCount(
+    2,
+  );
+  await expect(
+    waitingPanel(page).locator(
+      '.waiting-record-child[data-id="details-waiting-child-1"] .goal-child-title.completed',
+    ),
+  ).toBeAttached();
+  expect(await saved(page)).toBe(before);
+  await closeWaiting(page);
+  for (const open of [
+    () => waiting(page).locator(".followup-title").click(),
+    () => waiting(page).click({ position: { x: 4, y: 4 } }),
   ]) {
-    await activate();
-    await expect(waitingPanel(page)).toHaveAttribute(
-      "data-record-id",
-      "details-waiting",
-    );
-    await expect(childrenHeading).toHaveText("Bağlı günlük işler 2");
-    await expect(childrenHeading).toBeFocused();
-    await expect(childrenHeading).toBeInViewport({ ratio: 1 });
-    await expect(
-      waitingPanel(page).locator(".waiting-record-child"),
-    ).toHaveCount(2);
-    await expect(
-      waitingPanel(page).locator(
-        '.waiting-record-child[data-id="details-waiting-child-1"] .goal-child-title.completed',
-      ),
-    ).toBeVisible();
-    expect(await body.evaluate((element) => element.scrollTop)).toBeGreaterThan(
-      0,
-    );
-    for (const other of [
-      followup(page),
-      datePicker(page),
-      page.locator("#editor"),
-      goalPanel(page),
-    ])
-      await expect(other).not.toBeVisible();
-    expect(await saved(page)).toBe(before);
-    await closeWaiting(page);
-    await expect(childrenAction).toBeFocused();
-  }
-  for (const selector of [".followup-title", ".waiting-age"]) {
-    await waiting(page).locator(selector).click();
+    await open();
     await expect(waitingPanel(page)).toBeVisible();
     expect(await body.evaluate((element) => element.scrollTop)).toBe(0);
     await closeWaiting(page);
@@ -681,7 +643,7 @@ test("selecting card text does not activate details and external updates or dele
 }) => {
   const items = await seed(page);
   const before = await saved(page);
-  const age = await waiting(page).locator(".waiting-age").boundingBox();
+  const age = await waiting(page).locator(".followup-title").boundingBox();
   await page.mouse.move(age.x + 2, age.y + age.height / 2);
   await page.mouse.down();
   await page.mouse.move(age.x + age.width - 2, age.y + age.height / 2, {
@@ -697,7 +659,7 @@ test("selecting card text does not activate details and external updates or dele
   await expect(goalPanel(page)).not.toBeVisible();
   expect(await saved(page)).toBe(before);
   await page.evaluate(() => window.getSelection()?.removeAllRanges());
-  await waiting(page).locator(".waiting-age").click();
+  await waiting(page).locator(".followup-title").click();
   await expect(waitingPanel(page)).toBeVisible();
   const body = waitingPanel(page).locator(".waiting-record-body");
   await body.evaluate((element) => {
@@ -776,7 +738,7 @@ test("touch cards open read-only details while nested date and follow-up control
     const page = await context.newPage();
     await seed(page);
     const before = await saved(page);
-    const age = waiting(page).locator(".waiting-age");
+    const age = waiting(page).locator(".followup-title");
     await age.scrollIntoViewIfNeeded();
     await expect(age).toBeInViewport();
     await age.tap();

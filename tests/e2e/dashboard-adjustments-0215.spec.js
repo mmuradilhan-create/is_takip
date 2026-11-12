@@ -372,42 +372,31 @@ test("single waiting and goal cards retain one shared grid slot and common heade
     );
     const goals = weekly(page).locator(".dashboard-goals");
     await slotWidth(goals, goals.locator(".dashboard-goal-row"), columns);
-    const children = goals.locator('[data-action="goal-children-open"]');
-    await expect(children.locator(".dashboard-goal-count")).toHaveText("1");
-    await expect(children).toHaveText("Bağlı işler 1");
-    await expect(children).toBeInViewport({
-      ratio: 1,
-    });
+    // The bottom row's boxes stay fully visible in the slot.
+    await expect(
+      goals.locator('[data-action="goal-progress-open"]'),
+    ).toBeInViewport({ ratio: 1 });
     await expect(dateControl(page)).toHaveAttribute(
       "data-followup-state",
       "soon",
     );
     await expect(dateControl(page)).toBeInViewport({ ratio: 1 });
-    const actions = waitingCard(page).locator(
-      ".followup-tracking > .followup-card-actions",
+    // Son takip is the "Takip ettim" box; linked jobs are in the details.
+    const followup = waitingCard(page).locator(
+      '.dashboard-card-facts > [data-action="waiting-followup"]',
     );
-    await expect(actions.locator("button")).toHaveCount(2);
-    const followup = actions.locator('[data-action="waiting-followup"]');
-    await expect(followup).toHaveText("Takip ettim");
-    await expect(followup.locator("svg:visible")).toHaveCount(0);
-    const waitingChildren = actions.locator(
-      '.followup-children-action[data-action="waiting-children-open"][data-id="adjustment-waiting"]',
-    );
-    await expect(waitingChildren).toHaveText("Bağlı işler 0");
+    await expect(followup).toHaveAttribute("title", "Takip ettim");
+    await expect(followup).toBeInViewport({ ratio: 1 });
     await expect(
-      waitingChildren.locator(".followup-children-count"),
-    ).toHaveText("0");
-    await expect(waitingChildren).toBeEnabled();
-    await expect(waitingChildren).toBeInViewport({ ratio: 1 });
-    await waitingChildren.click();
+      waitingCard(page).locator('[data-action="waiting-children-open"]'),
+    ).toHaveCount(0);
+    const title = waitingCard(page).locator(".followup-title");
+    await title.click();
     const waitingPanel = page.locator("#waiting-record-panel");
     await expect(waitingPanel).toHaveAttribute(
       "data-record-id",
       "adjustment-waiting",
     );
-    await expect(
-      waitingPanel.locator('[data-waiting-section-heading="children"]'),
-    ).toBeFocused();
     await expect(
       waitingPanel.locator(
         '[data-waiting-section="children"] .waiting-record-empty',
@@ -419,7 +408,7 @@ test("single waiting and goal cards retain one shared grid slot and common heade
       .locator('[data-action="waiting-record-close"]')
       .last()
       .click();
-    await expect(waitingChildren).toBeFocused();
+    await expect(title).toBeFocused();
     expect(await saved(page)).toBe(original);
 
     await attention(page).locator(".dashboard-panel-link").click();
@@ -544,12 +533,13 @@ test("two-card pages keep every record reachable in both two-column and one-colu
   await expect(progressAction).toHaveText(
     /^(\d+ \/ \d+|%\d+|Ölçüm yok|Tamamlandı)$/,
   );
-  const childrenAction = weekly(page).locator(
-    '[data-action="goal-children-open"]',
-  );
-  await expect(childrenAction).toHaveText("Bağlı işler 1");
-  await expect(childrenAction.locator(".dashboard-goal-count")).toHaveText("1");
-  await expect(childrenAction).toBeVisible();
+  // Linked jobs are inside the details; the card keeps only its four boxes.
+  await expect(
+    weekly(page).locator('[data-action="goal-children-open"]'),
+  ).toHaveCount(0);
+  await expect(
+    weekly(page).locator(".dashboard-goal-row .inline-priority"),
+  ).toBeVisible();
   await progressAction.focus();
   await page.keyboard.press("Enter");
   const panel = page.locator("#goal-detail-panel");

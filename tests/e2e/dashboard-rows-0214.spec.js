@@ -239,8 +239,9 @@ async function expectCompactCardMeta(card, dateSelector) {
   expect(status.box.right).toBeLessThanOrEqual(date.box.left + 1);
   expect(date.whiteSpace).toBe("nowrap");
   for (const [index, control] of metadata.controls.entries()) {
-    expect(control.box.height).toBeCloseTo(28, 0);
-    expect(control.fontSize).toBe("10px");
+    expect(control.box.height).toBeCloseTo(30, 0);
+    // The list's 11px, smaller only when the card is narrow.
+    expect(["9.5px", "10px", "11px"]).toContain(control.fontSize);
     expect(control.overflow).toBe(false);
     expect(control.box.left).toBeGreaterThanOrEqual(metadata.box.left);
     expect(control.box.right).toBeLessThanOrEqual(metadata.box.right + 1);
@@ -283,28 +284,28 @@ test("dashboard keeps three compact desktop panels and moves notes below the two
     await expect(cards.locator('[data-action="waiting-followup"]')).toHaveCount(
       visibleCards,
     );
+    // Linked jobs live in the details; the cards show the list's boxes.
     await expect(
-      cards.locator(
-        '.followup-card-actions > [data-action="waiting-children-open"]',
-      ),
-    ).toHaveCount(visibleCards);
+      cards.locator('[data-action="waiting-children-open"]'),
+    ).toHaveCount(0);
     for (const card of await cards.all()) {
-      await expect(card.locator('[data-action="waiting-followup"]')).toHaveText(
-        "Takip ettim",
-      );
       await expect(
-        card.locator('[data-action="waiting-followup"] svg:visible'),
-      ).toHaveCount(0);
-      await expect(card.locator(".followup-children-count")).toHaveText("0");
+        card.locator(
+          '.dashboard-card-facts > [data-action="waiting-followup"]',
+        ),
+      ).toHaveAttribute("title", "Takip ettim");
+      await expect(
+        card.locator(
+          '.dashboard-card-facts > [data-action="edit-waiting-start"]',
+        ),
+      ).toHaveCount(1);
       await expectCompactCardMeta(card, '[data-action="edit-next-followup"]');
     }
     const goals = weekly(page).locator(".dashboard-goal-row");
     await expect(goals).toHaveCount(2);
     for (const goal of await goals.all()) {
       await goal.scrollIntoViewIfNeeded();
-      await expect(goal.locator(".dashboard-goal-actions button")).toHaveCount(
-        2,
-      );
+      await expect(goal.locator(".dashboard-card-facts button")).toHaveCount(2);
       await expect(
         goal.locator(".dashboard-goal-meta-controls .status-trigger"),
       ).toHaveCount(1);
@@ -317,10 +318,12 @@ test("dashboard keeps three compact desktop panels and moves notes below the two
         "data-action",
       );
       for (const [action, text] of [
+        ["edit-priority", /Normal|Yüksek|Düşük|Acil/],
         ["goal-progress-open", /^(\d+ \/ \d+|%\d+|Ölçüm yok|Tamamlandı)$/],
-        ["goal-children-open", "Bağlı işler 0"],
       ]) {
-        const button = goal.locator(`[data-action="${action}"]`);
+        const button = goal.locator(
+          `.dashboard-card-facts [data-action="${action}"]`,
+        );
         await expect(button).toHaveText(text);
         await expect(button).toBeInViewport({ ratio: 1 });
       }
@@ -588,13 +591,9 @@ test("one upcoming goal and one waiting card show their full content without a r
     );
     await expect(list.locator(".dashboard-goal-row")).toHaveCount(1);
     await contained(goal, list);
-    const childCount = goal.locator(".dashboard-goal-count");
-    await expect(childCount).toHaveText("1");
-    await contained(childCount, goal);
-    await contained(childCount, list);
     for (const [name, text] of [
+      ["edit-priority", "Normal"],
       ["goal-progress-open", /^(\d+ \/ \d+|%\d+|Ölçüm yok|Tamamlandı)$/],
-      ["goal-children-open", "Bağlı işler 1"],
     ]) {
       const action = goal.locator(`[data-action="${name}"]`);
       await expect(action).toHaveText(text);

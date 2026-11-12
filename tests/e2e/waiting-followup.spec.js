@@ -225,9 +225,10 @@ test("waiting reminder dates open from attention cards and their own list while 
     "aria-label",
     "10 gündür bekliyor",
   );
+  // As in the list, a missing start offers to add one.
   await expect(
     overview(page, "waiting-unknown").locator(".waiting-age"),
-  ).toHaveText("—");
+  ).toHaveText("Başlangıç ekle");
   await expect(
     overview(page, "waiting-unknown").locator(".waiting-age"),
   ).toHaveAttribute("aria-label", "Bekleme başlangıcı yok");

@@ -388,9 +388,11 @@ test("the two goal actions navigate to their exact sections and preserve metric 
   const items = await seed(page);
   const before = await saved(page);
   const progress = card(page).locator('[data-action="goal-progress-open"]');
-  const children = card(page).locator('[data-action="goal-children-open"]');
   await expect(progress).toHaveText(/^(\d+ \/ \d+|%\d+|Ölçüm yok|Tamamlandı)$/);
-  await expect(children).toContainText("Bağlı işler");
+  // Linked jobs are reached inside the goal opened from its card.
+  await expect(
+    card(page).locator('[data-action="goal-children-open"]'),
+  ).toHaveCount(0);
   expect(
     await card(page)
       .locator(".dashboard-goal-title")
@@ -406,14 +408,9 @@ test("the two goal actions navigate to their exact sections and preserve metric 
     panel(page).locator("#goal-next-action, #goal-next-step-form"),
   ).toHaveCount(0);
   await page.keyboard.press("Escape");
-  await children.focus();
+  await card(page).focus();
   await page.keyboard.press("Space");
   await expect(panel(page)).toBeVisible();
-  await expect(
-    panel(page).locator(
-      '.goal-child-row[data-id="goal-child"] .goal-child-title',
-    ),
-  ).toBeFocused();
   await expect(
     panel(page).locator(
       '.goal-child-row[data-id="goal-child"] .goal-child-title',
@@ -458,8 +455,8 @@ test("compact goal cards keep both labelled actions inside their bounds and keyb
     await page.setViewportSize(viewport);
     const goal = card(page, "goal-plain");
     await expect(
-      goal.locator(".dashboard-goal-actions").getByRole("button"),
-    ).toHaveText([/^(\d+ \/ \d+|%\d+|Ölçüm yok|Tamamlandı)$/, "Bağlı işler 0"]);
+      goal.locator(".dashboard-card-facts").getByRole("button"),
+    ).toHaveText(["Normal", "Ölçüm yok"]);
     await expect(
       goal.locator(".dashboard-goal-meta-controls").getByRole("button"),
     ).toHaveText(["Yapılacak", "Tarih yok"]);
@@ -491,11 +488,11 @@ test("compact goal cards keep both labelled actions inside their bounds and keyb
       panel(page).locator('[data-goal-section-heading="progress"]'),
     ).toBeFocused();
     await page.keyboard.press("Escape");
-    await goal.locator('[data-action="goal-children-open"]').focus();
+    await goal.focus();
     await page.keyboard.press("Enter");
     await expect(
       panel(page).locator('[data-goal-section-heading="children"]'),
-    ).toBeFocused();
+    ).toBeAttached();
     await page.keyboard.press("Escape");
     expect(await saved(page)).toBe(before);
   }

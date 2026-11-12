@@ -373,16 +373,15 @@ test("the dashboard previews two current goals with numeric progress while the f
     "plan-monthly",
   ])
     await expect(goal(page, id)).toHaveCount(0);
-  const linkedCount = goal(page, "plan-current-primary").locator(
-    "span.dashboard-goal-count",
-  );
-  await expect(linkedCount).toHaveText("2");
-  await expect(linkedCount.locator("button")).toHaveCount(0);
-  const childrenAction = goal(page, "plan-current-primary").locator(
-    '[data-action="goal-children-open"]',
-  );
-  await expect(childrenAction).toHaveText("Bağlı işler 2");
-  await childrenAction.click();
+  // Linked jobs are listed inside the goal opened from its card.
+  await expect(
+    goal(page, "plan-current-primary").locator(
+      '[data-action="goal-children-open"]',
+    ),
+  ).toHaveCount(0);
+  await goal(page, "plan-current-primary")
+    .locator(".dashboard-goal-title")
+    .click();
   const panel = page.locator("#goal-detail-panel");
   await expect(panel).toBeVisible();
   await expect(panel.locator('[role="progressbar"]')).toHaveAttribute(

@@ -70,6 +70,7 @@ import "./settings-hidden-prompts.css";
 import "./window-min-size.css";
 import "./progress-chip.css";
 import "./dashboard-fluid-height.css";
+import "./dashboard-card-facts.css";
 import { trackTriggerToggle } from "./trigger-toggle.js";
 import {
   HistoryConflictError,
@@ -1348,6 +1349,7 @@ export async function startMainApp() {
   }
   const progressFill = (progress, summary) =>
     `<span class="progress-chip-fill" style="width:${progress.percent}%" aria-hidden="true"></span><span class="goal-progress-summary"><span>${esc(summary)}</span></span>`;
+  /** Time left to a goal's due date, the counterpart of a topic's waiting length. */
   function progressCell(record) {
     if (record.status === "cancelled")
       return '<td class="metric-cell progress-col cancelled-progress" aria-label="İptal edilen kayıt ilerlemeye dahil değil" title="İptal edilen kayıt ilerlemeye dahil değil"><span aria-hidden="true">—</span></td>';
@@ -1807,11 +1809,7 @@ export async function startMainApp() {
               .map((record) => {
                 const progress = goalProgress(record, state.records);
                 const progressDetail = `%${progress.percent} · ${progressDescription(record, progress)}`;
-                const children = state.records.filter(
-                  (item) =>
-                    item.type === "daily" && item.parentId === record.id,
-                );
-                return `<li class="dashboard-goal-row dashboard-detail-card" role="group" tabindex="0" data-action="goal-card-details" data-id="${esc(record.id)}" data-goal-id="${esc(record.id)}" aria-label="${esc(record.title)}: ayrıntıları aç" aria-keyshortcuts="Enter Space"><div class="dashboard-goal-title-line"><strong class="dashboard-goal-title${record.status === "cancelled" ? " cancelled" : ""}" title="${esc(record.title)}">${esc(record.title)}</strong></div><div class="dashboard-goal-meta-controls">${statusBadge(record)}${lifecycleDateControl(record)}</div><div class="dashboard-goal-progress" aria-hidden="true"></div><div class="dashboard-goal-actions"><button type="button" class="btn small dashboard-goal-progress-action progress-chip${progress.percent >= 100 ? " is-complete" : ""}" data-action="goal-progress-open" data-id="${esc(record.id)}" data-progress="${progress.percent}" aria-label="${esc(record.title)}: ilerleme, ${esc(progressDetail)}" title="${esc(progressDetail)}">${progressFill(progress, progressSummary(record, progress))}</button><button type="button" class="btn small dashboard-goal-children-action" data-action="goal-children-open" data-id="${esc(record.id)}" aria-label="${esc(record.title)}: bağlı işler, ${children.length} adım">Bağlı işler <span class="dashboard-goal-count">${children.length}</span></button></div></li>`;
+                return `<li class="dashboard-goal-row dashboard-detail-card" role="group" tabindex="0" data-action="goal-card-details" data-id="${esc(record.id)}" data-goal-id="${esc(record.id)}" aria-label="${esc(record.title)}: ayrıntıları aç" aria-keyshortcuts="Enter Space"><div class="dashboard-goal-title-line"><strong class="dashboard-goal-title${record.status === "cancelled" ? " cancelled" : ""}" title="${esc(record.title)}">${esc(record.title)}</strong></div><div class="dashboard-goal-meta-controls">${statusBadge(record)}${lifecycleDateControl(record)}</div><div class="dashboard-card-facts dashboard-goal-facts">${inlineFields ? inlineFields.priorityControl(record) : priorityBadge(record)}<button type="button" class="progress-chip dashboard-goal-progress-action${progress.percent >= 100 ? " is-complete" : ""}" data-action="goal-progress-open" data-id="${esc(record.id)}" data-progress="${progress.percent}" aria-label="${esc(record.title)}: ilerleme, ${esc(progressDetail)}" title="${esc(progressDetail)}">${progressFill(progress, progressSummary(record, progress))}</button></div></li>`;
               })
               .join("")}</ul>`
           : `<div class="weekly-dashboard-empty"><p>${state.search ? "Eşleşen haftalık hedef yok." : "Bu hafta için açık hedef yok."}</p><button type="button" class="btn" data-action="dashboard-weekly">Hedef seç</button></div>`
@@ -1839,13 +1837,7 @@ export async function startMainApp() {
       const date = record.nextFollowUpDate;
       const near = date >= today() && date <= nearEnd;
       const dateControl = inlineFields?.followUpDateControl(record) || "";
-      const linkedDailyCount = linkedActions(record.id, state.records).filter(
-        (item) => item.type === "daily",
-      ).length;
-      const lastFollowUp = record.lastFollowUpDate
-        ? lastFollowUpMarkup(record)
-        : `<span class="waiting-last-date" title="${record.followUpLog?.length ? "Son takip tarihi yok" : "Henüz takip edilmedi"}">—</span>`;
-      return `<li class="followup-row dashboard-detail-card" role="group" tabindex="0" data-action="waiting-record-details" data-record-row data-id="${esc(record.id)}" aria-label="${esc(record.title)}: ayrıntıları aç" aria-keyshortcuts="Enter Space"><div class="followup-title-line"><button type="button" class="followup-title" data-action="waiting-record-details" data-id="${esc(record.id)}">${esc(record.title)}</button></div><div class="followup-meta">${statusBadge(record)}<span class="attention-date${near ? " attention-date-near" : ""}" data-attention-date="${esc(date)}">${dateControl}</span></div><div class="followup-tracking"><button type="button" class="followup-wait-info followup-detail-trigger" data-action="waiting-record-details" data-id="${esc(record.id)}" aria-label="${esc(record.title)}: bekleme ve son takip ayrıntılarını aç"><span class="followup-fact" data-followup-fact="age"><span class="followup-fact-label">Bekleme</span>${waitingAgeMarkup(record)}</span><span class="followup-fact" data-followup-fact="last"><span class="followup-fact-label">Son takip</span><span class="followup-last">${lastFollowUp}</span></span></button><div class="followup-card-actions">${waitingFollowUps?.button(record, { compact: true }) || ""}<button type="button" class="btn small followup-children-action" data-action="waiting-children-open" data-id="${esc(record.id)}" aria-label="${esc(record.title)}: bağlı işler, ${linkedDailyCount} iş" aria-haspopup="dialog" aria-controls="waiting-record-panel">Bağlı işler <span class="followup-children-count">${linkedDailyCount}</span></button></div></div></li>`;
+      return `<li class="followup-row dashboard-detail-card" role="group" tabindex="0" data-action="waiting-record-details" data-record-row data-id="${esc(record.id)}" aria-label="${esc(record.title)}: ayrıntıları aç" aria-keyshortcuts="Enter Space"><div class="followup-title-line"><button type="button" class="followup-title" data-action="waiting-record-details" data-id="${esc(record.id)}">${esc(record.title)}</button></div><div class="followup-meta">${statusBadge(record)}<span class="attention-date${near ? " attention-date-near" : ""}" data-attention-date="${esc(date)}">${dateControl}</span></div><div class="dashboard-card-facts followup-facts">${waitingLastControl(record)}${inlineFields?.waitingStartControl(record) || `<span class="waiting-start-date deadline-tag">${waitingAgeMarkup(record)}</span>`}</div></li>`;
     });
     return `<section class="panel attention-panel"><div class="followup-header dashboard-panel-header"><div class="dashboard-panel-heading"><h2>Takip gerekenler<span class="dashboard-panel-count">${total}</span></h2></div>${pageCount > 1 ? `<nav class="attention-pagination" aria-label="Takip kartı sayfaları"><button type="button" class="attention-prev" data-action="attention-page" data-page="${state.attentionPage - 1}" aria-label="Önceki takipler" title="Önceki takipler" ${state.attentionPage === 1 ? "disabled" : ""}>${icon("arrow")}</button><span class="attention-page-label" aria-live="polite">Sayfa ${state.attentionPage} / ${pageCount}</span><button type="button" data-action="attention-page" data-page="${state.attentionPage + 1}" aria-label="Sonraki takipler" title="Sonraki takipler" ${state.attentionPage === pageCount ? "disabled" : ""}>${icon("arrow")}</button></nav>` : ""}<button type="button" class="text-btn open-list dashboard-panel-link" data-action="open-list" data-view="waiting">Bekleyen konular ${icon("arrow")}</button></div>${records.length ? `<ul class="attention-list followup-list" tabindex="0" aria-label="Takip gereken kartlar">${cards.join("")}</ul>` : '<div class="followup-empty">Yaklaşan takip yok.</div>'}</section>`;
   }

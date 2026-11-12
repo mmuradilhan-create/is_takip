@@ -289,11 +289,7 @@ test("Dashboard metadata explains follow-up age, offers reversible type-specific
   const subtitle = page.locator(".attention-panel .dashboard-panel-subtitle");
   await expect(subtitle).toHaveCount(0);
   await expect(waiting(page).locator(".waiting-age")).toHaveText("115 gün");
-  await expect(waiting(page).locator(".followup-last")).toHaveText("3 Ağu");
-  await expect(waiting(page).locator(".followup-fact-label")).toHaveText([
-    "Bekleme",
-    "Son takip",
-  ]);
+  await expect(waiting(page).locator(".waiting-last-date")).toHaveText("3 Ağu");
   await expect(waiting(page).locator(".waiting-followup-trigger")).toHaveCSS(
     "background-color",
     "rgb(255, 255, 255)",
@@ -315,12 +311,13 @@ test("Dashboard metadata explains follow-up age, offers reversible type-specific
   await expect(
     goal(page).locator(".dashboard-goal-meta, .dashboard-goal-linked"),
   ).toHaveCount(0);
+  // Linked jobs are inside the details; the card shows priority instead.
   await expect(
     goal(page).locator('[data-action="goal-children-open"]'),
-  ).toContainText("Bağlı işler");
+  ).toHaveCount(0);
   await expect(
-    goal(page).locator('[data-action="goal-children-open"]'),
-  ).toContainText("1");
+    goal(page).locator('.dashboard-card-facts [data-action="edit-priority"]'),
+  ).toBeVisible();
   const focus = page.locator('.focus-row[data-id="metadata-child"]');
   const status = await focus
     .locator('[data-action="status-menu"]')
@@ -792,10 +789,9 @@ test("dense previews keep two shared cards beside independent notes and every go
     "aria-label",
     "0 gündür bekliyor",
   );
-  await expect(waiting(page).locator(".followup-last")).toHaveText("—");
-  await expect(
-    waiting(page).locator(".followup-last .waiting-last-date"),
-  ).toHaveAttribute("title", "Henüz takip edilmedi");
+  await expect(waiting(page).locator(".waiting-last-date")).toHaveText(
+    "Takip yok",
+  );
   // Expanded subjects stay bounded when a browser ignores line clamping.
   await page.addStyleTag({
     content:
@@ -893,7 +889,7 @@ test("dense previews keep two shared cards beside independent notes and every go
       .locator('[data-action="edit-date"]')
       .boundingBox();
     const goalActions = await firstGoal
-      .locator(".dashboard-goal-actions")
+      .locator(".dashboard-card-facts")
       .boundingBox();
     for (const item of await followups.locator(".followup-row").all()) {
       const bounds = await item.boundingBox();
@@ -921,46 +917,31 @@ test("dense previews keep two shared cards beside independent notes and every go
             ? 2
             : 3;
       const status = await item.locator(".status-trigger").boundingBox();
-      const action = item.locator('[data-action="waiting-followup"]');
+      // Son takip is the "Takip ettim" box; linked jobs are in the details.
+      const action = item.locator(
+        '.dashboard-card-facts > [data-action="waiting-followup"]',
+      );
       const actionBounds = await action.boundingBox();
-      const actions = item.locator(
-        ".followup-tracking > .followup-card-actions",
-      );
-      const children = actions.locator(
-        '.followup-children-action[data-action="waiting-children-open"]',
-      );
-      await expect(actions.locator("button")).toHaveCount(2);
-      await expect(action).toHaveText("Takip ettim");
-      await expect(action.locator("svg:visible")).toHaveCount(0);
-      await expect(children).toHaveText("Bağlı işler 0");
-      await expect(children).toHaveAttribute(
-        "data-id",
-        await item.getAttribute("data-id"),
-      );
-      await expect(children.locator(".followup-children-count")).toHaveText(
-        "0",
-      );
-      await expect(children).toBeEnabled();
-      const footer = await actions.evaluate((element) => {
-        const style = getComputedStyle(element);
-        return {
-          display: style.display,
-          columns: style.gridTemplateColumns.split(" ").map(parseFloat),
-          gap: parseFloat(style.columnGap),
-          height: element.getBoundingClientRect().height,
-          trackingHeight: element.parentElement.getBoundingClientRect().height,
-        };
-      });
-      expect(footer.display).toBe("grid");
-      expect(footer.columns).toHaveLength(2);
-      expect(footer.columns[0]).toBeCloseTo(footer.columns[1], 0);
-      expect(footer.gap).toBe(4);
-      expect(footer.height).toBe(28);
-      expect(footer.trackingHeight).toBe(54);
-      await expect(item.locator('[data-followup-fact="last"]')).toHaveCSS(
-        "text-align",
-        "right",
-      );
+      await expect(action).toHaveAttribute("title", "Takip ettim");
+      await expect(
+        item.locator('[data-action="waiting-children-open"]'),
+      ).toHaveCount(0);
+      const facts = await item
+        .locator(".dashboard-card-facts")
+        .evaluate((element) => {
+          const style = getComputedStyle(element);
+          return {
+            display: style.display,
+            columns: style.gridTemplateColumns.split(" ").map(parseFloat),
+            gap: parseFloat(style.columnGap),
+            height: element.getBoundingClientRect().height,
+          };
+        });
+      expect(facts.display).toBe("grid");
+      expect(facts.columns).toHaveLength(2);
+      expect(facts.columns[0]).toBeCloseTo(facts.columns[1], 0);
+      expect(facts.gap).toBe(6);
+      expect(facts.height).toBe(30);
       expect(subjectBounds.height).toBeCloseTo(lineHeight * visibleLines, 0);
       expect(title.height).toBeGreaterThanOrEqual(subjectBounds.height - 1);
       expect(status.y).toBeGreaterThanOrEqual(title.y + title.height - 1);
@@ -968,8 +949,8 @@ test("dense previews keep two shared cards beside independent notes and every go
         .locator('[data-action="edit-next-followup"]')
         .boundingBox();
       expect(Math.abs(status.y - dateBounds.y)).toBeLessThanOrEqual(1);
-      expect(status.height).toBeCloseTo(28, 0);
-      expect(dateBounds.height).toBeCloseTo(28, 0);
+      expect(status.height).toBeCloseTo(30, 0);
+      expect(dateBounds.height).toBeCloseTo(30, 0);
       expect(status.x + status.width).toBeLessThanOrEqual(dateBounds.x + 1);
       expect(dateBounds.y).toBeGreaterThanOrEqual(title.y + title.height - 1);
       expect(
@@ -992,23 +973,24 @@ test("dense previews keep two shared cards beside independent notes and every go
       ).toBeLessThanOrEqual(1);
       for (const control of await item
         .locator(
-          '.status-trigger, [data-action="edit-next-followup"], .followup-fact-label, .waiting-age, .followup-last, .followup-card-actions > button',
+          '.status-trigger, [data-action="edit-next-followup"], .dashboard-card-facts > *',
         )
         .all()) {
         const kind = await control.evaluate((element) => ({
           cardAction: element.parentElement.classList.contains(
-            "followup-card-actions",
+            "dashboard-card-facts",
           ),
           status: element.matches(".status-trigger"),
           date: element.matches('[data-action="edit-next-followup"]'),
         }));
         if (!kind.status)
-          await expect(control).toHaveCSS(
-            "white-space",
-            kind.cardAction ? "normal" : "nowrap",
-          );
-        if (kind.status || kind.date)
-          await expect(control).toHaveCSS("font-size", "10px");
+          await expect(control).toHaveCSS("white-space", "nowrap");
+        // The list's 11px, smaller only when the card is narrow.
+        expect(["9.5px", "10px", "11px"]).toContain(
+          await control.evaluate(
+            (element) => getComputedStyle(element).fontSize,
+          ),
+        );
         const box = await control.boundingBox();
         expect(box.x).toBeGreaterThanOrEqual(bounds.x);
         expect(box.x + box.width).toBeLessThanOrEqual(
@@ -1025,11 +1007,8 @@ test("dense previews keep two shared cards beside independent notes and every go
               element.scrollHeight <= element.clientHeight + 1,
           ),
         ).toBe(true);
-        if (kind.cardAction) {
-          expect(box.height).toBe(28);
-        }
-        if (kind.cardAction || kind.status || kind.date)
-          await expectControlCaption(control, kind.date ? 1 : 2);
+        expect(box.height).toBeCloseTo(30, 0);
+        await expectControlCaption(control, kind.status ? 2 : 1);
       }
     }
     if (viewport.width === 1536 || viewport.width === 1280) {
@@ -1081,8 +1060,8 @@ test("dense previews keep two shared cards beside independent notes and every go
         .locator('[data-action="edit-date"]')
         .boundingBox();
       expect(Math.abs(statusBox.y - dateBox.y)).toBeLessThanOrEqual(1);
-      expect(statusBox.height).toBeCloseTo(28, 0);
-      expect(dateBox.height).toBeCloseTo(28, 0);
+      expect(statusBox.height).toBeCloseTo(30, 0);
+      expect(dateBox.height).toBeCloseTo(30, 0);
       expect(statusBox.x + statusBox.width).toBeLessThanOrEqual(dateBox.x + 1);
       await expect(
         item.locator('[data-action="goal-progress-open"]'),
@@ -1091,7 +1070,7 @@ test("dense previews keep two shared cards beside independent notes and every go
         item.locator(".dashboard-goal-meta, .dashboard-goal-linked"),
       ).toHaveCount(0);
       const controls = item.locator(
-        ".dashboard-goal-meta-controls button, .dashboard-goal-actions button",
+        ".dashboard-goal-meta-controls button, .dashboard-card-facts button",
       );
       await expect(controls).toHaveCount(4);
       for (const control of await controls.all()) {
@@ -1116,10 +1095,12 @@ test("dense previews keep two shared cards beside independent notes and every go
           status: element.matches(".status-trigger"),
           date: element.matches('[data-action="edit-date"]'),
         }));
-        if (metadata.status || metadata.date) {
-          await expect(control).toHaveCSS("font-size", "10px");
-          await expectControlCaption(control, metadata.date ? 1 : 2);
-        }
+        expect(["9.5px", "10px", "11px"]).toContain(
+          await control.evaluate(
+            (element) => getComputedStyle(element).fontSize,
+          ),
+        );
+        await expectControlCaption(control, metadata.status ? 2 : 1);
         if (viewport.width >= 1100)
           await expect(control).toBeInViewport({ ratio: 1 });
       }

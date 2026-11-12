@@ -396,12 +396,11 @@ test("goal-link review proposes replacements but only an explicit selected batch
       updatedAt: before.updatedAt,
     }).toEqual(before);
   }
-  const boundChildren = weekly(page)
+  // Linked jobs live in the goal's details, opened from the card itself.
+  await weekly(page)
     .locator('[data-goal-id="review-other"]')
-    .locator('[data-action="goal-children-open"]');
-  await expect(boundChildren).toHaveText("Bağlı işler 1");
-  await expect(boundChildren.locator(".dashboard-goal-count")).toHaveText("1");
-  await boundChildren.click();
+    .locator(".dashboard-goal-title")
+    .click();
   await expect(goalPanel(page).locator(".goal-panel-progress")).toHaveAttribute(
     "data-progress-basis",
     "metric",

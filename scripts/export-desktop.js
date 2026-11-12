@@ -82,8 +82,11 @@ Takip ettim (✓) düğmesi Son takip tarihinin yanındadır; kapanmış konular
 orada takip geçmişi simgesi bulunur. Durum ve tarih düğmeleri günlük
 işlerdeki gibi tek boydadır; Takip ettim düğmeleri aynı hizadadır. Not balonu, hedef balonu gibi fare
 simgeden ayrılınca hemen kapanır.
-Takip kartlarında Takip ettim ve Bağlı işler sayacı yan yanadır. Bağlı işler,
-bekleyen konudaki günlük iş listesini açar; yeni iş eklenebilir, mevcut iş
+Genel bakıştaki takip ve hedef kartları listedeki dört kutuyu ikişerli
+gösterir: takipte Durum · Sonraki takip / Son takip · Bekleme, hedefte
+Durum · Teslim tarihi / Öncelik · İlerleme. Kutular listedeki gibi görünür ve
+çalışır (Son takip = Takip ettim, İlerleme ilerlemeyi açar). Bağlı işler
+kartın ayrıntısındadır: bekleyen konudaki günlük iş listesinde yeni iş eklenebilir, mevcut iş
 bağlanabilir ve kaynak bağlantısı kaldırılabilir. Birden fazla günlük iş
 bağlanabilir; hedefi, durumu, tarihi, notları ve günlüğü korunur. Bağlama ve
 ayırma tek Geri al adımıdır. Temas işlerini tamamlamak konuyu kapatmaz.
@@ -171,8 +174,8 @@ kaydedilir, tek Geri al ile geri döner. Değişmiş taslağı kapatmak onay ist
 Genel bakıştaki kartların gövdesi ayrıntıyı açar. Takip ayrıntısı kimden
 beklendiğini, son gelişmeyi, tarihleri ve geçmişi salt okunur gösterir.
 Kaydı düzenle mevcut formu açar. Hedef gövdesi paneli üstten açar;
-İlerleme/Bağlı işler düğmeleri ilgili bölüme gider. Tarih ve Takip ettim
-kendi işlemlerini yapar. Enter/Space kart odağındayken ayrıntıyı açar.
+İlerleme kutusu ilerleme bölümüne gider. Kutular kendi işlemlerini
+yapar. Enter/Space kart odağındayken ayrıntıyı açar.
 Kart açmak veya metin seçmek kaydı değiştirmez.
 
 Düzenlemede dönem yıl + hafta tarih aralığı / ay adıyla seçilir. Seçim
@@ -542,8 +545,8 @@ takvimi açar. Bölüm, arama ve liste filtreleri değişmez; Escape kapatınca
 klavye odağı düğmeye döner. Seçili gün ve görünüm korunur.
 
 Takvimin altındaki Bu haftanın hedefleri, güncel haftanın açık hedeflerini
-başlık, durum, değiştirilebilir teslim tarihi, ilerleme ve bağlı iş sayısıyla gösterir.
-İlerleme ve Bağlı işler düğmeleri mevcut hedef panelinin ilgili bölümünü açar. Sayısal hedef ilerlemesi ile günlük işlerin
+başlık, durum, teslim tarihi, öncelik ve ilerleme kutularıyla gösterir.
+İlerleme kutusu hedef panelinin ilerleme bölümünü açar; bağlı işler panelde. Sayısal hedef ilerlemesi ile günlük işlerin
 bitmesi ayrı gösterilir. Önceki haftaların açık hedefleri yalnız üstteki
 Kalan hedefleri planla önerisinde yer alır; sağ panelde sayıları tekrarlanmaz.
 Bu haftada açık hedef yoksa, en yakın gelecek haftanın açık hedefleri
@@ -562,8 +565,7 @@ Bu planlama geçmişe görüşme kaydı eklemez; Takip ettim gerçekleşen takib
 İki alt panelde genişliğe göre üç, iki veya bir kompakt kart sütunu kullanılır.
 Takip ve hedef kartlarının ölçüleri aynıdır; tek kayıt bir kartlık yer kaplar.
 Masaüstünde takip ve hedef iç kartları eşit genişlik/yüksekliktedir;
-düğmeler alta hizalanır. Fazla hedef satırları aynı boyla listede kaydırılır.
-İlerleme ve Bağlı işler düğmeleri hedef panelinin ilgili bölümünü açar.
+kutular alta hizalanır. Fazla hedef satırları aynı boyla listede kaydırılır.
 Açmak kaydı değiştirmez; kaydedilmemiş hedef taslakları korunur.
 Boş panellerde de ilgili listeye gitme bağlantısı görünür.
 Bekleyen konunun sonraki takip tarihi bugün veya sonraki 3 gün içindeyse ya da

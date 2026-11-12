@@ -1,0 +1,231 @@
+/*
+ * Follow-up and goal cards show the list's own four boxes, two per row:
+ *   Follow-up: Durum · Sonraki takip / Son takip · Bekleme
+ *   Goal:      Durum · Teslim tarihi / Öncelik · İlerleme
+ * The boxes look and act as in the lists (Son takip is "Takip ettim",
+ * İlerleme opens progress); a click on the card opens its details, where
+ * linked jobs live.
+ */
+.dashboard-workspace.dashboard-rows
+  .dashboard-bottom-row
+  :is(.followup-meta, .dashboard-goal-meta-controls, .dashboard-card-facts) {
+  display: grid;
+  flex: 0 0 auto;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
+  height: auto;
+  margin: 6px 0 0;
+  padding: 0;
+  container-type: inline-size;
+}
+
+/* The two rows sit together at the bottom of every card. */
+.dashboard-workspace.dashboard-rows
+  .dashboard-bottom-row
+  :is(.followup-meta, .dashboard-goal-meta-controls) {
+  margin-top: auto;
+  padding-top: 6px;
+}
+
+.dashboard-workspace.dashboard-rows
+  .dashboard-bottom-row
+  :is(.followup-meta, .dashboard-goal-meta-controls, .dashboard-card-facts)
+  > * {
+  justify-self: stretch;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  margin: 0;
+}
+
+.dashboard-workspace.dashboard-rows
+  .dashboard-bottom-row
+  :is(.followup-meta, .dashboard-goal-meta-controls)
+  :is(.attention-date, .dashboard-goal-date) {
+  display: flex;
+  padding: 0;
+}
+
+/* Every box: the list's 30px box, 11px type, centred icon and value. */
+.dashboard-workspace.dashboard-rows
+  .dashboard-bottom-row
+  :is(.followup-meta, .dashboard-goal-meta-controls, .dashboard-card-facts)
+  :is(
+    .badge,
+    .deadline-tag,
+    .inline-priority,
+    .priority,
+    .waiting-start-date,
+    .progress-chip
+  ) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  height: 30px;
+  min-height: 30px;
+  margin: 0;
+  padding: 0 4px;
+  overflow: hidden;
+  border-radius: 6px;
+  font-size: 11px;
+  line-height: 12px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* A long status name may take two short lines, as in the lists. */
+.dashboard-workspace.dashboard-rows
+  .dashboard-bottom-row
+  :is(.followup-meta, .dashboard-goal-meta-controls)
+  > .badge {
+  padding: 0 3px;
+  white-space: normal;
+  text-align: center;
+  overflow-wrap: normal;
+}
+
+.dashboard-workspace.dashboard-rows
+  .dashboard-bottom-row
+  .dashboard-card-facts
+  :is(.waiting-last-trigger, .waiting-start-date)
+  > svg {
+  flex: 0 0 13px;
+  width: 13px;
+  height: 13px;
+}
+
+.dashboard-workspace.dashboard-rows
+  .dashboard-bottom-row
+  .dashboard-card-facts
+  .waiting-last-trigger {
+  gap: 3px;
+  padding: 0 4px;
+}
+
+.dashboard-workspace.dashboard-rows
+  .dashboard-bottom-row
+  .dashboard-card-facts
+  .waiting-start-date
+  .waiting-age {
+  color: inherit;
+  font: inherit;
+}
+
+/* Son takip reads in the box's green, as in the list. */
+.dashboard-workspace.dashboard-rows
+  .dashboard-bottom-row
+  .dashboard-card-facts
+  .waiting-last-trigger
+  > .waiting-last-date {
+  overflow: hidden;
+  color: inherit;
+  font: inherit;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.dashboard-workspace.dashboard-rows
+  .dashboard-bottom-row
+  .dashboard-card-facts
+  :is(.waiting-last-trigger, .progress-chip):hover {
+  filter: brightness(0.97);
+}
+
+/* İlerleme: the list's framed box that fills from the left. */
+.dashboard-workspace.dashboard-rows
+  .dashboard-bottom-row
+  .dashboard-card-facts
+  .progress-chip {
+  position: relative;
+  padding: 0;
+  border: 1px solid var(--theme-border, #cfdcc8);
+  background: var(--theme-raised, #fff);
+  color: var(--theme-ink, #2f5a3f);
+  font-family: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.dashboard-workspace.dashboard-rows
+  .dashboard-bottom-row
+  .dashboard-card-facts
+  .progress-chip.is-complete {
+  border-color: #a9c79e;
+}
+
+[data-theme="dark"]
+  .dashboard-workspace.dashboard-rows
+  .dashboard-bottom-row
+  .dashboard-card-facts
+  .progress-chip.is-complete {
+  border-color: #4f7a5c;
+}
+
+.dashboard-workspace.dashboard-rows
+  .dashboard-bottom-row
+  .dashboard-card-facts
+  .progress-chip
+  > .goal-progress-summary {
+  padding: 0 4px;
+}
+
+/* Narrow cards drop the icons first so the values stay whole. */
+@container (max-width: 160px) {
+  /* "Cevap bekleniyor" keeps both of its words whole on two lines. */
+  .dashboard-workspace.dashboard-rows
+    .dashboard-bottom-row
+    :is(.followup-meta, .dashboard-goal-meta-controls)
+    > .badge {
+    gap: 2px;
+    padding: 0 1px;
+    font-size: 9.5px;
+    letter-spacing: -0.2px;
+    line-height: 11px;
+  }
+
+  .dashboard-workspace.dashboard-rows
+    .dashboard-bottom-row
+    :is(.followup-meta, .dashboard-goal-meta-controls, .dashboard-card-facts)
+    > * {
+    font-size: 10px;
+  }
+
+  .dashboard-workspace.dashboard-rows
+    .dashboard-bottom-row
+    .dashboard-card-facts
+    .progress-chip
+    > .goal-progress-summary {
+    padding: 0;
+  }
+
+  .dashboard-workspace.dashboard-rows
+    .dashboard-bottom-row
+    :is(.followup-meta, .dashboard-goal-meta-controls, .dashboard-card-facts)
+    :is(
+      .deadline-tag,
+      .inline-priority,
+      .priority,
+      .waiting-start-date,
+      .progress-chip
+    ) {
+    gap: 2px;
+    font-size: 10px;
+    padding: 0 2px;
+  }
+
+  .dashboard-workspace.dashboard-rows
+    .dashboard-bottom-row
+    :is(.followup-meta, .dashboard-goal-meta-controls, .dashboard-card-facts)
+    :is(.deadline-tag, .inline-priority, .priority, .waiting-start-date)
+    > svg {
+    display: none;
+  }
+}

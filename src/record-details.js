@@ -1,6 +1,7 @@
 const DETAIL_LIMITS = {
   projectCode: { max: 120, label: "Proje kodu" },
   blockReason: { max: 1000, label: "Engel açıklaması" },
+  cancelReason: { max: 1000, label: "İptal nedeni" },
 };
 
 export const DEFAULT_WORK_TYPES = [

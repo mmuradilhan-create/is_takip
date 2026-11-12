@@ -414,6 +414,8 @@ test("daily and waiting actions keep their own context while the meeting closes 
   );
   await list(page, "waiting");
   await row(page, waitingTarget.id).locator(".quick-complete").click();
+  // Closing a waiting topic asks "Ne oldu?"; an empty Enter goes ahead.
+  await page.keyboard.press("Enter");
   const completed = await records(page);
   expect(completed.find((item) => item.id === waitingTarget.id).status).toBe(
     "completed",

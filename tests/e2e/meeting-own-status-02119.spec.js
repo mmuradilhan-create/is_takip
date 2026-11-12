@@ -473,6 +473,8 @@ test("linked route closure and reopening derive the meeting summary with one ato
   );
   await navigate(page, "waiting");
   await row(page, "derived-reply").locator(".quick-complete").click();
+  // Closing a waiting topic asks "Ne oldu?"; an empty Enter goes ahead.
+  await page.keyboard.press("Enter");
   snapshots.push(await saved(page));
   const bothClosed = await store(page);
   expect(
@@ -738,6 +740,7 @@ test("meeting attach filters owned and closed records, retains failed selections
   await peer.goto("/");
   await navigate(peer, "waiting");
   await row(peer, "link-reply").locator(".quick-complete").click();
+  await peer.keyboard.press("Enter");
   const peerSaved = await saved(peer);
   await expect(waiting.locator('option[value="link-reply"]')).toHaveCount(0);
   await expect(waiting).toHaveValue("");

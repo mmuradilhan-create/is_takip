@@ -208,6 +208,12 @@ Günlük, haftalık, aylık ve senelik ekranlar ortak liste düzenini kullanır.
 Tamamlama kutusu sol başta, günlük işlerde oynat düğmesi en sağdadır.
 Açık işlerin kutusu boştur; tik yalnız tamamlanmış kayıtta görünür.
 İptal edilen kayıtta kutu çarpı gösterir; başlık üstü çizili ve soluktur.
+İptal ederken kutunun altında kısa bir "Neden?" satırı açılır; bekleyen
+konuyu kapatırken "Ne oldu?" sorulur. İkisi de isteğe bağlıdır: boş Enter
+devam eder, Esc veya dışarı tıklama vazgeçer ve kayıt değişmez. İptal nedeni
+durum kutusunun üzerine gelince ve hedef panelinde/konu ayrıntısında görünür;
+"Ne oldu?" cevabı "Kapandı: …" olarak Son gelişme ve takip geçmişine yazılır.
+Tamamlamak (günlük iş, hedef) bir şey sormaz.
 İlerleme çubuğu ve yüzde yerine — görünür; eski ölçümler ayrıntıda korunur.
 İptal edilen alt kayıt üst hedefin ilerleme hesabına katılmaz.
 Toplantı dışındaki listelerin durum menüsünde tamamlama tekrarlanmaz; listede

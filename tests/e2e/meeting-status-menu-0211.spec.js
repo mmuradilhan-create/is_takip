@@ -242,6 +242,8 @@ test("closing the last target closes the linked meeting in the same transaction 
   await page.keyboard.press("Escape");
   await page.locator('#nav [data-view="waiting"]').click();
   await row(page, "reply").locator(".quick-complete").click();
+  // Closing a waiting topic asks "Ne oldu?"; an empty Enter goes ahead.
+  await page.keyboard.press("Enter");
   await page.locator('#nav [data-view="meeting"]').click();
   const complete = await store(page);
   expect(complete.records.find((item) => item.id === "reply").status).toBe(

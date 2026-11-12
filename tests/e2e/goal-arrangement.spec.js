@@ -154,6 +154,8 @@ test("quick status menus follow each type's completion rules and closed records 
         .click();
     } else {
       await item.locator(".task-title-cell > .quick-complete").click();
+      // A waiting topic asks "Ne oldu?"; an empty Enter goes ahead.
+      if (type === "waiting") await page.keyboard.press("Enter");
     }
     await selectListStatus(page, "completed");
     if (type === "meeting") {

@@ -71,6 +71,8 @@ import "./window-min-size.css";
 import "./progress-chip.css";
 import "./dashboard-fluid-height.css";
 import "./dashboard-card-facts.css";
+import "./outcome-prompt.css";
+import { createOutcomePrompt } from "./outcome-prompt.js";
 import { trackTriggerToggle } from "./trigger-toggle.js";
 import {
   HistoryConflictError,
@@ -1114,7 +1116,13 @@ export async function startMainApp() {
   ) {
     if (r.type === "meeting" && !targetId && meetingTargets(r).length)
       return statusSummary(effectiveRecord(r), true);
-    return `<button type="button" class="badge status-trigger status-${esc(statusForDisplay(r.status, r.type))}" data-action="status-menu" data-id="${esc(sourceId)}"${targetId ? ` data-target-id="${esc(targetId)}"` : ""} aria-label="${esc(caption)}" aria-haspopup="menu" aria-controls="status-menu" aria-expanded="false" title="Durumu değiştir"><span class="dot"></span>${esc(statusLabel(r.type, r.status))}</button>`;
+    return `<button type="button" class="badge status-trigger status-${esc(statusForDisplay(r.status, r.type))}" data-action="status-menu" data-id="${esc(sourceId)}"${targetId ? ` data-target-id="${esc(targetId)}"` : ""} aria-label="${esc(caption)}" aria-haspopup="menu" aria-controls="status-menu" aria-expanded="false" title="${esc(cancelNote(r))}Durumu değiştir"><span class="dot"></span>${esc(statusLabel(r.type, r.status))}</button>`;
+  }
+  /** "İptal nedeni: …" for a cancelled record that has one, for tooltips. */
+  function cancelNote(r) {
+    return r.status === "cancelled" && r.cancelReason
+      ? `İptal nedeni: ${r.cancelReason}\n`
+      : "";
   }
   function statusSummary(r, derived = false) {
     return `<span class="badge status-summary status-${esc(statusForDisplay(r.status, r.type))}"${derived ? ' data-meeting-derived-status title="Durum bağlı iş ve takipten hesaplanır."' : ""}><span class="dot"></span>${esc(statusLabel(r.type, r.status))}</span>`;
@@ -2689,7 +2697,38 @@ export async function startMainApp() {
       preventScroll: true,
     });
   }
-  function setRecordStatus(id, status) {
+  const outcomePrompt = createOutcomePrompt();
+  /**
+   * Cancelling asks "Neden?" and closing a waiting topic "Ne oldu?", both
+   * optional: an empty Enter goes ahead, Escape or a click away changes
+   * nothing. `anchor` is the control the question appears under; `onDone`
+   * runs after the change is saved.
+   */
+  function setRecordStatus(id, status, { anchor = null, onDone } = {}) {
+    const record = state.records.find((r) => r.id === id);
+    const asks =
+      record &&
+      record.status !== status &&
+      (status === "cancelled" ||
+        (record.type === "waiting" &&
+          status === "completed" &&
+          active(record)));
+    if (asks) {
+      const trigger = anchor || statusMenuTrigger;
+      closeStatusMenu();
+      outcomePrompt.open({
+        anchor: trigger,
+        label: status === "cancelled" ? "Neden?" : "Ne oldu?",
+        action: status === "cancelled" ? "İptal et" : "Konuyu kapat",
+        onConfirm: (text) => {
+          if (applyRecordStatus(id, status, text)) onDone?.();
+        },
+      });
+      return;
+    }
+    if (applyRecordStatus(id, status)) onDone?.();
+  }
+  function applyRecordStatus(id, status, outcome = "") {
     const record = state.records.find((r) => r.id === id);
     if (record?.type === "meeting") {
       try {
@@ -2713,23 +2752,48 @@ export async function startMainApp() {
     if (record.status === status) {
       if (record.type === "daily" && status === "waiting")
         waitingDetails?.open(id);
-      return;
+      return false;
     }
-    const saved = saveRecords(
-      state.records.map((r) =>
-        r.id === id
-          ? {
-              ...r,
-              status,
-              ...(r.type === "daily" ? { blocked: false } : {}),
-              updatedAt: new Date().toISOString(),
-            }
-          : r,
-      ),
-      "Durum güncelleme",
-    );
+    const now = new Date().toISOString();
+    let next = record;
+    try {
+      // What happened when a waiting topic closes is its last follow-up.
+      if (outcome && record.type === "waiting" && status === "completed")
+        next = appendFollowUp(
+          record,
+          {
+            id: crypto.randomUUID(),
+            date: today(),
+            note: `Kapandı: ${outcome}`,
+            nextFollowUpDate: "",
+          },
+          { today: today(), updatedAt: now },
+        );
+    } catch (error) {
+      toast(error.message, true);
+      return false;
+    }
+    const { cancelReason: _previousReason, ...rest } = next;
+    const changed = {
+      ...rest,
+      status,
+      ...(status === "cancelled" && outcome ? { cancelReason: outcome } : {}),
+      ...(record.type === "daily" ? { blocked: false } : {}),
+      updatedAt: now,
+    };
+    let saved;
+    try {
+      saved = saveRecords(
+        state.records.map((r) => (r.id === id ? changed : r)),
+        "Durum güncelleme",
+      );
+    } catch (error) {
+      toast(error.message, true);
+      return false;
+    }
     if (saved && record.type === "daily" && status === "waiting")
       waitingDetails?.open(id);
+    return Boolean(saved);
   }
   let statusMenuTrigger = null;
   function closeStatusMenu() {
@@ -3853,6 +3917,22 @@ export async function startMainApp() {
         const neighbour = (
           row?.nextElementSibling || row?.previousElementSibling
         )?.dataset.promptRecord;
+        const afterReview = () => {
+          renderPlanningPrompt();
+          // Keep the keyboard in the list: move to the next job left to review.
+          const dialog = document.querySelector("#planning-prompts-dialog");
+          const stays = dialog.querySelector(
+            `[data-prompt-record="${CSS.escape(id)}"] [data-review="keep"]`,
+          );
+          (
+            stays ||
+            (neighbour &&
+              dialog.querySelector(
+                `[data-prompt-record="${CSS.escape(neighbour)}"] [data-review="keep"]`,
+              )) ||
+            dialog.querySelector(".modal-footer .btn.primary")
+          )?.focus({ preventScroll: true });
+        };
         if (button.dataset.review === "keep") {
           // Confirming a job is still valid counts as its update.
           if (
@@ -3868,22 +3948,12 @@ export async function startMainApp() {
             toast(
               "İş güncel olarak işaretlendi; 7 gün boyunca listede görünmez.",
             );
+          afterReview();
         } else if (["completed", "cancelled"].includes(button.dataset.review))
-          setRecordStatus(id, button.dataset.review);
-        renderPlanningPrompt();
-        // Keep the keyboard in the list: move to the next job left to review.
-        const dialog = document.querySelector("#planning-prompts-dialog");
-        const stays = dialog.querySelector(
-          `[data-prompt-record="${CSS.escape(id)}"] [data-review="keep"]`,
-        );
-        (
-          stays ||
-          (neighbour &&
-            dialog.querySelector(
-              `[data-prompt-record="${CSS.escape(neighbour)}"] [data-review="keep"]`,
-            )) ||
-          dialog.querySelector(".modal-footer .btn.primary")
-        )?.focus({ preventScroll: true });
+          setRecordStatus(id, button.dataset.review, {
+            anchor: button,
+            onDone: afterReview,
+          });
         break;
       }
       case "planning-prompt-record":
@@ -4088,7 +4158,7 @@ export async function startMainApp() {
       case "quick-complete": {
         const record = state.records.find((r) => r.id === id);
         if (record && active(effectiveRecord(record)))
-          setRecordStatus(id, "completed");
+          setRecordStatus(id, "completed", { anchor: button });
         break;
       }
       case "delete":
@@ -4516,6 +4586,8 @@ export async function startMainApp() {
             updatedAt: new Date().toISOString(),
           })
         : createRecord(input);
+      // A cancel reason belongs to the cancellation; reopening drops it.
+      if (record.status !== "cancelled") delete record.cancelReason;
       if (
         saveRecords(
           existing

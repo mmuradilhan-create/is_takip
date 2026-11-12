@@ -235,7 +235,7 @@ export function createRecord(input = {}) {
     if (type === "daily" && record.workContext === "ad_hoc" && record.parentId)
       throw new Error("Anlık iş bir haftalık hedefe bağlanamaz.");
   }
-  for (const key of ["projectCode", "blockReason"])
+  for (const key of ["projectCode", "blockReason", "cancelReason"])
     if (Object.hasOwn(input, key))
       record[key] = normalizeDetailText(input[key], key);
   if (Object.hasOwn(input, "waitingReason"))

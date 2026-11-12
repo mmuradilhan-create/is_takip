@@ -99,6 +99,12 @@ test("review suggestions are answered in place: still valid, complete or cancel,
   await expect(row("finish").locator('[data-review="keep"]')).toBeFocused();
   await row("finish").locator('[data-review="completed"]').click();
   await row("drop").locator('[data-review="cancelled"]').click();
+  // Cancelling asks why; the reason is optional and Enter goes ahead.
+  const prompt = page.locator("#planning-prompts-dialog #outcome-prompt");
+  await expect(prompt.locator("label")).toHaveText("Neden?");
+  await expect(prompt.locator("input")).toBeFocused();
+  await prompt.locator("input").fill("Proje durduruldu");
+  await page.keyboard.press("Enter");
   await expect(page.locator("#planning-prompts-dialog .soft-empty")).toHaveText(
     "Burada planlanacak kayıt kalmadı.",
   );
@@ -111,6 +117,7 @@ test("review suggestions are answered in place: still valid, complete or cancel,
   expect(find("keep").status).toBe("planned");
   expect(find("finish").status).toBe("completed");
   expect(find("drop").status).toBe("cancelled");
+  expect(find("drop").cancelReason).toBe("Proje durduruldu");
   expect(saved.odak.history.map((entry) => entry.label)).toEqual([
     "İşi gözden geçirme",
     "Durum güncelleme",

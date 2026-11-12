@@ -1,0 +1,159 @@
+/* The optional "Neden?" / "Ne oldu?" line, styled like the status menu. */
+.outcome-prompt {
+  position: fixed;
+  inset: auto;
+  width: 300px;
+  max-width: calc(100vw - 16px);
+  margin: 0;
+  padding: 10px;
+  border: 1px solid #dce5d9;
+  border-radius: 12px;
+  background: #fff;
+  color: #253833;
+  box-shadow:
+    0 10px 36px #173d2926,
+    0 2px 6px #173d2910;
+}
+
+.outcome-prompt-form {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+}
+
+.outcome-prompt-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.outcome-prompt-heading label {
+  color: #3d5a45;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.outcome-prompt-close {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #6b7e64;
+  cursor: pointer;
+}
+
+.outcome-prompt-close:hover {
+  background: #edf3e8;
+}
+
+.outcome-prompt-close svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.outcome-prompt-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px;
+}
+
+.outcome-prompt-row input {
+  min-width: 0;
+  height: 32px;
+  margin: 0;
+  padding: 0 9px;
+  border: 1px solid #cfdcc8;
+  border-radius: 8px;
+  background: #fbfcf9;
+  color: #294735;
+  font: inherit;
+  font-size: 12px;
+  cursor: text;
+}
+
+.outcome-prompt-row input:focus {
+  outline: none;
+  border-color: #87b89d;
+  box-shadow: 0 0 0 2px #d7e9dd;
+}
+
+.outcome-prompt-confirm {
+  height: 32px;
+  margin: 0;
+  padding: 0 12px;
+  border: 1px solid #1f5a45;
+  border-radius: 8px;
+  background: #1f5a45;
+  color: #fff;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.outcome-prompt-confirm:hover {
+  background: #184a39;
+}
+
+[data-theme="dark"] .outcome-prompt {
+  border-color: #3d4249;
+  background: #202226;
+  color: #e9eaec;
+}
+
+[data-theme="dark"] .outcome-prompt-heading label {
+  color: #cfe3d4;
+}
+
+[data-theme="dark"] .outcome-prompt-close {
+  color: #b7bbc2;
+}
+
+[data-theme="dark"] .outcome-prompt-close:hover {
+  background: #2a2d32;
+}
+
+[data-theme="dark"] .outcome-prompt-row input {
+  border-color: #3d4249;
+  background: #111214;
+  color: #e9eaec;
+}
+
+[data-theme="dark"] .outcome-prompt-row input:focus {
+  border-color: #4f7a5c;
+  box-shadow: 0 0 0 2px #24382b;
+}
+
+[data-theme="dark"] .outcome-prompt-confirm {
+  border-color: #3f7d5c;
+  background: #2f6a49;
+}
+
+/* Where a cancelled goal says why. */
+.goal-panel-cancel-reason {
+  margin: 0 0 12px;
+  padding: 8px 10px;
+  border-left: 2px solid #d9c3bf;
+  border-radius: 0 8px 8px 0;
+  background: #faf4f2;
+  color: #5d4a46;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+[data-theme="dark"] .goal-panel-cancel-reason {
+  border-color: #6d4a45;
+  background: #2a2120;
+  color: #e3cfcb;
+}

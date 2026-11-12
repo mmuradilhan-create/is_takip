@@ -600,6 +600,8 @@ test("closed waiting topics show plain durations while preserving original count
   await other.goto("/");
   await list(other);
   await row(other).locator('[data-action="quick-complete"]').click();
+  // Closing asks "Ne oldu?"; an empty Enter goes ahead.
+  await other.keyboard.press("Enter");
   await other.locator('[data-action="list-scope"][data-scope="all"]').click();
   const age = row(other).locator(".waiting-age");
   await expect(age).toHaveText("10 gün");
@@ -635,6 +637,7 @@ test("closed waiting topics show plain durations while preserving original count
   await expect(age).toHaveText("12 gün");
   await expect(age).toHaveAttribute("data-waiting-age-kind", "live");
   await row(other).locator('[data-action="quick-complete"]').click();
+  await other.keyboard.press("Enter");
   await expect(age).toHaveText("12 gün");
   await expect(age).toHaveAttribute("data-waiting-age-kind", "closure");
   await expect(detailAge).toHaveText("12 gün bekledi");

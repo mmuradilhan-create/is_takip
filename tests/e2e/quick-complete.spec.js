@@ -147,6 +147,8 @@ test("meeting status closure and waiting quick closure use their own terminal ca
           exact: true,
         })
         .click();
+      // Closing asks "Ne oldu?"; an empty Enter goes ahead.
+      await page.keyboard.press("Enter");
     }
     await expect(row(page, original.id)).toHaveCount(0);
     await selectListStatus(page, "completed");

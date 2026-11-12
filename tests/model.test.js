@@ -155,3 +155,17 @@ test("transferred and cancelled work is excluded from active and overdue totals"
     /geçerli bir sayı/,
   );
 });
+
+test("a cancel reason is kept trimmed, limited to 1000 characters and absent by default", () => {
+  const base = { title: "İptal edilecek iş", status: "cancelled" };
+  assert.equal(Object.hasOwn(createRecord(base), "cancelReason"), false);
+  assert.equal(
+    createRecord({ ...base, cancelReason: "  Müşteri vazgeçti  " })
+      .cancelReason,
+    "Müşteri vazgeçti",
+  );
+  assert.throws(
+    () => createRecord({ ...base, cancelReason: "x".repeat(1001) }),
+    /İptal nedeni en fazla 1000 karakter/,
+  );
+});

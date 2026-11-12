@@ -373,10 +373,7 @@ test("sidebar working notes keep idle compact and inline finish controls bounded
         })),
         buttons: [...nav.querySelectorAll("button[data-view]")].map(
           (button) => {
-            const node = [...button.childNodes].find(
-              (child) =>
-                child.nodeType === Node.TEXT_NODE && child.textContent.trim(),
-            );
+            const node = button.querySelector(".nav-text").firstChild;
             const range = document.createRange();
             range.selectNodeContents(node);
             const style = getComputedStyle(button);
@@ -593,7 +590,8 @@ test("sidebar working notes keep idle compact and inline finish controls bounded
     { width: 1536, height: 864 },
     { width: 1280, height: 700 },
     { width: 1280, height: 400 },
-    { width: 850, height: 480 },
+    // Narrower windows use the icon rail (see rail-journal-155).
+    { width: 1200, height: 480 },
   ].entries()) {
     await page.setViewportSize(viewport);
     await navigate(page, "dashboard");

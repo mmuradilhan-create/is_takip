@@ -582,8 +582,6 @@ test("filters remain one reachable row beside a fixed native sort icon across ev
         );
         await expect(label.locator("svg")).toHaveCount(1);
         const geometry = await label.evaluate((element) => {
-          // Below 960px wide the page keeps its width and scrolls sideways,
-          // so the sort icon is reached by scrolling rather than squeezed.
           element.scrollIntoView({ block: "nearest", inline: "nearest" });
           const box = element.getBoundingClientRect();
           const bar = element
@@ -678,14 +676,10 @@ test("filters remain one reachable row beside a fixed native sort icon across ev
           `geometry-${type}-old`,
           `geometry-${type}-new`,
         ]);
-        // A normal-height window narrower than 960px keeps a 960px page.
+        // No window ever scrolls sideways.
         expect(
           await page.evaluate(
-            () =>
-              document.documentElement.scrollWidth <=
-              (innerWidth > 760 && innerWidth < 960 && innerHeight > 650
-                ? 960
-                : innerWidth),
+            () => document.documentElement.scrollWidth <= innerWidth,
           ),
         ).toBe(true);
         expect(await saved(page)).toBe(before);
@@ -709,14 +703,10 @@ test("filters remain one reachable row beside a fixed native sort icon across ev
         await expectSingleFilterRow(focusFilters);
         expect(await saved(page)).toBe(before);
       }
-      // The overview keeps a 1200px format in narrower normal-height windows.
+      // The overview never scrolls sideways either.
       expect(
         await page.evaluate(
-          () =>
-            document.documentElement.scrollWidth <=
-            (innerWidth > 760 && innerWidth < 1200 && innerHeight > 650
-              ? 1200
-              : innerWidth),
+          () => document.documentElement.scrollWidth <= innerWidth,
         ),
       ).toBe(true);
     }

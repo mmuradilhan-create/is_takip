@@ -347,10 +347,12 @@ test("the header calendar works from dashboards and lists without navigation, re
   }
   await page.setViewportSize({ width: 1024, height: 768 });
   await page.locator('#nav [data-view="dashboard"]').click();
-  // A narrow window keeps the overview's 1200px format and scrolls sideways.
-  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(
-    1200,
-  );
+  // A narrow window keeps the overview without sideways scrolling.
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
   const notes = page.locator(".dashboard-notes-panel");
   await expect(notes).toBeVisible();
   await notes.scrollIntoViewIfNeeded();

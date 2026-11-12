@@ -226,6 +226,7 @@ export async function startMainApp() {
   const desktopMode = location.hash.split("?")[0] === "#desktop";
   const paths = {
     undo: "m9 14-5-5 5-5M4 9h10a6 6 0 0 1 0 12h-1",
+    notes: "M9 4h6M8 3h8v2h3v16H5V5h3V3Zm1 8h5m-5 4h3",
     widget: "M3 4h18v16H3zM12 12h7v6h-7z",
     trash: "M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7m4-7v7",
     settings:
@@ -2113,17 +2114,19 @@ export async function startMainApp() {
       : "";
     return `<section class="panel">${planningPeriodBar()}<div class="list-controls-bar">${listToolbar()}<div class="filters">${contextFilter}${statusFilter}${priorityFilter}${dateFilter}${hasListFilters() ? `<button type="button" class="clear-filters" data-action="clear-filters" aria-label="Liste filtrelerini temizle">${icon("close")}Temizle</button>` : ""}<span class="result-count">${state.search ? `“${esc(state.search)}” için ` : ""}${page.total} sonuç</span></div>${listSortControl()}</div>${contextBanner}${state.view === "daily" && state.listScope !== "completed" && pendingGoalLinks.length ? `<div class="link-warning">${icon("link")}<span>${pendingGoalLinks.length} açık işin hedef bağlantısı eksik.</span><button type="button" class="text-btn" data-action="unlinked">${state.onlyUnlinked ? "Tüm açık işleri göster" : "Bu işleri göster"}</button></div>` : ""}${state.view === "weekly" && state.status === "transferred" ? '<p class="weekly-archive-note">Eski hafta aktarımları. İlerleme ve bağlı işler bu kayıtlarda korunur.</p>' : ""}${planningBacklog()}${["weekly", "monthly"].includes(state.view) && !records.length ? planningEmpty() : table(records)}${listPagination(page)}<button class="add-inline" data-action="new">${icon("plus")}Yeni kayıt ekle</button></section>`;
   }
+  const navCount = (count) =>
+    `<span class="count${count ? "" : " is-zero"}">${count}</span>`;
   function render() {
     renderedCalendarDay = today();
     applyPreferences();
     updateUndoButton();
     document.querySelector("#nav").innerHTML =
-      `<button data-action="view" data-view="dashboard" class="${state.view === "dashboard" ? "active" : ""}" ${state.view === "dashboard" ? 'aria-current="page"' : ""}>${icon("grid")}Genel bakış</button><div class="nav-separator"></div>${Object.entries(
+      `<button data-action="view" data-view="dashboard" title="Genel bakış" class="${state.view === "dashboard" ? "active" : ""}" ${state.view === "dashboard" ? 'aria-current="page"' : ""}>${icon("grid")}<span class="nav-text">Genel bakış</span></button><div class="nav-separator"></div>${Object.entries(
         TYPES,
       )
         .map(
           ([type, value]) =>
-            `<button data-action="view" data-view="${type}" ${type === "weekly" ? 'title="Tüm haftalardaki açık hedefler"' : ""} class="${state.view === type ? "active" : ""}" ${state.view === type ? 'aria-current="page"' : ""}>${icon(typeIcons[type])}${esc(value.label)}<span class="count">${state.records.map(effectiveRecord).filter((r) => r.type === type && active(r)).length}</span></button>`,
+            `<button data-action="view" data-view="${type}" title="${type === "weekly" ? "Tüm haftalardaki açık hedefler" : esc(value.label)}" class="${state.view === type ? "active" : ""}" ${state.view === type ? 'aria-current="page"' : ""}>${icon(typeIcons[type])}<span class="nav-text">${esc(value.label)}</span>${navCount(state.records.map(effectiveRecord).filter((r) => r.type === type && active(r)).length)}</button>`,
         )
         .join("")}`;
     updatePageHeader();
@@ -2859,7 +2862,7 @@ export async function startMainApp() {
     }
   }
 
-  app.innerHTML = `<div class="layout"><div class="mobile-backdrop" data-action="menu"></div><aside class="sidebar"><div class="brand-lockup"><div class="brand"><span class="brand-name" id="brand-name"><span class="brand-accessible-name">ODAK</span><svg class="brand-lettering" viewBox="0 0 200 48" aria-hidden="true"><path fill-rule="evenodd" d="M15 2H29Q42 2 42 15V31Q42 44 29 44H15Q2 44 2 31V15Q2 2 15 2ZM16 11Q12 11 12 16V30Q12 35 16 35H28Q32 35 32 30V16Q32 11 28 11Z"/><path fill-rule="evenodd" d="M51 2H72Q93 2 93 23Q93 44 72 44H51ZM61 11V35H71Q83 35 83 23Q83 11 71 11Z"/><path fill-rule="evenodd" d="M119 2H130L148 44H137L133 34H116L112 44H101ZM119 26H130L124.5 12Z"/><path d="M157 2H167V19L183 2H196L176 23L198 44H184L167 27V44H157Z"/></svg></span></div></div><p class="nav-label">ÇALIŞMA ALANI</p><nav id="nav" class="nav" aria-label="Ana menü"></nav></aside><main class="main"><header class="topbar"><div class="topbar-start"><button type="button" class="mobile-toggle" data-action="menu" aria-label="Menüyü aç" aria-expanded="false">${icon("menu")}</button><div class="page-heading"><h1 id="page-title">Genel bakış</h1></div></div><div class="topbar-right"><div class="search">${icon("search")}<input type="search" id="global-search" placeholder="Kayıtlarında ara…" aria-label="Kayıtlarında ara" autocomplete="off"></div><button type="button" class="btn primary new-record" data-action="new">${icon("plus")}<span>Yeni kayıt</span></button><button type="button" class="btn widget-trigger" data-action="open-widget" aria-label="Widget aç" title="Mini ajandayı aç">${icon("widget")}<span>Widget</span></button><button type="button" class="btn calendar-trigger" data-action="open-calendar" aria-label="Takvimi aç" title="Takvimi aç">${icon("calendar")}<span>Takvim</span></button><span class="today">${icon("calendar")}<span class="today-copy"><time id="topbar-date" class="today-date"></time><time id="topbar-clock" class="today-clock"></time></span></span><button type="button" id="reminder-button" class="icon-btn reminder-trigger" aria-haspopup="dialog" aria-controls="reminder-panel" aria-expanded="false" aria-label="Hatırlatmalar" title="Hatırlatmalar">${bellIcon}<span class="reminder-count" hidden></span></button><button type="button" id="undo-button" class="icon-btn undo-trigger" data-action="undo" aria-label="Geri al" aria-keyshortcuts="Control+Z Meta+Z" title="Geri alınacak işlem yok" disabled>${icon("undo")}</button><button type="button" class="icon-btn settings-trigger" data-action="settings" aria-label="Ayarlar" title="Ayarlar">${icon("settings")}</button></div></header>${storageError || bootstrapNotice ? `<div class="unsaved-warning" role="alert">${esc(storageError || bootstrapNotice)}</div>` : ""}<div class="content" id="content"></div></main></div><dialog class="modal" id="editor" aria-label="Kayıt formu"></dialog><dialog class="modal" id="settings-dialog" aria-label="Ayarlar"></dialog><dialog class="modal" id="workspace-reset-dialog" aria-labelledby="workspace-reset-title" aria-describedby="workspace-reset-description"></dialog><dialog class="modal" id="planning-prompts-dialog" aria-label="Planını netleştir"></dialog><dialog class="modal goal-links-review-dialog" id="goal-links-review-dialog" aria-label="Hedef bağlantılarını gözden geçir"></dialog><div id="status-menu" class="status-menu" popover="auto" role="menu" aria-label="Durum seç"></div>`;
+  app.innerHTML = `<div class="layout"><div class="mobile-backdrop" data-action="menu"></div><aside class="sidebar"><div class="brand-lockup"><div class="brand"><span class="brand-name" id="brand-name"><span class="brand-accessible-name">ODAK</span><svg class="brand-lettering" viewBox="0 0 200 48" aria-hidden="true"><path fill-rule="evenodd" d="M15 2H29Q42 2 42 15V31Q42 44 29 44H15Q2 44 2 31V15Q2 2 15 2ZM16 11Q12 11 12 16V30Q12 35 16 35H28Q32 35 32 30V16Q32 11 28 11Z"/><path fill-rule="evenodd" d="M51 2H72Q93 2 93 23Q93 44 72 44H51ZM61 11V35H71Q83 35 83 23Q83 11 71 11Z"/><path fill-rule="evenodd" d="M119 2H130L148 44H137L133 34H116L112 44H101ZM119 26H130L124.5 12Z"/><path d="M157 2H167V19L183 2H196L176 23L198 44H184L167 27V44H157Z"/></svg></span></div></div><p class="nav-label">ÇALIŞMA ALANI</p><nav id="nav" class="nav" aria-label="Ana menü"></nav><button type="button" class="rail-journal-toggle" data-action="rail-journal" aria-controls="sidebar-work-journal" aria-expanded="false" aria-label="Çalışma notu" title="Çalışma notu">${icon("notes")}<span class="rail-journal-dot" aria-hidden="true"></span></button></aside><main class="main"><header class="topbar"><div class="topbar-start"><button type="button" class="mobile-toggle" data-action="menu" aria-label="Menüyü aç" aria-expanded="false">${icon("menu")}</button><div class="page-heading"><h1 id="page-title">Genel bakış</h1></div></div><div class="topbar-right"><div class="search">${icon("search")}<input type="search" id="global-search" placeholder="Kayıtlarında ara…" aria-label="Kayıtlarında ara" autocomplete="off"></div><button type="button" class="btn primary new-record" data-action="new">${icon("plus")}<span>Yeni kayıt</span></button><button type="button" class="btn widget-trigger" data-action="open-widget" aria-label="Widget aç" title="Mini ajandayı aç">${icon("widget")}<span>Widget</span></button><button type="button" class="btn calendar-trigger" data-action="open-calendar" aria-label="Takvimi aç" title="Takvimi aç">${icon("calendar")}<span>Takvim</span></button><span class="today">${icon("calendar")}<span class="today-copy"><time id="topbar-date" class="today-date"></time><time id="topbar-clock" class="today-clock"></time></span></span><button type="button" id="reminder-button" class="icon-btn reminder-trigger" aria-haspopup="dialog" aria-controls="reminder-panel" aria-expanded="false" aria-label="Hatırlatmalar" title="Hatırlatmalar">${bellIcon}<span class="reminder-count" hidden></span></button><button type="button" id="undo-button" class="icon-btn undo-trigger" data-action="undo" aria-label="Geri al" aria-keyshortcuts="Control+Z Meta+Z" title="Geri alınacak işlem yok" disabled>${icon("undo")}</button><button type="button" class="icon-btn settings-trigger" data-action="settings" aria-label="Ayarlar" title="Ayarlar">${icon("settings")}</button></div></header>${storageError || bootstrapNotice ? `<div class="unsaved-warning" role="alert">${esc(storageError || bootstrapNotice)}</div>` : ""}<div class="content" id="content"></div></main></div><dialog class="modal" id="editor" aria-label="Kayıt formu"></dialog><dialog class="modal" id="settings-dialog" aria-label="Ayarlar"></dialog><dialog class="modal" id="workspace-reset-dialog" aria-labelledby="workspace-reset-title" aria-describedby="workspace-reset-description"></dialog><dialog class="modal" id="planning-prompts-dialog" aria-label="Planını netleştir"></dialog><dialog class="modal goal-links-review-dialog" id="goal-links-review-dialog" aria-label="Hedef bağlantılarını gözden geçir"></dialog><div id="status-menu" class="status-menu" popover="auto" role="menu" aria-label="Durum seç"></div>`;
   document
     .querySelector("#editor")
     .addEventListener("close", restoreMeetingRoute);
@@ -3471,6 +3474,70 @@ export async function startMainApp() {
     const panel = entry && document.querySelector(entry[0]);
     return Boolean(panel?.open && panel.dataset[entry[1]] === button.dataset.id);
   };
+  // Narrow desktop windows show the menu as an icon rail; its work card
+  // opens beside the rail from one button (see window-min-size.css).
+  const railQuery = window.matchMedia(
+    "(min-width: 761px) and (max-width: 1199px)",
+  );
+  const railSidebar = document.querySelector(".sidebar");
+  const railToggle = railSidebar.querySelector(".rail-journal-toggle");
+  function setRailJournal(open, { focus = false } = {}) {
+    if (open && !railQuery.matches) open = false;
+    railSidebar.dataset.railJournal = open ? "open" : "closed";
+    railToggle.setAttribute("aria-expanded", String(open));
+    if (open && focus)
+      (
+        document.querySelector("#sidebar-work-journal textarea:not([hidden])") ||
+        document.querySelector("#sidebar-work-journal button")
+      )?.focus({ preventScroll: true });
+  }
+  setRailJournal(false);
+  railQuery.addEventListener("change", () => setRailJournal(false));
+  document.addEventListener(
+    "pointerdown",
+    (event) => {
+      if (railSidebar.dataset.railJournal !== "open") return;
+      if (
+        event.target.closest?.("#sidebar-work-journal, .rail-journal-toggle") ||
+        event.target.closest?.("dialog[open], [popover]")
+      )
+        return;
+      setRailJournal(false);
+    },
+    true,
+  );
+  document.addEventListener("keydown", (event) => {
+    if (
+      event.key === "Escape" &&
+      railSidebar.dataset.railJournal === "open" &&
+      !document.querySelector("dialog[open]")
+    ) {
+      setRailJournal(false);
+      railToggle.focus({ preventScroll: true });
+    }
+  });
+  // Starting or finishing work from a list brings the card into view.
+  const railPhaseWatch = new MutationObserver(() => {
+    const phase = document.querySelector("#sidebar-work-journal")?.dataset.phase;
+    railSidebar.dataset.railPhase = phase || "idle";
+    if (railQuery.matches && (phase === "running" || phase === "finish"))
+      setRailJournal(true);
+  });
+  const watchRailJournal = () => {
+    const journal = document.querySelector("#sidebar-work-journal");
+    if (journal) {
+      railPhaseWatch.observe(journal, {
+        attributes: true,
+        attributeFilter: ["data-phase"],
+      });
+      railSidebar.dataset.railPhase = journal.dataset.phase || "idle";
+    }
+    return Boolean(journal);
+  };
+  if (!watchRailJournal())
+    new MutationObserver((records, observer) => {
+      if (watchRailJournal()) observer.disconnect();
+    }).observe(railSidebar, { childList: true });
   trackTriggerToggle({
     doc: document,
     // Record panels close through their own API so their state resets.
@@ -3673,6 +3740,12 @@ export async function startMainApp() {
         menu.querySelector("button")?.focus({ preventScroll: true });
         break;
       }
+      case "rail-journal":
+        event.preventDefault();
+        setRailJournal(railSidebar.dataset.railJournal !== "open", {
+          focus: true,
+        });
+        break;
       case "history-revert":
         event.preventDefault();
         await revertHistoryAt(Number(button.dataset.historyIndex), button);

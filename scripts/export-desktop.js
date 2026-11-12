@@ -52,9 +52,10 @@ yanında görünür. Ekran bu boyuta yetmiyorsa ana pencere büyütülmüş aç�
 Baslik cubuguna cift tiklayinca pencere 1440 genisligini korur; yalniz
 yuksekligi ekrana sigacak kadar kisalir, Takvim yine yan tarafta kalir.
 Sonra elle büyütmek veya boyutlandırmak serbesttir. Widget 380x420 açılır.
-Ana pencere 960 pikselden fazla daraltılırsa sayfa sıkışmaz, yana kayar;
-1280 pikselden dar pencerede Takvim Güncel işler'in altına iner. Widget
-300x320 pikselden küçültülürse içerik kaydırılarak okunur.
+Uygulama hicbir boyutta yana kaymaz. 1200 pikselden dar pencerede sol menu
+simge seridine iner; Calisma notu tek dugmeden menunun yaninda acilir.
+Takvim her genislikte Guncel isler'in yaninda kalir. Widget daralinca da yana
+kaymaz; 320 pikselden kisa widget asagi dogru kaydirilir.
 Ek bir kurulum veya yönetici izni gerekmez.
 Bu bir .exe uygulaması değildir; Chrome motoru ve mevcut Chrome profili
 kullanılır. Ayrı bir tarayıcı profili oluşturulmaz ve güvenlik ayarları

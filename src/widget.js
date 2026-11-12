@@ -36,10 +36,12 @@ export const widgetDocumentHtml = `<!doctype html>
     * { box-sizing:border-box; }
     html,body { width:100%; height:100%; margin:0; overflow:hidden; }
     /* A smaller window scrolls instead of squeezing the widget. */
-    @media (max-width:299px), (max-height:319px) { html,body { overflow:auto; } }
+    @media (max-height:319px) { html,body { overflow-y:auto; overflow-x:hidden; } }
+    /* A narrow widget never scrolls sideways: the header drops its words. */
+    @media (max-width:299px) { .widget-live { display:none; } .widget-view-toggle > span { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); } .widget-view-toggle { padding-inline:7px; } }
     button { font:inherit; cursor:pointer; }
     button:focus-visible { outline:3px solid #87b89d; outline-offset:2px; }
-    .widget-shell { display:flex; flex-direction:column; gap:9px; width:100%; height:100%; height:100dvh; min-width:300px; min-height:320px; padding:12px; }
+    .widget-shell { display:flex; flex-direction:column; gap:9px; width:100%; height:100%; height:100dvh; min-width:0; min-height:320px; padding:12px; }
     .widget-header { display:flex; align-items:center; justify-content:space-between; gap:12px; flex:0 0 auto; }
     .widget-header-tools { display:flex; align-items:center; gap:8px; }
     h1 { margin:0; color:#174d43; font-size:20px; line-height:1.2; font-weight:850; letter-spacing:2px; }

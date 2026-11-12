@@ -27,55 +27,51 @@ async function seed(page) {
 const pageWidth = (page) =>
   page.evaluate(() => document.documentElement.scrollWidth);
 
-test("a narrow main window keeps a 960px page and scrolls sideways instead of squeezing", async ({
+const overflow = (page) =>
+  page.evaluate(
+    () =>
+      document.documentElement.scrollWidth -
+      document.documentElement.clientWidth,
+  );
+
+test("narrow desktop windows never scroll sideways: the menu becomes an icon rail", async ({
   page,
 }) => {
   await seed(page);
-  await page.setViewportSize({ width: 860, height: 700 });
+  await page.setViewportSize({ width: 1440, height: 800 });
   await page.goto("/");
-  await page.locator('#nav [data-view="daily"]').click();
-  await expect(page.locator(".task-name").first()).toBeVisible();
-  expect(await pageWidth(page)).toBe(960);
-  expect(
-    await page
-      .locator(".task-name")
-      .first()
-      .evaluate((item) => item.getBoundingClientRect().width),
-  ).toBeGreaterThan(120);
+  const sidebar = page.locator(".sidebar");
+  const daily = page.locator('#nav [data-view="daily"]');
+  await expect(daily.locator(".nav-text")).toBeVisible();
+  expect(Math.round((await sidebar.boundingBox()).width)).toBe(238);
 
-  // The menu moves away with the page; the top bar still stays on top.
-  await page.evaluate(() => window.scrollTo(100, 300));
-  await expect
-    .poll(() =>
-      page
-        .locator(".sidebar")
-        .evaluate((item) => Math.round(item.getBoundingClientRect().left)),
-    )
-    .toBe(-100);
-  expect(
-    await page
-      .locator(".topbar")
-      .evaluate((item) => Math.round(item.getBoundingClientRect().top)),
-  ).toBe(0);
-
-  // Wide and phone-sized windows keep their own layouts.
-  await page.evaluate(() => window.scrollTo(0, 0));
-  const overflow = () =>
-    page.evaluate(
-      () =>
-        document.documentElement.scrollWidth -
-        document.documentElement.clientWidth,
-    );
-  await page.setViewportSize({ width: 1024, height: 700 });
-  await expect.poll(overflow).toBeLessThanOrEqual(0);
+  for (const width of [1199, 1000, 900, 800, 761]) {
+    await page.setViewportSize({ width, height: 800 });
+    await expect
+      .poll(async () => Math.round((await sidebar.boundingBox()).width))
+      .toBe(64);
+    // The name stays for screen readers and as the tooltip.
+    await expect(daily).toHaveAccessibleName(/Günlük işler/);
+    await expect(daily).toHaveAttribute("title", "Günlük işler");
+    expect(
+      await daily
+        .locator(".nav-text")
+        .evaluate((item) => item.getBoundingClientRect().width),
+    ).toBeLessThanOrEqual(1);
+    for (const view of ["dashboard", "daily", "waiting"]) {
+      await page.locator(`#nav [data-view="${view}"]`).click();
+      await expect
+        .poll(() => overflow(page), `${view} at ${width}`)
+        .toBeLessThanOrEqual(0);
+    }
+  }
+  // Phones keep their own drawer.
   await page.setViewportSize({ width: 700, height: 700 });
-  await expect.poll(overflow).toBeLessThanOrEqual(0);
-  // Short windows keep their compact layout without sideways scrolling.
-  await page.setViewportSize({ width: 850, height: 480 });
-  await expect.poll(overflow).toBeLessThanOrEqual(0);
+  await expect(page.getByRole("button", { name: "Menüyü aç" })).toBeVisible();
+  await expect.poll(() => overflow(page)).toBeLessThanOrEqual(0);
 });
 
-test("the overview never puts the calendar under current work on a desktop; narrow windows keep a 1200px overview", async ({
+test("the overview keeps the calendar beside current work at every desktop width without sideways scrolling", async ({
   page,
 }) => {
   await seed(page);
@@ -84,14 +80,13 @@ test("the overview never puts the calendar under current work on a desktop; narr
   const focus = page.locator(".dashboard-top-row .dashboard-main-column");
   const calendar = page.locator(".dashboard-top-row .dashboard-followups");
   await expect(focus.locator(".focus-row").first()).toBeVisible();
-  for (const width of [1440, 1260, 1200, 1150, 1000, 860]) {
+  for (const width of [1440, 1260, 1200, 1150, 1000, 900, 860, 800, 761]) {
     await page.setViewportSize({ width, height: 800 });
     await expect
       .poll(async () => (await calendar.boundingBox()).y)
       .toBe((await focus.boundingBox()).y);
-    if (width < 1200) expect(await pageWidth(page)).toBe(1200);
-    else expect(await pageWidth(page)).toBeLessThanOrEqual(width);
-    // Titles keep their room beside the status, priority and date boxes.
+    expect(await overflow(page)).toBeLessThanOrEqual(0);
+    // Titles keep readable room beside the status and date boxes.
     expect(
       await focus
         .locator(".focus-row")
@@ -102,11 +97,12 @@ test("the overview never puts the calendar under current work on a desktop; narr
               .querySelector(".focus-title")
               .parentElement.getBoundingClientRect().width,
         ),
-    ).toBeGreaterThan(150);
+      `title room at ${width}`,
+    ).toBeGreaterThan(80);
   }
 });
 
-test("the widget stops at 300 x 320 and scrolls in a smaller window", async ({
+test("a small widget never scrolls sideways; below 320px tall it scrolls down", async ({
   page,
 }) => {
   await seed(page);
@@ -119,15 +115,31 @@ test("the widget stops at 300 x 320 and scrolls in a smaller window", async ({
       const box = document
         .querySelector(".widget-shell")
         .getBoundingClientRect();
+      const body = getComputedStyle(document.body);
       return {
         width: Math.round(box.width),
         height: Math.round(box.height),
-        overflow: getComputedStyle(document.body).overflow,
+        overflowX: body.overflowX,
+        overflowY: body.overflowY,
+        sideways: document.body.scrollWidth > innerWidth,
       };
     });
-  expect(await size()).toEqual({ width: 300, height: 320, overflow: "auto" });
+  expect(await size()).toEqual({
+    width: 240,
+    height: 320,
+    overflowX: "hidden",
+    overflowY: "auto",
+    sideways: false,
+  });
+  // The header drops its words instead of pushing the pin out of view.
+  await expect(page.locator(".widget-live")).toBeHidden();
+  await expect(page.locator("#widget-pin")).toBeInViewport({ ratio: 1 });
   await page.setViewportSize({ width: 380, height: 420 });
-  await expect
-    .poll(size)
-    .toEqual({ width: 380, height: 420, overflow: "hidden" });
+  await expect.poll(size).toEqual({
+    width: 380,
+    height: 420,
+    overflowX: "hidden",
+    overflowY: "hidden",
+    sideways: false,
+  });
 });

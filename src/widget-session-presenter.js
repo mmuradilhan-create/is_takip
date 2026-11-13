@@ -60,50 +60,45 @@ const setAttr = (element, name, value) => {
 };
 
 /**
- * The folded widget's one line. Working: the work, its time and a pause or
- * resume button. Idle: the next work with a start button and today's counts.
+ * The folded widget's row of symbols: a dot for the phase (its tooltip names
+ * the work) and, while there is work, a pause or resume button. Idle, the
+ * strip offers nothing to start: a name nobody sees should not be started.
  */
-function renderStrip(document, summary, idle) {
+function renderStrip(document, summary) {
   const line = document.getElementById("widget-strip-line");
   if (!line) return;
   const text = line.querySelector(".widget-strip-text");
   const meta = document.getElementById("widget-strip-meta");
   const action = document.getElementById("widget-strip-action");
   line.dataset.phase = summary?.status || "idle";
-  let kind = "";
-  let target = "";
-  let label = "";
-  if (summary) {
-    setText(text, summary.title);
-    setAttr(line, "title", `${summary.title} · Widget'ı büyüt`);
-    // Work started without time keeping has no clock worth showing.
-    setText(meta, summary.tracked ? summary.time : "");
-    meta?.classList.remove("is-overdue");
-    kind = summary.status === "running" ? "pause" : "resume";
-    target = summary.recordId;
-    label =
-      summary.status === "running"
-        ? `${summary.title}: duraklat`
-        : `${summary.title}: çalışmaya devam et`;
-  } else {
-    // The next work's name comes first; beside it only late work is counted.
-    const counts = [];
-    if (idle?.todayCount && !idle?.next)
-      counts.push(`Bugün ${idle.todayCount}`);
-    if (idle?.overdueCount) counts.push(`${idle.overdueCount} geciken`);
-    setText(meta, counts.join(" · "));
-    meta?.classList.toggle("is-overdue", Boolean(idle?.overdueCount));
-    if (idle?.next) {
-      setText(text, `Sıradaki: ${idle.next.title}`);
-      setAttr(line, "title", `Sıradaki: ${idle.next.title} · Widget'ı büyüt`);
-      kind = "start";
-      target = idle.next.id;
-      label = `${idle.next.title}: çalışmaya başla`;
-    } else {
-      setText(text, "Çalışılan iş yok");
-      setAttr(line, "title", "Widget'ı büyüt");
-    }
-  }
+  setText(text, summary?.title || "Çalışılan iş yok");
+  // Work started without time keeping has no clock worth showing.
+  setText(meta, summary?.tracked ? summary.time : "");
+  setAttr(
+    line,
+    "title",
+    summary
+      ? `${summary.phase}: ${summary.title} · Widget'ı büyüt`
+      : "Çalışılan iş yok · Widget'ı büyüt",
+  );
+  setAttr(
+    line,
+    "aria-label",
+    summary
+      ? `${summary.phase}: ${summary.title}. Widget'ı büyüt`
+      : "Çalışılan iş yok. Widget'ı büyüt",
+  );
+  const kind = summary
+    ? summary.status === "running"
+      ? "pause"
+      : "resume"
+    : "";
+  const target = summary?.recordId || "";
+  const label = summary
+    ? summary.status === "running"
+      ? `${summary.title}: duraklat`
+      : `${summary.title}: çalışmaya devam et`
+    : "";
   if (!action) return;
   action.hidden = !kind;
   if (!kind) return;
@@ -113,15 +108,11 @@ function renderStrip(document, summary, idle) {
   }
   action.dataset.id = target;
   setAttr(action, "aria-label", label);
-  setAttr(
-    action,
-    "title",
-    kind === "pause" ? "Duraklat" : kind === "resume" ? "Devam et" : "Başlat",
-  );
+  setAttr(action, "title", kind === "pause" ? "Duraklat" : "Devam et");
 }
 
-export function renderWidgetSession(document, summary, idle = null) {
-  renderStrip(document, summary, idle);
+export function renderWidgetSession(document, summary) {
+  renderStrip(document, summary);
   const strip = document.getElementById("widget-session");
   strip.hidden = !summary;
   if (!summary) {

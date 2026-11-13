@@ -6,7 +6,6 @@ import {
 } from "./widget.js";
 import { createWindowCoordinator } from "./window-coordinator.js";
 import { createWidgetWork } from "./widget-work.js";
-import { widgetAgenda } from "./widget-agenda-model.js";
 import {
   desktopWindowFeatures,
   fitWidgetWindow,
@@ -14,6 +13,7 @@ import {
   windowPinSupported,
   windowSizingMode,
   WIDGET_STRIP_HEIGHT,
+  WIDGET_STRIP_WIDTH,
 } from "./window-size.js";
 import {
   WORK_SESSION_KEY,
@@ -108,14 +108,21 @@ export function startStandaloneWidget() {
     document.title = widgetTitle();
     if (windowSizingMode(window) === "native") return;
     try {
+      // The strip narrows to its symbols with the right edge kept in place,
+      // so the unfold button stays under the pointer.
       if (folded) {
         unfoldedSize = { width: window.outerWidth, height: window.outerHeight };
+        const width =
+          window.outerWidth - window.innerWidth + WIDGET_STRIP_WIDTH;
         window.resizeTo(
-          window.outerWidth,
+          width,
           window.outerHeight - window.innerHeight + WIDGET_STRIP_HEIGHT,
         );
+        window.moveBy(unfoldedSize.width - width, 0);
       } else if (unfoldedSize) {
+        const width = window.outerWidth;
         window.resizeTo(unfoldedSize.width, unfoldedSize.height);
+        window.moveBy(width - unfoldedSize.width, 0);
         unfoldedSize = null;
       }
     } catch {
@@ -181,26 +188,14 @@ export function startStandaloneWidget() {
   function refreshSession() {
     if (stopped) return;
     let summary = null;
-    let idle = null;
     if (!failed) {
       try {
         summary = widgetSessionSummary(records, sessionRaw(), Date.now());
       } catch {
         // Optional session context cannot make the agenda unreadable.
       }
-      if (!summary && folded)
-        try {
-          const agenda = widgetAgenda(records, new Date());
-          idle = {
-            todayCount: agenda.todayCount,
-            overdueCount: agenda.overdueCount,
-            next: work?.next || null,
-          };
-        } catch {
-          /* The strip then only says no work is running. */
-        }
     }
-    renderWidgetSession(document, summary, idle);
+    renderWidgetSession(document, summary);
   }
 
   function showStatus() {
@@ -377,10 +372,8 @@ export function startStandaloneWidget() {
     }
     const stripAction = target.closest("#widget-strip-action");
     if (stripAction) {
-      if (stripAction.dataset.action === "pause") work?.toggle();
-      else if (stripAction.dataset.action === "resume") work?.toggle();
-      else if (stripAction.dataset.action === "start" && stripAction.dataset.id)
-        work?.start(stripAction.dataset.id);
+      if (["pause", "resume"].includes(stripAction.dataset.action))
+        work?.toggle();
       refreshSession();
       return;
     }

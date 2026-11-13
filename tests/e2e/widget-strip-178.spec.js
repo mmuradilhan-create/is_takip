@@ -82,6 +82,7 @@ test("in a browser window the folded widget resizes itself and restores its size
     window.widgetResizeRequests = [];
     window.resizeTo = (width, height) =>
       window.widgetResizeRequests.push({ width, height });
+    window.moveBy = (x, y) => window.widgetResizeRequests.push({ x, y });
   });
   await widget.goto("/#widget");
   await widget.waitForTimeout(800);
@@ -89,14 +90,19 @@ test("in a browser window the folded widget resizes itself and restores its size
   const size = await widget.evaluate(() => ({
     width: window.outerWidth,
     height: window.outerHeight,
+    side: window.outerWidth - window.innerWidth,
     frame: window.outerHeight - window.innerHeight,
   }));
   await widget.locator("#widget-strip").click();
   await expect(widget).toHaveTitle("ODAK · Özet · İnce");
   await widget.locator("#widget-strip").click();
+  // Narrowed to its symbols with the right edge kept, then restored.
+  const narrow = size.side + 196;
   expect(await widget.evaluate(() => window.widgetResizeRequests)).toEqual([
-    { width: size.width, height: size.frame + 44 },
+    { width: narrow, height: size.frame + 44 },
+    { x: size.width - narrow, y: 0 },
     { width: size.width, height: size.height },
+    { x: size.width - size.width, y: 0 },
   ]);
 });
 
@@ -161,7 +167,7 @@ test("work rows show running and paused as a left bar and keep no state backgrou
   ]);
 });
 
-test("the folded strip starts the next work, pauses and resumes it, counts late work and opens for a due reminder", async ({
+test("the folded strip is symbols only: a phase dot naming the work, pause or resume, a due reminder's bell, unfold and pin", async ({
   context,
 }) => {
   await context.clock.setFixedTime(new Date("2026-11-13T09:00:00.000Z"));
@@ -201,26 +207,43 @@ test("the folded strip starts the next work, pauses and resumes it, counts late 
   await widget.locator("#widget-strip").click();
   const line = widget.locator("#widget-strip-line");
   const action = widget.locator("#widget-strip-action");
-  await expect(line.locator(".widget-strip-text")).toHaveText(
-    "Sıradaki: Gecikmiş iş",
+  // Idle: nothing to start from the strip.
+  await expect(action).toBeHidden();
+  await expect(line).toHaveAttribute(
+    "title",
+    "Çalışılan iş yok · Widget'ı büyüt",
   );
-  await expect(widget.locator("#widget-strip-meta")).toHaveText("1 geciken");
-  await expect(action).toHaveAccessibleName("Gecikmiş iş: çalışmaya başla");
-  await action.click();
+  await expect(line.locator(".widget-strip-text")).toBeHidden();
+  await widget.locator("#widget-strip").click();
+  await widget.locator('[data-wb="start"][data-id="late"]').click();
+  await widget.locator("#widget-strip").click();
+  await widget.setViewportSize({ width: 196, height: 44 });
   await expect(line).toHaveAttribute("data-phase", "running");
-  await expect(line.locator(".widget-strip-text")).toHaveText("Gecikmiş iş");
+  await expect(line).toHaveAttribute(
+    "title",
+    "Çalışıyor: Gecikmiş iş · Widget'ı büyüt",
+  );
   await expect(action).toHaveAttribute("title", "Duraklat");
+  expect(
+    await widget.evaluate(() => document.documentElement.scrollWidth),
+  ).toBeLessThanOrEqual(196);
+  for (const id of [
+    "#widget-strip-action",
+    "#widget-reminder-button",
+    "#widget-strip",
+    "#widget-pin",
+  ])
+    await expect(widget.locator(id)).toBeVisible();
   await action.click();
   await expect(line).toHaveAttribute("data-phase", "paused");
   await expect(action).toHaveAttribute("title", "Devam et");
   await action.click();
   await expect(line).toHaveAttribute("data-phase", "running");
-  // Still folded throughout; the due reminder's bell opens the widget.
   await expect(widget).toHaveTitle(/İnce/);
-  const bell = widget.locator("#widget-reminder-button");
-  await expect(bell).toBeVisible();
-  await bell.click();
+  // The due reminder's bell opens the widget.
+  await widget.locator("#widget-reminder-button").click();
   await expect(widget).not.toHaveTitle(/İnce/);
+  await widget.setViewportSize({ width: 380, height: 420 });
   await expect(widget.locator("#widget-reminders")).toBeVisible();
   await expect(widget.locator("#reminder-panel")).toBeHidden();
 });

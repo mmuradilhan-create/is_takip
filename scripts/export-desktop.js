@@ -814,6 +814,13 @@ ayni gorunumu kullanir; hedefler de gunluk islerle ayni kurala uyar. Widget'ta
 tarih duz yazidir, yalniz rengi degisir (bugun kalin amber, 1-3 gun amber,
 gecikmis kirmizi).
 
+SIMGE SERIDI (1.14.3)
+
+Seride kucultulen widget yalniz simgelerden olusur: durum noktasi (uzerine
+gelince isin adi), Duraklat veya Devam et, zamani gelen hatirlatmanin zili,
+buyut ve ustte tut. Bostayken baslat dugmesi yoktur. Pencere sag kenari
+yerinde kalarak daralir; kucultme artik bekletmeden yapilir.
+
 AKICI YAZMA VE WIDGET SERIDI (1.14.2)
 
 Calisma notu yazarken ara verip devam edince takilma ve yildiza basinca

@@ -131,7 +131,6 @@ export function createWidgetWork({
   const reminderList = document.getElementById("widget-reminder-list");
   let reminderSaving = false;
   let bell = null;
-  let nextUp = null;
   const storage = window.localStorage;
 
   let workspace = null;
@@ -735,7 +734,6 @@ export function createWidgetWork({
     const browsing = !working || current.entry.status !== "running";
     const upcoming =
       browsing && !finish ? upcomingWork(records, busy, today) : [];
-    nextUp = upcoming[0] || null;
     upcomingSection.hidden = !upcoming.length;
     setList(
       upcomingList,
@@ -908,11 +906,7 @@ export function createWidgetWork({
     get working() {
       return root.dataset.mode === "working";
     },
-    /** The first of Sıradaki işler, for the folded strip. */
-    get next() {
-      return nextUp ? { id: nextUp.id, title: nextUp.title } : null;
-    },
-    start: (id) => start(id),
+    /** Pause or resume the current work (the folded strip's button). */
     toggle: () => toggleRunning(),
   };
 }

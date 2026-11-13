@@ -2,6 +2,7 @@ import {
   MAIN_VIEWPORT,
   WIDGET_OUTER_FALLBACK,
   WIDGET_STRIP_HEIGHT,
+  WIDGET_STRIP_WIDTH,
   WIDGET_VIEWPORT,
 } from "../src/window-size.js";
 import { TASKBAR_IDS, taskbarIdentityType } from "./taskbar-identity.js";
@@ -48,8 +49,9 @@ public static void SyncPin(IntPtr h) {
   SetWindowPos(h,new IntPtr(requested?-1:-2),0,0,0,0,0x0001|0x0002|0x0010);
 }
 static bool Renderer(IntPtr h,R outer,out R view) { R best=new R(); EnumChildWindows(h,delegate(IntPtr child,IntPtr p) { R r; if(IsWindowVisible(child) && Class(child)=="Chrome_RenderWidgetHostHWND" && GetWindowRect(child,out r) && r.W>0 && r.H>0 && r.L>=outer.L && r.T>=outer.T && r.Rt<=outer.Rt && r.B<=outer.B && (long)r.W*r.H>(long)best.W*best.H) best=r; return true; },IntPtr.Zero); view=best; return best.W>0 && best.H>0; }
-// The strip keeps the window's width and place; its height fits the one-line
-// page. Leaving the strip restores the exact size it had before.
+// The strip is a small row of symbols: the window shrinks to it with its right
+// edge in place, so the unfold button stays under the pointer. Leaving the
+// strip restores the exact size, again from the same right edge.
 static readonly Dictionary<IntPtr,R> StripRestore=new Dictionary<IntPtr,R>();
 public static void ForgetStrip(IntPtr h) { StripRestore.Remove(h); }
 public static void SyncStrip(IntPtr h) {
@@ -62,12 +64,17 @@ public static void SyncStrip(IntPtr h) {
   if(previous==IntPtr.Zero) return;
   try {
     R outer; if(!GetWindowRect(h,out outer)) return;
-    if(!strip) { StripRestore.Remove(h); SetWindowPos(h,IntPtr.Zero,0,0,saved.W,saved.H,0x0002|0x0004|0x0010); return; }
+    if(!strip) { StripRestore.Remove(h); SetWindowPos(h,IntPtr.Zero,outer.Rt-saved.W,outer.T,saved.W,saved.H,0x0004|0x0010); return; }
     uint dpi=96; try { dpi=GetDpiForWindow(h); } catch(EntryPointNotFoundException) {} if(dpi==0) dpi=96;
-    R view; int frame=Renderer(h,outer,out view)?outer.H-view.H:(int)Math.Round(40*dpi/96.0);
+    R view; bool measured=Renderer(h,outer,out view);
+    int frame=measured?outer.H-view.H:(int)Math.Round(40*dpi/96.0);
+    int side=measured?outer.W-view.W:(int)Math.Round(16*dpi/96.0);
     int height=frame+(int)Math.Round(${WIDGET_STRIP_HEIGHT}*dpi/96.0);
+    int width=side+(int)Math.Round(${WIDGET_STRIP_WIDTH}*dpi/96.0);
     StripRestore[h]=outer;
-    SetWindowPos(h,IntPtr.Zero,0,0,outer.W,height,0x0002|0x0004|0x0010);
+    SetWindowPos(h,IntPtr.Zero,outer.Rt-width,outer.T,width,height,0x0004|0x0010);
+    // Windows may keep a wider minimum; the right edge still stays put.
+    R shrunk; if(GetWindowRect(h,out shrunk) && shrunk.Rt!=outer.Rt) SetWindowPos(h,IntPtr.Zero,outer.Rt-shrunk.W,shrunk.T,0,0,0x0001|0x0004|0x0010);
   } finally { SetThreadDpiAwarenessContext(previous); }
 }
 class Pending { public string Sample; public long StableSince; public bool Restored; }
@@ -248,10 +255,23 @@ ${native}
   $clock=[Diagnostics.Stopwatch]::StartNew()
   $lastSeen=$clock.ElapsedMilliseconds
   $idleGrace=30000
+  $widgets=@()
+  $alive=[Collections.Generic.HashSet[IntPtr]]::new()
+  $nextSweep=0
   $pinReady.Set()
   $ready.Set()
   while ($true) {
     $now=$clock.ElapsedMilliseconds
+    # Folding, pinning and come-forward requests are answered within 40 ms;
+    # finding windows and taskbar identity run every 400 ms (or every pass
+    # while a new window settles), so a fold no longer waits for them.
+    if ($now -lt $nextSweep -and $settling.Count -eq 0) {
+      foreach ($h in $widgets) { [OdakWidgetBounds]::SyncPin($h); [OdakWidgetBounds]::SyncStrip($h) }
+      foreach ($h in $alive) { [OdakMainBounds]::Raise($h) }
+      Start-Sleep -Milliseconds 40
+      continue
+    }
+    $nextSweep=$now+400
     if ($wake.WaitOne(0)) { $lastSeen=$now; $idleGrace=30000 }
     $alive=[Collections.Generic.HashSet[IntPtr]]::new()
     foreach ($h in @([OdakMainBounds]::Windows($false))) { [void]$alive.Add($h) }
@@ -288,7 +308,7 @@ ${native}
         $exitLock=$false
       }
     }
-    Start-Sleep -Milliseconds 100
+    Start-Sleep -Milliseconds 40
   }
 } catch {
   try { [IO.File]::WriteAllText($failure,($Error | Out-String)) } catch {}

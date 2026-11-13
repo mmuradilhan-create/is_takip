@@ -390,15 +390,32 @@ test("the folded widget strip and the main window's come-forward request are han
   );
   assert(
     strip.includes(
-      "StripRestore.Remove(h); SetWindowPos(h,IntPtr.Zero,0,0,saved.W,saved.H,0x0002|0x0004|0x0010); return;",
+      "StripRestore.Remove(h); SetWindowPos(h,IntPtr.Zero,outer.Rt-saved.W,outer.T,saved.W,saved.H,0x0004|0x0010); return;",
     ),
-    "unfolding restores the exact size the widget had",
+    "unfolding restores the exact size the widget had, from the same right edge",
   );
   assert(
     strip.includes("StripRestore[h]=outer;") &&
-      strip.includes("SetWindowPos(h,IntPtr.Zero,0,0,outer.W,height,"),
-    "folding keeps the width and position",
+      strip.includes(
+        "SetWindowPos(h,IntPtr.Zero,outer.Rt-width,outer.T,width,height,0x0004|0x0010);",
+      ) &&
+      strip.includes("int width=side+(int)Math.Round(196*dpi/96.0);"),
+    "folding narrows the window to its symbols and keeps its right edge",
   );
+  // Fold, pin and come-forward requests do not wait for the window sweep.
+  const loop = helper.slice(helper.indexOf("while ($true)"));
+  const fast = loop.indexOf(
+    "if ($now -lt $nextSweep -and $settling.Count -eq 0) {",
+  );
+  assert(fast >= 0 && fast < loop.indexOf("$nextSweep=$now+400"));
+  assert(
+    loop
+      .slice(fast, loop.indexOf("continue"))
+      .includes(
+        "[OdakWidgetBounds]::SyncPin($h); [OdakWidgetBounds]::SyncStrip($h)",
+      ),
+  );
+  assert(!loop.includes("Start-Sleep -Milliseconds 100"));
   assert(
     helper.includes(
       "      [OdakWidgetBounds]::SyncPin($h)\n      [OdakWidgetBounds]::SyncStrip($h)",

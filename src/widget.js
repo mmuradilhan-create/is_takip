@@ -103,8 +103,15 @@ export const widgetDocumentHtml = `<!doctype html>
     html[data-widget-strip] .widget-reminder-trigger.is-due { display:inline-flex; }
     .widget-strip-meta { flex:0 0 auto; color:#64775f; font-size:11px; font-weight:600; font-variant-numeric:tabular-nums; white-space:nowrap; }
     .widget-strip-meta:empty { display:none; }
-    .widget-strip-meta.is-overdue { color:#b4231c; }
-    html[data-theme="dark"] .widget-strip-meta.is-overdue { color:#ffb9ae; }
+    /* Folded, only symbols remain: the dot (its tooltip names the work), the
+       pause or resume button, a due reminder's bell, unfold and pin. */
+    html[data-widget-strip] :is(.widget-strip-text, .widget-strip-meta) { display:none; }
+    html[data-widget-strip] .widget-header { justify-content:flex-start; gap:6px; }
+    html[data-widget-strip] .widget-header-tools { gap:6px; margin-inline-start:auto; }
+    html[data-widget-strip] .widget-strip-line { flex:0 0 26px; justify-content:center; width:26px; height:26px; border-radius:6px; }
+    html[data-widget-strip] .widget-strip-line:hover { background:#edf3e8; }
+    html[data-widget-strip] .widget-strip-dot { flex-basis:10px; width:10px; height:10px; }
+    html[data-theme="dark"][data-widget-strip] .widget-strip-line:hover { background:#2a2d31; }
     .widget-strip-action { display:none; }
     html[data-widget-strip] .widget-strip-action:not([hidden]) { display:inline-flex; align-items:center; justify-content:center; flex:0 0 26px; width:26px; height:26px; padding:4px; border:1px solid #b9cfb1; border-radius:6px; color:#174d43; background:#e8f1e3; }
     html[data-widget-strip] .widget-strip-action[data-action="resume"] { border-color:#e2c48e; color:#8a5a08; background:#fbf1de; }

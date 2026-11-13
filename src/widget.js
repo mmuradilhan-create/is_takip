@@ -80,7 +80,7 @@ export const widgetDocumentHtml = `<!doctype html>
     /* A smaller window scrolls instead of squeezing the widget. */
     @media (max-height:319px) { html,body { overflow-y:auto; overflow-x:hidden; } }
     /* A narrow widget never scrolls sideways: the header drops its words. */
-    @media (max-width:299px) { .widget-live { display:none; } .widget-view-toggle > span { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); } .widget-view-toggle { padding-inline:7px; } }
+    @media (max-width:339px) { .widget-live { display:none; } .widget-view-toggle > span { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); } .widget-view-toggle { padding-inline:7px; } }
     button { font:inherit; cursor:pointer; }
     button:focus-visible { outline:3px solid #87b89d; outline-offset:2px; }
     .widget-shell { display:flex; flex-direction:column; gap:9px; width:100%; height:100%; height:100dvh; min-width:0; min-height:320px; padding:12px; }
@@ -98,7 +98,44 @@ export const widgetDocumentHtml = `<!doctype html>
     .widget-strip-line { display:none; }
     html[data-widget-strip] .widget-shell { height:auto; min-height:0; padding:8px 10px; gap:0; }
     html[data-widget-strip] .widget-shell > :not(.widget-header) { display:none !important; }
-    html[data-widget-strip] .widget-header h1, html[data-widget-strip] .widget-live, html[data-widget-strip] .widget-view-toggle { display:none; }
+    html[data-widget-strip] .widget-header h1, html[data-widget-strip] .widget-live, html[data-widget-strip] .widget-view-toggle, html[data-widget-strip] .widget-reminder-trigger { display:none; }
+    /* The bell, as in ODAK's top bar: a count when due, a quiet dot for later. */
+    .widget-reminder-trigger { position:relative; display:inline-flex; align-items:center; justify-content:center; flex:0 0 26px; width:26px; height:26px; padding:4px; border:1px solid #dce5d7; border-radius:6px; color:#5d715a; background:#fff; }
+    .widget-reminder-trigger:hover { background:#edf3e8; }
+    .widget-reminder-trigger svg { width:16px; height:16px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+    .widget-reminder-trigger.is-due { border-color:#e7c88f; background:#fff7e8; color:#9a5a08; }
+    .widget-reminder-trigger.has-upcoming::after { content:""; position:absolute; top:3px; right:3px; width:5px; height:5px; border-radius:50%; background:#8c9a88; }
+    .widget-reminder-trigger { margin-inline-end:3px; }
+    .widget-reminder-trigger .reminder-count { position:absolute; top:-7px; right:-8px; min-width:11px; height:12px; padding:0 2px; border:1.5px solid #f6f8f3; border-radius:7px; background:#c26a1e; box-sizing:content-box; color:#fff; font-size:8.5px; font-weight:700; line-height:12px; text-align:center; }
+    .widget-reminder-trigger .reminder-count[hidden] { display:none; }
+    .reminder-panel { position:fixed; inset:auto; width:min(320px, calc(100vw - 16px)); max-height:calc(100vh - 16px); margin:0; padding:0; overflow:auto; border:1px solid #dce5d5; border-radius:10px; background:#fff; box-shadow:0 14px 34px rgb(23 45 33 / 18%); color:#294735; }
+    .reminder-panel-header { position:sticky; top:0; display:flex; align-items:center; justify-content:space-between; padding:8px 10px; border-bottom:1px solid #e8eee4; background:inherit; }
+    .reminder-panel h2 { margin:0; font-size:13px; }
+    .reminder-panel h3 { margin:0; padding:7px 10px 3px; color:#64775f; font-size:11px; font-weight:650; }
+    .reminder-panel .close-modal { display:inline-grid; place-items:center; width:26px; height:26px; padding:0; border:0; border-radius:6px; color:#5d715a; background:transparent; }
+    .reminder-panel .close-modal:hover { background:#edf3e8; }
+    .reminder-panel .close-modal svg, .reminder-when svg { width:12px; height:12px; fill:none; stroke:currentColor; stroke-width:1.9; stroke-linecap:round; stroke-linejoin:round; }
+    .reminder-panel .close-modal svg { width:15px; height:15px; }
+    .reminder-list { list-style:none; margin:0; padding:0 6px 6px; }
+    .reminder-row { display:flex; flex-direction:column; gap:5px; padding:7px 4px; border-bottom:1px solid #edf0e9; }
+    .reminder-row:last-child { border-bottom:0; }
+    .reminder-when { display:inline-flex; align-items:center; gap:4px; color:#5d715a; font-size:10px; font-weight:650; }
+    .reminder-row.is-due .reminder-when { color:#955400; }
+    .reminder-text { display:-webkit-box; margin:1px 0 0; overflow:hidden; font-size:12px; line-height:1.4; white-space:pre-wrap; overflow-wrap:anywhere; -webkit-box-orient:vertical; -webkit-line-clamp:3; }
+    .reminder-actions { display:flex; flex-wrap:wrap; gap:5px; }
+    .reminder-actions .btn { min-height:26px; padding:3px 8px; border:1px solid #e5c082; border-radius:6px; background:#fff; color:#7a4a08; font-size:11px; font-weight:600; }
+    .reminder-actions .btn.primary { border-color:#174d43; background:#174d43; color:#fff; }
+    .reminder-actions .btn:disabled { opacity:.55; cursor:default; }
+    .reminder-empty { margin:0; padding:12px; color:#64775f; font-size:12px; line-height:1.5; }
+    [data-theme="dark"] .widget-reminder-trigger:not(.is-due) { color:#d3d8d1; background:#18191b; border-color:#3d4249; }
+    [data-theme="dark"] .widget-reminder-trigger.is-due { border-color:#8a6a35; background:#3b3120; color:#efd09a; }
+    [data-theme="dark"] .widget-reminder-trigger .reminder-count { border-color:#111214; }
+    [data-theme="dark"] .reminder-panel { border-color:#3d4249; background:#1d1f22; color:#e9eaec; box-shadow:0 14px 34px rgb(0 0 0 / 45%); }
+    [data-theme="dark"] :is(.reminder-panel-header,.reminder-row) { border-color:#353b40; }
+    [data-theme="dark"] :is(.reminder-panel h3,.reminder-when,.reminder-empty,.reminder-panel .close-modal) { color:#aab3a8; }
+    [data-theme="dark"] .reminder-row.is-due .reminder-when { color:#efd09a; }
+    [data-theme="dark"] .reminder-actions .btn { color:#efd09a; background:#18191b; border-color:#8a6a35; }
+    [data-theme="dark"] .reminder-actions .btn.primary { color:#122e23; background:#9dd8b7; border-color:#9dd8b7; }
     html[data-widget-strip] .widget-header { gap:8px; }
     html[data-widget-strip] .widget-strip-line { display:flex; align-items:center; gap:7px; flex:1 1 auto; min-width:0; margin:0; padding:0; border:0; background:none; color:#304d37; font:inherit; font-size:12px; font-weight:600; text-align:left; cursor:pointer; }
     .widget-strip-text { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -310,7 +347,7 @@ export const widgetDocumentHtml = `<!doctype html>
 </head>
 <body>
   <main class="widget-shell" data-view="work">
-    <header class="widget-header"><h1>ODAK</h1><button type="button" class="widget-strip-line" id="widget-strip-line" data-phase="idle" title="Widget'ı büyüt"><span class="widget-strip-dot" aria-hidden="true"></span><span class="widget-strip-text">Çalışılan iş yok</span></button><div class="widget-header-tools"><span class="widget-live">Çalışma</span><button type="button" class="widget-view-toggle" id="widget-view-toggle" aria-controls="widget-agenda-views" title="Ajandayı göster"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4m8-4v4M4 10h16"/></svg><span>Ajanda</span></button><button type="button" class="widget-strip-toggle" id="widget-strip" aria-label="Şeride küçült" aria-pressed="false" title="Şeride küçült"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg></button><button type="button" class="widget-pin" id="widget-pin" aria-label="Üstte tut" aria-pressed="false" title="Üstte tut Windows paketiyle kullanılabilir." disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m16 3 5 5-4 1-3 4v4l-2 2-3-6-6-3 2-2h4l4-3zM9 15l-6 6"/></svg></button></div></header>
+    <header class="widget-header"><h1>ODAK</h1><button type="button" class="widget-strip-line" id="widget-strip-line" data-phase="idle" title="Widget'ı büyüt"><span class="widget-strip-dot" aria-hidden="true"></span><span class="widget-strip-text">Çalışılan iş yok</span></button><div class="widget-header-tools"><button type="button" id="widget-reminder-button" class="widget-reminder-trigger" aria-haspopup="dialog" aria-controls="reminder-panel" aria-expanded="false" aria-label="Hatırlatmalar" title="Hatırlatmalar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9a6 6 0 1 1 12 0c0 6 2.5 7.5 2.5 7.5h-17S6 15 6 9Zm4 11a2 2 0 0 0 4 0"/></svg><span class="reminder-count" hidden></span></button><span class="widget-live">Çalışma</span><button type="button" class="widget-view-toggle" id="widget-view-toggle" aria-controls="widget-agenda-views" title="Ajandayı göster"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4m8-4v4M4 10h16"/></svg><span>Ajanda</span></button><button type="button" class="widget-strip-toggle" id="widget-strip" aria-label="Şeride küçült" aria-pressed="false" title="Şeride küçült"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg></button><button type="button" class="widget-pin" id="widget-pin" aria-label="Üstte tut" aria-pressed="false" title="Üstte tut Windows paketiyle kullanılabilir." disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m16 3 5 5-4 1-3 4v4l-2 2-3-6-6-3 2-2h4l4-3zM9 15l-6 6"/></svg></button></div></header>
     <section class="widget-reminders" id="widget-reminders" aria-label="Zamanı gelen hatırlatmalar" hidden><ul id="widget-reminder-list"></ul></section>
     <section class="widget-workbench" id="widget-workbench" aria-label="Çalışma" data-mode="idle">
       <div class="wb-active" hidden><div class="wb-heading"><span class="wb-phase"></span><div class="wb-title-line"><button type="button" class="wb-title" data-wb="active-detail" aria-expanded="false" aria-controls="wb-active-detail"><svg class="wb-row-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg><span class="wb-title-text"></span></button><span class="wb-heading-journal"></span></div><div class="wb-row-detail wb-active-detail" id="wb-active-detail" hidden></div></div><label class="wb-note-field"><span class="wb-note-label">Çalışma notu</span><textarea id="widget-work-note" maxlength="10000" placeholder="Çalışırken notlarını buraya yaz…"></textarea></label><p class="wb-error" role="alert" hidden></p><div class="wb-conflict" hidden><button type="button" data-wb="use-current">Güncel notu yükle</button><button type="button" data-wb="save-local">Bu notu kaydet</button></div><div class="wb-controls"><button type="button" class="wb-toggle" data-wb="toggle"></button><button type="button" class="wb-finish" data-wb="finish"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6h12v12H6z"/></svg><span>Bitir</span></button></div><div class="wb-finish-controls" hidden><button type="button" data-wb="finish-cancel">Vazgeç</button><button type="button" class="wb-save" data-wb="finish-save">Kaydet ve bitir</button></div></div>

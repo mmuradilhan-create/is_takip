@@ -531,3 +531,60 @@ test("pressing the reminder arrows quickly never highlights the Tarih or Saat la
   await expect(editor.locator('[name="remindDate"]')).toHaveValue("14.11.2026");
   await expect(editor.locator('[name="remindTime"]')).toHaveValue("09:30");
 });
+
+test("the widget bell opens every reminder note: due ones are answered there, later ones only shown", async ({
+  context,
+}) => {
+  await seed(context, {
+    notes: [
+      note("due", { text: "Tedarikçiyi ara", remindAt: "2026-11-08T14:50" }),
+      note("later", { text: "Raporu gönder", remindAt: "2026-11-09T10:00" }),
+      note("plain", { text: "Hatırlatmasız not" }),
+    ],
+  });
+  const widget = await context.newPage();
+  await widget.setViewportSize({ width: 380, height: 520 });
+  await widget.goto("/#widget");
+  const bell = widget.locator("#widget-reminder-button");
+  await expect(bell).toBeVisible();
+  // It sits before the Çalışma label and the Ajanda button.
+  const order = await widget.evaluate(() =>
+    [...document.querySelector(".widget-header-tools").children].map(
+      (item) => item.id || item.className,
+    ),
+  );
+  expect(order.indexOf("widget-reminder-button")).toBeLessThan(
+    order.indexOf("widget-live"),
+  );
+  await expect(bell).toHaveClass(/is-due/);
+  await expect(bell.locator(".reminder-count")).toHaveText("1");
+  await bell.click();
+  const panel = widget.locator("#reminder-panel");
+  await expect(panel).toBeVisible();
+  await expect(panel.locator(".reminder-row")).toHaveCount(2);
+  await expect(panel.locator(".reminder-row.is-due .reminder-text")).toHaveText(
+    "Tedarikçiyi ara",
+  );
+  await expect(
+    panel.locator('.reminder-row[data-note-id="later"] button'),
+  ).toHaveCount(0);
+  await expect(panel).not.toContainText("Hatırlatmasız not");
+  const box = await panel.boundingBox();
+  expect(box.x).toBeGreaterThanOrEqual(0);
+  expect(box.x + box.width).toBeLessThanOrEqual(380);
+  await panel.getByRole("button", { name: "Tamam" }).click();
+  await expect
+    .poll(async () =>
+      Object.hasOwn(
+        (await notesOf(widget)).find((item) => item.id === "due"),
+        "remindAt",
+      ),
+    )
+    .toBe(false);
+  await expect(bell.locator(".reminder-count")).toBeHidden();
+  await expect(bell).toHaveClass(/has-upcoming/);
+  await expect(widget.locator("#widget-reminders")).toBeHidden();
+  await expect(panel.locator(".reminder-row")).toHaveCount(1);
+  await widget.keyboard.press("Escape");
+  await expect(panel).toBeHidden();
+});

@@ -37,8 +37,8 @@ const chevron = (path) =>
 /** A small ‹ or › button that moves the reminder by days or minutes. */
 const stepButton = (unit, amount, label) =>
   `<button type="button" class="reminder-step" data-reminder-step="${unit}" data-amount="${amount}" aria-label="${label}" title="${label}">${chevron(amount < 0 ? "m15 18-6-6 6-6" : "m9 18 6-6-6-6")}</button>`;
-export const bellIcon =
-  '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9a6 6 0 1 1 12 0c0 6 2.5 7.5 2.5 7.5h-17S6 15 6 9Zm4 11a2 2 0 0 0 4 0"/></svg>';
+import { bellIcon } from "./bell-icon.js";
+export { bellIcon };
 
 /** Independent bullet notes share the workspace's atomic save and Undo path. */
 export function createWorkspaceNotesUI({

@@ -7,7 +7,7 @@ import {
   upcomingReminders,
   withNoteReminder,
 } from "./note-reminders.js";
-import { bellIcon } from "./workspace-notes-ui.js";
+import { bellIcon } from "./bell-icon.js";
 
 const escapeHtml = (value) =>
   String(value ?? "").replace(
@@ -31,7 +31,7 @@ export function createReminderBell({
   button,
   getNotes,
   onSaveNotes,
-  onEditNote = () => {},
+  onEditNote = null,
   onAlert = () => {},
   onError = () => {},
   now = () => Date.now(),
@@ -66,8 +66,11 @@ export function createReminderBell({
     const when = formatReminder(note.remindAt, new Date(now()));
     const actions = due
       ? `<button type="button" class="btn small primary" data-reminder="done" data-note-id="${escapeHtml(note.id)}">Tamam</button><button type="button" class="btn small" data-reminder="hour" data-note-id="${escapeHtml(note.id)}" title="1 saat sonra, çeyrek saate yuvarlanarak yeniden hatırlat">1 saat</button><button type="button" class="btn small" data-reminder="tomorrow" data-note-id="${escapeHtml(note.id)}" title="Yarın 09:00’da yeniden hatırlat">Yarın 09:00</button>`
-      : `<button type="button" class="btn small" data-reminder="edit" data-note-id="${escapeHtml(note.id)}">Düzenle</button>`;
-    return `<li class="reminder-row${due ? " is-due" : ""}" data-note-id="${escapeHtml(note.id)}"><div class="reminder-copy"><span class="reminder-when">${bellIcon}${escapeHtml(when)}</span><p class="reminder-text">${escapeHtml(note.text)}</p></div><div class="reminder-actions">${actions}</div></li>`;
+      : onEditNote
+        ? `<button type="button" class="btn small" data-reminder="edit" data-note-id="${escapeHtml(note.id)}">Düzenle</button>`
+        : "";
+    // Without a note editor (the widget), a reminder set for later is only shown.
+    return `<li class="reminder-row${due ? " is-due" : ""}" data-note-id="${escapeHtml(note.id)}"><div class="reminder-copy"><span class="reminder-when">${bellIcon}${escapeHtml(when)}</span><p class="reminder-text">${escapeHtml(note.text)}</p></div>${actions ? `<div class="reminder-actions">${actions}</div>` : ""}</li>`;
   }
 
   function renderPanel() {
@@ -172,7 +175,7 @@ export function createReminderBell({
     if (saving) return;
     if (action === "edit") {
       panel.hidePopover();
-      onEditNote(id, button);
+      onEditNote?.(id, button);
       return;
     }
     const expected = readNotes();
@@ -239,9 +242,10 @@ export function createReminderBell({
   button.addEventListener("click", onButtonClick);
   panel.addEventListener("click", onPanelClick);
   panel.addEventListener("toggle", onToggle);
-  win.addEventListener("resize", () => {
+  const onResize = () => {
     if (panel.matches(":popover-open")) position();
-  });
+  };
+  win.addEventListener("resize", onResize);
   const timer = win.setInterval(refresh, TICK);
   const onFocus = () => refresh();
   win.addEventListener("focus", onFocus);
@@ -251,6 +255,7 @@ export function createReminderBell({
     destroyed = true;
     win.clearInterval(timer);
     win.removeEventListener("focus", onFocus);
+    win.removeEventListener("resize", onResize);
     button.removeEventListener("click", onButtonClick);
     panel.removeEventListener("click", onPanelClick);
     panel.removeEventListener("toggle", onToggle);

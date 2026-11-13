@@ -11,6 +11,8 @@ import {
   snoozedMinute,
   withNoteReminder,
 } from "./note-reminders.js";
+import { createReminderBell } from "./reminder-bell.js";
+import { normalizeNotes } from "./workspace-notes.js";
 
 const CLOSED = new Set(["completed", "cancelled", "transferred"]);
 const PRIORITY_RANK = { urgent: 0, high: 1, normal: 2, low: 3 };
@@ -127,6 +129,7 @@ export function createWidgetWork({
   const reminderStrip = document.getElementById("widget-reminders");
   const reminderList = document.getElementById("widget-reminder-list");
   let reminderSaving = false;
+  let bell = null;
   const storage = window.localStorage;
 
   let workspace = null;
@@ -541,6 +544,7 @@ export function createWidgetWork({
 
   /** Due note reminders stay on top of both widget views until answered. */
   function renderReminders() {
+    bell?.refresh();
     if (!reminderStrip || !reminderList) return;
     let due = [];
     try {
@@ -559,7 +563,7 @@ export function createWidgetWork({
         )
         .join("") +
         (due.length > 3
-          ? `<li class="widget-reminder-more">+${due.length - 3} hatırlatma daha · ODAK’taki zilden görebilirsin</li>`
+          ? `<li class="widget-reminder-more">+${due.length - 3} hatırlatma daha · zilden görebilirsin</li>`
           : ""),
     );
   }
@@ -593,6 +597,32 @@ export function createWidgetWork({
       reminderSaving = false;
       render();
     }
+  }
+
+  /** The bell's panel saves through the same workspace path as the strip. */
+  async function saveBellNotes(next, expected, label) {
+    synchronize();
+    if (!workspace || unavailable)
+      throw new Error(unavailable || "Hatırlatma kaydedilemedi.");
+    const stale = () =>
+      new Error(
+        "Notlar başka bir pencerede değişti. Güncel hatırlatmalar yüklendi; yeniden deneyebilirsin.",
+      );
+    if (
+      JSON.stringify(normalizeNotes(workspace.notes)) !==
+      JSON.stringify(expected)
+    )
+      throw stale();
+    try {
+      workspace.saveNotes(next, label);
+      lastRaw = storage.getItem(storageKey);
+    } catch (failure) {
+      synchronize();
+      throw failure?.name === "WorkspaceConflictError" ? stale() : failure;
+    } finally {
+      render();
+    }
+    return true;
   }
 
   function render() {
@@ -836,9 +866,24 @@ export function createWidgetWork({
     note.removeEventListener("input", onInput);
     note.removeEventListener("blur", onBlur);
     document.removeEventListener("keydown", onKeydown, true);
+    bell?.destroy();
   }
 
   setup();
+  const bellButton = document.getElementById("widget-reminder-button");
+  if (bellButton)
+    try {
+      // Due ones are answered here; ones set for later are edited in ODAK.
+      bell = createReminderBell({
+        root: document.body,
+        button: bellButton,
+        getNotes: () => (workspace && !unavailable ? workspace.notes : []),
+        onSaveNotes: saveBellNotes,
+        onError: (message) => onMessage(message, "error"),
+      });
+    } catch {
+      bellButton.hidden = true;
+    }
   root.addEventListener("click", onClick);
   reminderStrip?.addEventListener("click", onReminderClick);
   note.addEventListener("input", onInput);

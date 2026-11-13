@@ -35,7 +35,7 @@ const records = [
     nextFollowUpDate: "2026-11-15",
   }),
 ];
-const FILLED = "rgb(243, 197, 107)";
+const FILLED = "rgb(248, 215, 150)";
 const LIGHT = "rgb(255, 241, 215)";
 
 async function open(page) {
@@ -72,6 +72,12 @@ test("a date that falls today is a filled amber box with a target everywhere, an
   expect(
     await look(page.locator('.focus-row[data-id="job-soon"] .deadline-tag')),
   ).toEqual({ text: "15 Kas", background: LIGHT, icon: "clock" });
+  // Only the fill marks today: the text weight matches the other dates.
+  const weight = (id) =>
+    page
+      .locator(`.focus-row[data-id="${id}"] .deadline-tag`)
+      .evaluate((element) => getComputedStyle(element).fontWeight);
+  expect(await weight("job-today")).toBe(await weight("job-soon"));
   expect(
     (
       await look(
@@ -130,7 +136,7 @@ test("a date that falls today is a filled amber box with a target everywhere, an
         ),
       )
     ).background,
-  ).toBe("rgb(122, 90, 31)");
+  ).toBe("rgb(99, 74, 29)");
 });
 
 test("the widget keeps plain date words: only their colour follows the due date", async ({

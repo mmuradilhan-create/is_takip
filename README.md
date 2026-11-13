@@ -1,6 +1,6 @@
 # Odak
 
-PC kullanımına odaklanan, Türkçe kişisel iş ve hedef takibi. HTML/CSS/JavaScript tabanlıdır. Güncel sürüm: **1.14.3**.
+PC kullanımına odaklanan, Türkçe kişisel iş ve hedef takibi. HTML/CSS/JavaScript tabanlıdır. Güncel sürüm: **1.14.4**.
 
 Not, bekleme bilgisi ve çalışma kaydı formlarında Enter kaydeder, Shift+Enter alt satıra geçer; bu kısayol formun altında yazı olarak gösterilmez, ekran okuyuculara açıklama olarak verilir. Bir form metin alanındayken Enter veya Escape ile kaydedilip kapatılınca odak, formu açan düğmeye (örneğin **Not ekle**) alt çizgisiz döner; alt çizgi yeniden Tab veya ok tuşlarıyla gezinince görünür. Kaydedilmemiş değişiklik sorusu da uygulamanın diğer pencereleri gibi kalın yeşil çerçeve göstermez. Bekleyen konular listesindeki durum, tarih ve bekleme kutuları Günlük işler ve hedeflerdeki gibi 96×30 pikseldir; uzun durum adı iki satıra geçer.
 
@@ -17,6 +17,8 @@ Not, bekleme bilgisi ve çalışma kaydı formlarında Enter kaydeder, Shift+Ent
 **1.6.1.** Genel bakış tek ekrana sığarken pencere yüksekliği 680 ile 800 piksel arasında değiştikçe takvim, kart satırı ve boşluklar kademesiz küçülüp büyür; eskiden 740 pikselde hepsi birden bir basamak değişip “atlıyordu”. Yalnız takvimin Teslim/Takip açıklama satırı 740 pikselin altında gizlenir.
 
 **1.7.0 · Dar pencere.** Uygulama hiçbir boyutta yana kaymaz ve Genel bakışta takvim hep Güncel işler’in yanında kalır. 761–1199 piksel genişlikte sol menü 64 piksellik **simge şeridine** iner: yazılar gizlenir (üzerine gelince adı görünür), açık kayıt sayıları simgenin köşesinde küçük rozettir, sıfır olanlar görünmez. **Çalışma notu** kartı şeritte tek düğmedir; çalışılırken yeşil, duraklatılmışken amber nokta taşır. Tıklayınca kart menünün yanında açılır; dışarı tıklamak veya Escape kapatır, bir işe başlanınca kendiliğinden açılır. Bu aralıkta takvim sütunu genişliğe göre 300’den 220 piksele kademesiz daralır; 1000 pikselin altında satır kutuları biraz küçülür ve alt satırda iki kart yan yana, Notlar altta durur (sayfa aşağı doğru uzar); 900 pikselin altında Güncel işler satırı öncelik kutusunu göstermez (öncelik kayıtta ve listelerde durur).
+
+**1.14.4.** Tarih kutularında vurgu sırası düzeldi: bugünün kutusu bir ton açıldı, yazısı ve kenarı diğer tarihlerle aynı kalınlıkta (yalnız dolu amber zemin ve hedef simgesi bugünü gösterir); gecikmiş tarihler bir ton koyulaştı, böylece sütunda en çok geciken iş göze çarpar. Koyu temada da aynı ayar yapıldı. Widget’taki tarih yazıları değişmedi.
 
 **1.14.3 · Simgelerden oluşan şerit, hızlı küçültme.** Şeride küçültülen widget artık yalnız simgelerden oluşur ve daralır (196 piksel): durum noktası (yeşil çalışıyor, amber duraklatıldı, gri boşta; üzerine gelince işin adı görünür), çalışırken **Duraklat**, duraklatılmışken **Devam et**, zamanı gelen hatırlatma varsa **zil**, **büyüt** ve **üstte tut**. Boştayken başlat düğmesi yoktur. Pencere sağ kenarı yerinde kalarak daralır ve açılır; büyüt düğmesi farenin altında kalır. Windows yardımcısı küçültme, sabitleme ve öne getirme isteklerine artık 40 milisaniye içinde bakar; pencere tarama ve görev çubuğu işleri 400 milisaniyede bir yapılır, böylece küçültme onları beklemez (önceden her tur hepsini birden yapıyordu).
 

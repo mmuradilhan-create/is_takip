@@ -814,6 +814,11 @@ ayni gorunumu kullanir; hedefler de gunluk islerle ayni kurala uyar. Widget'ta
 tarih duz yazidir, yalniz rengi degisir (bugun kalin amber, 1-3 gun amber,
 gecikmis kirmizi).
 
+TARIH KUTULARI (1.14.4)
+
+Bugunun kutusu bir ton acik ve diger tarihlerle ayni kalinlikta; gecikmis
+tarihler bir ton koyu. Sutunda en cok geciken is goze carpar.
+
 SIMGE SERIDI (1.14.3)
 
 Seride kucultulen widget yalniz simgelerden olusur: durum noktasi (uzerine

@@ -94,10 +94,10 @@
 }
 
 .waiting-next-date[data-followup-state="overdue"] {
-  --deadline-paper: #fdece9;
-  border-color: #e9b4ae;
-  background: #fdece9;
-  color: #ac2d24;
+  --deadline-paper: #fbdcd7;
+  border-color: #e0a097;
+  background: #fbdcd7;
+  color: #a3261d;
 }
 
 .waiting-next-date[data-followup-state="today"],

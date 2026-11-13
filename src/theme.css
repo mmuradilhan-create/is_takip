@@ -755,10 +755,10 @@
     .goal-child-date.deadline-tag,
     .waiting-next-date
   ):is([data-deadline-state="overdue"], [data-followup-state="overdue"]) {
-  --deadline-paper: #452a29;
-  color: #f1b2aa;
+  --deadline-paper: #54302d;
+  color: #f5bab2;
   background: var(--deadline-paper);
-  border-color: #94625a;
+  border-color: #a56a61;
 }
 
 [data-theme="dark"]

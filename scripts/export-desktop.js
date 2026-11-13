@@ -805,6 +805,13 @@ islemler kalir; bu da ust cubuktaki Geri al ile geri alinabilir. Ayni kayit
 sonradan yeniden degistiyse sorulur ve onaylanirsa o isleme kadar hepsi
 sirayla geri alinir.
 
+BUGUNUN TARIHI (1.13.0)
+
+Teslim veya takip tarihi bugun olan kutu dolu koyu amber, kalin yazili ve
+hedef simgelidir; kutuda yine tarih yazar. 1-3 gun kalanlar acik amber ve saat
+simgeli, gecikenler kirmizi ve uyari simgelidir. Listeler, kartlar, paneller
+ve widget ayni gorunumu kullanir.
+
 MENUYU DARALT (1.11.0)
 
 1200 piksel ve ustu genislikte ODAK logosunun yanindaki < dugmesi sol menuyu

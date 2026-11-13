@@ -1,0 +1,31 @@
+/*
+ * A teslim or takip date that falls today: the near-date amber, filled and
+ * bold, with a target instead of the clock. The box still shows the date.
+ */
+:is(
+  .deadline-tag,
+  .inline-date.deadline-tag,
+  .focus-date .inline-date.deadline-tag,
+  .goal-child-date.deadline-tag,
+  .waiting-next-date
+):is([data-due-today], [data-followup-state="today"]) {
+  --deadline-paper: #f3c56b;
+  border-color: #d39b2e;
+  background: #f3c56b;
+  color: #5a3500;
+  font-weight: 700;
+}
+
+[data-theme="dark"]
+  :is(
+    .deadline-tag,
+    .inline-date.deadline-tag,
+    .focus-date .inline-date.deadline-tag,
+    .goal-child-date.deadline-tag,
+    .waiting-next-date
+  ):is([data-due-today], [data-followup-state="today"]) {
+  --deadline-paper: #7a5a1f;
+  border-color: #b8893a;
+  background: #7a5a1f;
+  color: #ffe2a8;
+}

@@ -27,6 +27,7 @@ const followUpIcons = {
   missing: "M12 5v14M5 12h14",
   hourglass:
     "M6 3h12M6 21h12M8 3c0 4 8 5 8 9s-8 5-8 9M16 3c0 4-8 5-8 9s8 5 8 9",
+  today: "M20 12a8 8 0 1 1-16 0 8 8 0 0 1 16 0M13.6 12a1.6 1.6 0 1 1-3.2 0 1.6 1.6 0 0 1 3.2 0",
 };
 const CLOSED = new Set(["completed", "cancelled", "transferred"]);
 
@@ -83,7 +84,7 @@ export function createInlineFields({
   function dateControl(record) {
     const presentation = deadlinePresentation(record, currentDay());
     const title = `${record.dueDate ? formatDateInput(record.dueDate) : presentation.label} · ${presentation.status} · Tarihi değiştir`;
-    return `<button type="button" class="inline-date date-cell deadline-tag ${presentation.tone}" data-deadline-state="${presentation.state}" data-action="edit-date" data-id="${escapeHtml(record.id)}" aria-label="${escapeHtml(record.title)}: teslim tarihini değiştir" aria-description="${escapeHtml(presentation.status)}" aria-haspopup="dialog" aria-controls="odak-date-picker" aria-expanded="false" title="${escapeHtml(title)}">${deadlineChipContent(record, { label: formatDate(record.dueDate), today: currentDay() })}</button>`;
+    return `<button type="button" class="inline-date date-cell deadline-tag ${presentation.tone}" data-deadline-state="${presentation.state}"${presentation.dueToday ? " data-due-today" : ""} data-action="edit-date" data-id="${escapeHtml(record.id)}" aria-label="${escapeHtml(record.title)}: teslim tarihini değiştir" aria-description="${escapeHtml(presentation.status)}" aria-haspopup="dialog" aria-controls="odak-date-picker" aria-expanded="false" title="${escapeHtml(title)}">${deadlineChipContent(record, { label: formatDate(record.dueDate), today: currentDay() })}</button>`;
   }
 
   function followUpDateControl(record) {
@@ -96,9 +97,11 @@ export function createInlineFields({
       ? "missing"
       : presentation.tone === "overdue"
         ? "overdue"
-        : presentation.tone === "due-soon"
-          ? "soon"
-          : "calendar";
+        : presentation.state === "today"
+          ? "today"
+          : presentation.tone === "due-soon"
+            ? "soon"
+            : "calendar";
     const title = `${record.nextFollowUpDate ? formatDateInput(record.nextFollowUpDate) : label} · ${presentation.status} · Takip tarihini değiştir`;
     return `<button type="button" class="waiting-next-date deadline-tag ${escapeHtml(presentation.tone)}" data-followup-state="${escapeHtml(presentation.state)}" data-action="edit-next-followup" data-id="${escapeHtml(record.id)}" aria-label="${escapeHtml(record.title)}: sonraki takip tarihini değiştir" aria-description="${escapeHtml(presentation.status)}" aria-haspopup="dialog" aria-controls="odak-date-picker" aria-expanded="false" title="${escapeHtml(title)}"><svg class="deadline-symbol" data-followup-icon="${symbol}" viewBox="0 0 24 24" aria-hidden="true"><path d="${followUpIcons[symbol]}"/></svg><span class="deadline-label">${escapeHtml(label)}</span></button>`;
   }

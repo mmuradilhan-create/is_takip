@@ -242,7 +242,8 @@ export const widgetDocumentHtml = `<!doctype html>
     [data-theme="dark"] .wb-detail-facts { color:#b7bbc2; }
     [data-theme="dark"] .wb-detail-edit { color:#9dd8b7; background:#18191b; border-color:#3d4249; }
     .wb-row-due { flex:0 0 auto; color:#6c7b65; font-size:10px; white-space:nowrap; }
-    .wb-row-due.is-today { color:#955400; }
+    .wb-row-due.is-today { padding:1px 6px; border:1px solid #d39b2e; border-radius:5px; background:#f3c56b; color:#5a3500; font-weight:700; }
+    [data-theme="dark"] .wb-row-due.is-today { border-color:#b8893a; background:#7a5a1f; color:#ffe2a8; }
     .wb-row-due.is-overdue { color:#ac2d24; }
     .wb-title-line { display:flex; align-items:flex-start; gap:6px; min-width:0; }
     .wb-title-line > .wb-title { flex:1 1 auto; }

@@ -72,6 +72,7 @@ import "./progress-chip.css";
 import "./dashboard-fluid-height.css";
 import "./dashboard-card-facts.css";
 import "./outcome-prompt.css";
+import "./date-today.css";
 import { createOutcomePrompt } from "./outcome-prompt.js";
 import { trackTriggerToggle } from "./trigger-toggle.js";
 import {

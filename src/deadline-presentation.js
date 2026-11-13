@@ -11,6 +11,9 @@ const SYMBOLS = {
   clock: "M12 7v5l3 2M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0",
   calendar: "M7 2v4M17 2v4M3 9h18M5 4h14a2 2 0 0 1 2 2v14H3V6a2 2 0 0 1 2-2Z",
   minus: "M5 12h14",
+  // A target: due today, the strongest of the near dates.
+  today:
+    "M20 12a8 8 0 1 1-16 0 8 8 0 0 1 16 0M13.6 12a1.6 1.6 0 1 1-3.2 0 1.6 1.6 0 0 1 3.2 0",
 };
 const esc = (value) =>
   String(value ?? "").replace(
@@ -38,20 +41,28 @@ export function deadlinePresentation(record, today = localDate()) {
     overdue: "Teslim tarihi geçti",
     "due-soon":
       record?.dueDate === today ? "Bugün teslim" : "3 gün içinde teslim",
-    scheduled: "Planlanan teslim tarihi",
+    scheduled:
+      record?.dueDate === today ? "Bugün teslim" : "Planlanan teslim tarihi",
   }[state];
-  const icon = {
-    overdue: "warning",
-    "due-soon": "clock",
-    scheduled: "calendar",
-    closed: "calendar",
-    missing: "minus",
-  }[state];
+  // Due today reads as a filled box with a target, for every record type
+  // (the amber of the next days stays for daily jobs only).
+  const dueToday =
+    ["due-soon", "scheduled"].includes(state) && record?.dueDate === today;
+  const icon = dueToday
+    ? "today"
+    : {
+        overdue: "warning",
+        "due-soon": "clock",
+        scheduled: "calendar",
+        closed: "calendar",
+        missing: "minus",
+      }[state];
   return {
     tone,
     state,
     status,
     icon,
+    dueToday,
     label: hasDate ? dateFormatter.format(date) : "Tarih yok",
   };
 }
@@ -79,5 +90,5 @@ export function renderDeadlineChip(
       ? presentation.label
       : label || presentation.label;
   const title = `${text} · ${presentation.status}`;
-  return `<span class="deadline-tag ${esc(className)} ${presentation.tone}" data-deadline-state="${presentation.state}" title="${esc(title)}" aria-label="${esc(title)}">${deadlineChipContent(record, { label: text, today })}</span>`;
+  return `<span class="deadline-tag ${esc(className)} ${presentation.tone}" data-deadline-state="${presentation.state}"${presentation.dueToday ? " data-due-today" : ""} title="${esc(title)}" aria-label="${esc(title)}">${deadlineChipContent(record, { label: text, today })}</span>`;
 }

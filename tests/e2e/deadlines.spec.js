@@ -143,11 +143,13 @@ test("daily deadlines from today through three days ahead are orange while overd
       "data-deadline-icon",
       state === "overdue"
         ? "warning"
-        : state === "due-soon"
-          ? "clock"
-          : state === "missing"
-            ? "minus"
-            : "calendar",
+        : id === "today"
+          ? "today" // due today: the target, not the clock
+          : state === "due-soon"
+            ? "clock"
+            : state === "missing"
+              ? "minus"
+              : "calendar",
     );
   }
   await expect(row(page, "overdue").locator(".inline-date")).toHaveAttribute(

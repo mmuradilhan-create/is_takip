@@ -297,7 +297,8 @@ test("today's focus is a persistent three-item choice independent of deadlines, 
   await undo(other);
   await undo(other);
   await undo(other);
-  expect(await saved(page)).toBe(original);
+  // The last undo is written once its click has been handled; wait for it.
+  await expect.poll(() => saved(page)).toBe(original);
   await other.close();
 });
 

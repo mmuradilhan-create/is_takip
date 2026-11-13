@@ -820,8 +820,9 @@ Widget'in ust kosesindeki ^ dugmesi widget'i tek satirlik seride indirir:
 calisilan isin adi ve durum noktasi gorunur; ayni dugme veya satirin kendisi
 eski boyuna dondurur. Ustte tutma seritte de korunur. ODAK'i ac ve ODAK'ta
 duzenle, ODAK aciksa o pencereyi en one getirir (uyari cikmaz). Widget
-basligindaki zil hatirlatmasi olan notlari acar: zamani gelenler Tamam,
-1 saat veya Yarin 09:00 ile cevaplanir, yaklasanlar saatiyle listelenir.
+basligindaki zil (Ajanda ile ^ arasinda) hatirlatmasi olan notlari acar:
+zamani gelenler Tamam, 1 saat veya Yarin 09:00 ile cevaplanir, yaklasanlar
+saatiyle listelenir.
 Calisma notu yazarken ilk tus hemen, digerleri yarim saniyelik arada
 birlikte kaydedilir; kutudan cikinca veya pencere kapaninca kalan da kaydedilir.
 Satirlarda soldaki cizgi calisilan iste yesil, duraklatilmis iste amberdir;

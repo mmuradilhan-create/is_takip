@@ -547,14 +547,17 @@ test("the widget bell opens every reminder note: due ones are answered there, la
   await widget.goto("/#widget");
   const bell = widget.locator("#widget-reminder-button");
   await expect(bell).toBeVisible();
-  // It sits before the Çalışma label and the Ajanda button.
+  // It sits between the Ajanda button and the strip button.
   const order = await widget.evaluate(() =>
     [...document.querySelector(".widget-header-tools").children].map(
       (item) => item.id || item.className,
     ),
   );
-  expect(order.indexOf("widget-reminder-button")).toBeLessThan(
-    order.indexOf("widget-live"),
+  expect(order.indexOf("widget-reminder-button")).toBe(
+    order.indexOf("widget-view-toggle") + 1,
+  );
+  expect(order.indexOf("widget-strip")).toBe(
+    order.indexOf("widget-reminder-button") + 1,
   );
   await expect(bell).toHaveClass(/is-due/);
   await expect(bell.locator(".reminder-count")).toHaveText("1");

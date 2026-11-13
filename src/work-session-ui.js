@@ -289,30 +289,45 @@ export function createWorkSessionUI({
       ? record.id
       : null;
   }
+  // Writes only what changed: a note being typed in another window saves
+  // every half second, and rewriting every row's button each time made
+  // typing stutter.
+  const setAttr = (element, name, value) => {
+    if (element.getAttribute(name) !== value) element.setAttribute(name, value);
+  };
   function updateButtons() {
+    const byId = new Map(getRecords().map((record) => [record.id, record]));
     for (const control of root.querySelectorAll(".work-start[data-id]")) {
-      const record = find(control.dataset.id);
+      const record = byId.get(control.dataset.id);
       if (!record) continue;
       const state = buttonState(record);
-      control.hidden = record.type !== "daily";
+      const hidden = record.type !== "daily";
+      if (control.hidden !== hidden) control.hidden = hidden;
+      const phase = state.entry?.status || "idle";
       if (
-        control.dataset.phase !== (state.entry?.status || "idle") ||
+        control.dataset.phase !== phase ||
         control.firstElementChild?.dataset.workSymbol !== state.symbol
       )
         control.innerHTML = workIcons[state.symbol];
-      control.dataset.phase = state.entry?.status || "idle";
-      control.classList.toggle("is-running", state.running);
-      control.classList.toggle("is-paused", state.paused);
-      control.setAttribute("aria-label", `${record.title}: ${state.label}`);
-      control.setAttribute("aria-pressed", String(state.running));
-      control.title = state.hint;
-      control.disabled = Boolean(state.disabled);
+      setAttr(control, "data-phase", phase);
+      if (control.classList.contains("is-running") !== state.running)
+        control.classList.toggle("is-running", state.running);
+      if (control.classList.contains("is-paused") !== state.paused)
+        control.classList.toggle("is-paused", state.paused);
+      setAttr(control, "aria-label", `${record.title}: ${state.label}`);
+      setAttr(control, "aria-pressed", String(state.running));
+      setAttr(control, "title", state.hint);
+      if (control.disabled !== Boolean(state.disabled))
+        control.disabled = Boolean(state.disabled);
     }
     const runningId = getRunningRecordId();
     for (const row of root.querySelectorAll(".focus-row[data-id]")) {
-      row.classList.toggle("is-working", row.dataset.id === runningId);
-      if (row.dataset.id === runningId) row.dataset.workState = "running";
-      else row.removeAttribute("data-work-state");
+      const working = row.dataset.id === runningId;
+      if (row.classList.contains("is-working") !== working)
+        row.classList.toggle("is-working", working);
+      if (working) setAttr(row, "data-work-state", "running");
+      else if (row.hasAttribute("data-work-state"))
+        row.removeAttribute("data-work-state");
     }
     if (observedRunningId === undefined) observedRunningId = runningId;
     else if (observedRunningId !== runningId) {

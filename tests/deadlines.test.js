@@ -32,7 +32,7 @@ test("the horizon follows real calendar days through month, year and leap-day bo
   }
 });
 
-test("only active daily work has a due-soon cue, including valid legacy open statuses", () => {
+test("active daily work and goals have a due-soon cue, including valid legacy open statuses", () => {
   const today = "2026-11-07";
   for (const status of [
     "planned",
@@ -45,7 +45,10 @@ test("only active daily work has a due-soon cue, including valid legacy open sta
     assert.equal(isDueSoon(record(today, { status }), today), true, status);
   for (const status of ["completed", "cancelled", "transferred"])
     assert.equal(isDueSoon(record(today, { status }), today), false, status);
-  for (const type of ["weekly", "monthly", "yearly", "meeting", "waiting"])
+  // Goals share the daily rule; meetings and waiting topics have their own.
+  for (const type of ["weekly", "monthly", "yearly"])
+    assert.equal(isDueSoon(record(today, { type }), today), true, type);
+  for (const type of ["meeting", "waiting"])
     assert.equal(isDueSoon(record(today, { type }), today), false, type);
 });
 
@@ -85,6 +88,9 @@ test("deadline tone gives existing overdue rules precedence and keeps closed and
       deadlineTone(record("2026-11-06", { type }), today),
       "overdue",
     );
-    assert.equal(deadlineTone(record(today, { type }), today), "");
+    assert.equal(
+      deadlineTone(record(today, { type }), today),
+      ["weekly", "monthly", "yearly"].includes(type) ? "due-soon" : "",
+    );
   }
 });

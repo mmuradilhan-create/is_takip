@@ -44,8 +44,8 @@ export function deadlinePresentation(record, today = localDate()) {
     scheduled:
       record?.dueDate === today ? "Bugün teslim" : "Planlanan teslim tarihi",
   }[state];
-  // Due today reads as a filled box with a target, for every record type
-  // (the amber of the next days stays for daily jobs only).
+  // Due today reads as a filled box with a target; the next days keep the
+  // light amber and clock.
   const dueToday =
     ["due-soon", "scheduled"].includes(state) && record?.dueDate === today;
   const icon = dueToday

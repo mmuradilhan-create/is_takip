@@ -262,9 +262,13 @@ export function createWidgetWork({
     );
     const current = store.get(editor.recordId);
     if (saved && draftText(current) === editor.text) {
+      const hadMessage = Boolean(editor.error);
       editor.expected = editor.text;
       editor.dirty = false;
       editor.error = "";
+      // A routine save while typing changes nothing on screen; redrawing the
+      // whole panel each time made typing stutter.
+      if (!hadMessage) return true;
     } else if (draftText(current) !== editor.expected) {
       editor.conflict = true;
       editor.remote = draftText(current);
@@ -449,6 +453,15 @@ export function createWidgetWork({
         ?.focus({ preventScroll: true });
   }
 
+  /** Within the next three days: the same amber the lists use. */
+  function dueSoon(record, today) {
+    if (!record.dueDate || record.dueDate <= today) return false;
+    const days =
+      (Date.parse(`${record.dueDate}T12:00:00Z`) -
+        Date.parse(`${today}T12:00:00Z`)) /
+      86400000;
+    return days <= 3;
+  }
   function dueLabel(record, today) {
     if (!record.dueDate) return "";
     if (record.dueDate < today) return "Gecikti";
@@ -497,7 +510,7 @@ export function createWidgetWork({
     const due = dueLabel(record, today);
     const resume = action === "resume";
     const open = detailId === record.id;
-    return `<li class="wb-row${open ? " is-open" : ""}" data-id="${escapeHtml(record.id)}"><button type="button" class="wb-row-title" data-wb="detail" data-id="${escapeHtml(record.id)}" aria-expanded="${open}" aria-controls="wb-detail-${escapeHtml(record.id)}" title="${escapeHtml(record.title)}">${icons.chevron}<span>${escapeHtml(record.title)}</span></button>${due ? `<span class="wb-row-due${due === "Gecikti" ? " is-overdue" : due === "Bugün" ? " is-today" : ""}">${escapeHtml(due)}</span>` : ""}${journalButton(record)}<button type="button" class="wb-row-start${resume ? " is-paused" : ""}" data-wb="${resume ? "resume" : "start"}" data-id="${escapeHtml(record.id)}" aria-label="${escapeHtml(record.title)}: ${resume ? "çalışmaya devam et" : "çalışmaya başla"}" title="${resume ? "Devam et" : "Çalışmaya başla"}"${unavailable || finishing ? " disabled" : ""}>${resume ? icons.resume : icons.play}</button>${open ? rowDetail(record, entry, today) : ""}</li>`;
+    return `<li class="wb-row${open ? " is-open" : ""}" data-id="${escapeHtml(record.id)}"><button type="button" class="wb-row-title" data-wb="detail" data-id="${escapeHtml(record.id)}" aria-expanded="${open}" aria-controls="wb-detail-${escapeHtml(record.id)}" title="${escapeHtml(record.title)}">${icons.chevron}<span>${escapeHtml(record.title)}</span></button>${due ? `<span class="wb-row-due${due === "Gecikti" ? " is-overdue" : due === "Bugün" ? " is-today" : dueSoon(record, today) ? " is-soon" : ""}">${escapeHtml(due)}</span>` : ""}${journalButton(record)}<button type="button" class="wb-row-start${resume ? " is-paused" : ""}" data-wb="${resume ? "resume" : "start"}" data-id="${escapeHtml(record.id)}" aria-label="${escapeHtml(record.title)}: ${resume ? "çalışmaya devam et" : "çalışmaya başla"}" title="${resume ? "Devam et" : "Çalışmaya başla"}"${unavailable || finishing ? " disabled" : ""}>${resume ? icons.resume : icons.play}</button>${open ? rowDetail(record, entry, today) : ""}</li>`;
   }
 
   function renderJournal() {

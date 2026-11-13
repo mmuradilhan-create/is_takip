@@ -194,10 +194,11 @@ test("daily deadlines from today through three days ahead are orange while overd
   expect(red.borderStyle).not.toBe("none");
   expect(amber.borderStyle).not.toBe("none");
   await page.locator('#nav [data-view="weekly"]').click();
-  await expectTone(row(page, "weekly").locator(".inline-date"), "neutral");
+  // Goals follow the same near-date rule as daily jobs.
+  await expectTone(row(page, "weekly").locator(".inline-date"), "due-soon");
   await expectTone(
     row(page, "weekly-three").locator(".inline-date"),
-    "neutral",
+    "due-soon",
   );
   await page.locator('#nav [data-view="meeting"]').click();
   await expect(

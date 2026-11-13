@@ -17,9 +17,13 @@ function calendarDate(value) {
     : null;
 }
 
-/** Today's deliveries and the next three calendar days need an orange cue. */
+/**
+ * Today's deliveries and the next three calendar days need an orange cue:
+ * daily jobs and weekly, monthly and yearly goals alike.
+ */
+const DATED_TYPES = new Set(["daily", "weekly", "monthly", "yearly"]);
 export function isDueSoon(record, today = localDate()) {
-  if (record?.type !== "daily" || CLOSED.has(record.status)) return false;
+  if (!DATED_TYPES.has(record?.type) || CLOSED.has(record.status)) return false;
   const start = calendarDate(today);
   const due = calendarDate(record.dueDate);
   if (!start || !due) return false;

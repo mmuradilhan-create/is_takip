@@ -165,16 +165,18 @@ export function startStandaloneWidget() {
 
   function refresh(force = false) {
     if (stopped) return;
-    work?.refresh();
     try {
       const raw = window.localStorage.getItem(STORAGE_KEY);
       const legacyRaw = window.localStorage.getItem(PREFERENCES_KEY);
       const changed =
         raw !== previousRaw || legacyRaw !== previousLegacyPreferences;
+      // The once-a-second check redraws nothing unless something changed;
+      // redrawing the work panel every second made typing a note stutter.
       if (!changed && !force && !failed) {
         refreshSession();
         return;
       }
+      work?.refresh();
       if (changed || failed) {
         // A deliberately empty saved store must take precedence over seeds.
         const saved = raw === null ? null : JSON.parse(raw);

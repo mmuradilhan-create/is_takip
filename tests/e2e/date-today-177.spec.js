@@ -133,7 +133,7 @@ test("a date that falls today is a filled amber box with a target everywhere, an
   ).toBe("rgb(122, 90, 31)");
 });
 
-test("the widget marks today's work with the same filled amber", async ({
+test("the widget keeps plain date words: only their colour follows the due date", async ({
   page,
 }) => {
   await page.clock.setFixedTime(new Date(`${TODAY}T09:00:00.000Z`));
@@ -146,7 +146,61 @@ test("the widget marks today's work with the same filled amber", async ({
   );
   await page.setViewportSize({ width: 380, height: 520 });
   await page.goto("/#widget");
-  const due = page.locator('.wb-row[data-id="job-today"] .wb-row-due');
-  await expect(due).toHaveText("Bugün");
-  await expect(due).toHaveCSS("background-color", FILLED);
+  const due = (id) => page.locator(`.wb-row[data-id="${id}"] .wb-row-due`);
+  const look = (id) =>
+    due(id).evaluate((element) => {
+      const style = getComputedStyle(element);
+      return [
+        element.textContent,
+        style.color,
+        style.backgroundColor,
+        style.borderTopStyle,
+      ];
+    });
+  expect(await look("job-today")).toEqual([
+    "Bugün",
+    "rgb(149, 84, 0)",
+    "rgba(0, 0, 0, 0)",
+    "none",
+  ]);
+  expect(await look("job-soon")).toEqual([
+    "15 Kas",
+    "rgb(149, 84, 0)",
+    "rgba(0, 0, 0, 0)",
+    "none",
+  ]);
+  expect((await look("job-late"))[1]).toBe("rgb(172, 45, 36)");
+});
+
+test("goals use the same near-date amber as daily jobs", async ({ page }) => {
+  await page.clock.setFixedTime(new Date(`${TODAY}T09:00:00.000Z`));
+  const goals = [
+    make({
+      id: "goal-soon",
+      type: "weekly",
+      title: "Yakın hedef",
+      periodKey: "2026-W46",
+      dueDate: "2026-11-15",
+    }),
+    make({
+      id: "goal-later",
+      type: "weekly",
+      title: "Sonraki hedef",
+      periodKey: "2026-W46",
+      dueDate: "2026-11-25",
+    }),
+  ];
+  await page.addInitScript(
+    (raw) => localStorage.setItem("is-takip-v1", raw),
+    JSON.stringify({ version: 1, records: goals }),
+  );
+  await page.setViewportSize({ width: 1536, height: 860 });
+  await page.goto("/");
+  await page.locator('#nav [data-view="weekly"]').click();
+  expect(
+    await look(page.locator('tr[data-id="goal-soon"] .deadline-tag')),
+  ).toEqual({ text: "15 Kas", background: LIGHT, icon: "clock" });
+  expect(
+    (await look(page.locator('tr[data-id="goal-later"] .deadline-tag'))).icon,
+  ).toBe("calendar");
 });

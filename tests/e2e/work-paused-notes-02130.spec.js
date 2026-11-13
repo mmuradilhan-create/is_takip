@@ -286,6 +286,7 @@ test("paused note title and blank card toggle preserve empty and literal drafts 
   const title = page.locator("#work-session-title");
   await choose(page, "paused-4");
   await note(page).fill("");
+  await page.clock.runFor(600); // typing saves after a pause
   await expect
     .poll(async () => (await entry(page, "paused-4")).draftNote)
     .toBe("");
@@ -306,6 +307,7 @@ test("paused note title and blank card toggle preserve empty and literal drafts 
   const literal =
     '  Özgün çalışma notu: 0024594\n\t<img src=x onerror="window.pausedInjected=1"> & sonuç  ';
   await note(page).fill(literal);
+  await page.clock.runFor(600); // typing saves after a pause
   await expect
     .poll(async () => (await entry(page, "paused-4")).draftNote)
     .toBe(literal);
@@ -391,6 +393,7 @@ test("failed paused drafts stay expanded through title and blank card clicks unt
     window.pausedQuota = true;
   });
   await note(page).fill(local);
+  await page.clock.runFor(600); // typing saves after a pause
   await note(page).evaluate((textarea) => textarea.setSelectionRange(5, 16));
   await expect(action(page, "work-draft-retry")).toBeVisible();
   for (const quota of [true, false]) {
@@ -578,6 +581,7 @@ test("only the latest three eligible paused notes are shown and selecting one ne
   });
   multiline += "Enter ile yeniden kaydedilecek yerel taslak";
   await note(page).fill(multiline);
+  await page.clock.runFor(600); // typing saves after a pause
   await expect(action(page, "work-draft-retry")).toBeVisible();
   await note(page).press("Enter");
   await expect(note(page)).toHaveValue(multiline);
@@ -653,6 +657,7 @@ test("only the latest three eligible paused notes are shown and selecting one ne
   await expect(page.locator("#work-finish-form")).toBeVisible();
   await expect(note(page)).toHaveValue(multiline);
   await note(page).fill(" \n ");
+  await page.clock.runFor(600); // typing saves after a pause
   await note(page).press("Control+Enter");
   await expect
     .poll(async () => (await entry(page, "paused-4")).status)
@@ -676,6 +681,7 @@ test("failed drafts block paused-note switching and keyboard selection keeps the
     window.pausedQuota = true;
   });
   await note(page).fill("Kaydedilemeyen aktif notun kaybolmayacak yerel metni");
+  await page.clock.runFor(600); // typing saves after a pause
   await expect(action(page, "work-draft-retry")).toBeVisible();
   await row(page, "paused-4")
     .locator('[data-action="work-paused-open"]')
@@ -709,6 +715,7 @@ test("failed drafts block paused-note switching and keyboard selection keeps the
     textarea.setSelectionRange(3, 3);
   });
   await note(page).pressSequentially("X");
+  await page.clock.runFor(600); // typing saves after a pause
   const editedText = `${initialText.slice(0, 3)}X${initialText.slice(3)}`;
   await expect
     .poll(async () => (await entry(page, "paused-2")).draftNote)
@@ -733,6 +740,7 @@ test("failed drafts block paused-note switching and keyboard selection keeps the
     (_, index) => `${index + 1}. satır: ${editedText}`,
   ).join("\n");
   await note(page).fill(longText);
+  await page.clock.runFor(600); // typing saves after a pause
   await expect
     .poll(async () => (await entry(page, "paused-2")).draftNote)
     .toBe(longText);

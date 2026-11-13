@@ -135,7 +135,11 @@ async function start(page, id = "pad-first") {
   ).toHaveCount(0);
 }
 
+// Typing is saved once it pauses (half a second); let the test clock pass it.
+const settleTyping = (page) => page.clock.runFor(600);
+
 async function expectDraft(page, text, id = "pad-first") {
+  await settleTyping(page);
   await expect.poll(async () => (await entry(page, id))?.draftNote).toBe(text);
   await expect(note(page)).toHaveValue(text);
 }
@@ -304,6 +308,7 @@ test("draft storage failure keeps the exact local text and caret until one expli
     textarea.selectionStart,
     textarea.selectionEnd,
   ]);
+  await settleTyping(page);
   await expect(pad(page).locator("#work-note-error")).not.toBeEmpty();
   await expect(action(page, "work-draft-retry")).toBeVisible();
   await context.clock.runFor(2000);
@@ -379,6 +384,7 @@ test("a peer draft conflict preserves both texts until explicit load or overwrit
       window.notepadQuota = true;
     });
     await note(page).fill("Korunacak henüz kaydedilmemiş yerel not");
+    await settleTyping(page);
     await expect(action(page, "work-draft-retry")).toBeVisible();
     await note(peer).fill("Diğer pencereden kaydedilen güncel not");
     await expectDraft(peer, "Diğer pencereden kaydedilen güncel not");

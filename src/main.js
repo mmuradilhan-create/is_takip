@@ -74,6 +74,7 @@ import "./dashboard-card-facts.css";
 import "./outcome-prompt.css";
 import "./date-today.css";
 import "./row-states.css";
+import "./title-centering.css";
 import { createOutcomePrompt } from "./outcome-prompt.js";
 import { windowSizingMode } from "./window-size.js";
 import { trackTriggerToggle } from "./trigger-toggle.js";

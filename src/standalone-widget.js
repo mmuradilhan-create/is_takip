@@ -268,15 +268,8 @@ export function startStandaloneWidget() {
     try {
       const result = await windows.activateMain(recordId);
       if (stopped) return;
-      if (result.existing) {
-        activationMessage = result.focused
-          ? "Açık ODAK penceresine geçildi."
-          : "ODAK zaten açık. Görev çubuğundan ODAK’a geçebilirsin.";
-        if (!failed)
-          document.getElementById("widget-status").textContent =
-            activationMessage;
-        return;
-      }
+      // An open ODAK just comes forward; no message is needed for that.
+      if (result.existing) return;
       const target = new URL(window.location.href);
       target.hash = windowRoleHash(
         "desktop",

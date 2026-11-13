@@ -789,8 +789,32 @@ export function createWorkSessionUI({
     onChange: render,
     onError: reportError,
   });
+  // Typing saves once it pauses, not on every key: each save is read and
+  // redrawn by both windows, which made typing stutter. Pausing, finishing,
+  // switching work, leaving the box and closing the window save at once.
+  const FLUSH_DELAY = 500;
+  let flushTimer = null;
+  let lastFlushAt = -Infinity;
+  function scheduleFlush(state) {
+    // The first change after a quiet moment is saved at once; the keys that
+    // quickly follow it are saved together when typing pauses.
+    if (flushTimer === null && Date.now() - lastFlushAt >= FLUSH_DELAY) {
+      flushState(state);
+      lastFlushAt = Date.now();
+      return;
+    }
+    owner.clearTimeout(flushTimer);
+    flushTimer = owner.setTimeout(() => {
+      flushTimer = null;
+      lastFlushAt = Date.now();
+      if (!destroyed && state.dirty) flushState(state);
+    }, FLUSH_DELAY);
+  }
   function flushState(state, { force = false } = {}) {
+    owner.clearTimeout(flushTimer);
+    flushTimer = null;
     if (!state?.dirty) return true;
+    const hadMessage = Boolean(state.error || state.conflict || errorMessage);
     store.synchronize();
     const latest = store.get(state.recordId);
     if (
@@ -833,6 +857,8 @@ export function createWorkSessionUI({
       state.remote = null;
       state.error = "";
       errorMessage = "";
+      // A routine save changes nothing on screen, so nothing is redrawn.
+      if (!hadMessage && !force) return saved;
     } else {
       acknowledge(state, current);
       if (!state.conflict)
@@ -873,7 +899,7 @@ export function createWorkSessionUI({
     if (!state.dirty) {
       state.error = "";
       render();
-    } else flushState(state);
+    } else scheduleFlush(state);
   }
   function useCurrentDraft() {
     const state = editorState;
@@ -1418,6 +1444,7 @@ export function createWorkSessionUI({
     if (nav.scrollHeight > nav.clientHeight) event.stopPropagation();
   }
   function onBeforeUnload(event) {
+    flushDrafts();
     if (
       [...drafts.values()].some((state) => {
         const saved = store.get(state.recordId);
@@ -1448,6 +1475,9 @@ export function createWorkSessionUI({
     journal.removeEventListener("click", onNoteAreaClick);
     noteArea.removeEventListener("toggle", scheduleNoteFit, true);
     note.removeEventListener("input", onNoteInput);
+    note.removeEventListener("blur", flushNow);
+    owner.document?.removeEventListener("visibilitychange", onHidden);
+    owner.clearTimeout(flushTimer);
     note.removeEventListener("select", rememberCaret);
     note.removeEventListener("wheel", onWheel);
     noteArea.removeEventListener("wheel", onWheel);
@@ -1471,6 +1501,21 @@ export function createWorkSessionUI({
   journal.addEventListener("click", onNoteAreaClick);
   noteArea.addEventListener("toggle", scheduleNoteFit, true);
   note.addEventListener("input", onNoteInput);
+  // A failed save waits for the explicit retry; it is not retried here.
+  const flushNow = () => {
+    if (
+      !destroyed &&
+      editorState?.dirty &&
+      !editorState.conflict &&
+      !editorState.error
+    )
+      flushState(editorState);
+  };
+  note.addEventListener("blur", flushNow);
+  const onHidden = () => {
+    if (owner.document?.visibilityState === "hidden") flushNow();
+  };
+  owner.document?.addEventListener("visibilitychange", onHidden);
   note.addEventListener("select", rememberCaret);
   note.addEventListener("wheel", onWheel, { passive: true });
   noteArea.addEventListener("wheel", onWheel, { passive: true });

@@ -247,6 +247,7 @@ test("a failed Enter journal write retains its multiline result and paused draft
   await field.pressSequentially("İkinci sonuç satırı.");
   const note = "Kaybolmayacak sonuç\nİkinci sonuç satırı.";
   await expect(field).toHaveValue(note);
+  await page.clock.runFor(600); // typing saves after a pause
   const pausedDraft = await readEffectiveWorkSessionRaw(page);
   await field.evaluate((field) => {
     for (const options of [

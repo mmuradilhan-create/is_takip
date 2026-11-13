@@ -110,7 +110,7 @@ test("the top bar stays in place while a long list scrolls", async ({
   expect(covering).toBe(true);
 });
 
-test("title icons stay on the first line beside a wrapping title in every list row", async ({
+test("the star, tick and title icons share the middle of a wrapping title in every list row", async ({
   page,
 }) => {
   await seed(
@@ -146,25 +146,37 @@ test("title icons stay on the first line beside a wrapping title in every list r
     const row = page.locator(`tr[data-id="${id}"]`);
     const geometry = await row.evaluate((element) => {
       const title = element.querySelector(".task-name");
+      const middle = (box) => box.top + box.height / 2;
       const icons = [
         ...element.querySelectorAll(
           ".task-name-line :is(.record-parent-link, .record-note-trigger)",
         ),
       ];
+      const side = [
+        ...element.querySelectorAll(".day-focus-toggle, .quick-complete"),
+      ];
       const titleBox = title.getBoundingClientRect();
       const lineHeight = parseFloat(getComputedStyle(title).lineHeight);
       return {
         lines: Math.round(titleBox.height / lineHeight),
-        titleTop: titleBox.top,
+        titleMiddle: middle(titleBox),
         titleRight: titleBox.right,
         icons: icons.map((icon) => icon.getBoundingClientRect().toJSON()),
+        side: side.map((control) => middle(control.getBoundingClientRect())),
       };
     });
     expect(geometry.lines, id).toBeGreaterThan(1);
     expect(geometry.icons.length, id).toBeGreaterThan(0);
+    expect(geometry.side.length, id).toBe(2);
+    // Two lines or one, nothing climbs to the first line or sinks below.
     for (const icon of geometry.icons) {
       expect(icon.left, id).toBeGreaterThanOrEqual(geometry.titleRight);
-      expect(Math.abs(icon.top - geometry.titleTop), id).toBeLessThan(6);
+      expect(
+        Math.abs(icon.top + icon.height / 2 - geometry.titleMiddle),
+        id,
+      ).toBeLessThan(2);
     }
+    for (const control of geometry.side)
+      expect(Math.abs(control - geometry.titleMiddle), id).toBeLessThan(2);
   }
 });

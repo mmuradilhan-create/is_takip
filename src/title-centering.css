@@ -1,0 +1,49 @@
+/*
+ * When a title wraps to two lines, the star, the title and its clickable
+ * icons (goal, source, note, history) share one vertical middle; the icons
+ * stay to the right of the title block instead of following its last word.
+ */
+:is(.task-name-line, .focus-title-line) {
+  align-items: center;
+}
+
+.task-name-line > .record-title-content,
+.focus-title-line > .record-title-content {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.task-name-line > .record-title-content > .task-name {
+  display: block;
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.record-title-content
+  > :is(
+    .record-source-link,
+    .record-parent-link,
+    .record-note-trigger,
+    .record-history-trigger,
+    .waiting-info-trigger
+  ) {
+  flex: 0 0 auto;
+  margin-inline-start: 0;
+}
+
+/* The row's tick box lines up with that middle in current work. */
+.focus-row > :is(.quick-complete, .completion-mark) {
+  align-self: center;
+}
+
+/* In lists, the tick box shares the same middle as the title beside it. */
+.task-title-cell,
+.full-table .task-title-cell {
+  align-items: center;
+}
+
+.task-title-cell > :is(.quick-complete, .completion-mark) {
+  margin-top: 0;
+}

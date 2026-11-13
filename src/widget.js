@@ -213,9 +213,9 @@ export const widgetDocumentHtml = `<!doctype html>
     .widget-reminder { display:flex; flex-wrap:wrap; align-items:center; gap:6px; min-width:0; padding:6px 8px; border-bottom:1px solid #f0dcb4; }
     .widget-reminder-actions { display:flex; flex:0 0 auto; gap:5px; margin-inline-start:auto; }
     .widget-reminder:last-child { border-bottom:0; }
-    .widget-reminder-copy { display:flex; flex-direction:column; flex:1 1 130px; min-width:0; }
+    .widget-reminder-copy { display:flex; flex-direction:column; flex:1 1 100%; min-width:0; }
     .widget-reminder-when { color:#955400; font-size:10px; font-weight:650; }
-    .widget-reminder-text { overflow:hidden; color:#4a3a14; font-size:12px; font-weight:600; text-overflow:ellipsis; white-space:nowrap; }
+    .widget-reminder-text { display:-webkit-box; overflow:hidden; color:#4a3a14; font-size:12px; font-weight:600; overflow-wrap:anywhere; -webkit-box-orient:vertical; -webkit-line-clamp:2; }
     .widget-reminder button { flex:0 0 auto; min-height:26px; padding:3px 8px; border:1px solid #e5c082; border-radius:6px; background:#fff; color:#7a4a08; font-size:11px; font-weight:600; }
     .widget-reminder button[data-wb="reminder-done"] { border-color:#174d43; background:#174d43; color:#fff; }
     .widget-reminder button:disabled { opacity:.55; cursor:default; }

@@ -559,7 +559,7 @@ export function createWidgetWork({
         .slice(0, 3)
         .map(
           (note) =>
-            `<li class="widget-reminder" data-note-id="${escapeHtml(note.id)}"><span class="widget-reminder-copy"><span class="widget-reminder-when">${escapeHtml(formatReminder(note.remindAt))}</span><span class="widget-reminder-text" title="${escapeHtml(note.text)}">${escapeHtml(note.text.split("\n")[0])}</span></span><button type="button" data-wb="reminder-done" data-id="${escapeHtml(note.id)}"${reminderSaving ? " disabled" : ""}>Tamam</button><button type="button" data-wb="reminder-hour" data-id="${escapeHtml(note.id)}" title="1 saat sonra, çeyrek saate yuvarlanarak yeniden hatırlat"${reminderSaving ? " disabled" : ""}>1 saat</button></li>`,
+            `<li class="widget-reminder" data-note-id="${escapeHtml(note.id)}"><span class="widget-reminder-copy"><span class="widget-reminder-when">${escapeHtml(formatReminder(note.remindAt))}</span><span class="widget-reminder-text" title="${escapeHtml(note.text)}">${escapeHtml(note.text.split("\n")[0])}</span></span><span class="widget-reminder-actions"><button type="button" data-wb="reminder-done" data-id="${escapeHtml(note.id)}"${reminderSaving ? " disabled" : ""}>Tamam</button><button type="button" data-wb="reminder-hour" data-id="${escapeHtml(note.id)}" title="1 saat sonra, çeyrek saate yuvarlanarak yeniden hatırlat"${reminderSaving ? " disabled" : ""}>1 saat</button><button type="button" data-wb="reminder-tomorrow" data-id="${escapeHtml(note.id)}" title="Yarın 09:00’da yeniden hatırlat"${reminderSaving ? " disabled" : ""}>Yarın 09:00</button></span></li>`,
         )
         .join("") +
         (due.length > 3
@@ -577,7 +577,7 @@ export function createWidgetWork({
       const next = withNoteReminder(
         expected,
         id,
-        action === "done" ? null : snoozedMinute("hour"),
+        action === "done" ? null : snoozedMinute(action),
         new Date().toISOString(),
       );
       workspace.saveNotes(
@@ -743,10 +743,12 @@ export function createWidgetWork({
     const control = event.target.closest?.("[data-wb]");
     if (!control || !reminderStrip?.contains(control) || control.disabled)
       return;
-    answerReminder(
-      control.dataset.id,
-      control.dataset.wb === "reminder-done" ? "done" : "hour",
-    );
+    const action = {
+      "reminder-done": "done",
+      "reminder-hour": "hour",
+      "reminder-tomorrow": "tomorrow",
+    }[control.dataset.wb];
+    if (action) answerReminder(control.dataset.id, action);
   }
 
   function onClick(event) {

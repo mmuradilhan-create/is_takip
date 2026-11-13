@@ -591,3 +591,33 @@ test("the widget bell opens every reminder note: due ones are answered there, la
   await widget.keyboard.press("Escape");
   await expect(panel).toBeHidden();
 });
+
+test("the widget strip moves a due reminder to tomorrow 09:00 beside Tamam and 1 saat", async ({
+  context,
+}) => {
+  await seed(context, {
+    notes: [
+      note("due", { text: "Tedarikçiyi ara", remindAt: "2026-11-08T14:50" }),
+    ],
+  });
+  const widget = await context.newPage();
+  await widget.setViewportSize({ width: 300, height: 420 });
+  await widget.goto("/#widget");
+  const strip = widget.locator("#widget-reminders");
+  await expect(strip.locator("button")).toHaveText([
+    "Tamam",
+    "1 saat",
+    "Yarın 09:00",
+  ]);
+  expect(
+    await widget.evaluate(() => document.documentElement.scrollWidth),
+  ).toBeLessThanOrEqual(300);
+  await strip.getByRole("button", { name: "Yarın 09:00" }).click();
+  await expect
+    .poll(
+      async () =>
+        (await notesOf(widget)).find((item) => item.id === "due").remindAt,
+    )
+    .toBe("2026-11-09T09:00");
+  await expect(strip).toBeHidden();
+});

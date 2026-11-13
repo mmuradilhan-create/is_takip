@@ -298,8 +298,8 @@ test("fixed current-work order pins and highlights only the actual running sessi
   await expect(page.locator("#focus-sort")).toHaveCount(0);
   expect(await focusIds(page)).toEqual(order);
   await expect(page.locator(".focus-row.is-working")).toHaveCount(0);
-  const idleColor = await focus(page, "working").evaluate(
-    (row) => getComputedStyle(row).backgroundColor,
+  const idleBar = await focus(page, "working").evaluate(
+    (row) => getComputedStyle(row).boxShadow,
   );
   await focus(page, "working").locator(".work-start").click();
   await expect
@@ -311,11 +311,18 @@ test("fixed current-work order pins and highlights only the actual running sessi
     "running",
   );
   await expect(page.locator(".focus-row.is-working")).toHaveCount(1);
+  // The running row is marked by its green left bar, not a background.
+  await page.mouse.move(1, 1);
+  expect(
+    await focus(page, "working").evaluate(
+      (row) => getComputedStyle(row).boxShadow,
+    ),
+  ).not.toBe(idleBar);
   expect(
     await focus(page, "working").evaluate(
       (row) => getComputedStyle(row).backgroundColor,
     ),
-  ).not.toBe(idleColor);
+  ).toBe("rgba(0, 0, 0, 0)");
   await page.clock.runFor(1000);
   await page.locator('#nav [data-view="daily"]').click();
   await dashboard(page);

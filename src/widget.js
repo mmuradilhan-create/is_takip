@@ -90,6 +90,22 @@ export const widgetDocumentHtml = `<!doctype html>
     .widget-live { color:#64775f; font-size:11px; }
     .widget-pin { display:inline-flex; align-items:center; justify-content:center; flex:0 0 26px; width:26px; height:26px; padding:4px; border:1px solid #dce5d7; border-radius:6px; color:#5d715a; background:#fff; }
     .widget-pin:disabled { opacity:.5; cursor:default; }
+    .widget-strip-toggle { display:inline-flex; align-items:center; justify-content:center; flex:0 0 26px; width:26px; height:26px; padding:4px; border:1px solid #dce5d7; border-radius:6px; color:#5d715a; background:#fff; cursor:pointer; }
+    .widget-strip-toggle svg { width:16px; height:16px; fill:none; stroke:currentColor; stroke-width:1.9; stroke-linecap:round; stroke-linejoin:round; }
+    .widget-strip-toggle:hover { background:#edf3e8; }
+    [data-theme="dark"] .widget-strip-toggle { color:#d3d8d1; background:#18191b; border-color:#3d4249; }
+    /* The strip: one line with the work in progress; everything else waits. */
+    .widget-strip-line { display:none; }
+    html[data-widget-strip] .widget-shell { height:auto; min-height:0; padding:8px 10px; gap:0; }
+    html[data-widget-strip] .widget-shell > :not(.widget-header) { display:none !important; }
+    html[data-widget-strip] .widget-header h1, html[data-widget-strip] .widget-live, html[data-widget-strip] .widget-view-toggle { display:none; }
+    html[data-widget-strip] .widget-header { gap:8px; }
+    html[data-widget-strip] .widget-strip-line { display:flex; align-items:center; gap:7px; flex:1 1 auto; min-width:0; margin:0; padding:0; border:0; background:none; color:#304d37; font:inherit; font-size:12px; font-weight:600; text-align:left; cursor:pointer; }
+    .widget-strip-text { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .widget-strip-dot { flex:0 0 8px; width:8px; height:8px; border-radius:50%; background:#b8c2b3; }
+    .widget-strip-line[data-phase="running"] .widget-strip-dot { background:#2f8a57; }
+    .widget-strip-line[data-phase="paused"] .widget-strip-dot { background:#c99a3d; }
+    [data-theme="dark"] html[data-widget-strip] .widget-strip-line, html[data-theme="dark"][data-widget-strip] .widget-strip-line { color:#e9eaec; }
     .widget-pin[aria-pressed="true"] { color:#174d43; border-color:#a8c5a0; background:#eaf2e4; }
     .widget-pin svg { width:16px; height:16px; fill:none; stroke:currentColor; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
     .widget-day-tabs { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px; flex:0 0 auto; }
@@ -294,7 +310,7 @@ export const widgetDocumentHtml = `<!doctype html>
 </head>
 <body>
   <main class="widget-shell" data-view="work">
-    <header class="widget-header"><h1>ODAK</h1><div class="widget-header-tools"><span class="widget-live">Çalışma</span><button type="button" class="widget-view-toggle" id="widget-view-toggle" aria-controls="widget-agenda-views" title="Ajandayı göster"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4m8-4v4M4 10h16"/></svg><span>Ajanda</span></button><button type="button" class="widget-pin" id="widget-pin" aria-label="Üstte tut" aria-pressed="false" title="Üstte tut Windows paketiyle kullanılabilir." disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m16 3 5 5-4 1-3 4v4l-2 2-3-6-6-3 2-2h4l4-3zM9 15l-6 6"/></svg></button></div></header>
+    <header class="widget-header"><h1>ODAK</h1><button type="button" class="widget-strip-line" id="widget-strip-line" data-phase="idle" title="Widget'ı büyüt"><span class="widget-strip-dot" aria-hidden="true"></span><span class="widget-strip-text">Çalışılan iş yok</span></button><div class="widget-header-tools"><span class="widget-live">Çalışma</span><button type="button" class="widget-view-toggle" id="widget-view-toggle" aria-controls="widget-agenda-views" title="Ajandayı göster"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4m8-4v4M4 10h16"/></svg><span>Ajanda</span></button><button type="button" class="widget-strip-toggle" id="widget-strip" aria-label="Şeride küçült" aria-pressed="false" title="Şeride küçült"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg></button><button type="button" class="widget-pin" id="widget-pin" aria-label="Üstte tut" aria-pressed="false" title="Üstte tut Windows paketiyle kullanılabilir." disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m16 3 5 5-4 1-3 4v4l-2 2-3-6-6-3 2-2h4l4-3zM9 15l-6 6"/></svg></button></div></header>
     <section class="widget-reminders" id="widget-reminders" aria-label="Zamanı gelen hatırlatmalar" hidden><ul id="widget-reminder-list"></ul></section>
     <section class="widget-workbench" id="widget-workbench" aria-label="Çalışma" data-mode="idle">
       <div class="wb-active" hidden><div class="wb-heading"><span class="wb-phase"></span><div class="wb-title-line"><button type="button" class="wb-title" data-wb="active-detail" aria-expanded="false" aria-controls="wb-active-detail"><svg class="wb-row-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg><span class="wb-title-text"></span></button><span class="wb-heading-journal"></span></div><div class="wb-row-detail wb-active-detail" id="wb-active-detail" hidden></div></div><label class="wb-note-field"><span class="wb-note-label">Çalışma notu</span><textarea id="widget-work-note" maxlength="10000" placeholder="Çalışırken notlarını buraya yaz…"></textarea></label><p class="wb-error" role="alert" hidden></p><div class="wb-conflict" hidden><button type="button" data-wb="use-current">Güncel notu yükle</button><button type="button" data-wb="save-local">Bu notu kaydet</button></div><div class="wb-controls"><button type="button" class="wb-toggle" data-wb="toggle"></button><button type="button" class="wb-finish" data-wb="finish"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6h12v12H6z"/></svg><span>Bitir</span></button></div><div class="wb-finish-controls" hidden><button type="button" data-wb="finish-cancel">Vazgeç</button><button type="button" class="wb-save" data-wb="finish-save">Kaydet ve bitir</button></div></div>

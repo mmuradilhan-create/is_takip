@@ -314,6 +314,15 @@ export function createWorkSessionUI({
         control.classList.toggle("is-running", state.running);
       if (control.classList.contains("is-paused") !== state.paused)
         control.classList.toggle("is-paused", state.paused);
+      // The row shows the work state as a left bar (running or paused).
+      const row = control.closest(".focus-row, .record-list-row");
+      if (row) {
+        const work = state.running ? "running" : state.paused ? "paused" : "";
+        if ((row.dataset.workBar || "") !== work) {
+          if (work) row.dataset.workBar = work;
+          else delete row.dataset.workBar;
+        }
+      }
       setAttr(control, "aria-label", `${record.title}: ${state.label}`);
       setAttr(control, "aria-pressed", String(state.running));
       setAttr(control, "title", state.hint);

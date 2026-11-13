@@ -45,7 +45,7 @@ test("window tagging never blocks sizing and is repeated only for new HWNDs", ()
   assert(helper.includes(taskbarIdentityType()));
   assert(
     helper.includes(
-      "[OdakWidgetBounds]::ForgetPin($h); [OdakTaskbar]::Forget($h) } }",
+      "[OdakWidgetBounds]::ForgetPin($h); [OdakWidgetBounds]::ForgetStrip($h); [OdakTaskbar]::Forget($h) } }",
     ),
     "a closed HWND can be tagged again if Windows reuses its handle",
   );

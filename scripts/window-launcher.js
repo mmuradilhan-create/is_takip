@@ -1,6 +1,7 @@
 import {
   MAIN_VIEWPORT,
   WIDGET_OUTER_FALLBACK,
+  WIDGET_STRIP_HEIGHT,
   WIDGET_VIEWPORT,
 } from "../src/window-size.js";
 import { TASKBAR_IDS, taskbarIdentityType } from "./taskbar-identity.js";
@@ -24,7 +25,8 @@ public delegate bool EnumProc(IntPtr h,IntPtr p);
 [DllImport("user32.dll")] static extern IntPtr SetThreadDpiAwarenessContext(IntPtr c);
 static string Class(IntPtr h) { var c=new StringBuilder(128); GetClassName(h,c,c.Capacity); return c.ToString(); }
 static string Title(IntPtr h) { var t=new StringBuilder(512); GetWindowText(h,t,t.Capacity); return t.ToString(); }
-static bool WidgetTitle(string title) { return title=="ODAK · Özet" || title=="ODAK · Özet · Üstte"; }
+// "· Üstte" pins the widget; "· İnce" folds it to its one-line strip.
+static bool WidgetTitle(string title) { return title=="ODAK · Özet" || title=="ODAK · Özet · Üstte" || title=="ODAK · Özet · İnce" || title=="ODAK · Özet · Üstte · İnce"; }
 static bool Widget(IntPtr h) { return IsWindowVisible(h) && Class(h).StartsWith("Chrome_WidgetWin_") && WidgetTitle(Title(h)); }
 public static IntPtr[] Windows(bool widgetOnly) { var found=new List<IntPtr>(); EnumWindows(delegate(IntPtr h,IntPtr p) { if(Class(h).StartsWith("Chrome_WidgetWin_") && (!widgetOnly || Widget(h))) found.Add(h); return true; },IntPtr.Zero); return found.ToArray(); }
 static readonly Dictionary<IntPtr,bool> PinStates=new Dictionary<IntPtr,bool>();
@@ -41,11 +43,33 @@ public static void ReleasePins() {
 public static void SyncPin(IntPtr h) {
   if(h==IntPtr.Zero || !IsWindowVisible(h) || !Class(h).StartsWith("Chrome_WidgetWin_")) return;
   string title=Title(h); if(!WidgetTitle(title)) return;
-  bool requested=title=="ODAK · Özet · Üstte",previous; if(!PinStates.TryGetValue(h,out previous)) previous=false;
+  bool requested=title.StartsWith("ODAK · Özet · Üstte"),previous; if(!PinStates.TryGetValue(h,out previous)) previous=false;
   PinStates[h]=requested; if(previous==requested) return;
   SetWindowPos(h,new IntPtr(requested?-1:-2),0,0,0,0,0x0001|0x0002|0x0010);
 }
 static bool Renderer(IntPtr h,R outer,out R view) { R best=new R(); EnumChildWindows(h,delegate(IntPtr child,IntPtr p) { R r; if(IsWindowVisible(child) && Class(child)=="Chrome_RenderWidgetHostHWND" && GetWindowRect(child,out r) && r.W>0 && r.H>0 && r.L>=outer.L && r.T>=outer.T && r.Rt<=outer.Rt && r.B<=outer.B && (long)r.W*r.H>(long)best.W*best.H) best=r; return true; },IntPtr.Zero); view=best; return best.W>0 && best.H>0; }
+// The strip keeps the window's width and place; its height fits the one-line
+// page. Leaving the strip restores the exact size it had before.
+static readonly Dictionary<IntPtr,R> StripRestore=new Dictionary<IntPtr,R>();
+public static void ForgetStrip(IntPtr h) { StripRestore.Remove(h); }
+public static void SyncStrip(IntPtr h) {
+  if(h==IntPtr.Zero || !Widget(h)) return;
+  bool strip=Title(h).EndsWith(" · İnce");
+  R saved; bool folded=StripRestore.TryGetValue(h,out saved);
+  if(strip==folded) return;
+  IntPtr previous=IntPtr.Zero;
+  try { previous=SetThreadDpiAwarenessContext(new IntPtr(-4)); if(previous==IntPtr.Zero) previous=SetThreadDpiAwarenessContext(new IntPtr(-3)); } catch(EntryPointNotFoundException) {}
+  if(previous==IntPtr.Zero) return;
+  try {
+    R outer; if(!GetWindowRect(h,out outer)) return;
+    if(!strip) { StripRestore.Remove(h); SetWindowPos(h,IntPtr.Zero,0,0,saved.W,saved.H,0x0002|0x0004|0x0010); return; }
+    uint dpi=96; try { dpi=GetDpiForWindow(h); } catch(EntryPointNotFoundException) {} if(dpi==0) dpi=96;
+    R view; int frame=Renderer(h,outer,out view)?outer.H-view.H:(int)Math.Round(40*dpi/96.0);
+    int height=frame+(int)Math.Round(${WIDGET_STRIP_HEIGHT}*dpi/96.0);
+    StripRestore[h]=outer;
+    SetWindowPos(h,IntPtr.Zero,0,0,outer.W,height,0x0002|0x0004|0x0010);
+  } finally { SetThreadDpiAwarenessContext(previous); }
+}
 class Pending { public string Sample; public long StableSince; public bool Restored; }
 static readonly Dictionary<IntPtr,Pending> PendingWindows=new Dictionary<IntPtr,Pending>();
 public static void Forget(IntPtr h) { PendingWindows.Remove(h); }
@@ -110,12 +134,35 @@ public delegate bool EnumProc(IntPtr h,IntPtr p);
 [DllImport("user32.dll")] static extern IntPtr SetThreadDpiAwarenessContext(IntPtr c);
 [DllImport("user32.dll")] static extern bool AdjustWindowRectExForDpi(ref R r,uint style,bool menu,uint exStyle,uint dpi);
 [DllImport("user32.dll")] static extern bool AdjustWindowRectEx(ref R r,uint style,bool menu,uint exStyle);
+[DllImport("user32.dll")] static extern IntPtr GetForegroundWindow();
+[DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr h,IntPtr pid);
+[DllImport("kernel32.dll")] static extern uint GetCurrentThreadId();
+[DllImport("user32.dll")] static extern bool AttachThreadInput(uint from,uint to,bool attach);
+[DllImport("user32.dll")] static extern bool SetForegroundWindow(IntPtr h);
+[DllImport("user32.dll")] static extern bool BringWindowToTop(IntPtr h);
+[DllImport("user32.dll")] static extern bool IsIconic(IntPtr h);
+[DllImport("user32.dll")] static extern bool ShowWindow(IntPtr h,int n);
 static readonly string[] Titles=new string[]{${mainTitles.map((title) => JSON.stringify(title)).join(",")}};
 static readonly Dictionary<IntPtr,bool> Prepared=new Dictionary<IntPtr,bool>();
 static string Class(IntPtr h) { var c=new StringBuilder(128); GetClassName(h,c,c.Capacity); return c.ToString(); }
 static bool IsMain(IntPtr h) { var t=new StringBuilder(512); GetWindowText(h,t,t.Capacity); return IsWindowVisible(h) && Class(h).StartsWith("Chrome_WidgetWin_") && Array.IndexOf(Titles,t.ToString())>=0; }
 public static IntPtr[] Windows(bool mainOnly) { var found=new List<IntPtr>(); EnumWindows(delegate(IntPtr h,IntPtr p) { if(mainOnly?IsMain(h):Class(h).StartsWith("Chrome_WidgetWin_")) found.Add(h); return true; },IntPtr.Zero); return found.ToArray(); }
-public static void Forget(IntPtr h) { Prepared.Remove(h); }
+public static void Forget(IntPtr h) { Prepared.Remove(h); Raised.Remove(h); }
+// A main window whose title ends in "· Öne" asked to come to the front (the
+// widget's "ODAK'ı aç" or "ODAK'ta düzenle"); browsers cannot do that across
+// windows. It is raised once per request, while the user's click still holds
+// the foreground, by sharing that window's input for the switch.
+static readonly HashSet<IntPtr> Raised=new HashSet<IntPtr>();
+public static void Raise(IntPtr h) {
+  if(h==IntPtr.Zero || !IsWindowVisible(h) || !Class(h).StartsWith("Chrome_WidgetWin_")) return;
+  var t=new StringBuilder(512); GetWindowText(h,t,t.Capacity);
+  if(!t.ToString().EndsWith(" · Odak · Öne")) { Raised.Remove(h); return; }
+  if(!Raised.Add(h)) return;
+  if(IsIconic(h)) ShowWindow(h,9);
+  uint me=GetCurrentThreadId(),owner=GetWindowThreadProcessId(GetForegroundWindow(),IntPtr.Zero);
+  bool attached=owner!=0 && owner!=me && AttachThreadInput(me,owner,true);
+  try { BringWindowToTop(h); SetForegroundWindow(h); } finally { if(attached) AttachThreadInput(me,owner,false); }
+}
 // Place each new main HWND once at the recommended size, centered; a screen too
 // small for it opens maximized. Windows owns later restores and user resizing.
 public static bool Arrange(IntPtr h) {
@@ -208,7 +255,8 @@ ${native}
     if ($wake.WaitOne(0)) { $lastSeen=$now; $idleGrace=30000 }
     $alive=[Collections.Generic.HashSet[IntPtr]]::new()
     foreach ($h in @([OdakMainBounds]::Windows($false))) { [void]$alive.Add($h) }
-    foreach ($h in @($seen)) { if (!$alive.Contains($h)) { [void]$seen.Remove($h); $settling.Remove($h); [OdakMainBounds]::Forget($h); [OdakWidgetBounds]::Forget($h); [OdakWidgetBounds]::ForgetPin($h); [OdakTaskbar]::Forget($h) } }
+    foreach ($h in @($seen)) { if (!$alive.Contains($h)) { [void]$seen.Remove($h); $settling.Remove($h); [OdakMainBounds]::Forget($h); [OdakWidgetBounds]::Forget($h); [OdakWidgetBounds]::ForgetPin($h); [OdakWidgetBounds]::ForgetStrip($h); [OdakTaskbar]::Forget($h) } }
+    foreach ($h in $alive) { [OdakMainBounds]::Raise($h) }
     [OdakWidgetBounds]::ReleasePins()
     $mains=@([OdakMainBounds]::Windows($true))
     $widgets=@([OdakWidgetBounds]::Windows($true))
@@ -219,6 +267,7 @@ ${native}
     }
     foreach ($h in $widgets) {
       [OdakWidgetBounds]::SyncPin($h)
+      [OdakWidgetBounds]::SyncStrip($h)
       if ($identity.widget) { [void][OdakTaskbar]::Tag($h,$identity.widget.Id,$identity.widget.Command,$identity.widget.Name,$identity.widget.Icon) }
       if ($seen.Add($h)) { $settling[$h]=@{ Role='widget'; Until=$now+2500 } }
     }

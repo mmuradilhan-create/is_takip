@@ -1,0 +1,46 @@
+/*
+ * One meaning per mark in work rows: the background changes only on hover,
+ * the left bar shows the work state (green running, amber paused, like the
+ * ▶ / ⏸ button), and the star alone marks today's focus.
+ */
+#app :is(.focus-row.is-day-focus, .focus-row.is-working),
+#app .record-list-row.is-day-focus > td,
+[data-theme="dark"] #app .focus-row.is-working {
+  background: transparent;
+  box-shadow: none;
+}
+
+#app .focus-row:is(.is-day-focus, .is-working):hover,
+#app .record-list-row.is-day-focus:hover > td {
+  background: var(--theme-hover, #f4f8f2);
+}
+
+#app .focus-row.is-working .focus-title {
+  color: inherit;
+}
+
+#app .focus-row[data-work-bar="running"],
+#app .record-list-row[data-work-bar="running"] > td:first-child {
+  box-shadow: inset 3px 0 #2f8a57;
+}
+
+#app .focus-row[data-work-bar="paused"],
+#app .record-list-row[data-work-bar="paused"] > td:first-child {
+  box-shadow: inset 3px 0 #c99a3d;
+}
+
+[data-theme="dark"] #app .focus-row[data-work-bar="running"],
+[data-theme="dark"]
+  #app
+  .record-list-row[data-work-bar="running"]
+  > td:first-child {
+  box-shadow: inset 3px 0 #8cc7a2;
+}
+
+[data-theme="dark"] #app .focus-row[data-work-bar="paused"],
+[data-theme="dark"]
+  #app
+  .record-list-row[data-work-bar="paused"]
+  > td:first-child {
+  box-shadow: inset 3px 0 #d6b06a;
+}

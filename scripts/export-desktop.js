@@ -814,6 +814,14 @@ ayni gorunumu kullanir; hedefler de gunluk islerle ayni kurala uyar. Widget'ta
 tarih duz yazidir, yalniz rengi degisir (bugun kalin amber, 1-3 gun amber,
 gecikmis kirmizi).
 
+WIDGET SERIDI VE ONE GETIRME (1.14.0)
+
+Widget'in ust kosesindeki ^ dugmesi widget'i tek satirlik seride indirir:
+calisilan isin adi ve durum noktasi gorunur; ayni dugme veya satirin kendisi
+eski boyuna dondurur. Ustte tutma seritte de korunur. ODAK'i ac ve ODAK'ta
+duzenle, ODAK aciksa o pencereyi en one getirir. Satirlarda soldaki cizgi
+calisilan iste yesil, duraklatilmis iste amberdir; odagi yildiz gosterir.
+
 MENUYU DARALT (1.11.0)
 
 1200 piksel ve ustu genislikte ODAK logosunun yanindaki < dugmesi sol menuyu

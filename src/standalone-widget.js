@@ -12,6 +12,7 @@ import {
   windowRoleHash,
   windowPinSupported,
   windowSizingMode,
+  WIDGET_STRIP_HEIGHT,
 } from "./window-size.js";
 import {
   WORK_SESSION_KEY,
@@ -79,6 +80,46 @@ export function startStandaloneWidget() {
   let view = "today";
   let pane = "work";
   let pinned = false;
+  let folded = false;
+  let unfoldedSize = null;
+  const stripButton = document.getElementById("widget-strip");
+  // Pinning and folding both reach the Windows helper through the title.
+  const widgetTitle = () =>
+    `ODAK · Özet${pinned ? " · Üstte" : ""}${folded ? " · İnce" : ""}`;
+  /**
+   * Fold the widget to one line with the work in progress, or open it again.
+   * With the Windows package the helper resizes the window (it owns its
+   * size); in a browser popup the page resizes itself.
+   */
+  function setFolded(next) {
+    if (folded === next) return;
+    folded = next;
+    if (folded) document.documentElement.dataset.widgetStrip = "";
+    else delete document.documentElement.dataset.widgetStrip;
+    const label = folded ? "Widget'ı büyüt" : "Şeride küçült";
+    stripButton.setAttribute("aria-label", label);
+    stripButton.title = label;
+    stripButton.setAttribute("aria-pressed", String(folded));
+    stripButton
+      .querySelector("path")
+      .setAttribute("d", folded ? "M6 9l6 6 6-6" : "M6 15l6-6 6 6");
+    document.title = widgetTitle();
+    if (windowSizingMode(window) === "native") return;
+    try {
+      if (folded) {
+        unfoldedSize = { width: window.outerWidth, height: window.outerHeight };
+        window.resizeTo(
+          window.outerWidth,
+          window.outerHeight - window.innerHeight + WIDGET_STRIP_HEIGHT,
+        );
+      } else if (unfoldedSize) {
+        window.resizeTo(unfoldedSize.width, unfoldedSize.height);
+        unfoldedSize = null;
+      }
+    } catch {
+      /* A window the page may not resize keeps its size; the strip still folds. */
+    }
+  }
   let workMessage = "";
   let workTone = "";
   let workMessageTimer = null;
@@ -214,6 +255,13 @@ export function startStandaloneWidget() {
   async function openMain(recordId = null) {
     if (activating) return;
     activating = true;
+    // While the click still counts, a widget opened from ODAK can bring that
+    // window forward itself; the Windows helper does it in the package.
+    try {
+      if (window.opener && !window.opener.closed) window.opener.focus();
+    } catch {
+      /* Another origin or a closed window: the coordinator still answers. */
+    }
     const button = document.getElementById("widget-open-main");
     button.disabled = true;
     button.setAttribute("aria-busy", "true");
@@ -284,8 +332,12 @@ export function startStandaloneWidget() {
         pinned = !pinned;
         pin.setAttribute("aria-pressed", String(pinned));
         pin.title = pinned ? "Üstte tutmayı kapat" : "Üstte tut";
-        document.title = pinned ? "ODAK · Özet · Üstte" : "ODAK · Özet";
+        document.title = widgetTitle();
       }
+      return;
+    }
+    if (target.closest("#widget-strip, #widget-strip-line")) {
+      setFolded(!folded);
       return;
     }
     const day = target.closest("[data-widget-day]");

@@ -106,9 +106,9 @@ test("native helper only settles newly identified ODAK roles and releases later 
   );
   assert(
     helper.includes(
-      'return title=="ODAK · Özet" || title=="ODAK · Özet · Üstte";',
+      'return title=="ODAK · Özet" || title=="ODAK · Özet · Üstte" || title=="ODAK · Özet · İnce" || title=="ODAK · Özet · Üstte · İnce";',
     ),
-    "both widget titles retain the same native sizing role",
+    "pinned and folded widget titles retain the same native sizing role",
   );
   const titles = JSON.parse(
     `[${helper.match(/static readonly string\[\] Titles=new string\[\]\{([^}]+)\};/)[1]}]`,
@@ -232,7 +232,7 @@ test("native pinning changes only widget z-order once per requested state transi
   );
   assert(
     pin.includes(
-      'bool requested=title=="ODAK · Özet · Üstte",previous; if(!PinStates.TryGetValue(h,out previous)) previous=false;',
+      'bool requested=title.StartsWith("ODAK · Özet · Üstte"),previous; if(!PinStates.TryGetValue(h,out previous)) previous=false;',
     ),
     "the base title starts unpinned without a native operation",
   );
@@ -376,4 +376,45 @@ test("missing sizing helper keeps app access available and reports the required 
   );
   assert(launcher.includes("-WindowStyle Hidden"));
   assert(launcher.includes("'-File'"));
+});
+
+test("the folded widget strip and the main window's come-forward request are handled natively", () => {
+  const strip = helper.slice(
+    helper.indexOf("public static void SyncStrip(IntPtr h)"),
+    helper.indexOf("class Pending {"),
+  );
+  assert(strip.includes('bool strip=Title(h).EndsWith(" · İnce");'));
+  assert(
+    strip.includes("if(strip==folded) return;"),
+    "the window is resized once per fold or unfold, not every pass",
+  );
+  assert(
+    strip.includes(
+      "StripRestore.Remove(h); SetWindowPos(h,IntPtr.Zero,0,0,saved.W,saved.H,0x0002|0x0004|0x0010); return;",
+    ),
+    "unfolding restores the exact size the widget had",
+  );
+  assert(
+    strip.includes("StripRestore[h]=outer;") &&
+      strip.includes("SetWindowPos(h,IntPtr.Zero,0,0,outer.W,height,"),
+    "folding keeps the width and position",
+  );
+  assert(
+    helper.includes(
+      "      [OdakWidgetBounds]::SyncPin($h)\n      [OdakWidgetBounds]::SyncStrip($h)",
+    ),
+  );
+  const raise = helper.slice(
+    helper.indexOf("public static void Raise(IntPtr h)"),
+    helper.indexOf("// Place each new main HWND"),
+  );
+  assert(raise.includes('if(!t.ToString().EndsWith(" · Odak · Öne"))'));
+  assert(
+    raise.includes("if(!Raised.Add(h)) return;"),
+    "one request raises the window once",
+  );
+  assert(raise.includes("SetForegroundWindow(h)"));
+  assert(
+    helper.includes("foreach ($h in $alive) { [OdakMainBounds]::Raise($h) }"),
+  );
 });

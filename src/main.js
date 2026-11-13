@@ -73,7 +73,9 @@ import "./dashboard-fluid-height.css";
 import "./dashboard-card-facts.css";
 import "./outcome-prompt.css";
 import "./date-today.css";
+import "./row-states.css";
 import { createOutcomePrompt } from "./outcome-prompt.js";
+import { windowSizingMode } from "./window-size.js";
 import { trackTriggerToggle } from "./trigger-toggle.js";
 import {
   HistoryConflictError,
@@ -2151,7 +2153,7 @@ export async function startMainApp() {
         .join("")}`;
     updatePageHeader();
     topbarClock.refresh();
-    document.title = `${pageTitle()} · ${APP_NAME}`;
+    document.title = windowTitle();
     renderContent();
     renderedWorkspaceDomain = workspaceDomainSnapshot(
       state.records,
@@ -2232,6 +2234,23 @@ export async function startMainApp() {
     if (document.querySelector("dialog:modal, :popover-open")) return;
     renderedCalendarDay = today();
     render();
+  }
+  /*
+   * Browsers cannot bring one window in front of another. With the Windows
+   * package, "· Öne" at the end of the title asks the helper to do it; the
+   * mark is removed again a moment later.
+   */
+  let foregroundUntil = 0;
+  const windowTitle = () =>
+    `${pageTitle()} · ${APP_NAME}${Date.now() < foregroundUntil ? " · Öne" : ""}`;
+  function requestForeground() {
+    if (windowSizingMode(window) !== "native") return;
+    foregroundUntil = Date.now() + 1500;
+    document.title = windowTitle();
+    window.setTimeout(() => {
+      foregroundUntil = 0;
+      document.title = windowTitle();
+    }, 1600);
   }
   /*
    * Week/month/year selection and list sort come back after ODAK is closed
@@ -4781,6 +4800,7 @@ export async function startMainApp() {
   reminderBell?.refresh();
   function activateMainWindow(id = null) {
     window.focus();
+    requestForeground();
     const record = state.records.find((item) => item.id === id);
     if (record) {
       if (document.querySelector("dialog:modal")) {

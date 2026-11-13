@@ -45,6 +45,13 @@ export function widgetSessionSummary(records, raw, at = Date.now()) {
 }
 
 export function renderWidgetSession(document, summary) {
+  // The folded widget's one line shows the same work and its phase.
+  const line = document.getElementById("widget-strip-line");
+  if (line) {
+    line.dataset.phase = summary?.status || "idle";
+    line.querySelector(".widget-strip-text").textContent =
+      summary?.title || "Çalışılan iş yok";
+  }
   const strip = document.getElementById("widget-session");
   strip.hidden = !summary;
   if (!summary) {

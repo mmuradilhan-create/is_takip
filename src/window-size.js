@@ -1,5 +1,7 @@
 export const WIDGET_VIEWPORT = Object.freeze({ width: 380, height: 420 });
 export const WIDGET_OUTER_FALLBACK = Object.freeze({ width: 400, height: 480 });
+/** The widget's one-line strip: its page height in CSS pixels. */
+export const WIDGET_STRIP_HEIGHT = 44;
 /** Recommended main content size: the widest layouts fit without squeezing. */
 export const MAIN_VIEWPORT = Object.freeze({ width: 1440, height: 900 });
 /** Room left for a browser window frame around the content. */

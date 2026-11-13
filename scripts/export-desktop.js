@@ -814,6 +814,16 @@ ayni gorunumu kullanir; hedefler de gunluk islerle ayni kurala uyar. Widget'ta
 tarih duz yazidir, yalniz rengi degisir (bugun kalin amber, 1-3 gun amber,
 gecikmis kirmizi).
 
+AKICI YAZMA VE WIDGET SERIDI (1.14.2)
+
+Calisma notu yazarken ara verip devam edince takilma ve yildiza basinca
+gecikme giderildi: geri alma gecmisi artik her kayitta bastan dogrulanmaz.
+Yildiz basildigi anda dolar; fare disarida birakilirsa degismez. Widget'in
+hatirlatma seridinde Tamam, 1 saat ve Yarin 09:00 vardir. Seride kucultulmus
+widget calisilan isi Duraklat / Devam et dugmesiyle, bostayken Siradaki isi
+baslat dugmesi ve geciken sayisiyla gosterir; zamani gelen hatirlatmanin zili
+seritte de gorunur, basinca widget acilir.
+
 WIDGET SERIDI, ZIL VE ONE GETIRME (1.14.0)
 
 Widget'in ust kosesindeki ^ dugmesi widget'i tek satirlik seride indirir:

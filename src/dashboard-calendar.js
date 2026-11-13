@@ -309,6 +309,17 @@ export function createDashboardCalendar({
       (element) => element !== dialog,
     );
 
+  let entriesScrollTop = 0;
+  function onScroll(event) {
+    const entries = event.target;
+    if (
+      entries?.classList?.contains("calendar-agenda-entries") &&
+      entries.closest(`[data-calendar-owner="${owner}"]`) &&
+      root.contains(entries)
+    )
+      entriesScrollTop = entries.scrollTop;
+  }
+
   function refresh() {
     if (destroyed) return;
     const focused = focusDescriptor();
@@ -316,15 +327,19 @@ export function createDashboardCalendar({
       `.dashboard-calendar[data-calendar-owner="${owner}"]`,
     );
     const previousEntries = compact?.querySelector(".calendar-agenda-entries");
+    // The scroll position is remembered as it changes: reading it here, right
+    // after the page was rewritten, forced a whole extra page layout.
     const entriesScroll =
       previousEntries?.dataset.calendarSelected === selectedDay
-        ? previousEntries.scrollTop
+        ? entriesScrollTop
         : 0;
     if (compact) {
       compact.outerHTML = render();
-      root.querySelector(
-        `[data-calendar-owner="${owner}"] .calendar-agenda-entries`,
-      ).scrollTop = entriesScroll;
+      entriesScrollTop = entriesScroll;
+      if (entriesScroll)
+        root.querySelector(
+          `[data-calendar-owner="${owner}"] .calendar-agenda-entries`,
+        ).scrollTop = entriesScroll;
     }
     const covered = coveredByModal();
     if (dialog.open) {
@@ -530,6 +545,7 @@ export function createDashboardCalendar({
   }
 
   root.addEventListener("click", onClick);
+  root.addEventListener("scroll", onScroll, true);
   root.addEventListener("change", onChange);
   root.addEventListener("keydown", onKeyDown);
   const separateDialog = !root.contains(dialog);
@@ -544,6 +560,7 @@ export function createDashboardCalendar({
   function destroy() {
     destroyed = true;
     root.removeEventListener("click", onClick);
+    root.removeEventListener("scroll", onScroll, true);
     root.removeEventListener("change", onChange);
     root.removeEventListener("keydown", onKeyDown);
     dialog.removeEventListener("click", onClick);

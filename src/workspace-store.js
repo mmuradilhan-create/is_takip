@@ -72,14 +72,22 @@ export function createWorkspaceStore({
     return error;
   }
 
+  // The once-a-second widget check reads the same stored text again and again;
+  // it is parsed only when it changed.
+  let sessionMemo = null;
   function effectiveSessionRaw(primaryRaw) {
+    if (sessionMemo && sessionMemo.primaryRaw === primaryRaw)
+      return sessionMemo.value;
     const decoded = primaryRaw === null ? null : JSON.parse(primaryRaw);
     const primarySessions =
       decoded?.odak && Object.hasOwn(decoded.odak, "workSessions");
-    return readPrimaryWorkSessionRaw(
+    const value = readPrimaryWorkSessionRaw(
       primaryRaw,
       primarySessions ? null : storage.getItem(workSessionKey),
     );
+    // A legacy separate key can change on its own, so only primary is kept.
+    sessionMemo = primarySessions ? { primaryRaw, value } : null;
+    return value;
   }
 
   function readWorkSessionRaw() {
@@ -97,10 +105,25 @@ export function createWorkspaceStore({
     return { preferences: normalizePreferences(value), raw };
   }
 
+  // Records saved unchanged (a work-note save rewrites only the notes) are
+  // not checked field by field again.
+  let checkedRecords = null;
+  function validRecords(decoded) {
+    const text =
+      decoded && decoded.version === 1 && Array.isArray(decoded.records)
+        ? JSON.stringify(decoded.records)
+        : null;
+    if (text !== null && checkedRecords?.text === text)
+      return checkedRecords.records;
+    const records = validateStore(decoded).records;
+    checkedRecords = { text, records };
+    return records;
+  }
+
   function parsePersistent(raw) {
     const decoded =
       raw === null ? { version: 1, records: [] } : JSON.parse(raw);
-    const records = validateStore(decoded).records;
+    const records = validRecords(decoded);
     const metadata = decoded.odak;
     if (metadata && Object.hasOwn(metadata, "workSessions"))
       readPrimaryWorkSessionRaw(raw, null);
@@ -303,7 +326,7 @@ export function createWorkspaceStore({
       };
     } else {
       envelope = JSON.parse(primaryRaw);
-      validateStore(envelope);
+      validRecords(envelope);
     }
     envelope.odak = {
       ...(envelope.odak && typeof envelope.odak === "object"

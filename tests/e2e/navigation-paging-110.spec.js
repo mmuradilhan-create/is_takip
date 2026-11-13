@@ -180,3 +180,34 @@ test("the star, tick and title icons share the middle of a wrapping title in eve
       expect(Math.abs(control - geometry.titleMiddle), id).toBeLessThan(2);
   }
 });
+
+test("a pressed star shows its new state before the click and goes back when released elsewhere", async ({
+  page,
+}) => {
+  await seed(page, [make({ id: "pick", title: "Seçilecek iş" })], {
+    width: 1280,
+    height: 800,
+  });
+  const star = page.locator('.focus-row[data-id="pick"] .day-focus-toggle');
+  const box = await star.boundingBox();
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await expect(star).toHaveClass(/is-selected/);
+  await expect(page.locator('.focus-row[data-id="pick"]')).toHaveClass(
+    /is-day-focus/,
+  );
+  await page.mouse.move(box.x + 400, box.y + 200);
+  await page.mouse.up();
+  await expect(star).not.toHaveClass(/is-selected/);
+  const saved = () =>
+    page.evaluate(
+      () =>
+        JSON.parse(localStorage.getItem("is-takip-v1")).records.find(
+          (record) => record.id === "pick",
+        ).focusDate ?? null,
+    );
+  expect(await saved()).toBeNull();
+  await star.click();
+  await expect(star).toHaveClass(/is-selected/);
+  expect(await saved()).not.toBeNull();
+});

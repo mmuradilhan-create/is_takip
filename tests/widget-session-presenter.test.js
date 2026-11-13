@@ -68,6 +68,7 @@ test("the widget observes running time and the current title without taking sess
       phase: "Çalışıyor",
       elapsedMs: 5250,
       time: "00:00:05",
+      tracked: true,
     });
     const tick = widgetSessionSummary(records, raw, 70000);
     assert.equal(tick.elapsedMs, 70250);

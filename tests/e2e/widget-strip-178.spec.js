@@ -160,3 +160,67 @@ test("work rows show running and paused as a left bar and keep no state backgrou
     "none",
   ]);
 });
+
+test("the folded strip starts the next work, pauses and resumes it, counts late work and opens for a due reminder", async ({
+  context,
+}) => {
+  await context.clock.setFixedTime(new Date("2026-11-13T09:00:00.000Z"));
+  await context.addInitScript(
+    (raw) => {
+      if (localStorage.getItem("is-takip-v1") === null)
+        localStorage.setItem("is-takip-v1", raw);
+    },
+    JSON.stringify({
+      version: 1,
+      records: [
+        createRecord({
+          id: "late",
+          title: "Gecikmiş iş",
+          dueDate: "2026-11-10",
+          createdAt: STAMP,
+          updatedAt: STAMP,
+        }),
+      ],
+      odak: {
+        version: 1,
+        notes: [
+          {
+            id: "n",
+            text: "Tedarikçiyi ara",
+            remindAt: "2026-11-13T08:00",
+            createdAt: STAMP,
+            updatedAt: STAMP,
+          },
+        ],
+      },
+    }),
+  );
+  const widget = await context.newPage();
+  await widget.setViewportSize({ width: 380, height: 420 });
+  await widget.goto("/#widget?windowSizing=native&windowPin=native");
+  await widget.locator("#widget-strip").click();
+  const line = widget.locator("#widget-strip-line");
+  const action = widget.locator("#widget-strip-action");
+  await expect(line.locator(".widget-strip-text")).toHaveText(
+    "Sıradaki: Gecikmiş iş",
+  );
+  await expect(widget.locator("#widget-strip-meta")).toHaveText("1 geciken");
+  await expect(action).toHaveAccessibleName("Gecikmiş iş: çalışmaya başla");
+  await action.click();
+  await expect(line).toHaveAttribute("data-phase", "running");
+  await expect(line.locator(".widget-strip-text")).toHaveText("Gecikmiş iş");
+  await expect(action).toHaveAttribute("title", "Duraklat");
+  await action.click();
+  await expect(line).toHaveAttribute("data-phase", "paused");
+  await expect(action).toHaveAttribute("title", "Devam et");
+  await action.click();
+  await expect(line).toHaveAttribute("data-phase", "running");
+  // Still folded throughout; the due reminder's bell opens the widget.
+  await expect(widget).toHaveTitle(/İnce/);
+  const bell = widget.locator("#widget-reminder-button");
+  await expect(bell).toBeVisible();
+  await bell.click();
+  await expect(widget).not.toHaveTitle(/İnce/);
+  await expect(widget.locator("#widget-reminders")).toBeVisible();
+  await expect(widget.locator("#reminder-panel")).toBeHidden();
+});

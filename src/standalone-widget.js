@@ -6,6 +6,7 @@ import {
 } from "./widget.js";
 import { createWindowCoordinator } from "./window-coordinator.js";
 import { createWidgetWork } from "./widget-work.js";
+import { widgetAgenda } from "./widget-agenda-model.js";
 import {
   desktopWindowFeatures,
   fitWidgetWindow,
@@ -67,6 +68,7 @@ export function startStandaloneWidget() {
       "Üstte tut için ODAK pencerelerini kapatıp güncel Windows paketini yeniden aç.";
 
   let previousRaw;
+  let previousRecordsText = null;
   let previousLegacyPreferences;
   let preferences = normalizePreferences();
   let records = [];
@@ -158,24 +160,47 @@ export function startStandaloneWidget() {
       "Kayıtlar okunamadı. Verilerin değiştirilmedi; ODAK’ı açarak kontrol edebilirsin.";
   }
 
+  // The clock ticks every second; the stored work notes are read again only
+  // when their text changed (reading all of it each second slowed typing).
+  let sessionSource = null;
+  function sessionRaw() {
+    const primary = window.localStorage.getItem(STORAGE_KEY);
+    const legacy = window.localStorage.getItem(WORK_SESSION_KEY);
+    if (
+      !sessionSource ||
+      sessionSource.primary !== primary ||
+      sessionSource.legacy !== legacy
+    )
+      sessionSource = {
+        primary,
+        legacy,
+        raw: readPrimaryWorkSessionRaw(primary, legacy),
+      };
+    return sessionSource.raw;
+  }
   function refreshSession() {
     if (stopped) return;
     let summary = null;
+    let idle = null;
     if (!failed) {
       try {
-        summary = widgetSessionSummary(
-          records,
-          readPrimaryWorkSessionRaw(
-            window.localStorage.getItem(STORAGE_KEY),
-            window.localStorage.getItem(WORK_SESSION_KEY),
-          ),
-          Date.now(),
-        );
+        summary = widgetSessionSummary(records, sessionRaw(), Date.now());
       } catch {
         // Optional session context cannot make the agenda unreadable.
       }
+      if (!summary && folded)
+        try {
+          const agenda = widgetAgenda(records, new Date());
+          idle = {
+            todayCount: agenda.todayCount,
+            overdueCount: agenda.overdueCount,
+            next: work?.next || null,
+          };
+        } catch {
+          /* The strip then only says no work is running. */
+        }
     }
-    renderWidgetSession(document, summary);
+    renderWidgetSession(document, summary, idle);
   }
 
   function showStatus() {
@@ -221,8 +246,16 @@ export function startStandaloneWidget() {
       if (changed || failed) {
         // A deliberately empty saved store must take precedence over seeds.
         const saved = raw === null ? null : JSON.parse(raw);
-        records =
-          saved === null ? initialRecords() : validateStore(saved).records;
+        // A work-note save elsewhere leaves the records as they were; they
+        // are not checked again for it.
+        const recordsText =
+          saved && Array.isArray(saved.records)
+            ? JSON.stringify(saved.records)
+            : null;
+        if (recordsText === null || recordsText !== previousRecordsText)
+          records =
+            saved === null ? initialRecords() : validateStore(saved).records;
+        previousRecordsText = recordsText;
         const primaryPreferences =
           saved?.odak?.version === 1 && validPreferences(saved.odak.preferences)
             ? saved.odak.preferences
@@ -313,6 +346,19 @@ export function startStandaloneWidget() {
     }
   }
 
+  // Folded, the bell of a due reminder opens the widget, where the reminder
+  // can be answered; its panel would not fit in the strip.
+  document.addEventListener(
+    "click",
+    (event) => {
+      if (!folded || !event.target.closest?.("#widget-reminder-button")) return;
+      event.preventDefault();
+      event.stopPropagation();
+      setFolded(false);
+      refreshSession();
+    },
+    true,
+  );
   document.body.addEventListener("click", (event) => {
     const target = event.target;
     if (!(target instanceof Element)) return;
@@ -329,8 +375,18 @@ export function startStandaloneWidget() {
       }
       return;
     }
+    const stripAction = target.closest("#widget-strip-action");
+    if (stripAction) {
+      if (stripAction.dataset.action === "pause") work?.toggle();
+      else if (stripAction.dataset.action === "resume") work?.toggle();
+      else if (stripAction.dataset.action === "start" && stripAction.dataset.id)
+        work?.start(stripAction.dataset.id);
+      refreshSession();
+      return;
+    }
     if (target.closest("#widget-strip, #widget-strip-line")) {
       setFolded(!folded);
+      refreshSession();
       return;
     }
     const day = target.closest("[data-widget-day]");
@@ -393,6 +449,11 @@ export function startStandaloneWidget() {
       storageKey: STORAGE_KEY,
       preferencesKey: PREFERENCES_KEY,
       onOpenRecord: (id) => openMain(id),
+      // A note save from this widget leaves the records as they were, so the
+      // agenda need not be read and redrawn for it.
+      onOwnSave: (before, after) => {
+        if (previousRaw === before) previousRaw = after;
+      },
       onMessage: (message, tone = "error") => {
         workMessage = message;
         workTone = tone;

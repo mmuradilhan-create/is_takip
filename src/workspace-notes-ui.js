@@ -145,7 +145,8 @@ export function createWorkspaceNotesUI({
     if (destroyed) return;
     const content = root.querySelector(".workspace-notes-content");
     if (content && content !== scrollElement) {
-      content.scrollTop = scrollTop;
+      // Setting 0 on a fresh list would only force an early page layout.
+      if (scrollTop) content.scrollTop = scrollTop;
       scrollElement = content;
     }
     for (const button of root.querySelectorAll(".workspace-note-control"))

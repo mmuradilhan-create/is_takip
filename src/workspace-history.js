@@ -383,8 +383,89 @@ export function pushHistory(
   return retained;
 }
 
+// Undo steps never change once written, yet every read of the workspace (each
+// work-note save seen from another window, each sync) used to rebuild and
+// re-check the whole chain: about a second with 400 records and 25 steps.
+// The last verified chain is remembered; an unchanged chain, one new step on
+// top of it or one step undone is checked by that step alone.
+let verified = null;
+
+function domainKey(current) {
+  return JSON.stringify([
+    current.records,
+    current.preferences,
+    Object.hasOwn(current, "notes") ? [current.notes] : [],
+  ]);
+}
+
+function sameList(left, right) {
+  return (
+    left.length === right.length &&
+    left.every((item, index) => item === right[index])
+  );
+}
+
+function remember(serialized, key, result) {
+  verified = { serialized, key, result };
+  return [...result];
+}
+
 /** Invalid optional history never prevents opening the actual task records. */
 export function readHistory(raw, current) {
+  let serialized = null;
+  let key = null;
+  try {
+    if (Array.isArray(raw) && raw.length) {
+      serialized = raw
+        .slice(-DEFAULT_MAX_ENTRIES)
+        .map((entry) => JSON.stringify(entry));
+      key = domainKey(current);
+    }
+  } catch {
+    serialized = null;
+  }
+  if (serialized && verified?.result.length) {
+    const known = verified.serialized;
+    const last = verified.result.at(-1);
+    try {
+      // Nothing changed but the work notes.
+      if (key === verified.key && sameList(serialized, known))
+        return [...verified.result];
+      const offset = (list, length) => list.length - length;
+      // One new step on top of the verified chain.
+      const kept = serialized.slice(0, -1);
+      const start = offset(known, kept.length);
+      if (kept.length && start >= 0 && sameList(kept, known.slice(start))) {
+        const entry = parseEntry(raw.at(-1));
+        if (entry.beforeSignature === last.afterSignature) {
+          restoreEntry(current, entry, false);
+          const retained = pushHistory(verified.result.slice(start), entry);
+          return remember(serialized.slice(-retained.length), key, retained);
+        }
+      }
+      // The top step undone.
+      const before = known.slice(0, -1);
+      const from = offset(before, serialized.length);
+      if (
+        from >= 0 &&
+        sameList(serialized, before.slice(from)) &&
+        workspaceSignature(current) === last.beforeSignature
+      ) {
+        const retained = verified.result.slice(from, -1);
+        return remember(serialized, key, retained);
+      }
+    } catch {
+      /* Anything unexpected is checked from the start below. */
+    }
+  }
+  const result = readFullHistory(raw, current);
+  if (serialized && result.length)
+    return remember(serialized.slice(-result.length), key, result);
+  verified = null;
+  return result;
+}
+
+function readFullHistory(raw, current) {
   try {
     if (!Array.isArray(raw) || !raw.length) return [];
     const limited = raw.slice(-DEFAULT_MAX_ENTRIES).map(parseEntry);

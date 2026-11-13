@@ -453,3 +453,43 @@ test("labels are safe bounded text and Unicode data remains exact through undo",
   assert.equal(/[\u0000-\u001f]/.test(entry.label), false);
   assert.deepEqual(undoEntry(after, JSON.parse(JSON.stringify(entry))), before);
 });
+
+test("a remembered history chain gives the same answer as a full check when unchanged, extended, undone or tampered", () => {
+  const states = validSteps();
+  const entries = states
+    .slice(1)
+    .map((after, index) =>
+      makeHistoryEntry(states[index], after, `İşlem ${index}`),
+    );
+  const raw = (list) => JSON.parse(JSON.stringify(list));
+  const top = states.length - 1;
+  // Full check, then the same chain again (only work notes would differ).
+  assert.deepEqual(
+    readHistory(raw(entries.slice(0, -1)), states[top - 1]),
+    entries.slice(0, -1),
+  );
+  assert.deepEqual(
+    readHistory(raw(entries.slice(0, -1)), copy(states[top - 1])),
+    entries.slice(0, -1),
+  );
+  // One new step on top.
+  assert.deepEqual(readHistory(raw(entries), states[top]), entries);
+  // The top step undone.
+  assert.deepEqual(
+    readHistory(raw(entries.slice(0, -1)), states[top - 1]),
+    entries.slice(0, -1),
+  );
+  // A new step that does not continue the chain is refused like before.
+  const foreign = makeHistoryEntry(
+    state([record("x")]),
+    state([record("x", { title: "Başka" })]),
+    "Yabancı",
+  );
+  assert.deepEqual(
+    readHistory(raw([...entries.slice(0, -1), foreign]), states[top]),
+    [],
+  );
+  // The remembered chain never vouches for a different current state.
+  assert.deepEqual(readHistory(raw(entries), states[0]), []);
+  assert.deepEqual(readHistory(raw(entries), states[top]), entries);
+});

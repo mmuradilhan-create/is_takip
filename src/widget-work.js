@@ -101,6 +101,7 @@ export function createWidgetWork({
   preferencesKey,
   onOpenRecord = () => {},
   onMessage = () => {},
+  onOwnSave = () => {},
 }) {
   const root = document.getElementById("widget-workbench");
   const active = root.querySelector(".wb-active");
@@ -130,6 +131,7 @@ export function createWidgetWork({
   const reminderList = document.getElementById("widget-reminder-list");
   let reminderSaving = false;
   let bell = null;
+  let nextUp = null;
   const storage = window.localStorage;
 
   let workspace = null;
@@ -257,12 +259,19 @@ export function createWidgetWork({
       render();
       return false;
     }
+    const seen = storage.getItem(storageKey);
     const saved = store.saveDraft(
       editor.recordId,
       editor.sessionId,
       editor.text,
       editor.expected,
     );
+    // This window's own note save changes only the work notes; when nothing
+    // else had changed before it, it is not read back as another window's.
+    if (saved && seen === lastRaw) {
+      lastRaw = storage.getItem(storageKey);
+      onOwnSave(seen, lastRaw);
+    }
     const current = store.get(editor.recordId);
     if (saved && draftText(current) === editor.text) {
       const hadMessage = Boolean(editor.error);
@@ -726,6 +735,7 @@ export function createWidgetWork({
     const browsing = !working || current.entry.status !== "running";
     const upcoming =
       browsing && !finish ? upcomingWork(records, busy, today) : [];
+    nextUp = upcoming[0] || null;
     upcomingSection.hidden = !upcoming.length;
     setList(
       upcomingList,
@@ -898,5 +908,11 @@ export function createWidgetWork({
     get working() {
       return root.dataset.mode === "working";
     },
+    /** The first of Sıradaki işler, for the folded strip. */
+    get next() {
+      return nextUp ? { id: nextUp.id, title: nextUp.title } : null;
+    },
+    start: (id) => start(id),
+    toggle: () => toggleRunning(),
   };
 }

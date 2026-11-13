@@ -1675,12 +1675,22 @@ export async function startMainApp() {
     ${records.length ? `<ul class="focus-list" tabindex="0" aria-label="Güncel işler">${records.map((r) => `<li class="focus-row${r.focusDate === today() ? " is-day-focus" : ""}" ${recordRow(r)}>${completionControl(r)}<div class="focus-task"><div class="focus-title-line">${dayFocusButton(r)}${focusTitleContent(r)}</div></div>${statusBadge(r)}<span class="focus-priority">${inlineFields ? inlineFields.priorityControl(r) : priorityBadge(r)}</span><span class="focus-date ${deadlineTone(r, today())}">${inlineFields ? inlineFields.dateControl(r) : renderDeadlineChip(r, { label: formatDate(r.dueDate), today: today() })}</span><div class="focus-work-actions">${journalControl(r)}${workControl(r)}</div></li>`).join("")}</ul>` : `<div class="focus-empty${state.focusFilter === "focus" ? " day-focus-empty" : ""}"><h3>${emptyTitle}</h3><p>${state.search ? "Başka bir kelimeyle arayabilirsin." : state.focusFilter === "focus" ? "Açık işler listesindeki yıldızlarla bugün çalışacağın en fazla 3 işi seç. Teslim tarihleri değişmez." : state.focusFilter === "open" ? "Yeni kayıt düğmesiyle günlük iş ekleyebilirsin." : "Diğer açık işlerini Açık işler bölümünde görebilirsin."}</p></div>`}
     </section>`;
   }
+  // One count serves every star drawn in the same pass; it used to be counted
+  // again for each row, which slowed every list with many rows.
+  let dayFocusCount = null;
+  function dayFocusFull() {
+    if (dayFocusCount === null) {
+      dayFocusCount = selectDayFocus(state.records, { today: today() }).length;
+      queueMicrotask(() => {
+        dayFocusCount = null;
+      });
+    }
+    return dayFocusCount >= 3;
+  }
   function dayFocusButton(record) {
     if (record.type !== "daily" || !active(record)) return "";
     const selected = record.focusDate === today();
-    const full =
-      !selected &&
-      selectDayFocus(state.records, { today: today() }).length >= 3;
+    const full = !selected && dayFocusFull();
     const caption = selected
       ? "bugünün odağından çıkar"
       : "bugünün odağına ekle";
@@ -2197,7 +2207,9 @@ export async function startMainApp() {
     const currentAgenda = document.querySelector(
       ".dashboard-calendar .calendar-agenda-entries",
     );
+    // Writing 0 to a fresh list would only force an early page layout.
     if (
+      previousAgendaScroll &&
       currentAgenda &&
       currentAgenda.dataset.calendarSelected === previousAgendaDay
     )
@@ -3716,6 +3728,42 @@ export async function startMainApp() {
       return true;
     },
   });
+  // The star shows its new state as soon as it is pressed; saving and
+  // redrawing the page follow on the click, so the press never feels late.
+  function showDayFocus(star, selected) {
+    star.classList.toggle("is-selected", selected);
+    star
+      .closest(".focus-row, .record-list-row")
+      ?.classList.toggle("is-day-focus", selected);
+  }
+  app.addEventListener("pointerdown", (event) => {
+    if (event.button !== 0 || !event.isPrimary) return;
+    const star = event.target.closest?.(".day-focus-toggle");
+    if (!star || star.disabled) return;
+    const was = star.classList.contains("is-selected");
+    const rowWas = Boolean(
+      star
+        .closest(".focus-row, .record-list-row")
+        ?.classList.contains("is-day-focus"),
+    );
+    showDayFocus(star, !was);
+    const settle = (end) => {
+      document.removeEventListener("pointerup", settle, true);
+      document.removeEventListener("pointercancel", settle, true);
+      // Released elsewhere: no click follows, so the star goes back.
+      if (
+        star.isConnected &&
+        (end.type === "pointercancel" || !star.contains(end.target))
+      ) {
+        star.classList.toggle("is-selected", was);
+        star
+          .closest(".focus-row, .record-list-row")
+          ?.classList.toggle("is-day-focus", rowWas);
+      }
+    };
+    document.addEventListener("pointerup", settle, true);
+    document.addEventListener("pointercancel", settle, true);
+  });
   app.addEventListener("click", async (event) => {
     const button = event.target.closest("[data-action]");
     if (!button) return;
@@ -4313,9 +4361,10 @@ export async function startMainApp() {
                 '[data-action="focus-filter"][data-filter="focus"]',
               )
             )?.focus({ preventScroll: true });
-          }
+          } else render(); // the pressed star goes back to the saved state
         } catch (error) {
           toast(error.message, true);
+          render();
         }
         break;
       }

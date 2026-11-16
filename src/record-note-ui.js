@@ -13,19 +13,29 @@ const noteIcon =
   '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3h11a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H8a3 3 0 0 1-3-3V6a3 3 0 0 1 3-3Z"/><path d="M8 3v18M3 7h4M3 12h4M3 17h4M11 8h6M11 12h6M11 16h4"/></svg>';
 const historyIcon =
   '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11a9 9 0 1 1 2.7 6.4M3 4v7h7M12 7v5l3 2"/></svg>';
+const decisionIcon =
+  '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h7l5 5v12a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"/><path d="M14 3v5h5M9.5 14l2 2 4-4"/></svg>';
 const closeIcon =
   '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>';
 const noteText = (record) => String(record?.description ?? "");
+const decisionText = (record) => String(record?.decision ?? "").trim();
 const triggerSelector =
-  '[data-action="record-note"], [data-action="waiting-history"]';
+  '[data-action="record-note"], [data-action="waiting-history"], [data-action="meeting-decision"]';
 const kindFor = (control) =>
-  control?.dataset.action === "waiting-history" ? "history" : "note";
+  control?.dataset.action === "waiting-history"
+    ? "history"
+    : control?.dataset.action === "meeting-decision"
+      ? "decision"
+      : "note";
 const eligible = (record, kind = "note") =>
   kind === "history"
     ? record?.type === "waiting" &&
       Array.isArray(record.followUpLog) &&
       record.followUpLog.length > 0
-    : Boolean(record && noteText(record).trim());
+    : kind === "decision"
+      ? record?.type === "meeting" && Boolean(decisionText(record))
+      : Boolean(record && noteText(record).trim());
+const headings = { note: "Not", decision: "Alınan karar" };
 const historyFormatter = new Intl.DateTimeFormat("tr-TR", {
   day: "numeric",
   month: "long",
@@ -135,6 +145,12 @@ export function createRecordNoteUI({
     return `<button type="button" class="record-history-trigger" data-action="waiting-history" data-id="${escapeHtml(record.id)}" aria-label="${escapeHtml(record.title)}: takip geçmişi, ${count} kayıt" aria-haspopup="dialog" aria-controls="record-note-popover waiting-followup-dialog" aria-expanded="false" title="Takip geçmişini düzenle (${count} kayıt)">${historyIcon}</button>`;
   }
 
+  /** A meeting's decision previews like a note; a click opens its details. */
+  function decisionButton(record) {
+    if (!eligible(record, "decision")) return "";
+    return `<button type="button" class="record-note-trigger record-decision-trigger" data-action="meeting-decision" data-id="${escapeHtml(record.id)}" aria-label="${escapeHtml(record.title)}: alınan karar, ayrıntıları aç" aria-haspopup="dialog" aria-controls="record-note-popover meeting-record-panel" aria-expanded="false">${decisionIcon}</button>`;
+  }
+
   function clearTimers() {
     win.clearTimeout(openTimer);
     win.clearTimeout(hideTimer);
@@ -170,32 +186,50 @@ export function createRecordNoteUI({
   function render(record) {
     const nextKey = JSON.stringify([
       kind,
-      kind === "history" ? record.followUpLog : noteText(record),
+      kind === "history"
+        ? record.followUpLog
+        : kind === "decision"
+          ? decisionText(record)
+          : noteText(record),
     ]);
     if (contentKey === nextKey) return;
     const scroll = contentKey === null ? 0 : body.scrollTop;
     popup.dataset.previewKind = kind;
     popup.setAttribute(
       "aria-label",
-      kind === "history" ? "Takip geçmişi" : "Kayıt notu",
+      kind === "history"
+        ? "Takip geçmişi"
+        : kind === "decision"
+          ? "Alınan karar"
+          : "Kayıt notu",
     );
     popup.querySelector(".record-note-heading strong").textContent =
       kind === "history"
         ? `Takip geçmişi · ${record.followUpLog.length}`
-        : "Not";
+        : headings[kind];
     popup
       .querySelector(".record-note-close")
       .setAttribute(
         "aria-label",
-        kind === "history" ? "Geçmiş önizlemesini kapat" : "Notu kapat",
+        kind === "history"
+          ? "Geçmiş önizlemesini kapat"
+          : kind === "decision"
+            ? "Kararı kapat"
+            : "Notu kapat",
       );
     body.setAttribute(
       "aria-label",
-      kind === "history" ? "Kaydedilen takipler" : "Not metni",
+      kind === "history"
+        ? "Kaydedilen takipler"
+        : kind === "decision"
+          ? "Karar metni"
+          : "Not metni",
     );
     body.tabIndex = kind === "history" ? 0 : -1;
     if (kind === "history") body.innerHTML = historyMarkup(record);
-    else body.textContent = noteText(record);
+    else
+      body.textContent =
+        kind === "decision" ? decisionText(record) : noteText(record);
     body.scrollTop = scroll;
     contentKey = nextKey;
   }
@@ -221,7 +255,9 @@ export function createRecordNoteUI({
       close();
       return;
     }
-    popup.style.maxWidth = `${kind === "note" ? Math.min(360, Math.max(1, width - 16)) : Math.max(1, width - 16)}px`;
+    // A decision gets more room so its lines fit whole.
+    const limit = kind === "note" ? 360 : kind === "decision" ? 560 : Infinity;
+    popup.style.maxWidth = `${Math.min(limit, Math.max(1, width - 16))}px`;
     popup.style.maxHeight = `${Math.min(420, Math.max(1, height - 16))}px`;
     const bounds = popup.getBoundingClientRect();
     const left = Math.max(
@@ -236,7 +272,7 @@ export function createRecordNoteUI({
         : Math.max(topEdge + 8, above);
     popup.style.left = `${left}px`;
     popup.style.top = `${Math.min(top, topEdge + height - bounds.height - 8)}px`;
-    if (kind === "note")
+    if (kind !== "history")
       body.tabIndex = body.scrollHeight > body.clientHeight + 1 ? 0 : -1;
   }
 
@@ -484,7 +520,7 @@ export function createRecordNoteUI({
       isOpen() &&
       control === trigger
     ) {
-      if (kind === "note") {
+      if (kind !== "history") {
         if (body.scrollHeight > body.clientHeight + 1) {
           event.preventDefault();
           body.focus({ preventScroll: true });
@@ -536,5 +572,14 @@ export function createRecordNoteUI({
   win.addEventListener("resize", position);
   win.addEventListener("scroll", position, true);
   win.visualViewport?.addEventListener("resize", position);
-  return { button, historyButton, open, edit, close, refresh, destroy };
+  return {
+    button,
+    historyButton,
+    decisionButton,
+    open,
+    edit,
+    close,
+    refresh,
+    destroy,
+  };
 }

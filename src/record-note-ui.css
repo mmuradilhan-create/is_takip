@@ -88,7 +88,10 @@
   flex-direction: column;
 }
 
-.record-note-popover[data-preview-kind="note"] {
+.record-note-popover:is(
+  [data-preview-kind="note"],
+  [data-preview-kind="decision"]
+) {
   width: max-content;
   max-width: min(360px, calc(100vw - 16px));
   padding: 8px 11px;
@@ -99,11 +102,19 @@
   line-height: 1.55;
 }
 
-.record-note-popover[data-preview-kind="note"] .record-note-heading {
+.record-note-popover:is(
+    [data-preview-kind="note"],
+    [data-preview-kind="decision"]
+  )
+  .record-note-heading {
   display: none;
 }
 
-.record-note-popover[data-preview-kind="note"] .record-note-body {
+.record-note-popover:is(
+    [data-preview-kind="note"],
+    [data-preview-kind="decision"]
+  )
+  .record-note-body {
   padding: 0;
   border: 0;
   border-radius: 0;
@@ -111,16 +122,27 @@
   line-height: inherit;
 }
 
-#app .record-note-popover[data-preview-kind="note"] .record-note-body:focus {
+#app
+  .record-note-popover:is(
+    [data-preview-kind="note"],
+    [data-preview-kind="decision"]
+  )
+  .record-note-body:focus {
   outline: none;
   box-shadow: none;
   background: transparent;
 }
 
-.record-note-popover[data-preview-kind="note"]:has(
-    .record-note-body:focus-visible
-  ) {
+.record-note-popover:is(
+    [data-preview-kind="note"],
+    [data-preview-kind="decision"]
+  ):has(.record-note-body:focus-visible) {
   border-color: var(--theme-accent, #a5bc96);
+}
+
+/* A decision looks like a note, with room for its lines to fit whole. */
+.record-note-popover[data-preview-kind="decision"] {
+  max-width: min(560px, calc(100vw - 16px));
 }
 
 .record-note-heading {

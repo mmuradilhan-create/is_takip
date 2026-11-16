@@ -79,9 +79,7 @@ export function createRecordLinkTooltip({
       close();
       return;
     }
-    // A meeting decision asks for a wider bubble so its lines fit whole.
-    const limit = Number(trigger.dataset.recordLinkTooltipWidth) || 360;
-    bubble.style.maxWidth = `${Math.max(1, Math.min(limit, width - 16))}px`;
+    bubble.style.maxWidth = `${Math.max(1, Math.min(360, width - 16))}px`;
     bubble.style.maxHeight = `${Math.max(1, height - 16)}px`;
     const bounds = bubble.getBoundingClientRect();
     const left = Math.max(

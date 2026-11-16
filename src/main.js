@@ -1497,13 +1497,12 @@ export async function startMainApp() {
     return `<td class="meeting-linked-cell" data-route="${type}"><div class="meeting-linked-row">${statusBadge(target, { sourceId: record.id, targetId: target.id, caption: `${record.title}: ${kind} durumunu değiştir` })}${date ? `<span class="meeting-linked-date${late ? " is-late" : ""}" title="${dateCaption}: ${esc(formatDate(date))}">${esc(formatDate(date))}</span>` : ""}</div></td>`;
   }
   // Each meeting is one line however long its decision or linked names get;
-  // the decision shows in the title's hover bubble, everything else in the
-  // details panel the title opens.
+  // the decision previews from its own symbol like a note, and everything
+  // else is in the details panel the title opens.
   function meetingTable(records) {
     return `<div class="table-wrap"><table class="full-table meeting-table"><thead><tr><th>Aksiyon / Karar</th><th class="meeting-date-col">Toplantı</th><th class="status-col meeting-source-status-col">Durum</th><th class="meeting-linked-heading">Bağlı iş</th><th class="meeting-linked-heading">Takip</th><th class="row-action-col">İşlem</th></tr></thead><tbody>${records
       .map((record) => {
-        const decision = String(record.decision || "").trim();
-        return `<tr class="record-list-row meeting-row" ${recordRow(record)}><td><div class="meeting-title-line"><button type="button" class="task-name meeting-title ${record.status === "completed" ? "completed" : record.status === "cancelled" ? "cancelled" : ""}" data-action="meeting-record-details" aria-haspopup="dialog" aria-controls="meeting-record-panel" data-id="${esc(record.id)}"${decision ? ` data-record-link-tooltip="${esc(decision)}" data-record-link-tooltip-width="560"` : ""}>${esc(record.title)}</button>${recordNotes?.button(record) || ""}</div></td><td class="meeting-date-col">${record.sourceDate ? esc(formatDate(record.sourceDate)) : ""}</td><td class="status-col meeting-source-status-col">${statusBadge(record)}</td>${meetingLinkedCell(record, "daily")}${meetingLinkedCell(record, "waiting")}<td class="row-action-col"><div class="row-end-actions">${recordEditControl(record)}</div></td></tr>`;
+        return `<tr class="record-list-row meeting-row" ${recordRow(record)}><td><div class="meeting-title-line"><button type="button" class="task-name meeting-title ${record.status === "completed" ? "completed" : record.status === "cancelled" ? "cancelled" : ""}" data-action="meeting-record-details" aria-haspopup="dialog" aria-controls="meeting-record-panel" data-id="${esc(record.id)}">${esc(record.title)}</button>${recordNotes?.decisionButton(record) || ""}${recordNotes?.button(record) || ""}</div></td><td class="meeting-date-col">${record.sourceDate ? esc(formatDate(record.sourceDate)) : ""}</td><td class="status-col meeting-source-status-col">${statusBadge(record)}</td>${meetingLinkedCell(record, "daily")}${meetingLinkedCell(record, "waiting")}<td class="row-action-col"><div class="row-end-actions">${recordEditControl(record)}</div></td></tr>`;
       })
       .join("")}</tbody></table></div>`;
   }
@@ -3631,6 +3630,12 @@ export async function startMainApp() {
       "recordId",
       () => waitingRecordPanel,
     ],
+    // A meeting's decision symbol opens the same panel as its title.
+    "meeting-decision": [
+      "#meeting-record-panel",
+      "recordId",
+      () => meetingRecordPanel,
+    ],
   };
   const iconPanelShowing = (button) => {
     const entry = iconPanels[button?.dataset?.action];
@@ -4202,6 +4207,7 @@ export async function startMainApp() {
         waitingRecordPanel.open(id, { trigger: button, section: "children" });
         break;
       case "meeting-record-details":
+      case "meeting-decision":
         event.preventDefault();
         openRecordPreview("meeting", id, button);
         break;

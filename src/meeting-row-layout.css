@@ -1,8 +1,7 @@
 /*
- * Meeting rows fold: closed, each meeting is one line (title, meeting date,
- * its status, each linked flow's status and date, edit). Opening a row shows
- * the decision as it was written and each linked flow with its name, date
- * and an open button. Long text never stretches the closed list.
+ * Each meeting is one line: title, meeting date, its status, each linked
+ * flow's status and date, edit. The decision shows in the title's hover
+ * bubble and the details panel; long text never stretches the list.
  */
 .full-table.meeting-table {
   min-width: 0;
@@ -31,40 +30,6 @@
   align-items: center;
   gap: 6px;
   min-width: 0;
-}
-
-.meeting-table .meeting-expand {
-  display: inline-grid;
-  flex: 0 0 22px;
-  place-items: center;
-  width: 22px;
-  height: 22px;
-  margin: 0;
-  padding: 0;
-  border: 0;
-  border-radius: 5px;
-  background: transparent;
-  color: var(--theme-muted, #6d8068);
-  cursor: pointer;
-}
-
-.meeting-table .meeting-expand:hover {
-  background: var(--theme-hover, #eef4ea);
-}
-
-.meeting-table .meeting-expand svg {
-  width: 14px;
-  height: 14px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 2.2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  transition: transform 0.12s ease;
-}
-
-.meeting-table .meeting-row.is-expanded .meeting-expand svg {
-  transform: rotate(90deg);
 }
 
 .meeting-table .meeting-title-line > .meeting-title {
@@ -114,116 +79,8 @@
   font-weight: 600;
 }
 
-/* The opened part sits under its row, slightly tinted and indented. */
-.meeting-table .meeting-row.is-expanded > td {
-  border-bottom-color: transparent;
-}
-
-.meeting-table .meeting-detail-row > td {
-  padding: 0 14px 14px 42px;
-  background: var(--theme-soft, #f7faf4);
-}
-
-.meeting-table .meeting-row.is-expanded > td {
-  background: var(--theme-soft, #f7faf4);
-}
-
-.meeting-detail {
-  display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
-  gap: 12px 28px;
-  padding-top: 2px;
-}
-
-.meeting-detail-label {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  color: var(--theme-muted, #6d8068);
-  font-size: 11px;
-  font-weight: 650;
-}
-
-.meeting-detail-label svg {
-  width: 13px;
-  height: 13px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.meeting-detail-decision p {
-  margin: 4px 0 0;
-  color: var(--theme-ink, #34503a);
-  font-size: 13px;
-  line-height: 1.55;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
-
-.meeting-detail-links {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.meeting-detail-link {
-  display: grid;
-  grid-template-columns: 82px minmax(0, 1fr) auto;
-  grid-template-areas:
-    "label title open"
-    ". date open";
-  align-items: center;
-  column-gap: 10px;
-  row-gap: 1px;
-}
-
-.meeting-detail-link > .meeting-detail-label {
-  grid-area: label;
-}
-
-.meeting-detail-title {
-  grid-area: title;
-  min-width: 0;
-  color: var(--theme-ink, #34503a);
-  font-size: 13px;
-  font-weight: 600;
-  overflow-wrap: anywhere;
-}
-
-.meeting-detail-date {
-  grid-area: date;
-  color: var(--theme-muted, #788a70);
-  font-size: 11px;
-}
-
-.meeting-detail-open {
-  grid-area: open;
-  white-space: nowrap;
-}
-
-.meeting-detail-none {
-  grid-area: title;
-  color: var(--theme-muted, #8a9a84);
-  font-size: 12px;
-}
-
 [data-theme="dark"] .meeting-table .meeting-linked-date.is-late {
   color: #f5bab2;
-}
-
-[data-theme="dark"] .meeting-table .meeting-detail-row > td,
-[data-theme="dark"] .meeting-table .meeting-row.is-expanded > td {
-  background: var(--theme-soft, #202326);
-}
-
-/* Narrower windows: the opened part stacks its decision and links. */
-@media (max-width: 1100px) {
-  .meeting-detail {
-    grid-template-columns: minmax(0, 1fr);
-  }
 }
 
 @media (max-width: 879px) {
@@ -235,56 +92,10 @@
     flex-wrap: wrap;
     row-gap: 2px;
   }
-
-  .meeting-table .meeting-detail-row > td {
-    padding-left: 14px;
-  }
 }
 
 @media (max-width: 560px) {
   .full-table.meeting-table {
     min-width: 560px;
   }
-}
-
-/* The opened part's open buttons look like the list's other route buttons. */
-.meeting-table .meeting-detail-open {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 96px;
-  height: 30px;
-  min-height: 30px;
-  padding: 0 10px;
-  border: 1px solid var(--theme-border, #d2decc);
-  border-radius: 6px;
-  background: var(--theme-surface, #fff);
-  color: var(--theme-accent, #52734d);
-  font-size: 11px;
-  font-weight: 600;
-}
-
-.meeting-table .meeting-detail-open:hover {
-  background: var(--theme-hover, #f0f6eb);
-}
-
-/* The full panel (linking, notes, editing) is one click away. */
-.meeting-detail-footer {
-  display: flex;
-  grid-column: 1 / -1;
-  justify-content: flex-end;
-  margin-top: -2px;
-}
-
-.meeting-table .meeting-detail-more {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.meeting-table .meeting-detail-more svg {
-  width: 14px;
-  height: 14px;
 }

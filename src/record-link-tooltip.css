@@ -4,7 +4,7 @@
   inset: auto;
   box-sizing: border-box;
   width: max-content;
-  max-width: min(360px, calc(100vw - 16px));
+  max-width: calc(100vw - 16px);
   margin: 0;
   padding: 8px 11px;
   overflow: hidden;

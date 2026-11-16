@@ -814,6 +814,13 @@ ayni gorunumu kullanir; hedefler de gunluk islerle ayni kurala uyar. Widget'ta
 tarih duz yazidir, yalniz rengi degisir (bugun kalin amber, 1-3 gun amber,
 gecikmis kirmizi).
 
+TOPLANTI SATIRLARI (1.15.0)
+
+Her toplanti satiri iki satirdir: baslik, sonra toplanti tarihi ve kararin
+ilk maddesi (diger maddeler "+N madde" olarak sayilir, tamami uzerine gelince
+gorunur). Bagli is ve takip tek satirdir: durum kutusu, tarih ve acma dugmesi;
+bagli kaydin adi farkliysa altinda kucuk yazilir.
+
 TARIH KUTULARI (1.14.4)
 
 Bugunun kutusu bir ton acik ve diger tarihlerle ayni kalinlikta; gecikmis

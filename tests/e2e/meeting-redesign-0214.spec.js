@@ -17,8 +17,9 @@ const row = (page, id) =>
   page.locator(`.meeting-table tr[data-record-row][data-id="${id}"]`);
 const cell = (page, id, type) =>
   row(page, id).locator(`.meeting-linked-cell[data-route="${type}"]`);
+// A missing flow has a create button; a linked one a small open button.
 const route = (page, id, type) =>
-  cell(page, id, type).locator(".meeting-route");
+  cell(page, id, type).locator(".meeting-route, .meeting-open");
 const undo = (page) =>
   page.getByRole("button", { name: "Geri al", exact: true }).click();
 const list = (page) => page.locator('#nav [data-view="meeting"]').click();
@@ -385,7 +386,7 @@ test("meeting tables show derived source summaries beside independent route cont
     "İşlem",
   ]);
   await expect(page.locator("#priority-filter, #period-filter")).toHaveCount(0);
-  await expect(row(page, "none").locator(".meeting-decision")).toHaveText(
+  await expect(row(page, "none").locator(".meeting-summary-text")).toHaveText(
     items[0].decision,
   );
   await expect(
@@ -412,7 +413,9 @@ test("meeting tables show derived source summaries beside independent route cont
   await expect(
     cell(page, "only-daily", "daily").locator(".meeting-linked-date"),
   ).toHaveCount(0);
-  await expect(cell(page, "both", "daily")).toContainText("İş teslimi");
+  await expect(
+    cell(page, "both", "daily").locator(".meeting-linked-date"),
+  ).toHaveAttribute("title", "İş teslimi: 15 Kas");
   await expect(cell(page, "both", "daily")).toContainText("15 Kas");
   await expect(
     cell(page, "both", "waiting").locator(".meeting-linked-date"),
@@ -423,9 +426,9 @@ test("meeting tables show derived source summaries beside independent route cont
   await expect(page.locator(".meeting-table")).not.toContainText(
     "Takip tarihi yok",
   );
-  await expect(cell(page, "only-waiting", "waiting")).toContainText(
-    "Sonraki takip",
-  );
+  await expect(
+    cell(page, "only-waiting", "waiting").locator(".meeting-linked-date"),
+  ).toHaveAttribute("title", "Sonraki takip: 14 Kas");
   await expect(cell(page, "only-waiting", "waiting")).toContainText("14 Kas");
   await expect(cell(page, "only-waiting", "waiting")).not.toContainText(
     "20 Kas",
@@ -440,15 +443,14 @@ test("meeting tables show derived source summaries beside independent route cont
     ["both", "waiting", "both-reply"],
   ]) {
     await list(page);
-    await expect(route(page, sourceId, type)).toHaveText(
-      targetId
-        ? type === "daily"
-          ? "İşi aç"
-          : "Takibi aç"
-        : type === "daily"
-          ? "İş oluştur"
-          : "Takip oluştur",
-    );
+    if (targetId)
+      await expect(route(page, sourceId, type)).toHaveAccessibleName(
+        type === "daily" ? /işi aç$/ : /takibi aç$/,
+      );
+    else
+      await expect(route(page, sourceId, type)).toHaveText(
+        type === "daily" ? "İş oluştur" : "Takip oluştur",
+      );
     await route(page, sourceId, type).click();
     await expect(page.locator("#page-title")).toHaveText(
       "Toplantı aksiyonları",

@@ -75,6 +75,7 @@ import "./outcome-prompt.css";
 import "./date-today.css";
 import "./row-states.css";
 import "./title-centering.css";
+import "./meeting-row-layout.css";
 import { createOutcomePrompt } from "./outcome-prompt.js";
 import { windowSizingMode } from "./window-size.js";
 import { trackTriggerToggle } from "./trigger-toggle.js";
@@ -257,6 +258,8 @@ export async function startMainApp() {
     upload: "M12 16V3m-5 5 5-5 5 5M3 15v5a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1v-5",
     download: "M12 3v13m-5-5 5 5 5-5M3 16v4a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1v-4",
     arrow: "M4 12h16m-5-5 5 5-5 5",
+    openLink:
+      "M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5",
     archive: "M3 4h18v4H3zM5 8v12h14V8m-10 4h6",
     leaf: "M20 3C8 2 2 8 5 15s15 6 15-12ZM4 21 16 9",
     shield: "M12 3 3 7v5c0 5 9 10 9 10s9-5 9-10V7l-9-4Zm-4 9 3 3 5-6",
@@ -1476,26 +1479,40 @@ export async function startMainApp() {
         : esc(text);
     return `<span class="waiting-last-date" title="${record.lastFollowUpDate ? esc(record.lastFollowUpDate) : "Henüz takip kaydı yok"}">${content}</span>`;
   }
+  // One line per linked flow: its status box, its date and an open button;
+  // a linked name that differs from the meeting record shows small below.
   function meetingLinkedCell(record, type) {
     const target = meetingTargets(record).find((item) => item.type === type);
     if (!target && !active(record))
       return `<td class="meeting-linked-cell" data-route="${type}"></td>`;
     const daily = type === "daily";
-    const caption = target
-      ? daily
-        ? "İşi aç"
-        : "Takibi aç"
-      : daily
-        ? "İş oluştur"
-        : "Takip oluştur";
-    const date = target && (daily ? target.dueDate : target.nextFollowUpDate);
+    if (!target) {
+      const caption = daily ? "İş oluştur" : "Takip oluştur";
+      return `<td class="meeting-linked-cell" data-route="${type}"><div class="meeting-linked-content"><button type="button" class="meeting-route" data-action="meeting-route" data-route="${type}" data-id="${esc(record.id)}" title="${caption}" aria-label="${esc(record.title)}: ${caption.toLocaleLowerCase("tr-TR")}">${icon(daily ? "list" : "clock")}<span>${caption}</span></button></div></td>`;
+    }
+    const open = daily ? "İşi aç" : "Takibi aç";
+    const date = daily ? target.dueDate : target.nextFollowUpDate;
     const dateCaption = daily ? "İş teslimi" : "Sonraki takip";
-    const dateText = date ? `${dateCaption}: ${formatDate(date)}` : "";
+    const late = date && active(target) && date < today();
     const kind = daily ? "iş" : "takip";
-    return `<td class="meeting-linked-cell" data-route="${type}"><div class="meeting-linked-content"><button type="button" class="meeting-route${target ? " linked-action-control" : ""}" data-action="${target ? "open-linked-action" : "meeting-route"}" data-route="${type}" data-id="${esc(record.id)}" title="${caption}" aria-label="${esc(record.title)}: ${caption.toLocaleLowerCase("tr-TR")}">${icon(daily ? "list" : "clock")}<span>${caption}</span></button>${target ? `${target.title !== record.title ? `<span class="meeting-linked-title" title="${esc(target.title)}">${esc(target.title)}</span>` : ""}${statusBadge(target, { sourceId: record.id, targetId: target.id, caption: `${record.title}: ${kind} durumunu değiştir` })}${date ? `<span class="meeting-linked-date" title="${dateCaption}: ${esc(date)}">${esc(dateText)}</span>` : ""}` : ""}</div></td>`;
+    return `<td class="meeting-linked-cell" data-route="${type}"><div class="meeting-linked-content"><div class="meeting-linked-row">${statusBadge(target, { sourceId: record.id, targetId: target.id, caption: `${record.title}: ${kind} durumunu değiştir` })}${date ? `<span class="meeting-linked-date${late ? " is-late" : ""}" title="${dateCaption}: ${esc(formatDate(date))}">${esc(formatDate(date))}</span>` : ""}<button type="button" class="meeting-open linked-action-control" data-action="open-linked-action" data-route="${type}" data-id="${esc(record.id)}" data-record-link-tooltip="${open}: ${esc(target.title)}" aria-label="${esc(record.title)}: ${open.toLocaleLowerCase("tr-TR")}">${icon("openLink")}</button></div>${target.title !== record.title ? `<span class="meeting-linked-title" title="${esc(target.title)}">${esc(target.title)}</span>` : ""}</div></td>`;
+  }
+  // The meeting date and the decision's first item share one line; more
+  // items are counted, and the whole decision opens in the hover bubble.
+  function meetingSummary(record) {
+    const lines = String(record.decision || "")
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean);
+    const date = record.sourceDate ? formatDate(record.sourceDate) : "";
+    if (!lines.length)
+      return date
+        ? `<div class="meeting-summary"><span class="meeting-summary-date">Toplantı ${esc(date)}</span></div>`
+        : "";
+    return `<div class="meeting-summary" data-record-link-tooltip="${esc(record.decision.trim())}">${date ? `<span class="meeting-summary-date">${esc(date)}</span><span class="meeting-summary-sep" aria-hidden="true">·</span>` : ""}<span class="meeting-summary-text">${esc(lines[0])}</span>${lines.length > 1 ? `<span class="meeting-summary-more">+${lines.length - 1} madde</span>` : ""}</div>`;
   }
   function meetingTable(records) {
-    return `<div class="table-wrap"><table class="full-table meeting-table"><thead><tr><th>Aksiyon / Karar</th><th class="status-col meeting-source-status-col">Durum</th><th class="meeting-linked-heading">Bağlı iş</th><th class="meeting-linked-heading">Takip</th><th class="row-action-col">İşlem</th></tr></thead><tbody>${records.map((record) => `<tr class="record-list-row" ${recordRow(record)}><td><div class="task-title-cell"><div class="task-copy"><div class="task-name-line"><button class="task-name ${record.status === "completed" ? "completed" : record.status === "cancelled" ? "cancelled" : ""}" data-action="meeting-record-details" aria-haspopup="dialog" aria-controls="meeting-record-panel" data-id="${esc(record.id)}">${esc(record.title)}</button>${recordNotes?.button(record) || ""}</div>${record.decision ? `<div class="meeting-decision" title="${esc(record.decision)}">${esc(record.decision)}</div>` : ""}${record.sourceDate ? `<div class="task-sub meeting-date">Toplantı: ${esc(formatDate(record.sourceDate))}</div>` : ""}</div></div></td><td class="status-col meeting-source-status-col">${statusBadge(record)}</td>${meetingLinkedCell(record, "daily")}${meetingLinkedCell(record, "waiting")}<td class="row-action-col"><div class="row-end-actions">${recordEditControl(record)}</div></td></tr>`).join("")}</tbody></table></div>`;
+    return `<div class="table-wrap"><table class="full-table meeting-table"><thead><tr><th>Aksiyon / Karar</th><th class="status-col meeting-source-status-col">Durum</th><th class="meeting-linked-heading">Bağlı iş</th><th class="meeting-linked-heading">Takip</th><th class="row-action-col">İşlem</th></tr></thead><tbody>${records.map((record) => `<tr class="record-list-row" ${recordRow(record)}><td><div class="task-title-cell"><div class="task-copy"><div class="task-name-line"><button class="task-name ${record.status === "completed" ? "completed" : record.status === "cancelled" ? "cancelled" : ""}" data-action="meeting-record-details" aria-haspopup="dialog" aria-controls="meeting-record-panel" data-id="${esc(record.id)}">${esc(record.title)}</button>${recordNotes?.button(record) || ""}</div>${meetingSummary(record)}</div></div></td><td class="status-col meeting-source-status-col">${statusBadge(record)}</td>${meetingLinkedCell(record, "daily")}${meetingLinkedCell(record, "waiting")}<td class="row-action-col"><div class="row-end-actions">${recordEditControl(record)}</div></td></tr>`).join("")}</tbody></table></div>`;
   }
   function waitingTable(records) {
     return `<div class="table-wrap"><table class="full-table waiting-table"><thead><tr><th>Konu / Beklenen</th><th>Durum</th><th class="waiting-last-col">Son takip</th><th class="waiting-next-col">Sonraki takip</th><th class="waiting-age-col">Bekleme</th><th class="row-action-col">İşlem</th></tr></thead><tbody>${records.map((record) => `<tr class="record-list-row" ${recordRow(record)}><td><div class="task-title-cell">${completionControl(record)}<div class="task-copy"><div class="task-name-line">${dayFocusButton(record)}${recordTitleContent(record, `<a class="task-name ${record.status === "completed" ? "completed" : record.status === "cancelled" ? "cancelled" : ""}" href="#waiting-record-panel" role="button" data-action="waiting-record-details" data-id="${esc(record.id)}" aria-haspopup="dialog" aria-controls="waiting-record-panel">${esc(record.title)}</a>`, `${recordNotes?.button(record) || ""}${recordNotes?.historyButton(record) || ""}`)}</div>${record.expectedFrom ? `<div class="task-sub" title="${esc(record.expectedFrom)}">${esc(record.expectedFrom)}</div>` : ""}${record.latestUpdate ? `<div class="waiting-latest" title="${esc(record.latestUpdate)}">${esc(record.latestUpdate)}</div>` : ""}</div></div></td><td>${statusBadge(record)}</td><td class="waiting-last-col">${waitingLastControl(record)}</td><td class="waiting-next-col">${inlineFields?.followUpDateControl(record) || ""}</td><td class="waiting-age-col">${inlineFields?.waitingStartControl(record) || waitingAgeMarkup(record)}</td><td class="row-action-col"><div class="row-end-actions">${recordEditControl(record)}${workControl(record)}</div></td></tr>`).join("")}</tbody></table></div>`;
@@ -2784,7 +2801,9 @@ export async function startMainApp() {
       ...(table?.querySelectorAll("[data-record-row]") || []),
     ].find((element) => element.dataset.id === context.sourceId);
     const trigger = [
-      ...(sourceRow?.querySelectorAll(".meeting-route[data-route]") || []),
+      ...(sourceRow?.querySelectorAll(
+        ":is(.meeting-route, .meeting-open)[data-route]",
+      ) || []),
     ].find((element) => element.dataset.route === context.routeType);
     (trigger || document.querySelector('#nav [data-view="meeting"]'))?.focus({
       preventScroll: true,

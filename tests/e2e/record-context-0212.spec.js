@@ -309,10 +309,10 @@ test("selected yearly goals and plain daily records have no filler while meeting
     row(page, "context-plain-meeting").locator(".task-meta-line, .task-sub"),
   ).toHaveCount(0);
   await expect(
-    row(page, "context-owned-meeting").locator(".meeting-decision"),
+    row(page, "context-owned-meeting").locator(".meeting-summary-text"),
   ).toHaveText("Paylaşılan gerçek toplantı kararı.");
   await expect(
-    row(page, "context-owned-meeting").locator(".meeting-date"),
+    row(page, "context-owned-meeting").locator(".meeting-summary-date"),
   ).toContainText("5 Kas");
   await expect(row(page, "context-owned-meeting")).not.toContainText(
     "Aslı Kaya",

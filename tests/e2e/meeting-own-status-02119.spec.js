@@ -958,8 +958,17 @@ test("meeting source status, routes and pencil share compact left-aligned column
                 ":scope > .status-trigger, :scope > .status-summary",
               ),
             ],
-            [...cells[2].querySelectorAll(".meeting-route")],
-            [...cells[3].querySelectorAll(".meeting-route")],
+            // A route is its create button, or the linked status box.
+            [
+              ...cells[2].querySelectorAll(
+                ".meeting-route, .meeting-linked-row > .status-trigger",
+              ),
+            ],
+            [
+              ...cells[3].querySelectorAll(
+                ".meeting-route, .meeting-linked-row > .status-trigger",
+              ),
+            ],
             [...cells[4].querySelectorAll(".row-end-actions > button")],
           ];
           return {
@@ -995,15 +1004,18 @@ test("meeting source status, routes and pencil share compact left-aligned column
       });
       for (const entry of dimensions) {
         expect(entry.columnWidths).toHaveLength(5);
+        // Linked columns hold a status box, a date and an open button on one
+        // line (184px), narrowing to 136px on small windows.
+        const linked = viewport.width >= 880 ? 184 : 136;
         expect(entry.columnWidths[1]).toBeLessThanOrEqual(132);
-        expect(entry.columnWidths[2]).toBeLessThanOrEqual(136);
-        expect(entry.columnWidths[3]).toBeLessThanOrEqual(136);
+        expect(entry.columnWidths[2]).toBeLessThanOrEqual(linked + 4);
+        expect(entry.columnWidths[3]).toBeLessThanOrEqual(linked + 4);
         expect(entry.columnWidths[4]).toBeLessThanOrEqual(56);
         expect(
           entry.columnWidths.slice(1).reduce((sum, width) => sum + width, 0),
-        ).toBeLessThanOrEqual(448);
+        ).toBeLessThanOrEqual(132 + 2 * (linked + 4) + 56);
         if (viewport.width >= 1280)
-          expect(entry.columnWidths[0]).toBeGreaterThan(448);
+          expect(entry.columnWidths[0]).toBeGreaterThan(400);
         for (const [index, column] of entry.alignment.entries()) {
           expect(column.headerAlignment).toBe("left");
           expect(column.count).toBe(1);

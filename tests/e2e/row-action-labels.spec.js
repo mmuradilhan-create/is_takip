@@ -80,10 +80,13 @@ test("a meeting with two routes names and opens each exact destination without c
   ]) {
     await page.setViewportSize(viewport);
     await list(page, "meeting");
+    // Linked flows open with a small button named after the destination.
     const routes = row(page, "dual").locator(
-      ".meeting-linked-cell .meeting-route",
+      ".meeting-linked-cell .meeting-open",
     );
-    await expect(routes).toHaveText(["İşi aç", "Takibi aç"]);
+    await expect(routes).toHaveCount(2);
+    await expect(routes.nth(0)).toHaveAccessibleName(/işi aç$/);
+    await expect(routes.nth(1)).toHaveAccessibleName(/takibi aç$/);
     await expect(
       row(page, "dual").locator(".status-col > .status-summary"),
     ).toHaveText("Açık");
@@ -109,7 +112,7 @@ test("a meeting with two routes names and opens each exact destination without c
       const bounds = await control.boundingBox();
       expect(bounds.x).toBeGreaterThanOrEqual(cell.x);
       expect(bounds.x + bounds.width).toBeLessThanOrEqual(cell.x + cell.width);
-      expect(bounds.height).toBe(30);
+      expect(bounds.height).toBe(24);
       await expect(control).toHaveAttribute("aria-label", /.+/);
       await expect(control).toBeVisible();
     }
@@ -123,7 +126,7 @@ test("a meeting with two routes names and opens each exact destination without c
       ["waiting", "external-reply"],
     ]) {
       await row(page, "dual")
-        .locator(`.meeting-linked-cell[data-route="${type}"] .meeting-route`)
+        .locator(`.meeting-linked-cell[data-route="${type}"] .meeting-open`)
         .click();
       await expect(form(page).locator('[name="id"]')).toHaveValue(id);
       await expect(form(page).locator('select[name="type"]')).toHaveValue(type);
@@ -145,12 +148,17 @@ test("unrouted and single-route meetings name their separate creation or open ac
   ]);
   const before = await saved(page);
   await list(page, "meeting");
+  await expect(
+    row(page, "single").locator(
+      '.meeting-linked-cell[data-route="daily"] .meeting-open',
+    ),
+  ).toHaveAccessibleName(/işi aç$/);
   for (const id of ["unrouted", "single"]) {
     const controls = row(page, id).locator(
-      ".meeting-linked-cell .meeting-route",
+      ".meeting-linked-cell .meeting-route, .meeting-linked-cell .meeting-linked-row > .status-trigger",
     );
     await expect(controls).toHaveText([
-      id === "single" ? "İşi aç" : "İş oluştur",
+      id === "single" ? "Devam" : "İş oluştur",
       "Takip oluştur",
     ]);
     for (const control of await controls.all()) {
@@ -163,7 +171,7 @@ test("unrouted and single-route meetings name their separate creation or open ac
     }
   }
   await row(page, "single")
-    .locator('.meeting-linked-cell[data-route="daily"] .meeting-route')
+    .locator('.meeting-linked-cell[data-route="daily"] .meeting-open')
     .click();
   await expect(form(page).locator('[name="id"]')).toHaveValue("single-work");
   await close(page);

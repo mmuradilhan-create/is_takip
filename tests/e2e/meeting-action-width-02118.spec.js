@@ -203,21 +203,25 @@ test("action headers and controls share compact left alignment across meeting, g
       await expect(page.locator("#editor")).not.toBeVisible();
       expect(await saved(page)).toBe(initial);
 
+      // A linked work is one line: its status box and a small open button.
       const dailyRoute = row.locator(
-        '.meeting-linked-cell[data-route="daily"] .meeting-route',
+        '.meeting-linked-cell[data-route="daily"] .meeting-open',
       );
       const waitingRoute = row.locator(
         '.meeting-linked-cell[data-route="waiting"] .meeting-route',
       );
-      await expect(dailyRoute).toHaveText("İşi aç");
+      await expect(dailyRoute).toHaveAccessibleName(/işi aç$/);
       await expect(waitingRoute).toHaveText("Takip oluştur");
-      for (const route of [dailyRoute, waitingRoute]) {
-        const bounds = await route.boundingBox();
+      const dailyStatus = row.locator(
+        '.meeting-linked-cell[data-route="daily"] .status-trigger',
+      );
+      for (const box of [dailyStatus, waitingRoute]) {
+        const bounds = await box.boundingBox();
         // The same 96x30 box as the other lists, with its text fully shown.
         expect(Math.round(bounds.width)).toBe(96);
         expect(bounds.height).toBe(30);
         expect(
-          await route.evaluate(
+          await box.evaluate(
             (item) => item.scrollWidth <= item.clientWidth + 1,
           ),
         ).toBe(true);

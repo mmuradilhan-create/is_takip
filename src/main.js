@@ -930,6 +930,8 @@ export async function startMainApp() {
       );
     },
   });
+  // Meeting rows opened in the list; kept while the window is open.
+  const expandedMeetings = new Set();
   const recordLinkTooltip = createRecordLinkTooltip({ root: app });
   window.addEventListener("pagehide", recordLinkTooltip.destroy, {
     once: true,
@@ -1479,8 +1481,9 @@ export async function startMainApp() {
         : esc(text);
     return `<span class="waiting-last-date" title="${record.lastFollowUpDate ? esc(record.lastFollowUpDate) : "Henüz takip kaydı yok"}">${content}</span>`;
   }
-  // One line per linked flow: its status box, its date and an open button;
-  // a linked name that differs from the meeting record shows small below.
+  // Collapsed, a linked flow is its status box and date; a missing one is its
+  // create button. Names, the decision and open buttons wait in the
+  // expanded row below.
   function meetingLinkedCell(record, type) {
     const target = meetingTargets(record).find((item) => item.type === type);
     if (!target && !active(record))
@@ -1488,31 +1491,39 @@ export async function startMainApp() {
     const daily = type === "daily";
     if (!target) {
       const caption = daily ? "İş oluştur" : "Takip oluştur";
-      return `<td class="meeting-linked-cell" data-route="${type}"><div class="meeting-linked-content"><button type="button" class="meeting-route" data-action="meeting-route" data-route="${type}" data-id="${esc(record.id)}" title="${caption}" aria-label="${esc(record.title)}: ${caption.toLocaleLowerCase("tr-TR")}">${icon(daily ? "list" : "clock")}<span>${caption}</span></button></div></td>`;
+      return `<td class="meeting-linked-cell" data-route="${type}"><div class="meeting-linked-row"><button type="button" class="meeting-route" data-action="meeting-route" data-route="${type}" data-id="${esc(record.id)}" title="${caption}" aria-label="${esc(record.title)}: ${caption.toLocaleLowerCase("tr-TR")}">${icon(daily ? "list" : "clock")}<span>${caption}</span></button></div></td>`;
     }
-    const open = daily ? "İşi aç" : "Takibi aç";
     const date = daily ? target.dueDate : target.nextFollowUpDate;
     const dateCaption = daily ? "İş teslimi" : "Sonraki takip";
     const late = date && active(target) && date < today();
     const kind = daily ? "iş" : "takip";
-    return `<td class="meeting-linked-cell" data-route="${type}"><div class="meeting-linked-content"><div class="meeting-linked-row">${statusBadge(target, { sourceId: record.id, targetId: target.id, caption: `${record.title}: ${kind} durumunu değiştir` })}${date ? `<span class="meeting-linked-date${late ? " is-late" : ""}" title="${dateCaption}: ${esc(formatDate(date))}">${esc(formatDate(date))}</span>` : ""}<button type="button" class="meeting-open linked-action-control" data-action="open-linked-action" data-route="${type}" data-id="${esc(record.id)}" data-record-link-tooltip="${open}: ${esc(target.title)}" aria-label="${esc(record.title)}: ${open.toLocaleLowerCase("tr-TR")}">${icon("openLink")}</button></div>${target.title !== record.title ? `<span class="meeting-linked-title" title="${esc(target.title)}">${esc(target.title)}</span>` : ""}</div></td>`;
+    return `<td class="meeting-linked-cell" data-route="${type}"><div class="meeting-linked-row">${statusBadge(target, { sourceId: record.id, targetId: target.id, caption: `${record.title}: ${kind} durumunu değiştir` })}${date ? `<span class="meeting-linked-date${late ? " is-late" : ""}" title="${dateCaption}: ${esc(formatDate(date))}">${esc(formatDate(date))}</span>` : ""}</div></td>`;
   }
-  // The meeting date and the decision's first item share one line; more
-  // items are counted, and the whole decision opens in the hover bubble.
-  function meetingSummary(record) {
-    const lines = String(record.decision || "")
-      .split(/\r?\n/)
-      .map((line) => line.trim())
-      .filter(Boolean);
-    const date = record.sourceDate ? formatDate(record.sourceDate) : "";
-    if (!lines.length)
-      return date
-        ? `<div class="meeting-summary"><span class="meeting-summary-date">Toplantı ${esc(date)}</span></div>`
-        : "";
-    return `<div class="meeting-summary" data-record-link-tooltip="${esc(record.decision.trim())}">${date ? `<span class="meeting-summary-date">${esc(date)}</span><span class="meeting-summary-sep" aria-hidden="true">·</span>` : ""}<span class="meeting-summary-text">${esc(lines[0])}</span>${lines.length > 1 ? `<span class="meeting-summary-more">+${lines.length - 1} madde</span>` : ""}</div>`;
+  // The expanded part: the decision as it was written, and each linked flow
+  // with its full name, date and an open button.
+  function meetingDetail(record) {
+    const decision = String(record.decision || "").trim();
+    const linkLine = (type) => {
+      const target = meetingTargets(record).find(
+        (item) => item.type === type,
+      );
+      const daily = type === "daily";
+      const label = daily ? "Bağlı iş" : "Takip";
+      if (!target)
+        return `<div class="meeting-detail-link is-empty" data-route="${type}"><span class="meeting-detail-label">${icon(daily ? "list" : "clock")}${label}</span><span class="meeting-detail-none">${daily ? "Bağlı iş yok" : "Takip yok"}</span></div>`;
+      const date = daily ? target.dueDate : target.nextFollowUpDate;
+      const open = daily ? "İşi aç" : "Takibi aç";
+      return `<div class="meeting-detail-link" data-route="${type}"><span class="meeting-detail-label">${icon(daily ? "list" : "clock")}${label}</span><span class="meeting-detail-title">${esc(target.title)}</span>${date ? `<span class="meeting-detail-date">${daily ? "Teslim" : "Sonraki takip"}: ${esc(formatDate(date))}</span>` : ""}<button type="button" class="btn small meeting-detail-open linked-action-control" data-action="open-linked-action" data-route="${type}" data-id="${esc(record.id)}" aria-label="${esc(record.title)}: ${open.toLocaleLowerCase("tr-TR")}">${open}</button></div>`;
+    };
+    return `<div class="meeting-detail"><div class="meeting-detail-decision"><span class="meeting-detail-label">Karar</span>${decision ? `<p>${esc(decision)}</p>` : '<p class="meeting-detail-none">Karar yazılmamış.</p>'}</div><div class="meeting-detail-links">${linkLine("daily")}${linkLine("waiting")}</div></div>`;
   }
   function meetingTable(records) {
-    return `<div class="table-wrap"><table class="full-table meeting-table"><thead><tr><th>Aksiyon / Karar</th><th class="status-col meeting-source-status-col">Durum</th><th class="meeting-linked-heading">Bağlı iş</th><th class="meeting-linked-heading">Takip</th><th class="row-action-col">İşlem</th></tr></thead><tbody>${records.map((record) => `<tr class="record-list-row" ${recordRow(record)}><td><div class="task-title-cell"><div class="task-copy"><div class="task-name-line"><button class="task-name ${record.status === "completed" ? "completed" : record.status === "cancelled" ? "cancelled" : ""}" data-action="meeting-record-details" aria-haspopup="dialog" aria-controls="meeting-record-panel" data-id="${esc(record.id)}">${esc(record.title)}</button>${recordNotes?.button(record) || ""}</div>${meetingSummary(record)}</div></div></td><td class="status-col meeting-source-status-col">${statusBadge(record)}</td>${meetingLinkedCell(record, "daily")}${meetingLinkedCell(record, "waiting")}<td class="row-action-col"><div class="row-end-actions">${recordEditControl(record)}</div></td></tr>`).join("")}</tbody></table></div>`;
+    return `<div class="table-wrap"><table class="full-table meeting-table is-expandable"><thead><tr><th>Aksiyon / Karar</th><th class="meeting-date-col">Toplantı</th><th class="status-col meeting-source-status-col">Durum</th><th class="meeting-linked-heading">Bağlı iş</th><th class="meeting-linked-heading">Takip</th><th class="row-action-col">İşlem</th></tr></thead><tbody>${records
+      .map((record) => {
+        const open = expandedMeetings.has(record.id);
+        return `<tr class="record-list-row meeting-row${open ? " is-expanded" : ""}" ${recordRow(record)}><td><div class="meeting-title-line"><button type="button" class="meeting-expand" data-action="meeting-expand" data-id="${esc(record.id)}" aria-expanded="${open}" aria-controls="meeting-detail-${esc(record.id)}" aria-label="${esc(record.title)}: ${open ? "ayrıntıyı kapat" : "ayrıntıyı aç"}">${icon("chevron")}</button><button type="button" class="task-name meeting-title ${record.status === "completed" ? "completed" : record.status === "cancelled" ? "cancelled" : ""}" data-action="meeting-expand" data-id="${esc(record.id)}" aria-expanded="${open}" aria-controls="meeting-detail-${esc(record.id)}" title="${esc(record.title)}">${esc(record.title)}</button>${recordNotes?.button(record) || ""}</div></td><td class="meeting-date-col">${record.sourceDate ? esc(formatDate(record.sourceDate)) : ""}</td><td class="status-col meeting-source-status-col">${statusBadge(record)}</td>${meetingLinkedCell(record, "daily")}${meetingLinkedCell(record, "waiting")}<td class="row-action-col"><div class="row-end-actions">${recordEditControl(record)}</div></td></tr><tr class="meeting-detail-row" id="meeting-detail-${esc(record.id)}" data-detail-for="${esc(record.id)}"${open ? "" : " hidden"}><td colspan="6">${meetingDetail(record)}</td></tr>`;
+      })
+      .join("")}</tbody></table></div>`;
   }
   function waitingTable(records) {
     return `<div class="table-wrap"><table class="full-table waiting-table"><thead><tr><th>Konu / Beklenen</th><th>Durum</th><th class="waiting-last-col">Son takip</th><th class="waiting-next-col">Sonraki takip</th><th class="waiting-age-col">Bekleme</th><th class="row-action-col">İşlem</th></tr></thead><tbody>${records.map((record) => `<tr class="record-list-row" ${recordRow(record)}><td><div class="task-title-cell">${completionControl(record)}<div class="task-copy"><div class="task-name-line">${dayFocusButton(record)}${recordTitleContent(record, `<a class="task-name ${record.status === "completed" ? "completed" : record.status === "cancelled" ? "cancelled" : ""}" href="#waiting-record-panel" role="button" data-action="waiting-record-details" data-id="${esc(record.id)}" aria-haspopup="dialog" aria-controls="waiting-record-panel">${esc(record.title)}</a>`, `${recordNotes?.button(record) || ""}${recordNotes?.historyButton(record) || ""}`)}</div>${record.expectedFrom ? `<div class="task-sub" title="${esc(record.expectedFrom)}">${esc(record.expectedFrom)}</div>` : ""}${record.latestUpdate ? `<div class="waiting-latest" title="${esc(record.latestUpdate)}">${esc(record.latestUpdate)}</div>` : ""}</div></div></td><td>${statusBadge(record)}</td><td class="waiting-last-col">${waitingLastControl(record)}</td><td class="waiting-next-col">${inlineFields?.followUpDateControl(record) || ""}</td><td class="waiting-age-col">${inlineFields?.waitingStartControl(record) || waitingAgeMarkup(record)}</td><td class="row-action-col"><div class="row-end-actions">${recordEditControl(record)}${workControl(record)}</div></td></tr>`).join("")}</tbody></table></div>`;
@@ -4385,6 +4396,26 @@ export async function startMainApp() {
           toast(error.message, true);
           render();
         }
+        break;
+      }
+      case "meeting-expand": {
+        const open = !expandedMeetings.has(id);
+        if (open) expandedMeetings.add(id);
+        else expandedMeetings.delete(id);
+        const row = button.closest("tr");
+        row?.classList.toggle("is-expanded", open);
+        for (const control of row?.querySelectorAll(
+          '[data-action="meeting-expand"]',
+        ) || [])
+          control.setAttribute("aria-expanded", String(open));
+        row
+          ?.querySelector(".meeting-expand")
+          ?.setAttribute(
+            "aria-label",
+            `${row.querySelector(".meeting-title")?.textContent || ""}: ${open ? "ayrıntıyı kapat" : "ayrıntıyı aç"}`,
+          );
+        const detail = document.getElementById(`meeting-detail-${id}`);
+        if (detail) detail.hidden = !open;
         break;
       }
       case "review-goal-links":

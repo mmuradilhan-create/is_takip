@@ -86,7 +86,7 @@
 .meeting-table
   > tbody
   > tr
-  > td:nth-child(2)
+  > td.meeting-source-status-col
   > :is(.status-trigger, .status-summary),
 .meeting-table .meeting-linked-cell .meeting-route {
   display: inline-flex;
@@ -108,7 +108,7 @@
 .meeting-table
   > tbody
   > tr
-  > td:nth-child(2)
+  > td.meeting-source-status-col
   > :is(.status-trigger, .status-summary) {
   white-space: nowrap;
 }
@@ -123,7 +123,7 @@
 .meeting-table
   > tbody
   > tr
-  > td:nth-child(2)
+  > td.meeting-source-status-col
   > .status-trigger[data-action="status-menu"] {
   flex-wrap: nowrap;
   gap: 2px;

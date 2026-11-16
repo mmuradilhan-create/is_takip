@@ -704,11 +704,15 @@ for (const type of ["meeting", "waiting"]) {
     });
     const createdRaw = await readSaved(page);
     await page.locator(`#nav [data-view="${type}"]`).click();
-    if (type === "meeting")
+    if (type === "meeting") {
+      // A linked work opens from the meeting's details panel.
+      await row(page, source.id).locator(".task-name").click();
       await page
-        .locator(`[data-action="open-linked-action"][data-id="${source.id}"]`)
-        .last()
+        .locator(
+          '#meeting-record-panel .meeting-record-open[data-route="daily"]',
+        )
         .click();
+    }
     else {
       await row(page, source.id).locator(".task-name").click();
       const waitingPanel = page.locator("#waiting-record-panel");

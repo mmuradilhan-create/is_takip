@@ -263,10 +263,10 @@ test("daily and waiting actions keep their own context while the meeting closes 
   expect(afterStatus.find((item) => item.id === "authority")).toEqual(
     original[0],
   );
-  await row(page, "authority")
-    .locator(
-      '.meeting-linked-cell[data-route="daily"] [data-action="open-linked-action"]',
-    )
+  // A linked work opens from the meeting's details panel.
+  await row(page, "authority").locator(".meeting-title").click();
+  await page
+    .locator('#meeting-record-panel .meeting-record-open[data-route="daily"]')
     .click();
   await expect(page.locator("#editor")).toBeVisible();
   await expect(form(page).locator('[name="id"]')).toHaveValue(target.id);

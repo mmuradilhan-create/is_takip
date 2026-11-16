@@ -17,9 +17,43 @@ const row = (page, id) =>
   page.locator(`.meeting-table tr[data-record-row][data-id="${id}"]`);
 const cell = (page, id, type) =>
   row(page, id).locator(`.meeting-linked-cell[data-route="${type}"]`);
-// A missing flow has a create button; a linked one a small open button.
+// A missing flow has a create button in the row; a linked one opens from
+// the meeting's details panel, and focus comes back to the meeting title.
 const route = (page, id, type) =>
-  cell(page, id, type).locator(".meeting-route, .meeting-open");
+  cell(page, id, type).locator(".meeting-route");
+const title = (page, id) => row(page, id).locator(".meeting-title");
+const panelOpen = (page, type) =>
+  page.locator(
+    `#meeting-record-panel .meeting-record-open[data-route="${type}"]`,
+  );
+async function openLinked(page, id, type) {
+  await title(page, id).click();
+  await panelOpen(page, type).click();
+  // A follow-up opens in its own panel first; its form is one click on.
+  if (type === "waiting")
+    await page
+      .locator("#waiting-record-panel")
+      .getByRole("button", { name: "Kaydı düzenle", exact: true })
+      .click();
+}
+// Closing the linked work's form returns to the meeting panel's open
+// button; closing the panel then returns to the meeting title. A follow-up
+// comes back through its own panel, which is closed as well.
+async function backToList(page, id, type) {
+  const meetingPanel = page.locator("#meeting-record-panel");
+  if (type === "daily") {
+    await expect(panelOpen(page, type)).toBeFocused();
+    await meetingPanel
+      .getByRole("button", { name: "Kapat", exact: true })
+      .click();
+    await expect(title(page, id)).toBeFocused();
+    return;
+  }
+  for (const panel of [page.locator("#waiting-record-panel"), meetingPanel])
+    if (await panel.isVisible())
+      await panel.getByRole("button", { name: "Kapat", exact: true }).click();
+  await expect(meetingPanel).toBeHidden();
+}
 const undo = (page) =>
   page.getByRole("button", { name: "Geri al", exact: true }).click();
 const list = (page) => page.locator('#nav [data-view="meeting"]').click();
@@ -380,15 +414,16 @@ test("meeting tables show derived source summaries beside independent route cont
   const before = await saved(page);
   await expect(page.locator(".meeting-table thead th")).toHaveText([
     "Aksiyon / Karar",
+    "Toplantı",
     "Durum",
     "Bağlı iş",
     "Takip",
     "İşlem",
   ]);
   await expect(page.locator("#priority-filter, #period-filter")).toHaveCount(0);
-  await expect(row(page, "none").locator(".meeting-summary-text")).toHaveText(
-    items[0].decision,
-  );
+  await expect(
+    row(page, "none").locator(".record-decision-trigger"),
+  ).not.toHaveClass(/is-empty/);
   await expect(
     cell(page, "none", "daily").locator(".meeting-linked-date"),
   ).toHaveCount(0);
@@ -443,15 +478,15 @@ test("meeting tables show derived source summaries beside independent route cont
     ["both", "waiting", "both-reply"],
   ]) {
     await list(page);
-    if (targetId)
-      await expect(route(page, sourceId, type)).toHaveAccessibleName(
-        type === "daily" ? /işi aç$/ : /takibi aç$/,
-      );
-    else
+    if (targetId) {
+      await expect(route(page, sourceId, type)).toHaveCount(0);
+      await openLinked(page, sourceId, type);
+    } else {
       await expect(route(page, sourceId, type)).toHaveText(
         type === "daily" ? "İş oluştur" : "Takip oluştur",
       );
-    await route(page, sourceId, type).click();
+      await route(page, sourceId, type).click();
+    }
     await expect(page.locator("#page-title")).toHaveText(
       "Toplantı aksiyonları",
     );
@@ -464,7 +499,7 @@ test("meeting tables show derived source summaries beside independent route cont
     if (targetId) await expect(field(page, "id")).toHaveValue(targetId);
     else await expect(form(page)).toHaveAttribute("data-creation", "true");
     await closeEditor(page);
-    if (targetId) await expect(route(page, sourceId, type)).toBeFocused();
+    if (targetId) await backToList(page, sourceId, type);
     expect(await saved(page)).toBe(before);
   }
   await page.getByRole("searchbox").fill("Toplantı kararı both");
@@ -472,7 +507,7 @@ test("meeting tables show derived source summaries beside independent route cont
     ["daily", "both-work"],
     ["waiting", "both-reply"],
   ]) {
-    await route(page, "both", type).click();
+    await openLinked(page, "both", type);
     await expect(field(page, "id")).toHaveValue(targetId);
     await expect(form(page).locator('select[name="type"]')).toHaveValue(type);
     await expect(page.locator("#page-title")).toHaveText(
@@ -490,7 +525,7 @@ test("meeting tables show derived source summaries beside independent route cont
     await expect(page.getByRole("searchbox")).toHaveValue(
       "Toplantı kararı both",
     );
-    await expect(route(page, "both", type)).toBeFocused();
+    await backToList(page, "both", type);
     const updated = await records(page);
     expect(updated.find((item) => item.id === targetId).description).toBe(
       `${type} akışının kendi notu.`,

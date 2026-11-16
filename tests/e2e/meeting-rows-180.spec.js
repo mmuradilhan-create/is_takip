@@ -23,15 +23,26 @@ const linked = (id, sourceId, type, input) =>
 const decision = [
   "1) Kelepçe kompleleri sipariş tamamlandı. Test planlaması yapılması gerekmektedir ve bu karar uzun bir cümledir.",
   "2) Tedarikçi ile test tarihleri netleştirilecek.",
-  "3) Sonuçlar haftalık toplantıda paylaşılacak.",
 ].join("\n");
+const stored = (page, id) =>
+  page.evaluate(
+    (id) =>
+      JSON.parse(localStorage.getItem("is-takip-v1")).records.find(
+        (record) => record.id === id,
+      ).decision,
+    id,
+  );
 
-test("meeting rows stay two lines however long the decision and linked names get", async ({
+test("meeting rows stay one line; the decision previews and edits from its own symbol like a note", async ({
   page,
 }) => {
   await page.clock.setFixedTime(new Date("2026-11-16T09:00:00.000Z"));
   await page.addInitScript(
-    (raw) => localStorage.setItem("is-takip-v1", raw),
+    (raw) => {
+      if (sessionStorage.getItem("meeting-rows-180")) return;
+      sessionStorage.setItem("meeting-rows-180", "1");
+      localStorage.setItem("is-takip-v1", raw);
+    },
     JSON.stringify({
       version: 1,
       records: [
@@ -40,8 +51,8 @@ test("meeting rows stay two lines however long the decision and linked names get
           title: "DYRK Test Planlaması deneme ve doğrulama adımları",
           dueDate: "2026-11-19",
         }),
-        meeting("short", { title: "Kısa karar", decision: "Tek madde." }),
-        linked("short-work", "short", "daily", {
+        meeting("empty", { title: "Kısa karar", decision: "" }),
+        linked("empty-work", "empty", "daily", {
           title: "Kısa karar",
           dueDate: "2026-11-10",
         }),
@@ -53,54 +64,67 @@ test("meeting rows stay two lines however long the decision and linked names get
   await page.locator('#nav [data-view="meeting"]').click();
   const row = (id) =>
     page.locator(`.meeting-table tr[data-record-row][data-id="${id}"]`);
-  // One line: the meeting date, the first item and how many more there are.
-  const summary = row("long").locator(".meeting-summary");
-  await expect(summary.locator(".meeting-summary-date")).toHaveText("18 Ağu");
-  await expect(summary.locator(".meeting-summary-text")).toHaveText(
-    decision.split("\n")[0],
-  );
-  await expect(summary.locator(".meeting-summary-more")).toHaveText("+2 madde");
-  expect(
-    await summary.evaluate((element) => element.getBoundingClientRect().height),
-  ).toBeLessThan(22);
-  await expect(row("short").locator(".meeting-summary-more")).toHaveCount(0);
-  // The whole decision shows in the hover bubble.
-  await summary.hover();
-  await expect(page.locator("#record-link-tooltip")).toHaveText(decision);
-  await page.mouse.move(5, 5);
-  // A linked work is one line; its name shows only when it differs.
-  const work = row("long").locator('.meeting-linked-cell[data-route="daily"]');
-  await expect(work.locator(".meeting-linked-row .status-trigger")).toHaveText(
-    "Yapılacak",
-  );
-  await expect(work.locator(".meeting-linked-date")).toHaveText("19 Kas");
-  await expect(work.locator(".meeting-linked-title")).toHaveText(
-    "DYRK Test Planlaması deneme ve doğrulama adımları",
-  );
-  await expect(row("short").locator(".meeting-linked-title")).toHaveCount(0);
-  await expect(row("short").locator(".meeting-linked-date")).toHaveClass(
+  const symbol = (id) => row(id).locator(".record-decision-trigger");
+  // One line per meeting: date in its own column, linked status and date.
+  await expect(row("long").locator("td.meeting-date-col")).toHaveText("18 Ağu");
+  await expect(
+    row("long").locator('.meeting-linked-cell[data-route="daily"]'),
+  ).toContainText("19 Kas");
+  await expect(row("empty").locator(".meeting-linked-date")).toHaveClass(
     /is-late/,
   );
-  const tops = await work
-    .locator(".meeting-linked-row > *")
-    .evaluateAll((items) =>
-      items.map((item) => {
-        const box = item.getBoundingClientRect();
-        return Math.round(box.top + box.height / 2);
-      }),
-    );
-  expect(Math.max(...tops) - Math.min(...tops)).toBeLessThanOrEqual(1);
+  await expect(row("long")).not.toContainText("Kelepçe");
   const heights = await page
     .locator(".meeting-table tbody tr[data-record-row]")
     .evaluateAll((rows) =>
-      rows.map((item) => item.getBoundingClientRect().height),
+      rows.map((item) => Math.round(item.getBoundingClientRect().height)),
     );
-  expect(Math.max(...heights)).toBeLessThan(80);
-  await work.locator(".meeting-open").click();
-  await expect(page.locator('#editor [name="id"]')).toHaveValue("long-work");
+  expect(Math.max(...heights)).toBeLessThan(64);
+  // A decision previews like a note and closes as soon as the pointer leaves.
+  await expect(symbol("long")).not.toHaveClass(/is-empty/);
+  await expect(symbol("empty")).toHaveClass(/is-empty/);
+  await symbol("long").hover();
+  const bubble = page.locator("#record-note-popover");
+  await expect(bubble).toBeVisible();
+  await expect(bubble).toHaveAttribute("data-preview-kind", "decision");
+  await expect(page.locator("#record-note-body")).toHaveText(decision);
+  await page.mouse.move(2, 2);
+  await expect(bubble).toBeHidden();
+  await symbol("empty").hover();
+  await page.waitForTimeout(200);
+  await expect(bubble).toBeHidden();
+  await page.mouse.move(2, 2);
+  // A click edits it in the note editor: Enter saves one Undo step.
+  await symbol("long").click();
+  const editor = page.locator("#record-note-editor");
+  await expect(editor.locator("h2")).toHaveText("Kararı düzenle");
+  const box = editor.locator('textarea[name="decision"]');
+  await expect(box).toHaveValue(decision);
+  await box.press("Control+End");
+  await box.press("Shift+Enter");
+  await box.pressSequentially("3) Yeni madde.");
+  await box.press("Enter");
+  await expect(editor).toBeHidden();
+  expect(await stored(page, "long")).toBe(`${decision}\n3) Yeni madde.`);
+  await expect(symbol("long")).toBeFocused();
+  await page.getByRole("button", { name: "Geri al", exact: true }).click();
+  await expect.poll(() => stored(page, "long")).toBe(decision);
+  // An empty decision is written from its faint symbol.
+  await symbol("empty").click();
+  await expect(editor.locator("h2")).toHaveText("Karar ekle");
+  await editor.locator('textarea[name="decision"]').fill("İlk karar.");
+  await editor.locator('textarea[name="decision"]').press("Enter");
+  await expect.poll(() => stored(page, "empty")).toBe("İlk karar.");
+  await expect(symbol("empty")).not.toHaveClass(/is-empty/);
+  // The title still opens the details panel.
+  await row("long").locator(".meeting-title").click();
+  await expect(page.locator("#meeting-record-panel")).toHaveAttribute(
+    "data-record-id",
+    "long",
+  );
   await page
-    .locator("#editor")
-    .getByRole("button", { name: "Vazgeç", exact: true })
+    .locator("#meeting-record-panel")
+    .getByRole("button", { name: "Kapat", exact: true })
     .click();
   // No window width makes the list scroll sideways.
   for (const width of [1100, 880, 879, 780, 600]) {

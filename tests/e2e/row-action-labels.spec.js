@@ -33,6 +33,15 @@ const close = (page) =>
     .getByRole("button", { name: "Vazgeç", exact: true })
     .click();
 
+// Closing a linked record's form returns to the panels it came from.
+async function closePanels(page) {
+  for (const selector of ["#waiting-record-panel", "#meeting-record-panel"]) {
+    const panel = page.locator(selector);
+    if (await panel.isVisible())
+      await panel.getByRole("button", { name: "Kapat", exact: true }).click();
+  }
+}
+
 async function seed(page, records, theme = "light") {
   await page.clock.install({
     // Start a second early so pausing at NOW never has to rewind.
@@ -80,18 +89,21 @@ test("a meeting with two routes names and opens each exact destination without c
   ]) {
     await page.setViewportSize(viewport);
     await list(page, "meeting");
-    // Linked flows open with a small button named after the destination.
+    // Linked flows show their status boxes; they open from the panel.
     const routes = row(page, "dual").locator(
-      ".meeting-linked-cell .meeting-open",
+      ".meeting-linked-cell .meeting-linked-row > .status-trigger",
     );
     await expect(routes).toHaveCount(2);
-    await expect(routes.nth(0)).toHaveAccessibleName(/işi aç$/);
-    await expect(routes.nth(1)).toHaveAccessibleName(/takibi aç$/);
+    await expect(routes.nth(0)).toHaveAccessibleName(/iş durumunu değiştir$/);
+    await expect(routes.nth(1)).toHaveAccessibleName(
+      /takip durumunu değiştir$/,
+    );
     await expect(
       row(page, "dual").locator(".status-col > .status-summary"),
     ).toHaveText("Açık");
     await expect(page.locator(".meeting-table > thead th")).toHaveText([
       "Aksiyon / Karar",
+      "Toplantı",
       "Durum",
       "Bağlı iş",
       "Takip",
@@ -112,7 +124,7 @@ test("a meeting with two routes names and opens each exact destination without c
       const bounds = await control.boundingBox();
       expect(bounds.x).toBeGreaterThanOrEqual(cell.x);
       expect(bounds.x + bounds.width).toBeLessThanOrEqual(cell.x + cell.width);
-      expect(bounds.height).toBe(24);
+      expect(bounds.height).toBe(30);
       await expect(control).toHaveAttribute("aria-label", /.+/);
       await expect(control).toBeVisible();
     }
@@ -125,12 +137,23 @@ test("a meeting with two routes names and opens each exact destination without c
       ["daily", "own-work"],
       ["waiting", "external-reply"],
     ]) {
-      await row(page, "dual")
-        .locator(`.meeting-linked-cell[data-route="${type}"] .meeting-open`)
+      await row(page, "dual").locator(".meeting-title").click();
+      await page
+        .locator(
+          `#meeting-record-panel .meeting-record-open[data-route="${type}"]`,
+        )
         .click();
+      // A follow-up opens in its own panel first.
+      if (type === "waiting")
+        await page
+          .locator("#waiting-record-panel")
+          .getByRole("button", { name: "Kaydı düzenle", exact: true })
+          .click();
       await expect(form(page).locator('[name="id"]')).toHaveValue(id);
       await expect(form(page).locator('select[name="type"]')).toHaveValue(type);
       await close(page);
+      await expect(page.locator("#editor")).toBeHidden();
+      await closePanels(page);
       await list(page, "meeting");
     }
   }
@@ -148,11 +171,6 @@ test("unrouted and single-route meetings name their separate creation or open ac
   ]);
   const before = await saved(page);
   await list(page, "meeting");
-  await expect(
-    row(page, "single").locator(
-      '.meeting-linked-cell[data-route="daily"] .meeting-open',
-    ),
-  ).toHaveAccessibleName(/işi aç$/);
   for (const id of ["unrouted", "single"]) {
     const controls = row(page, id).locator(
       ".meeting-linked-cell .meeting-route, .meeting-linked-cell .meeting-linked-row > .status-trigger",
@@ -170,11 +188,14 @@ test("unrouted and single-route meetings name their separate creation or open ac
       expect(bounds.height).toBe(30);
     }
   }
-  await row(page, "single")
-    .locator('.meeting-linked-cell[data-route="daily"] .meeting-open')
+  await row(page, "single").locator(".meeting-title").click();
+  await page
+    .locator('#meeting-record-panel .meeting-record-open[data-route="daily"]')
     .click();
   await expect(form(page).locator('[name="id"]')).toHaveValue("single-work");
   await close(page);
+  await expect(page.locator("#editor")).toBeHidden();
+  await closePanels(page);
   await list(page, "meeting");
   await row(page, "single")
     .locator(

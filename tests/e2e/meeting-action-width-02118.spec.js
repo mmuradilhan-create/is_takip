@@ -169,6 +169,7 @@ test("action headers and controls share compact left alignment across meeting, g
       }, theme);
       await expect(table.locator("thead th")).toHaveText([
         "Aksiyon / Karar",
+        "Toplantı",
         "Durum",
         "Bağlı iş",
         "Takip",
@@ -203,14 +204,10 @@ test("action headers and controls share compact left alignment across meeting, g
       await expect(page.locator("#editor")).not.toBeVisible();
       expect(await saved(page)).toBe(initial);
 
-      // A linked work is one line: its status box and a small open button.
-      const dailyRoute = row.locator(
-        '.meeting-linked-cell[data-route="daily"] .meeting-open',
-      );
+      // A linked work shows its status box; it opens from the details panel.
       const waitingRoute = row.locator(
         '.meeting-linked-cell[data-route="waiting"] .meeting-route',
       );
-      await expect(dailyRoute).toHaveAccessibleName(/işi aç$/);
       await expect(waitingRoute).toHaveText("Takip oluştur");
       const dailyStatus = row.locator(
         '.meeting-linked-cell[data-route="daily"] .status-trigger',
@@ -226,10 +223,20 @@ test("action headers and controls share compact left alignment across meeting, g
           ),
         ).toBe(true);
       }
-      await dailyRoute.click();
+      await row.locator(".meeting-title").click();
+      await page
+        .locator(
+          '#meeting-record-panel .meeting-record-open[data-route="daily"]',
+        )
+        .click();
       await expect(form.locator('[name="id"]')).toHaveValue(daily.id);
       await expect(form.locator('select[name="type"]')).toHaveValue("daily");
       await cancel();
+      // Back in the meeting's panel; closing it returns to the list.
+      await page
+        .locator("#meeting-record-panel")
+        .getByRole("button", { name: "Kapat", exact: true })
+        .click();
       await waitingRoute.click();
       await expect(form).toHaveAttribute("data-creation", "true");
       await expect(form.locator('select[name="type"]')).toHaveValue("waiting");

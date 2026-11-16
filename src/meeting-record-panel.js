@@ -79,11 +79,14 @@ export function createMeetingRecordPanel({
     delete panel.dataset.recordId;
     if (panel.open) panel.close();
     if (restoreFocus) {
+      // A redrawn list has a new title button; it is preferred to its row.
+      const controls = [
+        ...root.querySelectorAll('[data-action="meeting-record-details"]'),
+      ].filter((control) => control.dataset.id === recordId);
       const target = trigger?.isConnected
         ? trigger
-        : [
-            ...root.querySelectorAll('[data-action="meeting-record-details"]'),
-          ].find((control) => control.dataset.id === recordId);
+        : controls.find((control) => control.tagName === "BUTTON") ||
+          controls[0];
       target?.focus({ preventScroll: true });
     }
   }

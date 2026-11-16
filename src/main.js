@@ -3338,22 +3338,26 @@ export async function startMainApp() {
   recordNotes = createRecordNoteUI({
     root: app,
     getRecord: (id) => state.records.find((record) => record.id === id),
-    onSaveNote: (id, description, expectedDescription) => {
+    // Saves a record's note, or a meeting's decision, as one Undo step.
+    onSaveNote: (id, value, expected, field = "description") => {
+      const decision = field === "decision";
       const record = state.records.find((item) => item.id === id);
       if (!record) throw new Error("Bu kayıt artık bulunamıyor.");
-      if (String(record.description || "") !== expectedDescription)
+      if (String(record[field] || "") !== expected)
         throw new Error(
-          "Not başka bir yerde değişti. Taslağın korunuyor; güncel notu kontrol et.",
+          decision
+            ? "Karar başka bir yerde değişti. Taslağın korunuyor; güncel kararı kontrol et."
+            : "Not başka bir yerde değişti. Taslağın korunuyor; güncel notu kontrol et.",
         );
-      if (String(record.description || "") === description) return true;
+      if (String(record[field] || "") === value) return true;
       const updated = createRecord({
         ...record,
-        description,
+        [field]: value,
         updatedAt: new Date().toISOString(),
       });
       return saveRecords(
         state.records.map((item) => (item.id === id ? updated : item)),
-        "Kayıt notu",
+        decision ? "Toplantı kararı" : "Kayıt notu",
         { syncLinks: false },
       );
     },
@@ -3630,12 +3634,6 @@ export async function startMainApp() {
       "recordId",
       () => waitingRecordPanel,
     ],
-    // A meeting's decision symbol opens the same panel as its title.
-    "meeting-decision": [
-      "#meeting-record-panel",
-      "recordId",
-      () => meetingRecordPanel,
-    ],
   };
   const iconPanelShowing = (button) => {
     const entry = iconPanels[button?.dataset?.action];
@@ -3841,6 +3839,14 @@ export async function startMainApp() {
         inlineFields?.close();
         waitingInfo?.close();
         recordNotes?.edit(id, button);
+        break;
+      case "meeting-decision":
+        closeStatusMenu();
+        datePicker?.close();
+        choiceFields?.close();
+        inlineFields?.close();
+        waitingInfo?.close();
+        recordNotes?.edit(id, button, "decision");
         break;
       case "waiting-history":
         closeStatusMenu();
@@ -4207,7 +4213,6 @@ export async function startMainApp() {
         waitingRecordPanel.open(id, { trigger: button, section: "children" });
         break;
       case "meeting-record-details":
-      case "meeting-decision":
         event.preventDefault();
         openRecordPreview("meeting", id, button);
         break;

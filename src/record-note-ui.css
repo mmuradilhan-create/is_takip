@@ -349,3 +349,12 @@
 #record-note-editor [hidden] {
   display: none !important;
 }
+
+/* A meeting without a decision keeps a faint symbol to write the first one. */
+.record-decision-trigger.is-empty {
+  opacity: 0.45;
+}
+
+.record-decision-trigger.is-empty:is(:hover, :focus-visible) {
+  opacity: 1;
+}

@@ -145,10 +145,14 @@ export function createRecordNoteUI({
     return `<button type="button" class="record-history-trigger" data-action="waiting-history" data-id="${escapeHtml(record.id)}" aria-label="${escapeHtml(record.title)}: takip geçmişi, ${count} kayıt" aria-haspopup="dialog" aria-controls="record-note-popover waiting-followup-dialog" aria-expanded="false" title="Takip geçmişini düzenle (${count} kayıt)">${historyIcon}</button>`;
   }
 
-  /** A meeting's decision previews like a note; a click opens its details. */
+  /**
+   * A meeting's decision previews and edits like a note. Without a decision
+   * the symbol stays, faint, and a click writes the first one.
+   */
   function decisionButton(record) {
-    if (!eligible(record, "decision")) return "";
-    return `<button type="button" class="record-note-trigger record-decision-trigger" data-action="meeting-decision" data-id="${escapeHtml(record.id)}" aria-label="${escapeHtml(record.title)}: alınan karar, ayrıntıları aç" aria-haspopup="dialog" aria-controls="record-note-popover meeting-record-panel" aria-expanded="false">${decisionIcon}</button>`;
+    if (record?.type !== "meeting") return "";
+    const empty = !eligible(record, "decision");
+    return `<button type="button" class="record-note-trigger record-decision-trigger${empty ? " is-empty" : ""}" data-action="meeting-decision" data-id="${escapeHtml(record.id)}" aria-label="${escapeHtml(record.title)}: ${empty ? "karar ekle" : "kararı düzenle"}" aria-haspopup="dialog" aria-controls="record-note-popover record-note-editor" aria-expanded="false"${empty ? ' title="Karar ekle"' : ""}>${decisionIcon}</button>`;
   }
 
   function clearTimers() {
@@ -320,10 +324,10 @@ export function createRecordNoteUI({
     show(id, control, true);
   }
 
-  function edit(id, control) {
+  function edit(id, control, field = "description") {
     close();
     dismiss(control);
-    editor.open(id, control);
+    editor.open(id, control, field);
   }
 
   function scheduleOpen(control) {

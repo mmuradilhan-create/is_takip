@@ -10,7 +10,32 @@ const escapeHtml = (value) =>
         character
       ],
   );
-const noteText = (record) => String(record?.description ?? "");
+// The same small editor writes a record's note or a meeting's decision.
+const FIELDS = {
+  description: {
+    title: "Notu düzenle",
+    label: "Notlar",
+    changed:
+      "Not başka bir pencerede değişti. Yazdığın not korunuyor; güncel notu görmek için yeniden aç.",
+    missing: "Bu kayıt artık bulunamıyor. Yazdığın not burada korunuyor.",
+    unreadable: "Kayıt okunamadı. Yazdığın not burada korunuyor.",
+    busy: "Açık not taslağını önce kaydet veya kapat.",
+    failed:
+      "Not kaydedilemedi. Yazdığın metin korunuyor; yeniden deneyebilirsin.",
+  },
+  decision: {
+    title: "Kararı düzenle",
+    label: "Alınan karar",
+    changed:
+      "Karar başka bir pencerede değişti. Yazdığın metin korunuyor; güncel kararı görmek için yeniden aç.",
+    missing: "Bu kayıt artık bulunamıyor. Yazdığın karar burada korunuyor.",
+    unreadable: "Kayıt okunamadı. Yazdığın karar burada korunuyor.",
+    busy: "Açık karar taslağını önce kaydet veya kapat.",
+    failed:
+      "Karar kaydedilemedi. Yazdığın metin korunuyor; yeniden deneyebilirsin.",
+  },
+};
+const fieldText = (record, field) => String(record?.[field] ?? "");
 const closeIcon =
   '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>';
 
@@ -28,13 +53,15 @@ export function createRecordNoteEditor({
   dialog.setAttribute("aria-label", "Notu düzenle");
   root.append(dialog);
   let selectedId = null;
+  let field = "description";
   let expectedDescription = "";
   let previousTrigger = null;
   let saving = false;
   let destroyed = false;
   let generation = 0;
   let closeRequest = null;
-  const textarea = () => dialog.querySelector('[name="description"]');
+  const textarea = () => dialog.querySelector(`[name="${field}"]`);
+  const words = () => FIELDS[field];
   const find = () => getRecord(selectedId);
 
   function setError(message = "") {
@@ -45,10 +72,9 @@ export function createRecordNoteEditor({
   }
 
   function availability(record) {
-    if (!record)
-      return "Bu kayıt artık bulunamıyor. Yazdığın not burada korunuyor.";
-    if (noteText(record) !== expectedDescription)
-      return "Not başka bir pencerede değişti. Yazdığın not korunuyor; güncel notu görmek için yeniden aç.";
+    if (!record) return words().missing;
+    if (fieldText(record, field) !== expectedDescription)
+      return words().changed;
     return "";
   }
 
@@ -65,7 +91,7 @@ export function createRecordNoteEditor({
         dialog.querySelector(".record-note-edit-topic").textContent =
           record.title;
     } catch {
-      setError("Kayıt okunamadı. Yazdığın not burada korunuyor.");
+      setError(words().unreadable);
     }
   }
 
@@ -107,24 +133,30 @@ export function createRecordNoteEditor({
     }
   }
 
-  function open(id, trigger = null) {
+  function open(id, trigger = null, requested = "description") {
     if (destroyed) return;
     try {
       const record = getRecord(id);
       if (!record) throw new Error("Bu kayıt artık bulunamıyor.");
       if (dialog.open) {
-        if (selectedId !== id)
-          throw new Error("Açık not taslağını önce kaydet veya kapat.");
+        if (selectedId !== id || field !== requested)
+          throw new Error(words().busy);
         textarea()?.focus({ preventScroll: true });
         return;
       }
+      field = FIELDS[requested] ? requested : "description";
       selectedId = id;
-      expectedDescription = noteText(record);
+      expectedDescription = fieldText(record, field);
+      const title =
+        field === "decision" && !expectedDescription.trim()
+          ? "Karar ekle"
+          : words().title;
+      dialog.setAttribute("aria-label", title);
       previousTrigger = trigger?.isConnected ? trigger : document.activeElement;
       generation++;
       closeRequest = null;
       saving = false;
-      dialog.innerHTML = `<form id="record-note-edit-form"><div class="modal-header"><h2>Notu düzenle</h2><button type="button" class="close-modal" data-action="record-note-edit-close" aria-label="Pencereyi kapat">${closeIcon}</button></div><div class="modal-body record-note-edit-body"><p class="record-note-edit-topic">${escapeHtml(record.title)}</p><p class="record-note-edit-availability" role="status" hidden></p><label class="field"><span id="record-note-edit-label">Notlar</span><textarea name="description" maxlength="50000" rows="8" aria-labelledby="record-note-edit-label" aria-describedby="record-note-edit-shortcuts">${escapeHtml(expectedDescription)}</textarea><small id="record-note-edit-shortcuts" hidden>Enter ile kaydet, Shift+Enter ile alt satıra geç.</small></label><p id="record-note-edit-error" class="error-message" role="alert" hidden></p></div><div class="modal-footer"><button type="button" class="btn" data-action="record-note-edit-close">Vazgeç</button><button type="submit" class="btn primary">Kaydet</button></div></form>`;
+      dialog.innerHTML = `<form id="record-note-edit-form"><div class="modal-header"><h2>${escapeHtml(title)}</h2><button type="button" class="close-modal" data-action="record-note-edit-close" aria-label="Pencereyi kapat">${closeIcon}</button></div><div class="modal-body record-note-edit-body"><p class="record-note-edit-topic">${escapeHtml(record.title)}</p><p class="record-note-edit-availability" role="status" hidden></p><label class="field"><span id="record-note-edit-label">${words().label}</span><textarea name="${field}" maxlength="50000" rows="8" aria-labelledby="record-note-edit-label" aria-describedby="record-note-edit-shortcuts">${escapeHtml(expectedDescription)}</textarea><small id="record-note-edit-shortcuts" hidden>Enter ile kaydet, Shift+Enter ile alt satıra geç.</small></label><p id="record-note-edit-error" class="error-message" role="alert" hidden></p></div><div class="modal-footer"><button type="button" class="btn" data-action="record-note-edit-close">Vazgeç</button><button type="submit" class="btn primary">Kaydet</button></div></form>`;
       dialog.showModal();
       textarea().focus({ preventScroll: true });
     } catch (error) {
@@ -150,13 +182,15 @@ export function createRecordNoteEditor({
       saving = true;
       for (const control of dialog.querySelectorAll("button, textarea"))
         control.disabled = true;
-      const saved = await onSave(selectedId, description, expectedDescription);
+      const saved = await onSave(
+        selectedId,
+        description,
+        expectedDescription,
+        field,
+      );
       if (destroyed || generation !== attempt) return;
       if (saved === true) close();
-      else
-        setError(
-          "Not kaydedilemedi. Yazdığın metin korunuyor; yeniden deneyebilirsin.",
-        );
+      else setError(words().failed);
     } catch (error) {
       if (!destroyed && generation === attempt)
         setError(error instanceof Error ? error.message : String(error));
@@ -219,9 +253,11 @@ export function createRecordNoteEditor({
       return;
     const target = previous?.isConnected
       ? previous
-      : [...root.querySelectorAll('[data-action="record-note"][data-id]')].find(
-          (control) => control.dataset.id === id,
-        ) ||
+      : [
+          ...root.querySelectorAll(
+            `[data-action="${field === "decision" ? "meeting-decision" : "record-note"}"][data-id]`,
+          ),
+        ].find((control) => control.dataset.id === id) ||
         [...root.querySelectorAll("[data-record-row][data-id]")]
           .find((row) => row.dataset.id === id)
           ?.querySelector(".task-name, .focus-title");

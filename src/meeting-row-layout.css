@@ -11,8 +11,14 @@
   width: 148px;
 }
 
+/* Two even lines per row: the title, every box and button on the first,
+   the meeting date and the linked dates on the second. */
 .meeting-table > tbody > tr > td {
-  vertical-align: middle;
+  vertical-align: top;
+}
+
+.meeting-table .meeting-title-line {
+  min-height: 30px;
 }
 
 .meeting-table .meeting-title-line {

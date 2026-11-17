@@ -33,7 +33,7 @@ const stored = (page, id) =>
     id,
   );
 
-test("meeting rows stay one line; the decision previews and edits from its own symbol like a note", async ({
+test("meeting rows keep two even lines; the decision previews and edits from its own symbol like a note", async ({
   page,
 }) => {
   await page.clock.setFixedTime(new Date("2026-11-16T09:00:00.000Z"));
@@ -65,11 +65,36 @@ test("meeting rows stay one line; the decision previews and edits from its own s
   const row = (id) =>
     page.locator(`.meeting-table tr[data-record-row][data-id="${id}"]`);
   const symbol = (id) => row(id).locator(".record-decision-trigger");
-  // One line per meeting: date in its own column, linked status and date.
-  await expect(row("long").locator("td.meeting-date-col")).toHaveText("18 Ağu");
+  // Two even lines: title and every box first, the dates underneath.
+  await expect(row("long").locator(".meeting-date")).toHaveText(
+    "Toplantı: 18 Ağu",
+  );
   await expect(
-    row("long").locator('.meeting-linked-cell[data-route="daily"]'),
-  ).toContainText("19 Kas");
+    row("long").locator(
+      '.meeting-linked-cell[data-route="daily"] .meeting-linked-date',
+    ),
+  ).toHaveText("İş teslimi: 19 Kas");
+  const middles = await row("long")
+    .locator(
+      ".meeting-title, td.status-col > *, .meeting-linked-row > *, .row-end-actions > button",
+    )
+    .evaluateAll((items) =>
+      items.map((item) => {
+        const box = item.getBoundingClientRect();
+        return box.top + box.height / 2;
+      }),
+    );
+  expect(Math.max(...middles) - Math.min(...middles)).toBeLessThanOrEqual(1.5);
+  // A small square opens the linked work directly.
+  await row("long").locator('.meeting-open[data-route="daily"]').click();
+  await expect(page.locator('#editor [name="id"]')).toHaveValue("long-work");
+  await page
+    .locator("#editor")
+    .getByRole("button", { name: "Vazgeç", exact: true })
+    .click();
+  await expect(
+    row("long").locator('.meeting-open[data-route="daily"]'),
+  ).toBeFocused();
   await expect(row("empty").locator(".meeting-linked-date")).toHaveClass(
     /is-late/,
   );
@@ -79,7 +104,7 @@ test("meeting rows stay one line; the decision previews and edits from its own s
     .evaluateAll((rows) =>
       rows.map((item) => Math.round(item.getBoundingClientRect().height)),
     );
-  expect(Math.max(...heights)).toBeLessThan(64);
+  expect(Math.max(...heights)).toBeLessThan(76);
   // A decision previews like a note and closes as soon as the pointer leaves.
   await expect(symbol("long")).not.toHaveClass(/is-empty/);
   await expect(symbol("empty")).toHaveClass(/is-empty/);

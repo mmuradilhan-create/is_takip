@@ -414,7 +414,6 @@ test("meeting tables show derived source summaries beside independent route cont
   const before = await saved(page);
   await expect(page.locator(".meeting-table thead th")).toHaveText([
     "Aksiyon / Karar",
-    "Toplantı",
     "Durum",
     "Bağlı iş",
     "Takip",
@@ -450,7 +449,7 @@ test("meeting tables show derived source summaries beside independent route cont
   ).toHaveCount(0);
   await expect(
     cell(page, "both", "daily").locator(".meeting-linked-date"),
-  ).toHaveAttribute("title", "İş teslimi: 15 Kas");
+  ).toHaveText("İş teslimi: 15 Kas");
   await expect(cell(page, "both", "daily")).toContainText("15 Kas");
   await expect(
     cell(page, "both", "waiting").locator(".meeting-linked-date"),
@@ -463,7 +462,7 @@ test("meeting tables show derived source summaries beside independent route cont
   );
   await expect(
     cell(page, "only-waiting", "waiting").locator(".meeting-linked-date"),
-  ).toHaveAttribute("title", "Sonraki takip: 14 Kas");
+  ).toHaveText("Sonraki takip: 14 Kas");
   await expect(cell(page, "only-waiting", "waiting")).toContainText("14 Kas");
   await expect(cell(page, "only-waiting", "waiting")).not.toContainText(
     "20 Kas",

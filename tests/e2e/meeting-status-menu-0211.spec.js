@@ -98,12 +98,9 @@ test("a linked meeting exposes independent job and follow-up badges and changes 
   const before = await saved(page);
   const url = page.url();
   await expect(routeStatus(page, "dual", "own")).toHaveText("Yapılacak");
-  await expect(routeStatus(page, "dual", "reply")).toHaveText(
-    "Bekleniyor",
-  );
+  await expect(routeStatus(page, "dual", "reply")).toHaveText("Bekleniyor");
   await expect(page.locator(".meeting-table thead th")).toHaveText([
     "Aksiyon / Karar",
-    "Toplantı",
     "Durum",
     "Bağlı iş",
     "Takip",
@@ -126,10 +123,15 @@ test("a linked meeting exposes independent job and follow-up badges and changes 
     0,
   );
   await openMenu(page, "dual", "own");
-  await expect(menu(page).locator(".status-menu-heading")).toContainText(
-    "Aksiyon durumu",
+  // Opened from one linked box, the menu names whose status it is and does
+  // not repeat the work's name.
+  await expect(menu(page).locator(".status-menu-heading")).toHaveText(
+    "İşin durumu",
   );
-  await expect(group(page, "İşin durumu")).toContainText(items[1].title);
+  await expect(group(page, "İşin durumu")).not.toContainText(items[1].title);
+  await expect(menu(page).locator(".meeting-status-group-heading")).toHaveCount(
+    0,
+  );
   await expect(group(page, "Takibin durumu")).toHaveCount(0);
   await expect(group(page, "İşin durumu")).toHaveAttribute(
     "data-target-id",
@@ -149,9 +151,7 @@ test("a linked meeting exposes independent job and follow-up badges and changes 
   await option(page, "own", "in_progress").click();
   await expect(menu(page)).not.toBeVisible();
   await expect(routeStatus(page, "dual", "own")).toHaveText("Devam");
-  await expect(routeStatus(page, "dual", "reply")).toHaveText(
-    "Bekleniyor",
-  );
+  await expect(routeStatus(page, "dual", "reply")).toHaveText("Bekleniyor");
   const afterFirst = await saved(page);
   const after = await store(page);
   const daily = after.records.find((item) => item.id === "own");
@@ -179,7 +179,10 @@ test("a linked meeting exposes independent job and follow-up badges and changes 
   await expect(page).toHaveURL(url);
   await openMenu(page, "dual", "reply");
   await expect(group(page, "İşin durumu")).toHaveCount(0);
-  await expect(group(page, "Takibin durumu")).toContainText(items[2].title);
+  await expect(menu(page).locator(".status-menu-heading")).toHaveText(
+    "Takibin durumu",
+  );
+  await expect(group(page, "Takibin durumu")).not.toContainText(items[2].title);
   await expect(option(page, "reply", "completed")).toHaveCount(0);
   await option(page, "reply", "follow_up").click();
   await expect(routeStatus(page, "dual", "reply")).toHaveText("Takipte");

@@ -933,7 +933,6 @@ test("meeting source status, routes and pencil share compact left-aligned column
       const table = page.locator(".meeting-table");
       await expect(table.locator("thead th")).toHaveText([
         "Aksiyon / Karar",
-        "Toplantı",
         "Durum",
         "Bağlı iş",
         "Takip",
@@ -952,33 +951,33 @@ test("meeting source status, routes and pencil share compact left-aligned column
           ...element.querySelectorAll("tbody tr[data-record-row]"),
         ];
         return entries.map((entry) => {
-          // Title, meeting date, status, linked work, follow-up, edit.
+          // Title, status, linked work, follow-up, edit.
           const cells = [...entry.querySelectorAll(":scope > td")];
           const controlSets = [
             [
-              ...cells[2].querySelectorAll(
+              ...cells[1].querySelectorAll(
                 ":scope > .status-trigger, :scope > .status-summary",
               ),
             ],
             // A route is its create button, or the linked status box.
             [
-              ...cells[3].querySelectorAll(
+              ...cells[2].querySelectorAll(
                 ".meeting-route, .meeting-linked-row > .status-trigger",
               ),
             ],
             [
-              ...cells[4].querySelectorAll(
+              ...cells[3].querySelectorAll(
                 ".meeting-route, .meeting-linked-row > .status-trigger",
               ),
             ],
-            [...cells[5].querySelectorAll(".row-end-actions > button")],
+            [...cells[4].querySelectorAll(".row-end-actions > button")],
           ];
           return {
             columnWidths: cells.map(
               (cell) => cell.getBoundingClientRect().width,
             ),
-            alignment: cells.slice(2).map((cell, index) => {
-              const header = headers[index + 2];
+            alignment: cells.slice(1).map((cell, index) => {
+              const header = headers[index + 1];
               const range = document.createRange();
               range.selectNodeContents(header);
               const heading = range.getBoundingClientRect();
@@ -1005,18 +1004,17 @@ test("meeting source status, routes and pencil share compact left-aligned column
         });
       });
       for (const entry of dimensions) {
-        expect(entry.columnWidths).toHaveLength(6);
-        // Linked columns hold a status box and its date (164px), narrowing
-        // to 112px on small windows.
-        const linked = viewport.width >= 880 ? 164 : 112;
-        expect(entry.columnWidths[1]).toBeLessThanOrEqual(76);
-        expect(entry.columnWidths[2]).toBeLessThanOrEqual(132);
+        expect(entry.columnWidths).toHaveLength(5);
+        // Linked columns hold a status box and a square open button (148px),
+        // 136px on small windows; their dates sit underneath.
+        const linked = viewport.width >= 880 ? 148 : 136;
+        expect(entry.columnWidths[1]).toBeLessThanOrEqual(132);
+        expect(entry.columnWidths[2]).toBeLessThanOrEqual(linked + 4);
         expect(entry.columnWidths[3]).toBeLessThanOrEqual(linked + 4);
-        expect(entry.columnWidths[4]).toBeLessThanOrEqual(linked + 4);
-        expect(entry.columnWidths[5]).toBeLessThanOrEqual(56);
+        expect(entry.columnWidths[4]).toBeLessThanOrEqual(56);
         expect(
           entry.columnWidths.slice(1).reduce((sum, width) => sum + width, 0),
-        ).toBeLessThanOrEqual(76 + 132 + 2 * (linked + 4) + 56);
+        ).toBeLessThanOrEqual(132 + 2 * (linked + 4) + 56);
         if (viewport.width >= 1280)
           expect(entry.columnWidths[0]).toBeGreaterThan(360);
         for (const [index, column] of entry.alignment.entries()) {

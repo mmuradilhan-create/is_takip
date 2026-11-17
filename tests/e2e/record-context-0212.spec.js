@@ -308,7 +308,7 @@ test("selected yearly goals and plain daily records have no filler while meeting
   await expect(
     row(page, "context-plain-meeting").locator(".task-meta-line, .task-sub"),
   ).toHaveCount(0);
-  // The decision has its own symbol; the meeting date its own column.
+  // The decision has its own symbol; the meeting date sits under the title.
   await expect(
     row(page, "context-owned-meeting").locator(".record-decision-trigger"),
   ).not.toHaveClass(/is-empty/);
@@ -320,8 +320,8 @@ test("selected yearly goals and plain daily records have no filler while meeting
   );
   await page.mouse.move(2, 2);
   await expect(
-    row(page, "context-owned-meeting").locator("td.meeting-date-col"),
-  ).toHaveText("5 Kas");
+    row(page, "context-owned-meeting").locator(".meeting-date"),
+  ).toContainText("5 Kas");
   await expect(row(page, "context-owned-meeting")).not.toContainText(
     "Aslı Kaya",
   );

@@ -814,10 +814,11 @@ ayni gorunumu kullanir; hedefler de gunluk islerle ayni kurala uyar. Widget'ta
 tarih duz yazidir, yalniz rengi degisir (bugun kalin amber, 1-3 gun amber,
 gecikmis kirmizi).
 
-TOPLANTI SATIRLARI VE KARAR SIMGESI (1.15.1)
+TOPLANTI SATIRLARI VE KARAR SIMGESI (1.15.2)
 
-Her toplanti tek satirdir: baslik, toplanti tarihi, durum, bagli isin ve
-takibin durumu ile tarihi. Basligin yanindaki karar simgesi not simgesi gibi
+Her toplanti satiri iki cizgidir: ustte baslik, durum ve bagli isin/takibin
+durum kutulari ayni hizada; altta toplanti tarihi, is teslimi ve sonraki takip.
+Durum kutusunun yanindaki kare -> dugmesi isi veya takibi dogrudan acar. Basligin yanindaki karar simgesi not simgesi gibi
 calisir: uzerine gelince karar gorunur, tiklayinca Karari duzenle penceresi
 acilir (Enter kaydeder, Shift+Enter alt satir, tek Geri al adimi). Karari
 olmayan toplantida simge soluktur, tiklayinca Karar ekle acilir. Basliga

@@ -169,7 +169,6 @@ test("action headers and controls share compact left alignment across meeting, g
       }, theme);
       await expect(table.locator("thead th")).toHaveText([
         "Aksiyon / Karar",
-        "Toplantı",
         "Durum",
         "Bağlı iş",
         "Takip",

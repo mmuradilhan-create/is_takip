@@ -814,6 +814,12 @@ ayni gorunumu kullanir; hedefler de gunluk islerle ayni kurala uyar. Widget'ta
 tarih duz yazidir, yalniz rengi degisir (bugun kalin amber, 1-3 gun amber,
 gecikmis kirmizi).
 
+TAKIP GECMISINDE SILME (1.15.4)
+
+Takip gecmisindeki her kaydin yaninda Duzenle ve Sil vardir. Silmeden once
+sorulur ve Geri al ile geri getirilebilir. En son kayit silinince son takip,
+sonraki takip ve son gelisme kalan gecmise doner.
+
 TOPLANTI SATIRLARI VE KARAR SIMGESI (1.15.2)
 
 Her toplanti satiri iki cizgidir: ustte baslik, durum ve bagli isin/takibin

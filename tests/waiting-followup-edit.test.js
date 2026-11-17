@@ -5,6 +5,7 @@ import {
   appendFollowUp,
   normalizeFollowUpLog,
   updateFollowUp,
+  removeFollowUp,
 } from "../src/waiting-followup.js";
 import { createWorkspaceStore } from "../src/workspace-store.js";
 
@@ -486,4 +487,103 @@ test("a correction is one durable undo action, backup preserves previous text, a
   assert.equal(reopened.undo(), "Takip düzeltme");
   assert.deepEqual(reopened.records, [original]);
   assert.deepEqual(JSON.parse(storage.getItem(key)).records, [original]);
+});
+
+test("deleting the latest follow-up returns the fields it set to the remaining history", () => {
+  const record = createRecord({
+    id: "delete-latest",
+    type: "waiting",
+    title: "Silinecek takip",
+    status: "waiting_response",
+    lastFollowUpDate: "2026-11-07",
+    nextFollowUpDate: "2026-11-12",
+    latestUpdate: "Numune istendi",
+    createdAt: STAMP,
+    updatedAt: STAMP,
+    followUpLog: [
+      entry({
+        id: "older",
+        date: "2026-11-02",
+        note: "Arandı",
+        nextFollowUpDate: "2026-11-07",
+      }),
+      entry({
+        id: "newer",
+        date: "2026-11-07",
+        note: "Numune istendi",
+        nextFollowUpDate: "2026-11-12",
+      }),
+    ],
+  });
+  const after = removeFollowUp(record, "newer", {
+    updatedAt: UPDATED,
+    expectedEntry: record.followUpLog[1],
+  });
+  assert.deepEqual(
+    after.followUpLog.map((item) => item.id),
+    ["older"],
+  );
+  assert.equal(after.lastFollowUpDate, "2026-11-02");
+  assert.equal(after.nextFollowUpDate, "2026-11-07");
+  assert.equal(after.latestUpdate, "Arandı");
+  assert.equal(after.updatedAt, UPDATED);
+  assert.equal(record.followUpLog.length, 2, "the original is unchanged");
+  // Deleting an older entry leaves the live fields alone.
+  const older = removeFollowUp(record, "older", { updatedAt: UPDATED });
+  assert.equal(older.lastFollowUpDate, "2026-11-07");
+  assert.equal(older.nextFollowUpDate, "2026-11-12");
+  assert.equal(older.latestUpdate, "Numune istendi");
+});
+
+test("deleting a follow-up keeps hand-edited fields, a planned date and refuses stale or missing entries", () => {
+  const record = createRecord({
+    id: "delete-only",
+    type: "waiting",
+    title: "Tek takip",
+    status: "waiting_response",
+    lastFollowUpDate: "2026-11-07",
+    nextFollowUpDate: "2026-11-20",
+    latestUpdate: "Elle yazılan gelişme",
+    createdAt: STAMP,
+    updatedAt: STAMP,
+    followUpLog: [
+      entry({
+        id: "only",
+        date: "2026-11-07",
+        note: "Tek sonuç",
+        nextFollowUpDate: "2026-11-12",
+        previousUpdate: "Eski gelişme",
+      }),
+    ],
+  });
+  const after = removeFollowUp(record, "only", { updatedAt: UPDATED });
+  assert.deepEqual(after.followUpLog, []);
+  assert.equal(after.lastFollowUpDate, "");
+  // The next date and the latest update were changed by hand: kept.
+  assert.equal(after.nextFollowUpDate, "2026-11-20");
+  assert.equal(after.latestUpdate, "Elle yazılan gelişme");
+  // When the summary still came from the entry, its replaced text returns.
+  const derived = removeFollowUp(
+    { ...record, latestUpdate: "Tek sonuç", nextFollowUpDate: "2026-11-12" },
+    "only",
+    { updatedAt: UPDATED },
+  );
+  assert.equal(derived.latestUpdate, "Eski gelişme");
+  assert.equal(derived.nextFollowUpDate, "2026-11-12", "a planned date stays");
+  assert.throws(
+    () => removeFollowUp(record, "missing", OPTIONS),
+    /artık bulunamıyor/,
+  );
+  assert.throws(
+    () =>
+      removeFollowUp(record, "only", {
+        ...OPTIONS,
+        expectedEntry: { ...record.followUpLog[0], note: "Başka" },
+      }),
+    /başka bir pencerede/,
+  );
+  assert.throws(
+    () => removeFollowUp({ ...record, type: "daily" }, "only", OPTIONS),
+    /bekleyen konuların/,
+  );
 });

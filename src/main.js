@@ -1479,8 +1479,8 @@ export async function startMainApp() {
         : esc(text);
     return `<span class="waiting-last-date" title="${record.lastFollowUpDate ? esc(record.lastFollowUpDate) : "Henüz takip kaydı yok"}">${content}</span>`;
   }
-  // A linked flow is its status box and date; a missing one is its create
-  // button. Its name and open button are in the details panel.
+  // A linked flow is its status box with a small square button that opens
+  // it, and its date underneath; a missing one is its create button.
   function meetingLinkedCell(record, type) {
     const target = meetingTargets(record).find((item) => item.type === type);
     if (!target && !active(record))
@@ -1494,15 +1494,16 @@ export async function startMainApp() {
     const dateCaption = daily ? "İş teslimi" : "Sonraki takip";
     const late = date && active(target) && date < today();
     const kind = daily ? "iş" : "takip";
-    return `<td class="meeting-linked-cell" data-route="${type}"><div class="meeting-linked-row">${statusBadge(target, { sourceId: record.id, targetId: target.id, caption: `${record.title}: ${kind} durumunu değiştir` })}${date ? `<span class="meeting-linked-date${late ? " is-late" : ""}" title="${dateCaption}: ${esc(formatDate(date))}">${esc(formatDate(date))}</span>` : ""}</div></td>`;
+    const open = daily ? "İşi aç" : "Takibi aç";
+    return `<td class="meeting-linked-cell" data-route="${type}"><div class="meeting-linked-row">${statusBadge(target, { sourceId: record.id, targetId: target.id, caption: `${record.title}: ${kind} durumunu değiştir` })}<button type="button" class="meeting-open linked-action-control" data-action="open-linked-action" data-route="${type}" data-id="${esc(record.id)}" data-record-link-tooltip="${open}: ${esc(target.title)}" aria-label="${esc(record.title)}: ${open.toLocaleLowerCase("tr-TR")}">${icon("openLink")}</button></div>${date ? `<div class="meeting-linked-date${late ? " is-late" : ""}">${dateCaption}: ${esc(formatDate(date))}</div>` : ""}</td>`;
   }
   // Each meeting is one line however long its decision or linked names get;
   // the decision previews from its own symbol like a note, and everything
   // else is in the details panel the title opens.
   function meetingTable(records) {
-    return `<div class="table-wrap"><table class="full-table meeting-table"><thead><tr><th>Aksiyon / Karar</th><th class="meeting-date-col">Toplantı</th><th class="status-col meeting-source-status-col">Durum</th><th class="meeting-linked-heading">Bağlı iş</th><th class="meeting-linked-heading">Takip</th><th class="row-action-col">İşlem</th></tr></thead><tbody>${records
+    return `<div class="table-wrap"><table class="full-table meeting-table"><thead><tr><th>Aksiyon / Karar</th><th class="status-col meeting-source-status-col">Durum</th><th class="meeting-linked-heading">Bağlı iş</th><th class="meeting-linked-heading">Takip</th><th class="row-action-col">İşlem</th></tr></thead><tbody>${records
       .map((record) => {
-        return `<tr class="record-list-row meeting-row" ${recordRow(record)}><td><div class="meeting-title-line"><button type="button" class="task-name meeting-title ${record.status === "completed" ? "completed" : record.status === "cancelled" ? "cancelled" : ""}" data-action="meeting-record-details" aria-haspopup="dialog" aria-controls="meeting-record-panel" data-id="${esc(record.id)}">${esc(record.title)}</button>${recordNotes?.decisionButton(record) || ""}${recordNotes?.button(record) || ""}</div></td><td class="meeting-date-col">${record.sourceDate ? esc(formatDate(record.sourceDate)) : ""}</td><td class="status-col meeting-source-status-col">${statusBadge(record)}</td>${meetingLinkedCell(record, "daily")}${meetingLinkedCell(record, "waiting")}<td class="row-action-col"><div class="row-end-actions">${recordEditControl(record)}</div></td></tr>`;
+        return `<tr class="record-list-row meeting-row" ${recordRow(record)}><td><div class="meeting-title-line"><button type="button" class="task-name meeting-title ${record.status === "completed" ? "completed" : record.status === "cancelled" ? "cancelled" : ""}" data-action="meeting-record-details" aria-haspopup="dialog" aria-controls="meeting-record-panel" data-id="${esc(record.id)}">${esc(record.title)}</button>${recordNotes?.decisionButton(record) || ""}${recordNotes?.button(record) || ""}</div>${record.sourceDate ? `<div class="task-sub meeting-date">Toplantı: ${esc(formatDate(record.sourceDate))}</div>` : ""}</td><td class="status-col meeting-source-status-col">${statusBadge(record)}</td>${meetingLinkedCell(record, "daily")}${meetingLinkedCell(record, "waiting")}<td class="row-action-col"><div class="row-end-actions">${recordEditControl(record)}</div></td></tr>`;
       })
       .join("")}</tbody></table></div>`;
   }
@@ -2793,7 +2794,9 @@ export async function startMainApp() {
       ...(table?.querySelectorAll("[data-record-row]") || []),
     ].find((element) => element.dataset.id === context.sourceId);
     const trigger = [
-      ...(sourceRow?.querySelectorAll(".meeting-route[data-route]") || []),
+      ...(sourceRow?.querySelectorAll(
+        ":is(.meeting-route, .meeting-open)[data-route]",
+      ) || []),
     ].find((element) => element.dataset.route === context.routeType);
     (
       trigger ||

@@ -36,8 +36,16 @@ export function renderMeetingStatusMenu(record, targets, { targetId } = {}) {
             `<button type="button" class="status-option" role="menuitemradio" aria-checked="${status === selected}" data-action="set-status" data-id="${escapeHtml(target.id)}" data-status="${escapeHtml(status)}"><span>${escapeHtml(item.label)}</span><span class="status-mark" aria-hidden="true">${checkIcon}</span></button>`,
         )
         .join("");
-      return `<div class="meeting-status-group" role="group" aria-label="${group.label}" data-target-id="${escapeHtml(target.id)}" data-target-type="${target.type}"><div class="meeting-status-group-heading"><strong>${group.title}</strong>${title}</div>${options}</div>`;
+      // Opened from one linked box, the menu names only whose status it is;
+      // the work's name and details are not repeated there.
+      const heading = selectedTarget
+        ? ""
+        : `<div class="meeting-status-group-heading"><strong>${group.title}</strong>${title}</div>`;
+      return `<div class="meeting-status-group" role="group" aria-label="${group.label}" data-target-id="${escapeHtml(target.id)}" data-target-type="${target.type}">${heading}${options}</div>`;
     })
     .join("");
-  return `<div class="status-menu-heading">Aksiyon durumu</div>${groups}`;
+  const menuHeading = selectedTarget
+    ? GROUPS[selectedTarget.type]?.label || "Aksiyon durumu"
+    : "Aksiyon durumu";
+  return `<div class="status-menu-heading">${menuHeading}</div>${groups}`;
 }

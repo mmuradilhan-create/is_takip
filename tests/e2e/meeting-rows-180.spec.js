@@ -166,3 +166,57 @@ test("meeting rows keep two even lines; the decision previews and edits from its
     ).toEqual([true, true]);
   }
 });
+
+test("a long meeting title wraps like the other lists while its boxes stay on the first line", async ({
+  page,
+}) => {
+  const title =
+    "DYRK Test Planlaması hakkında yapılan toplantı denemesi ve sonuçlarının değerlendirilmesi";
+  await page.addInitScript(
+    (raw) => localStorage.setItem("is-takip-v1", raw),
+    JSON.stringify({
+      version: 1,
+      records: [meeting("wrap", { title, decision: "Karar." })],
+    }),
+  );
+  await page.setViewportSize({ width: 900, height: 700 });
+  await page.goto("/");
+  await page
+    .locator('#nav [data-view="meeting"]')
+    .evaluate((item) => item.click());
+  const row = page.locator(
+    '.meeting-table tr[data-record-row][data-id="wrap"]',
+  );
+  const name = row.locator(".meeting-title");
+  await expect(name).toHaveText(title);
+  const geometry = await row.evaluate((element) => {
+    const box = (selector) =>
+      element.querySelector(selector).getBoundingClientRect();
+    const titleBox = box(".meeting-title");
+    const symbol = box(".record-decision-trigger");
+    return {
+      lines: Math.round(
+        titleBox.height /
+          parseFloat(
+            getComputedStyle(element.querySelector(".meeting-title"))
+              .lineHeight,
+          ),
+      ),
+      clipped:
+        element.querySelector(".meeting-title").scrollWidth >
+        element.querySelector(".meeting-title").clientWidth + 1,
+      symbolMiddle: symbol.top + symbol.height / 2,
+      titleMiddle: titleBox.top + titleBox.height / 2,
+      symbolRightOfTitle: symbol.left >= titleBox.right,
+      statusTop: box("td.status-col > *").top,
+      rowTop: element.getBoundingClientRect().top,
+    };
+  });
+  expect(geometry.lines).toBeGreaterThan(1);
+  expect(geometry.clipped).toBe(false);
+  expect(geometry.symbolRightOfTitle).toBe(true);
+  expect(
+    Math.abs(geometry.symbolMiddle - geometry.titleMiddle),
+  ).toBeLessThanOrEqual(2);
+  expect(geometry.statusTop - geometry.rowTop).toBeLessThan(24);
+});

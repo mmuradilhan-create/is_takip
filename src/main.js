@@ -191,6 +191,7 @@ import { createWaitingFollowUpUI } from "./waiting-followup-ui.js";
 import {
   appendFollowUp,
   updateFollowUp,
+  removeFollowUp,
   waitingAgePresentation,
   stampWaitingClosures,
   followUpPresentation,
@@ -3511,6 +3512,26 @@ export async function startMainApp() {
         return saved;
       } catch (error) {
         toast(error.message || "Takip kaydı güncellenemedi.", true);
+        return false;
+      }
+    },
+    onDelete: (id, entryId, expectedEntry) => {
+      try {
+        const record = state.records.find((item) => item.id === id);
+        const updated = removeFollowUp(record, entryId, {
+          updatedAt: new Date().toISOString(),
+          expectedEntry,
+        });
+        const saved = saveRecords(
+          state.records.map((item) =>
+            item.id === id ? createRecord(updated) : item,
+          ),
+          "Takip kaydı silme",
+        );
+        if (saved) toast("Takip kaydı silindi.");
+        return saved;
+      } catch (error) {
+        toast(error.message || "Takip kaydı silinemedi.", true);
         return false;
       }
     },

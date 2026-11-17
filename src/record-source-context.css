@@ -63,6 +63,12 @@
   vertical-align: middle;
 }
 
+/* A linked title is a link element; like the others it underlines only on
+   hover, not by the browser's default. */
+.record-title-content > a.task-name {
+  text-decoration: none;
+}
+
 .record-title-content > a.task-name:hover {
   text-decoration: underline;
 }

@@ -1,6 +1,7 @@
 import { localDate } from "./model.js";
 import { dateInput, dateValue, formatDateInput } from "./date-picker.js";
 import { isPlainSaveEnter } from "./record-form-shortcuts.js";
+import { confirmAction } from "./app-confirm.js";
 
 const escapeHtml = (value) =>
   String(value ?? "").replace(
@@ -48,6 +49,7 @@ export function createWaitingFollowUpUI({
   getRecords,
   onSave,
   onEdit,
+  onDelete,
   today = () => localDate(),
   onError = () => {},
 } = {}) {
@@ -128,7 +130,7 @@ export function createWaitingFollowUpUI({
                   draft.error =
                     "Bu takip kaydı başka bir pencerede değişti. Taslağın korunuyor; güncel kaydı yeniden açarak devam et.";
               }
-              return `<li data-followup-id="${escapeHtml(entry.id)}"><div class="waiting-followup-entry-heading"><time datetime="${escapeHtml(entry.date)}">${escapeHtml(dateLabel(entry.date))}</time>${typeof onEdit === "function" ? `<button type="button" class="waiting-followup-edit" data-action="waiting-followup-edit"${draft ? " hidden" : ""}${unavailable || saving || editingSaving ? " disabled" : ""}>Düzenle</button>` : ""}</div>${draft ? editMarkup(entry, draft, unavailable || missing) : `<p class="waiting-followup-result${entry.note ? "" : " waiting-followup-muted"}">${escapeHtml(entry.note || "Sonuç notu eklenmemiş.")}</p>${entry.nextFollowUpDate ? `<span class="waiting-followup-planned">${calendarIcon}Sonraki takip: ${escapeHtml(dateLabel(entry.nextFollowUpDate))}</span>` : ""}`}</li>`;
+              return `<li data-followup-id="${escapeHtml(entry.id)}"><div class="waiting-followup-entry-heading"><time datetime="${escapeHtml(entry.date)}">${escapeHtml(dateLabel(entry.date))}</time><span class="waiting-followup-entry-tools">${typeof onEdit === "function" ? `<button type="button" class="waiting-followup-edit" data-action="waiting-followup-edit"${draft ? " hidden" : ""}${unavailable || saving || editingSaving ? " disabled" : ""}>Düzenle</button>` : ""}${typeof onDelete === "function" ? `<button type="button" class="waiting-followup-edit waiting-followup-delete" data-action="waiting-followup-delete"${draft ? " hidden" : ""}${unavailable || saving || editingSaving ? " disabled" : ""}>Sil</button>` : ""}</span></div>${draft ? editMarkup(entry, draft, unavailable || missing) : `<p class="waiting-followup-result${entry.note ? "" : " waiting-followup-muted"}">${escapeHtml(entry.note || "Sonuç notu eklenmemiş.")}</p>${entry.nextFollowUpDate ? `<span class="waiting-followup-planned">${calendarIcon}Sonraki takip: ${escapeHtml(dateLabel(entry.nextFollowUpDate))}</span>` : ""}`}</li>`;
             })
             .join("")}</ol>`
         : '<p class="waiting-followup-muted waiting-followup-empty">Henüz takip kaydı yok.</p>'
@@ -415,6 +417,48 @@ export function createWaitingFollowUpUI({
     }
   }
 
+  /** Delete one saved follow-up after asking; it is one Undo step. */
+  async function deleteEntry(id, control) {
+    if (saving || editingSaving || destroyed || typeof onDelete !== "function")
+      return;
+    const record = find(recordId);
+    const entry = record?.followUpLog?.find((item) => item.id === id);
+    if (!entry) return;
+    const attempt = generation;
+    const targetRecordId = recordId;
+    const expectedEntry = JSON.parse(JSON.stringify(entry));
+    const confirmed = await confirmAction({
+      root,
+      title: "Takip kaydını sil",
+      message: `${dateLabel(entry.date)} tarihli takip kaydı silinecek. Geri al ile geri getirebilirsin.`,
+      confirmLabel: "Sil",
+      danger: true,
+      trigger: control,
+    });
+    if (!confirmed || destroyed || generation !== attempt || !dialog.open)
+      return;
+    const ids = latestEntries(find(recordId) || {}).map((item) => item.id);
+    const neighbour = ids[ids.indexOf(id) + 1] || ids[ids.indexOf(id) - 1];
+    editingSaving = true;
+    refresh();
+    let saved = false;
+    try {
+      saved = (await onDelete(targetRecordId, id, expectedEntry)) === true;
+    } finally {
+      if (generation === attempt) {
+        editingSaving = false;
+        refresh();
+        if (dialog.open)
+          if (saved && neighbour) focusEntry(neighbour);
+          else if (saved)
+            dialog
+              .querySelector("[data-followup-history-heading]")
+              ?.focus({ preventScroll: true });
+          else focusEntry(id);
+      }
+    }
+  }
+
   function onInput(event) {
     const fields = event.target.closest?.("[data-followup-edit]");
     if (!fields || !dialog.contains(fields)) return;
@@ -477,6 +521,12 @@ export function createWaitingFollowUpUI({
     } else if (control.dataset.action === "waiting-followup-edit") {
       event.preventDefault();
       startEdit(control.closest("[data-followup-id]")?.dataset.followupId);
+    } else if (control.dataset.action === "waiting-followup-delete") {
+      event.preventDefault();
+      deleteEntry(
+        control.closest("[data-followup-id]")?.dataset.followupId,
+        control,
+      );
     } else if (control.dataset.action === "waiting-followup-edit-save") {
       event.preventDefault();
       saveEdit(control.closest("[data-followup-id]")?.dataset.followupId);

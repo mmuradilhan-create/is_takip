@@ -340,3 +340,23 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Edit and delete sit together at the right of each saved follow-up. */
+.waiting-followup-entry-tools {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 6px;
+}
+
+.waiting-followup-delete:hover {
+  border-color: #e0a097;
+  background: #fdf0ee;
+  color: #a3261d;
+}
+
+[data-theme="dark"] .waiting-followup-delete:hover {
+  border-color: #a56a61;
+  background: #3a2624;
+  color: #f5bab2;
+}

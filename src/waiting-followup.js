@@ -272,6 +272,61 @@ export function updateFollowUp(record, entryId, patch, options = {}) {
   };
 }
 
+/**
+ * Delete one saved follow-up. Fields that still showed what the deleted
+ * entry wrote (last follow-up date, next follow-up date, latest update) go
+ * back to what the remaining history says; fields edited by hand stay.
+ */
+export function removeFollowUp(record, entryId, options = {}) {
+  if (!record || record.type !== "waiting")
+    throw new Error("Yalnızca bekleyen konuların takip geçmişi silinebilir.");
+  const entries = Object.hasOwn(record, "followUpLog")
+    ? normalizeFollowUpLog(record.followUpLog)
+    : [];
+  const index = entries.findIndex((entry) => entry.id === entryId);
+  if (index < 0) throw new Error("Silinecek takip kaydı artık bulunamıyor.");
+  const removed = entries[index];
+  if (Object.hasOwn(options, "expectedEntry")) {
+    const expected = followUpEntry(options.expectedEntry);
+    if (JSON.stringify(expected) !== JSON.stringify(removed))
+      throw new Error(
+        "Bu takip kaydı başka bir pencerede değişti. Güncel kaydı yeniden aç.",
+      );
+  }
+  const nextEntries = entries.filter((_, at) => at !== index);
+  const before = historyAuthority(entries);
+  const after = historyAuthority(nextEntries);
+  // The summary the deleted entry replaced comes back when nothing newer has one.
+  const afterSummary = after.summary || removed.previousUpdate || "";
+  const currentLast = normalizeFollowUpDate(
+    record.lastFollowUpDate || "",
+    "Son takip tarihi",
+  );
+  const currentNext = normalizeFollowUpDate(
+    record.nextFollowUpDate ?? "",
+    "Sonraki takip tarihi",
+  );
+  const currentSummary = normalizeLatestUpdate(record.latestUpdate ?? "");
+  const changes = {};
+  if (currentLast === before.latest.date)
+    changes.lastFollowUpDate = after.latest?.date || "";
+  // With no history left, a planned next follow-up is kept, not dropped.
+  if (
+    after.latest &&
+    currentNext === before.latest.nextFollowUpDate &&
+    after.latest.nextFollowUpDate !== currentNext
+  )
+    changes.nextFollowUpDate = after.latest.nextFollowUpDate;
+  if (currentSummary === before.summary && afterSummary !== currentSummary)
+    changes.latestUpdate = afterSummary;
+  return {
+    ...record,
+    ...changes,
+    updatedAt: timestamp(options.updatedAt ?? new Date()),
+    followUpLog: nextEntries,
+  };
+}
+
 export {
   stampWaitingClosures,
   waitingAge,

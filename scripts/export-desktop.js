@@ -818,7 +818,8 @@ TOPLANTI SATIRLARI VE KARAR SIMGESI (1.15.2)
 
 Her toplanti satiri iki cizgidir: ustte baslik, durum ve bagli isin/takibin
 durum kutulari ayni hizada; altta toplanti tarihi, is teslimi ve sonraki takip.
-Durum kutusunun yanindaki kare -> dugmesi isi veya takibi dogrudan acar. Basligin yanindaki karar simgesi not simgesi gibi
+Durum kutusunun yanindaki kare -> dugmesi isi veya takibi dogrudan acar.
+Uzun basliklar diger listelerdeki gibi alt satira gecer (1.15.3). Basligin yanindaki karar simgesi not simgesi gibi
 calisir: uzerine gelince karar gorunur, tiklayinca Karari duzenle penceresi
 acilir (Enter kaydeder, Shift+Enter alt satir, tek Geri al adimi). Karari
 olmayan toplantida simge soluktur, tiklayinca Karar ekle acilir. Basliga

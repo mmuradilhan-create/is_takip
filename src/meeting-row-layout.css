@@ -28,13 +28,18 @@
   min-width: 0;
 }
 
+/* A long title wraps like in the other lists; its symbols stay to its
+   right, on the middle of the title block. */
 .meeting-table .meeting-title-line > .meeting-title {
   flex: 0 1 auto;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
   text-align: left;
+}
+
+.meeting-table .meeting-title-line > :not(.meeting-title) {
+  flex: 0 0 auto;
 }
 
 .meeting-table .meeting-linked-row {
